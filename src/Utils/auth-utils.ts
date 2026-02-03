@@ -339,6 +339,25 @@ export const addTransactionCapability = (
 			} finally {
 				releaseTxMutexRef(key)
 			}
+		},
+
+		/**
+		 * Cleanup all resources (queues, managers)
+		 * Should be called during connection cleanup
+		 */
+		destroy: () => {
+			logger.debug('🗑️ Cleaning up transaction capability resources')
+			preKeyManager.destroy()
+
+			// Clear all key queues
+			keyQueues.forEach((queue, keyType) => {
+				queue.clear()
+				queue.pause()
+				logger.debug(`Queue for ${keyType} cleared and paused`)
+			})
+			keyQueues.clear()
+
+			logger.debug('Transaction capability cleanup completed')
 		}
 	}
 }

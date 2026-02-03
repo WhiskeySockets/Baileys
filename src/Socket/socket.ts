@@ -832,6 +832,9 @@ export const makeSocket = (config: SocketConfig) => {
 		// Clean up unified session manager
 		unifiedSessionManager?.destroy()
 
+		// Clean up transaction capability (PreKeyManager + queues)
+		keys.destroy?.()
+
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')

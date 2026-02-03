@@ -99,6 +99,7 @@ export type SignalKeyStore = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	destroy?: () => void
 }
 
 export type TransactionCapabilityOptions = {
