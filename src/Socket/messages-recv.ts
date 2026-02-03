@@ -1216,33 +1216,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
 
 		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
-		// Store LID/PN mappings asynchronously (fire-and-forget) to avoid blocking message delivery
-		// This improves inbound message latency by moving non-critical operations to background
+		// Handle LID/PN mappings with hybrid approach:
+		// - Store mapping operation runs in background (non-critical for decrypt)
+		// - Session migration MUST complete before decrypt() to avoid "No session record" errors
+		// This addresses Codex/Copilot review concerns about race conditions with decrypt()
 		if (!!alt) {
 			const altServer = jidDecode(alt)?.server
 			const primaryJid = msg.key.participant || msg.key.remoteJid!
 
-			// Execute mapping operations in background without blocking message delivery
-			const processMappingAsync = async () => {
-				try {
-					if (altServer === 'lid') {
-						if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
-							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-							await signalRepository.migrateSession(primaryJid, alt)
-						}
-					} else {
-						await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-						await signalRepository.migrateSession(alt, primaryJid)
-					}
-				} catch (error) {
-					logger.warn({ error, alt, primaryJid }, 'Background LID mapping operation failed')
+			if (altServer === 'lid') {
+				// Check if mapping already exists to avoid unnecessary operations
+				const existingMapping = await signalRepository.lidMapping.getPNForLID(alt)
+				if (!existingMapping) {
+					// Store mapping in background (non-critical, doesn't block decrypt)
+					signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+						.catch(error => logger.warn({ error, alt, primaryJid }, 'Background LID mapping storage failed'))
+
+					// CRITICAL: Must await session migration before decrypt() runs
+					// decrypt() -> getDecryptionJid() -> needs migrated session
+					// decrypt() -> storeMappingFromEnvelope() -> may also call migrateSession()
+					// Running both simultaneously causes session corruption
+					await signalRepository.migrateSession(primaryJid, alt)
+				}
+			} else {
+				// Check if reverse mapping exists
+				const existingMapping = await signalRepository.lidMapping.getLIDForPN(alt)
+				if (!existingMapping) {
+					// Store mapping in background (non-critical)
+					signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+						.catch(error => logger.warn({ error, alt, primaryJid }, 'Background LID mapping storage failed'))
+
+					// CRITICAL: Must await session migration
+					await signalRepository.migrateSession(alt, primaryJid)
 				}
 			}
-
-			// Fire and forget - don't await
-			processMappingAsync().catch(error => {
-				logger.error({ error, alt, primaryJid }, 'Fatal error in background LID mapping')
-			})
 		}
 
 		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
