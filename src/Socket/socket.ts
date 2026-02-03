@@ -727,6 +727,64 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
+	/**
+	 * PreKey Auto-Sync: Proactive validation every 6 hours
+	 * Prevents "Identity key field not found" errors by ensuring keys are always valid
+	 */
+	const startPreKeyAutoSync = () => {
+		const SYNC_INTERVAL = 6 * 60 * 60 * 1000 // 6 hours
+		let syncTimer: NodeJS.Timeout | undefined
+		let isRunning = false
+
+		const syncLoop = async () => {
+			// PROTECTION 1: Prevent overlapping runs
+			if (isRunning) {
+				logger.warn('🔑 PreKey sync already running, skipping this cycle')
+				return
+			}
+
+			// PROTECTION 2: Check connection state
+			if (closed || !ws.isOpen) {
+				logger.debug('🔑 Connection closed, stopping PreKey sync')
+				return
+			}
+
+			isRunning = true
+			try {
+				logger.info('🔑 PreKey auto-sync started (6h interval)')
+				await uploadPreKeysToServerIfRequired()
+				logger.info('🔑 PreKey auto-sync completed successfully')
+			} catch (error) {
+				logger.error({ error }, '🔑 PreKey auto-sync failed')
+			} finally {
+				isRunning = false
+			}
+
+			// PROTECTION 5: Reschedule AFTER completion (not from start)
+			syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+		}
+
+		// PROTECTION 6: Initial delay (avoid duplicate at startup)
+		// CB:success already calls uploadPreKeysToServerIfRequired(), so wait 6h before first auto-sync
+		ev.on('connection.update', ({ connection }) => {
+			if (connection === 'open') {
+				logger.info('🔑 Starting PreKey auto-sync timer (first sync in 6h)')
+				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+			} else if (connection === 'close') {
+				// PROTECTION 7: Cleanup on disconnect
+				if (syncTimer) {
+					clearTimeout(syncTimer)
+					syncTimer = undefined
+					isRunning = false
+					logger.info('🔑 PreKey auto-sync stopped')
+				}
+			}
+		})
+	}
+
+	// Initialize PreKey auto-sync
+	startPreKeyAutoSync()
+
 	const onMessageReceived = async (data: Buffer) => {
 		await noise.decodeFrame(data, frame => {
 			// reset ping timeout
