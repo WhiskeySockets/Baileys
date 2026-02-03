@@ -131,12 +131,16 @@ export const normalizeMessageJids = async (
 		return jid
 	}
 
-	const resolvedRemoteJid = await resolveLidToPn(message.key.remoteJid)
+	// Execute both lookups in parallel instead of sequentially to reduce latency
+	const [resolvedRemoteJid, resolvedParticipant] = await Promise.all([
+		resolveLidToPn(message.key.remoteJid),
+		resolveLidToPn(message.key.participant)
+	])
+
 	if (resolvedRemoteJid) {
 		message.key.remoteJid = resolvedRemoteJid
 	}
 
-	const resolvedParticipant = await resolveLidToPn(message.key.participant)
 	if (resolvedParticipant) {
 		message.key.participant = resolvedParticipant
 	}
