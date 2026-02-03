@@ -509,6 +509,11 @@ export const makeSocket = (config: SocketConfig) => {
 	const MAX_RECONNECT_ATTEMPTS = 5
 	let reconnectAttempts = 0
 
+	// Session TTL and cleanup
+	const SESSION_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
+	let sessionStartTime: number | undefined
+	let ttlTimer: NodeJS.Timeout | undefined
+
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
 		logger.error({ err }, `unexpected error in '${msg}'`)
@@ -788,6 +793,52 @@ export const makeSocket = (config: SocketConfig) => {
 
 	// Initialize PreKey auto-sync
 	startPreKeyAutoSync()
+
+	/**
+	 * Session TTL Management: Graceful cleanup after 7 days
+	 * Prevents memory leaks and allows credential rotation in long-running sessions
+	 */
+	const startSessionTTL = () => {
+		ev.on('connection.update', ({ connection }) => {
+			if (connection === 'open') {
+				sessionStartTime = Date.now()
+
+				// PROTECTION 1: Long TTL (7 days)
+				ttlTimer = setTimeout(() => {
+					const duration = Date.now() - sessionStartTime!
+					const durationHours = Math.floor(duration / 1000 / 60 / 60)
+
+					logger.info(`🕐 Session TTL reached after ${durationHours}h, initiating graceful cleanup`)
+
+					// PROTECTION 2: Event-based (app decides)
+					ev.emit('session.ttl-expired', {
+						startTime: sessionStartTime,
+						duration: duration
+					})
+
+					// PROTECTION 4: Graceful delay before cleanup
+					setTimeout(() => {
+						logger.info('🕐 Proceeding with TTL cleanup after grace period')
+						end(new Error('SESSION_TTL_EXPIRED'))
+					}, 5000) // 5s grace period
+				}, SESSION_TTL)
+
+				const ttlHours = SESSION_TTL / 1000 / 60 / 60
+				logger.info(`🕐 Session TTL started (${ttlHours}h = 7 days)`)
+			} else if (connection === 'close') {
+				// PROTECTION 3: Cleanup timer on disconnect
+				if (ttlTimer) {
+					clearTimeout(ttlTimer)
+					ttlTimer = undefined
+					sessionStartTime = undefined
+					logger.info('🕐 Session TTL timer cleared')
+				}
+			}
+		})
+	}
+
+	// Initialize Session TTL
+	startSessionTTL()
 
 	const onMessageReceived = async (data: Buffer) => {
 		await noise.decodeFrame(data, frame => {
