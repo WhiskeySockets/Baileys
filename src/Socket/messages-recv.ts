@@ -1216,19 +1216,33 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
 
 		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
-		// store new mappings we didn't have before
+		// Store LID/PN mappings asynchronously (fire-and-forget) to avoid blocking message delivery
+		// This improves inbound message latency by moving non-critical operations to background
 		if (!!alt) {
 			const altServer = jidDecode(alt)?.server
 			const primaryJid = msg.key.participant || msg.key.remoteJid!
-			if (altServer === 'lid') {
-				if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-					await signalRepository.migrateSession(primaryJid, alt)
+
+			// Execute mapping operations in background without blocking message delivery
+			const processMappingAsync = async () => {
+				try {
+					if (altServer === 'lid') {
+						if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
+							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+							await signalRepository.migrateSession(primaryJid, alt)
+						}
+					} else {
+						await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+						await signalRepository.migrateSession(alt, primaryJid)
+					}
+				} catch (error) {
+					logger.warn({ error, alt, primaryJid }, 'Background LID mapping operation failed')
 				}
-			} else {
-				await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-				await signalRepository.migrateSession(alt, primaryJid)
 			}
+
+			// Fire and forget - don't await
+			processMappingAsync().catch(error => {
+				logger.error({ error, alt, primaryJid }, 'Fatal error in background LID mapping')
+			})
 		}
 
 		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
