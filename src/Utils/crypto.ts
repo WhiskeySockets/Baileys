@@ -82,18 +82,18 @@ export function aesDecryptCTR(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8
 }
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
-export function aesDecrypt(buffer: Buffer, key: Buffer) {
-	return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
+export function aesDecrypt(buffer: Uint8Array, key: Uint8Array) {
+	return aesDecryptWithIV(buffer.subarray(16), key, buffer.subarray(0, 16))
 }
 
 /** decrypt AES 256 CBC */
-export function aesDecryptWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
+export function aesDecryptWithIV(buffer: Uint8Array, key: Uint8Array, IV: Uint8Array) {
 	const aes = createDecipheriv('aes-256-cbc', key, IV)
 	return Buffer.concat([aes.update(buffer), aes.final()])
 }
 
 // encrypt AES 256 CBC; where a random IV is prefixed to the buffer
-export function aesEncrypt(buffer: Buffer | Uint8Array, key: Buffer) {
+export function aesEncrypt(buffer: Uint8Array, key: Uint8Array) {
 	const IV = randomBytes(16)
 	const aes = createCipheriv('aes-256-cbc', key, IV)
 	return Buffer.concat([IV, aes.update(buffer), aes.final()]) // prefix IV to the buffer
