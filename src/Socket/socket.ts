@@ -996,12 +996,27 @@ export const makeSocket = (config: SocketConfig) => {
 			} catch {}
 		}
 
+		// Detect socket-level session errors that require recreation
+		const statusCode = (error as Boom)?.output?.statusCode || 0
+		const isSessionError = (
+			statusCode === DisconnectReason.badSession ||
+			statusCode === DisconnectReason.restartRequired
+		)
+
+		if (isSessionError) {
+			logger.warn(
+				{ statusCode, reason: DisconnectReason[statusCode] },
+				'🔴 Socket-level session error - consumer should recreate socket'
+			)
+		}
+
 		ev.emit('connection.update', {
 			connection: 'close',
 			lastDisconnect: {
 				error,
 				date: new Date()
-			}
+			},
+			isSessionError
 		})
 		ev.removeAllListeners('connection.update')
 	}
@@ -1404,27 +1419,6 @@ export const makeSocket = (config: SocketConfig) => {
 
 	// update credentials when required
 	ev.on('creds.update', async update => {
-		// CRITICAL: Handle session errors by emitting close event for consumer-level reconnect
-		if (update.error) {
-			logger.error({ error: update.error }, '🔴 Session error detected')
-
-			// Session errors indicate keys are desynchronized - socket must be recreated
-			// Emit close event so consumer can call makeWASocket() again
-			ev.emit('connection.update', {
-				connection: 'close',
-				lastDisconnect: {
-					error: update.error,
-					date: new Date()
-				},
-				// Include session error flag for consumer to detect
-				isSessionError: true
-			})
-
-			// Cleanup current socket
-			await end(update.error)
-			return
-		}
-
 		const name = update.me?.name
 		// if name has just been received
 		if (creds.me?.name !== name) {

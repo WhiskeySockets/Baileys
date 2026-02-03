@@ -411,6 +411,8 @@ export class StructuredLogger implements ILogger {
 	// Metrics module (lazy loaded)
 	private metricsModule: typeof import('./prometheus-metrics') | null = null
 	private metricsQueue: Array<() => void> = []
+	private metricsImportFailed = false
+	private readonly MAX_METRICS_QUEUE_SIZE = 1000
 
 	constructor(config: StructuredLoggerConfig) {
 		const envConfig = loadLoggerConfig()
@@ -489,7 +491,9 @@ export class StructuredLogger implements ILogger {
 				this.metricsQueue.forEach(fn => fn())
 				this.metricsQueue = []
 			}).catch(() => {
-				// Metrics not available
+				// Metrics not available - set flag and clear queue
+				this.metricsImportFailed = true
+				this.metricsQueue = []
 			})
 		}
 	}
@@ -896,6 +900,7 @@ export class StructuredLogger implements ILogger {
 		this.rateLimiter = null
 		this.circuitBreaker = null
 		this.metricsModule = null
+		this.metricsQueue = []
 	}
 }
 
