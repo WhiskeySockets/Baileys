@@ -1225,19 +1225,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const primaryJid = msg.key.participant || msg.key.remoteJid!
 
 			if (altServer === 'lid') {
-				// Check if mapping already exists to avoid unnecessary operations
+				// Check if mapping already exists to avoid unnecessary storage operations
 				const existingMapping = await signalRepository.lidMapping.getPNForLID(alt)
 				if (!existingMapping) {
 					// Store mapping in background (non-critical, doesn't block decrypt)
 					signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
 						.catch(error => logger.warn({ error, alt, primaryJid }, 'Background LID mapping storage failed'))
-
-					// CRITICAL: Must await session migration before decrypt() runs
-					// decrypt() -> getDecryptionJid() -> needs migrated session
-					// decrypt() -> storeMappingFromEnvelope() -> may also call migrateSession()
-					// Running both simultaneously causes session corruption
-					await signalRepository.migrateSession(primaryJid, alt)
 				}
+
+				// CRITICAL: ALWAYS migrate session, even if mapping exists
+				// Other code paths (e.g., USync device lookup in messages-send.ts:310-319)
+				// may create mappings via storeLIDPNMappings() without calling migrateSession()
+				// This leaves sessions under PN format while decrypt() expects LID format
+				// Skipping migration based on mapping existence causes "No session record" errors
+				await signalRepository.migrateSession(primaryJid, alt)
 			} else {
 				// Check if reverse mapping exists
 				const existingMapping = await signalRepository.lidMapping.getLIDForPN(alt)
@@ -1245,10 +1246,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					// Store mapping in background (non-critical)
 					signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
 						.catch(error => logger.warn({ error, alt, primaryJid }, 'Background LID mapping storage failed'))
-
-					// CRITICAL: Must await session migration
-					await signalRepository.migrateSession(alt, primaryJid)
 				}
+
+				// CRITICAL: ALWAYS migrate session, even if mapping exists
+				// Same reasoning as above - mapping existence doesn't guarantee session migration
+				await signalRepository.migrateSession(alt, primaryJid)
 			}
 		}
 
