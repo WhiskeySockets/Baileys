@@ -410,6 +410,7 @@ export class StructuredLogger implements ILogger {
 
 	// Metrics module (lazy loaded)
 	private metricsModule: typeof import('./prometheus-metrics') | null = null
+	private metricsQueue: Array<() => void> = []
 
 	constructor(config: StructuredLoggerConfig) {
 		const envConfig = loadLoggerConfig()
@@ -483,6 +484,10 @@ export class StructuredLogger implements ILogger {
 		if (this.config.enableMetrics) {
 			import('./prometheus-metrics').then(m => {
 				this.metricsModule = m
+				this.debug('📊 Prometheus metrics loaded for logger, flushing buffered metrics', { queuedCount: this.metricsQueue.length })
+				// Flush buffered metrics
+				this.metricsQueue.forEach(fn => fn())
+				this.metricsQueue = []
 			}).catch(() => {
 				// Metrics not available
 			})

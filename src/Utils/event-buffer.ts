@@ -420,24 +420,36 @@ export const makeEventBuffer = (
 
 	// Metrics integration (lazy loaded to avoid circular deps)
 	let metricsModule: typeof import('./prometheus-metrics') | null = null
+	let metricsQueue: Array<() => void> = []
+
 	if (config.enableMetrics) {
 		import('./prometheus-metrics').then(m => {
 			metricsModule = m
+			logger.debug('📊 Prometheus metrics loaded, flushing buffered metrics', { queuedCount: metricsQueue.length })
+			// Flush buffered metrics
+			metricsQueue.forEach(fn => fn())
+			metricsQueue = []
 		}).catch(() => {
 			logger.debug('Prometheus metrics not available for event buffer')
 		})
 	}
 
-	// Helper to record metrics
+	// Helper to record metrics with buffer support
 	const recordMetrics = (eventType: string, count: number) => {
 		if (metricsModule) {
 			metricsModule.recordEventBuffered(eventType, count)
+		} else {
+			// Buffer metric call until module loads
+			metricsQueue.push(() => metricsModule?.recordEventBuffered(eventType, count))
 		}
 	}
 
 	const recordFlushMetrics = (eventCount: number, forced: boolean, cacheSize: number) => {
 		if (metricsModule) {
 			metricsModule.recordBufferFlush(eventCount, forced, cacheSize)
+		} else {
+			// Buffer metric call until module loads
+			metricsQueue.push(() => metricsModule?.recordBufferFlush(eventCount, forced, cacheSize))
 		}
 	}
 
@@ -477,6 +489,8 @@ export const makeEventBuffer = (
 			// Record overflow metric
 			if (metricsModule) {
 				metricsModule.recordBufferOverflow()
+			} else {
+				metricsQueue.push(() => metricsModule?.recordBufferOverflow())
 			}
 			flush(true)
 			return true
@@ -514,6 +528,8 @@ export const makeEventBuffer = (
 			// Record metrics for cache cleanup
 			if (metricsModule) {
 				metricsModule.recordCacheCleanup(removed.length)
+			} else {
+				metricsQueue.push(() => metricsModule?.recordCacheCleanup(removed.length))
 			}
 		}
 	}
@@ -589,8 +605,12 @@ export const makeEventBuffer = (
 		recordFlushMetrics(eventCount, force, historyCache.size)
 
 		// Update adaptive metrics
-		if (config.enableAdaptiveTimeout && metricsModule) {
-			metricsModule.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy())
+		if (config.enableAdaptiveTimeout) {
+			if (metricsModule) {
+				metricsModule.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy())
+			} else {
+				metricsQueue.push(() => metricsModule?.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy()))
+			}
 		}
 
 		// Log with [BAILEYS] prefix - use getMode() to avoid duplicating mode calculation logic
@@ -646,6 +666,8 @@ export const makeEventBuffer = (
 			// Record final flush metric
 			if (metricsModule) {
 				metricsModule.recordBufferFinalFlush()
+			} else {
+				metricsQueue.push(() => metricsModule?.recordBufferFinalFlush())
 			}
 		}
 
@@ -662,6 +684,8 @@ export const makeEventBuffer = (
 		// Record buffer destroyed metric
 		if (metricsModule) {
 			metricsModule.recordBufferDestroyed('normal', hadPendingFlush)
+		} else {
+			metricsQueue.push(() => metricsModule?.recordBufferDestroyed('normal', hadPendingFlush))
 		}
 
 		logger.debug('Event buffer destroyed successfully')

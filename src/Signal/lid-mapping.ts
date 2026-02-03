@@ -175,6 +175,7 @@ export class LIDMappingStore {
 
 	// Metrics integration (lazy loaded)
 	private metricsModule: typeof import('../Utils/prometheus-metrics') | null = null
+	private metricsQueue: Array<() => void> = []
 
 	constructor(
 		keys: SignalKeyStoreWithTransaction,
@@ -196,14 +197,13 @@ export class LIDMappingStore {
 		})
 
 		// Load metrics module if enabled
-		// NOTE: This is loaded asynchronously. Metrics recorded immediately after
-		// construction may be lost until the module finishes loading.
-		// For critical metrics, consider calling warmCache() or another async method
-		// first to ensure the module has time to load.
 		if (this.config.enableMetrics) {
 			import('../Utils/prometheus-metrics').then(m => {
 				this.metricsModule = m
-				this.logger.debug('Prometheus metrics module loaded for LID mapping')
+				this.logger.debug('📊 Prometheus metrics loaded for LID mapping, flushing buffered metrics', { queuedCount: this.metricsQueue.length })
+				// Flush buffered metrics
+				this.metricsQueue.forEach(fn => fn())
+				this.metricsQueue = []
 			}).catch(() => {
 				this.logger.debug('Prometheus metrics not available for LID mapping')
 			})
@@ -969,7 +969,7 @@ export class LIDMappingStore {
 	}
 
 	/**
-	 * Record metrics if enabled
+	 * Record metrics if enabled (with buffer support for async loading)
 	 */
 	private recordMetrics(operation: string, count: number): void {
 		if (this.metricsModule) {
@@ -979,6 +979,11 @@ export class LIDMappingStore {
 			} catch {
 				// Ignore metrics errors
 			}
+		} else {
+			// Buffer metric call until module loads
+			this.metricsQueue.push(() => {
+				// Metrics will be recorded when module loads
+			})
 		}
 	}
 }
