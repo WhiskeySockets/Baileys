@@ -505,6 +505,10 @@ export const makeSocket = (config: SocketConfig) => {
 	let qrTimer: NodeJS.Timeout
 	let closed = false
 
+	// Auto-reconnect state for session errors
+	const MAX_RECONNECT_ATTEMPTS = 5
+	let reconnectAttempts = 0
+
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
 		logger.error({ err }, `unexpected error in '${msg}'`)
@@ -1310,7 +1314,50 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	// update credentials when required
-	ev.on('creds.update', update => {
+	ev.on('creds.update', async update => {
+		// CRITICAL: Handle session errors with auto-reconnect
+		if (update.error) {
+			logger.error({ error: update.error }, '🔴 Session error detected - initiating auto-reconnect')
+
+			// PROTECTION 1: Max attempts guard
+			if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+				logger.error(`❌ Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached, giving up`)
+				ev.emit('connection.update', {
+					connection: 'close',
+					lastDisconnect: {
+						error: update.error,
+						date: new Date()
+					}
+				})
+				return
+			}
+
+			reconnectAttempts++
+			logger.info(`🔄 Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`)
+
+			// PROTECTION 4: Cleanup before reconnect
+			await end(update.error)
+
+			// PROTECTION 2: Exponential backoff
+			const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000)
+			logger.info(`⏳ Waiting ${delay}ms before reconnect (exponential backoff)`)
+			await new Promise(resolve => setTimeout(resolve, delay))
+
+			// Attempt reconnect
+			logger.info(`🔄 Reconnecting now (attempt ${reconnectAttempts})`)
+			await connect()
+
+			// PROTECTION 3: Reset counter on success
+			ev.once('connection.update', ({ connection }) => {
+				if (connection === 'open') {
+					logger.info(`✅ Reconnect successful, resetting attempt counter`)
+					reconnectAttempts = 0
+				}
+			})
+
+			return
+		}
+
 		const name = update.me?.name
 		// if name has just been received
 		if (creds.me?.name !== name) {
