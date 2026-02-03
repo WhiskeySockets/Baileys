@@ -15,6 +15,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # Note: Auto-merge may require additional permissions depending on repository settings.
+  # If auto-merge fails, consider using a Personal Access Token (PAT) or GitHub App token
+  # with 'pull-requests: write' and 'contents: write' scopes.
 
 jobs:
   update-version:
@@ -145,23 +148,44 @@ jobs:
           > **Note:** This PR was created with force mode enabled."
           fi
 
-          # Create PR
-          PR_URL=$(gh pr create \
+          # Create PR with JSON output for reliable success detection
+          PR_RESULT=$(gh pr create \
             --title "chore: update WhatsApp Web version" \
             --body "$PR_BODY" \
             --base master \
-            --head "$BRANCH_NAME" 2>&1) || true
+            --head "$BRANCH_NAME" \
+            --json url,number 2>&1) || PR_CREATE_FAILED=true
 
-          if [[ "$PR_URL" == *"github.com"* ]]; then
-            echo "PR created: $PR_URL"
+          # Check if PR was created successfully by parsing JSON
+          if [ -z "$PR_CREATE_FAILED" ] && echo "$PR_RESULT" | jq -e '.url' > /dev/null 2>&1; then
+            PR_URL=$(echo "$PR_RESULT" | jq -r '.url')
+            PR_NUMBER=$(echo "$PR_RESULT" | jq -r '.number')
+            echo "PR created successfully: $PR_URL (PR #$PR_NUMBER)"
 
             # Auto-merge the PR (squash merge)
-            echo "Attempting to auto-merge..."
-            gh pr merge "$BRANCH_NAME" --squash --auto --delete-branch || \
-              gh pr merge "$BRANCH_NAME" --squash --delete-branch || \
-              echo "Auto-merge not available - PR created for manual review"
+            # Note: This requires branch protection rules to be satisfied
+            # If checks haven't completed yet, auto-merge will queue the merge
+            echo "Attempting to enable auto-merge..."
+            if gh pr merge "$BRANCH_NAME" --squash --auto --delete-branch; then
+              echo "✅ Auto-merge enabled - PR will merge automatically when checks pass"
+            else
+              echo "⚠️ Auto-merge not available - PR #$PR_NUMBER created for manual review"
+              echo "This may happen if:"
+              echo "  - Required status checks haven't completed yet"
+              echo "  - Branch protection rules require manual approval"
+              echo "  - Insufficient permissions (see workflow permissions comment)"
+            fi
           else
-            echo "PR already exists or could not be created: $PR_URL"
+            # PR creation failed - could be duplicate or other error
+            echo "⚠️ Could not create PR. Checking if PR already exists..."
+            EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --json number,url --jq '.[0]')
+            if [ -n "$EXISTING_PR" ]; then
+              EXISTING_URL=$(echo "$EXISTING_PR" | jq -r '.url')
+              EXISTING_NUMBER=$(echo "$EXISTING_PR" | jq -r '.number')
+              echo "PR already exists: $EXISTING_URL (PR #$EXISTING_NUMBER)"
+            else
+              echo "❌ PR creation failed: $PR_RESULT"
+            fi
           fi
 
       - name: Summary
