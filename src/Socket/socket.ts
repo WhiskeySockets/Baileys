@@ -766,12 +766,12 @@ export const makeSocket = (config: SocketConfig) => {
 				logger.error({ error }, '🔑 PreKey auto-sync failed')
 			} finally {
 				isRunning = false
-			}
 
-			// PROTECTION 3: Prevent timer accumulation and post-cleanup rescheduling
-			// Check cleanedUp flag atomically to prevent race condition
-			if (!closed && !cleanedUp && ws.isOpen) {
-				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+				// PROTECTION 3: Prevent timer accumulation and post-cleanup rescheduling
+				// Check cleanedUp flag atomically INSIDE finally to minimize race window
+				if (!closed && !cleanedUp && ws.isOpen) {
+					syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+				}
 			}
 		}
 

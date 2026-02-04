@@ -129,6 +129,9 @@ export const addTransactionCapability = (
 	// Pre-key manager for specialized operations
 	const preKeyManager = new PreKeyManager(state, logger)
 
+	// Destroyed flag to prevent operations after cleanup
+	let destroyed = false
+
 	/**
 	 * Get or create a queue for a specific key type
 	 */
@@ -300,6 +303,11 @@ export const addTransactionCapability = (
 		isInTransaction,
 
 		transaction: async (work, key) => {
+			// CRITICAL: Prevent transactions after destroy to avoid use-after-free
+			if (destroyed) {
+				throw new Error('Transaction capability destroyed - socket closed')
+			}
+
 			const existing = txStorage.getStore()
 
 			// Nested transaction - reuse existing context
@@ -346,7 +354,36 @@ export const addTransactionCapability = (
 		 * Should be called during connection cleanup
 		 */
 		destroy: () => {
+			// CRITICAL: Set destroyed flag FIRST to prevent new transactions
+			destroyed = true
 			logger.debug('🗑️ Cleaning up transaction capability resources')
+
+			// Count locked mutexes BEFORE destroying resources
+			let clearedCount = 0
+			let lockedCount = 0
+			const lockedKeys: string[] = []
+
+			txMutexes.forEach((mutex, key) => {
+				if (!mutex.isLocked()) {
+					txMutexes.delete(key)
+					txMutexRefCounts.delete(key)
+					clearedCount++
+				} else {
+					lockedCount++
+					lockedKeys.push(key)
+				}
+			})
+
+			// If there are locked mutexes, log error and skip resource destruction
+			if (lockedCount > 0) {
+				logger.error(
+					{ lockedCount, lockedKeys },
+					'❌ Cannot destroy resources - transactions still active! Resources will be cleaned up by GC.'
+				)
+				return
+			}
+
+			// Safe to destroy resources (no active transactions)
 			preKeyManager.destroy()
 
 			// Clear all key queues
@@ -357,26 +394,7 @@ export const addTransactionCapability = (
 			})
 			keyQueues.clear()
 
-			// Clear transaction mutexes and reference counts
-			// CRITICAL: Only delete unlocked mutexes to prevent corrupting active transactions
-			let clearedCount = 0
-			let lockedCount = 0
-			txMutexes.forEach((mutex, key) => {
-				if (!mutex.isLocked()) {
-					txMutexes.delete(key)
-					txMutexRefCounts.delete(key)
-					clearedCount++
-				} else {
-					lockedCount++
-					logger.warn(
-						{ key },
-						'Transaction mutex still locked during cleanup - transaction may be in progress'
-					)
-				}
-			})
-			logger.debug({ clearedCount, lockedCount }, 'Transaction mutexes cleanup completed')
-
-			logger.debug('Transaction capability cleanup completed')
+			logger.debug({ clearedCount }, 'Transaction capability cleanup completed')
 		}
 	}
 }
