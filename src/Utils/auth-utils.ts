@@ -358,10 +358,23 @@ export const addTransactionCapability = (
 			keyQueues.clear()
 
 			// Clear transaction mutexes and reference counts
-			// CRITICAL: Prevents memory leak from accumulated mutex objects
-			txMutexes.clear()
-			txMutexRefCounts.clear()
-			logger.debug('Transaction mutexes cleared')
+			// CRITICAL: Only delete unlocked mutexes to prevent corrupting active transactions
+			let clearedCount = 0
+			let lockedCount = 0
+			txMutexes.forEach((mutex, key) => {
+				if (!mutex.isLocked()) {
+					txMutexes.delete(key)
+					txMutexRefCounts.delete(key)
+					clearedCount++
+				} else {
+					lockedCount++
+					logger.warn(
+						{ key },
+						'Transaction mutex still locked during cleanup - transaction may be in progress'
+					)
+				}
+			})
+			logger.debug({ clearedCount, lockedCount }, 'Transaction mutexes cleanup completed')
 
 			logger.debug('Transaction capability cleanup completed')
 		}
