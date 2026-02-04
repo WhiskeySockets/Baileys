@@ -14,7 +14,6 @@ export class LIDMappingStore {
 
 	private pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 
-	/** Inflight request tracking to prevent duplicate concurrent DB calls */
 	private readonly inflightLIDLookups = new Map<string, Promise<LIDMapping[] | null>>()
 	private readonly inflightPNLookups = new Map<string, Promise<LIDMapping[] | null>>()
 
@@ -28,13 +27,9 @@ export class LIDMappingStore {
 		this.logger = logger
 	}
 
-	/**
-	 * Store LID-PN mappings with batched DB lookups (reduces N queries to 1)
-	 */
 	async storeLIDPNMappings(pairs: LIDMapping[]): Promise<void> {
 		if (pairs.length === 0) return
 
-		// Validate and decode all pairs
 		const validatedPairs: Array<{ pnUser: string; lidUser: string }> = []
 		for (const { lid, pn } of pairs) {
 			if (!((isLidUser(lid) && isPnUser(pn)) || (isPnUser(lid) && isLidUser(pn)))) {
@@ -51,7 +46,6 @@ export class LIDMappingStore {
 
 		if (validatedPairs.length === 0) return
 
-		// Check cache and collect misses (using Set for O(1) lookup)
 		const cacheMissSet = new Set<string>()
 		const existingMappings = new Map<string, string>()
 
@@ -64,7 +58,6 @@ export class LIDMappingStore {
 			}
 		}
 
-		// Single batch DB query for all cache misses
 		if (cacheMissSet.size > 0) {
 			const cacheMisses = [...cacheMissSet]
 			this.logger.trace(`Batch fetching ${cacheMisses.length} LID mappings from database`)
@@ -80,7 +73,6 @@ export class LIDMappingStore {
 			}
 		}
 
-		// Determine which pairs need to be written
 		const pairMap: { [_: string]: string } = {}
 		for (const { pnUser, lidUser } of validatedPairs) {
 			const existingLidUser = existingMappings.get(pnUser)
@@ -96,36 +88,33 @@ export class LIDMappingStore {
 
 		this.logger.trace({ pairMap }, `Storing ${Object.keys(pairMap).length} pn mappings`)
 
-		// Write all changes in a transaction
+		const batchData: { [key: string]: string } = {}
+		for (const [pnUser, lidUser] of Object.entries(pairMap)) {
+			batchData[pnUser] = lidUser
+			batchData[`${lidUser}_reverse`] = pnUser
+		}
+
 		await this.keys.transaction(async () => {
-			for (const [pnUser, lidUser] of Object.entries(pairMap)) {
-				await this.keys.set({
-					'lid-mapping': {
-						[pnUser]: lidUser,
-						[`${lidUser}_reverse`]: pnUser
-					}
-				})
-				this.mappingCache.set(`pn:${pnUser}`, lidUser)
-				this.mappingCache.set(`lid:${lidUser}`, pnUser)
-			}
+			await this.keys.set({ 'lid-mapping': batchData })
 		}, 'lid-mapping')
+
+		// Update cache after successful DB write
+		for (const [pnUser, lidUser] of Object.entries(pairMap)) {
+			this.mappingCache.set(`pn:${pnUser}`, lidUser)
+			this.mappingCache.set(`lid:${lidUser}`, pnUser)
+		}
 	}
 
-	/**
-	 * Get LID for PN - Returns device-specific LID based on user mapping
-	 */
 	async getLIDForPN(pn: string): Promise<string | null> {
 		return (await this.getLIDsForPNs([pn]))?.[0]?.lid || null
 	}
 
-	/** Get LIDs for PNs with request coalescing to prevent duplicate concurrent DB calls */
 	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
 		if (pns.length === 0) return null
 
 		const sortedPns = [...new Set(pns)].sort()
 		const cacheKey = sortedPns.join(',')
 
-		// Reuse inflight request if same JIDs are being looked up
 		const inflight = this.inflightLIDLookups.get(cacheKey)
 		if (inflight) {
 			this.logger.trace(`Coalescing getLIDsForPNs request for ${sortedPns.length} PNs`)
@@ -144,7 +133,6 @@ export class LIDMappingStore {
 
 	private async _getLIDsForPNsImpl(pns: string[]): Promise<LIDMapping[] | null> {
 		const usyncFetch: { [_: string]: number[] } = {}
-		// mapped from pn to lid mapping to prevent duplication in results later
 		const successfulPairs: { [_: string]: LIDMapping } = {}
 		const pending: Array<{ pn: string; pnUser: string; decoded: ReturnType<typeof jidDecode> }> = []
 
@@ -172,7 +160,6 @@ export class LIDMappingStore {
 			const decoded = jidDecode(pn)
 			if (!decoded) continue
 
-			// Check cache first for PN → LID mapping
 			const pnUser = decoded.user
 			const cached = this.mappingCache.get(`pn:${pnUser}`)
 			if (cached && typeof cached === 'string') {
@@ -253,21 +240,16 @@ export class LIDMappingStore {
 		return Object.values(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
 	}
 
-	/**
-	 * Get PN for LID - USER LEVEL with device construction
-	 */
 	async getPNForLID(lid: string): Promise<string | null> {
 		return (await this.getPNsForLIDs([lid]))?.[0]?.pn || null
 	}
 
-	/** Get PNs for LIDs with request coalescing to prevent duplicate concurrent DB calls */
 	async getPNsForLIDs(lids: string[]): Promise<LIDMapping[] | null> {
 		if (lids.length === 0) return null
 
 		const sortedLids = [...new Set(lids)].sort()
 		const cacheKey = sortedLids.join(',')
 
-		// Reuse inflight request if same JIDs are being looked up
 		const inflight = this.inflightPNLookups.get(cacheKey)
 		if (inflight) {
 			this.logger.trace(`Coalescing getPNsForLIDs request for ${sortedLids.length} LIDs`)

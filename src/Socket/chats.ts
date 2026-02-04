@@ -478,8 +478,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const resyncAppState = ev.createBufferedFunction(
 		async (collections: readonly WAPatchName[], isInitialSync: boolean) => {
-			// Sync-scoped cache for app state sync keys (cleared when sync completes)
 			const appStateSyncKeyCache = new Map<string, proto.Message.IAppStateSyncKeyData | null>()
+
 			const getCachedAppStateSyncKey = async (
 				keyId: string
 			): Promise<proto.Message.IAppStateSyncKeyData | null | undefined> => {
