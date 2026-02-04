@@ -465,10 +465,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (shouldRecreateSession) {
 					logger.debug({ fromJid, retryCount, reason: recreateReason, errorCode }, 'recreating session for retry')
 					// Delete existing session to force recreation
-					// CRITICAL: Wrap in transaction to prevent race with other session operations
+					// CRITICAL: Use same transaction key as encrypt/decrypt operations to prevent race
+					// Using meId ensures this delete serializes with sendMessage() and other session operations
 					await authState.keys.transaction(async () => {
 						await authState.keys.set({ session: { [sessionId]: null } })
-					}, `delete-session-${sessionId}`)
+					}, authState.creds.me?.id || 'session-operation')
 					forceIncludeKeys = true
 				}
 			} catch (error) {
@@ -1026,10 +1027,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				if (shouldRecreateSession) {
 					logger.debug({ participant, retryCount, reason: recreateReason, errorCode }, 'recreating session for outgoing retry')
-					// CRITICAL: Wrap in transaction to prevent race with other session operations
+					// CRITICAL: Use same transaction key as encrypt/decrypt operations to prevent race
+					// Using meId ensures this delete serializes with sendMessage() and other session operations
 					await authState.keys.transaction(async () => {
 						await authState.keys.set({ session: { [sessionId]: null } })
-					}, `delete-session-${sessionId}`)
+					}, authState.creds.me?.id || 'session-operation')
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
