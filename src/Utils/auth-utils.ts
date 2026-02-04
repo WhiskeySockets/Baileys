@@ -353,9 +353,19 @@ export const addTransactionCapability = (
 		/**
 		 * Cleanup all resources (queues, managers, mutexes)
 		 * Should be called during connection cleanup
+		 *
+		 * IMPORTANT BEHAVIOR:
+		 * - Always sets destroyed=true to prevent NEW transactions
+		 * - If mutexes are locked (active transactions), returns early WITHOUT destroying resources
+		 * - This creates intentional temporary inconsistent state:
+		 *   * destroyed=true (new transactions rejected)
+		 *   * resources exist (active transactions complete safely)
+		 *   * resources cleaned up by GC after active transactions finish
+		 * - If no locked mutexes, destroys resources immediately
 		 */
 		destroy: () => {
 			// CRITICAL: Set destroyed flag FIRST to prevent new transactions
+			// Note: Flag is set even if early return occurs (see doc above)
 			destroyed = true
 			logger.debug('🗑️ Cleaning up transaction capability resources')
 
