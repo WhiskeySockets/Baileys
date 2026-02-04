@@ -342,7 +342,7 @@ export const addTransactionCapability = (
 		},
 
 		/**
-		 * Cleanup all resources (queues, managers)
+		 * Cleanup all resources (queues, managers, mutexes)
 		 * Should be called during connection cleanup
 		 */
 		destroy: () => {
@@ -356,6 +356,12 @@ export const addTransactionCapability = (
 				logger.debug(`Queue for ${keyType} cleared and paused`)
 			})
 			keyQueues.clear()
+
+			// Clear transaction mutexes and reference counts
+			// CRITICAL: Prevents memory leak from accumulated mutex objects
+			txMutexes.clear()
+			txMutexRefCounts.clear()
+			logger.debug('Transaction mutexes cleared')
 
 			logger.debug('Transaction capability cleanup completed')
 		}

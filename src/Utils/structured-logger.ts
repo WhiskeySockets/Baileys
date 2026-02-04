@@ -409,10 +409,8 @@ export class StructuredLogger implements ILogger {
 	private processedLogs: number = 0
 
 	// Metrics module (lazy loaded)
+	// NOTE: Currently no metrics are recorded to this module - it's loaded but unused
 	private metricsModule: typeof import('./prometheus-metrics') | null = null
-	private metricsQueue: Array<() => void> = []
-	private metricsImportFailed = false
-	private readonly MAX_METRICS_QUEUE_SIZE = 1000
 
 	constructor(config: StructuredLoggerConfig) {
 		const envConfig = loadLoggerConfig()
@@ -482,18 +480,13 @@ export class StructuredLogger implements ILogger {
 			}, this.config.bufferFlushIntervalMs)
 		}
 
-		// Load metrics module if enabled
+		// Load metrics module if enabled (currently unused but loaded for future use)
 		if (this.config.enableMetrics) {
 			import('./prometheus-metrics').then(m => {
 				this.metricsModule = m
-				this.debug('📊 Prometheus metrics loaded for logger, flushing buffered metrics', { queuedCount: this.metricsQueue.length })
-				// Flush buffered metrics
-				this.metricsQueue.forEach(fn => fn())
-				this.metricsQueue = []
+				this.debug('📊 Prometheus metrics loaded for logger')
 			}).catch(() => {
-				// Metrics not available - set flag and clear queue
-				this.metricsImportFailed = true
-				this.metricsQueue = []
+				// Metrics module not available - silent fail
 			})
 		}
 	}
@@ -900,7 +893,6 @@ export class StructuredLogger implements ILogger {
 		this.rateLimiter = null
 		this.circuitBreaker = null
 		this.metricsModule = null
-		this.metricsQueue = []
 	}
 }
 
