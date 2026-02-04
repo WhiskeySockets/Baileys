@@ -974,6 +974,21 @@ export const makeSocket = (config: SocketConfig) => {
 		// Clean up unified session manager
 		unifiedSessionManager?.destroy()
 
+		// CRITICAL: Wait for pending pre-key upload before destroying transaction capability
+		// This prevents destroying resources while they're in use
+		if (uploadPreKeysPromise) {
+			logger.debug('Waiting for pending pre-key upload to complete before cleanup')
+			try {
+				await Promise.race([
+					uploadPreKeysPromise,
+					new Promise<void>((resolve) => setTimeout(resolve, 5000)) // 5s timeout
+				])
+				logger.debug('Pending pre-key upload completed or timed out')
+			} catch (error) {
+				logger.warn({ error }, 'Pending pre-key upload failed during cleanup')
+			}
+		}
+
 		// Clean up transaction capability (PreKeyManager + queues)
 		keys.destroy?.()
 
