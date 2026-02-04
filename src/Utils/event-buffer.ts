@@ -420,24 +420,41 @@ export const makeEventBuffer = (
 
 	// Metrics integration (lazy loaded to avoid circular deps)
 	let metricsModule: typeof import('./prometheus-metrics') | null = null
+	let metricsQueue: Array<() => void> = []
+	let metricsImportFailed = false
+	const MAX_METRICS_QUEUE_SIZE = 1000 // Cap to prevent unbounded growth
+
 	if (config.enableMetrics) {
 		import('./prometheus-metrics').then(m => {
 			metricsModule = m
+			logger.debug('📊 Prometheus metrics loaded, flushing buffered metrics', { queuedCount: metricsQueue.length })
+			// Flush buffered metrics
+			metricsQueue.forEach(fn => fn())
+			metricsQueue = []
 		}).catch(() => {
 			logger.debug('Prometheus metrics not available for event buffer')
+			metricsImportFailed = true
+			// Clear queue to prevent memory leak
+			metricsQueue = []
 		})
 	}
 
-	// Helper to record metrics
+	// Helper to record metrics with buffer support
 	const recordMetrics = (eventType: string, count: number) => {
 		if (metricsModule) {
 			metricsModule.recordEventBuffered(eventType, count)
+		} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+			// Buffer metric call until module loads (with size limit)
+			metricsQueue.push(() => metricsModule?.recordEventBuffered(eventType, count))
 		}
+		// If import failed or queue is full, silently drop metric
 	}
 
 	const recordFlushMetrics = (eventCount: number, forced: boolean, cacheSize: number) => {
 		if (metricsModule) {
 			metricsModule.recordBufferFlush(eventCount, forced, cacheSize)
+		} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+			metricsQueue.push(() => metricsModule?.recordBufferFlush(eventCount, forced, cacheSize))
 		}
 	}
 
@@ -477,6 +494,8 @@ export const makeEventBuffer = (
 			// Record overflow metric
 			if (metricsModule) {
 				metricsModule.recordBufferOverflow()
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+				metricsQueue.push(() => metricsModule?.recordBufferOverflow())
 			}
 			flush(true)
 			return true
@@ -514,6 +533,8 @@ export const makeEventBuffer = (
 			// Record metrics for cache cleanup
 			if (metricsModule) {
 				metricsModule.recordCacheCleanup(removed.length)
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+				metricsQueue.push(() => metricsModule?.recordCacheCleanup(removed.length))
 			}
 		}
 	}
@@ -589,8 +610,12 @@ export const makeEventBuffer = (
 		recordFlushMetrics(eventCount, force, historyCache.size)
 
 		// Update adaptive metrics
-		if (config.enableAdaptiveTimeout && metricsModule) {
-			metricsModule.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy())
+		if (config.enableAdaptiveTimeout) {
+			if (metricsModule) {
+				metricsModule.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy())
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+				metricsQueue.push(() => metricsModule?.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy()))
+			}
 		}
 
 		// Log with [BAILEYS] prefix - use getMode() to avoid duplicating mode calculation logic
@@ -646,6 +671,8 @@ export const makeEventBuffer = (
 			// Record final flush metric
 			if (metricsModule) {
 				metricsModule.recordBufferFinalFlush()
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+				metricsQueue.push(() => metricsModule?.recordBufferFinalFlush())
 			}
 		}
 
@@ -662,6 +689,8 @@ export const makeEventBuffer = (
 		// Record buffer destroyed metric
 		if (metricsModule) {
 			metricsModule.recordBufferDestroyed('normal', hadPendingFlush)
+		} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+			metricsQueue.push(() => metricsModule?.recordBufferDestroyed('normal', hadPendingFlush))
 		}
 
 		logger.debug('Event buffer destroyed successfully')

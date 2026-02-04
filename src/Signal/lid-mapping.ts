@@ -173,9 +173,6 @@ export class LIDMappingStore {
 		lastOperationAt: null
 	}
 
-	// Metrics integration (lazy loaded)
-	private metricsModule: typeof import('../Utils/prometheus-metrics') | null = null
-
 	constructor(
 		keys: SignalKeyStoreWithTransaction,
 		logger: ILogger,
@@ -194,20 +191,6 @@ export class LIDMappingStore {
 			ttlAutopurge: this.config.cacheAutoPurge,
 			updateAgeOnGet: this.config.updateAgeOnGet
 		})
-
-		// Load metrics module if enabled
-		// NOTE: This is loaded asynchronously. Metrics recorded immediately after
-		// construction may be lost until the module finishes loading.
-		// For critical metrics, consider calling warmCache() or another async method
-		// first to ensure the module has time to load.
-		if (this.config.enableMetrics) {
-			import('../Utils/prometheus-metrics').then(m => {
-				this.metricsModule = m
-				this.logger.debug('Prometheus metrics module loaded for LID mapping')
-			}).catch(() => {
-				this.logger.debug('Prometheus metrics not available for LID mapping')
-			})
-		}
 
 		this.logger.debug({ config: this.config }, 'LIDMappingStore initialized')
 	}
@@ -969,16 +952,12 @@ export class LIDMappingStore {
 	}
 
 	/**
-	 * Record metrics if enabled
+	 * Record metrics if enabled (with buffer support for async loading)
+	 * Note: Actual metric recording is not yet implemented
 	 */
 	private recordMetrics(operation: string, count: number): void {
-		if (this.metricsModule) {
-			try {
-				// Use the metrics registry to record LID mapping operations
-				// This integrates with the existing Prometheus metrics
-			} catch {
-				// Ignore metrics errors
-			}
-		}
+		// Metrics implementation pending - currently a no-op
+		// When implemented, should record LID mapping operations to Prometheus
+		// For now, we don't buffer since there's no actual recording function
 	}
 }

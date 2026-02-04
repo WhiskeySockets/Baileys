@@ -40,4 +40,10 @@ export type ConnectionState = {
 	 * If this is false, the primary phone and other devices will receive notifs
 	 * */
 	isOnline?: boolean
+	/**
+	 * indicates the disconnect was caused by a session error (keys desynchronized).
+	 * When true, the consumer should recreate the socket with makeWASocket()
+	 * to establish a fresh session.
+	 */
+	isSessionError?: boolean
 }

@@ -339,6 +339,44 @@ export const addTransactionCapability = (
 			} finally {
 				releaseTxMutexRef(key)
 			}
+		},
+
+		/**
+		 * Cleanup all resources (queues, managers, mutexes)
+		 * Should be called during connection cleanup
+		 */
+		destroy: () => {
+			logger.debug('🗑️ Cleaning up transaction capability resources')
+			preKeyManager.destroy()
+
+			// Clear all key queues
+			keyQueues.forEach((queue, keyType) => {
+				queue.clear()
+				queue.pause()
+				logger.debug(`Queue for ${keyType} cleared and paused`)
+			})
+			keyQueues.clear()
+
+			// Clear transaction mutexes and reference counts
+			// CRITICAL: Only delete unlocked mutexes to prevent corrupting active transactions
+			let clearedCount = 0
+			let lockedCount = 0
+			txMutexes.forEach((mutex, key) => {
+				if (!mutex.isLocked()) {
+					txMutexes.delete(key)
+					txMutexRefCounts.delete(key)
+					clearedCount++
+				} else {
+					lockedCount++
+					logger.warn(
+						{ key },
+						'Transaction mutex still locked during cleanup - transaction may be in progress'
+					)
+				}
+			})
+			logger.debug({ clearedCount, lockedCount }, 'Transaction mutexes cleanup completed')
+
+			logger.debug('Transaction capability cleanup completed')
 		}
 	}
 }

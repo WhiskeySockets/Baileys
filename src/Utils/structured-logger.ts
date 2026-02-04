@@ -409,6 +409,7 @@ export class StructuredLogger implements ILogger {
 	private processedLogs: number = 0
 
 	// Metrics module (lazy loaded)
+	// NOTE: Currently no metrics are recorded to this module - it's loaded but unused
 	private metricsModule: typeof import('./prometheus-metrics') | null = null
 
 	constructor(config: StructuredLoggerConfig) {
@@ -479,12 +480,13 @@ export class StructuredLogger implements ILogger {
 			}, this.config.bufferFlushIntervalMs)
 		}
 
-		// Load metrics module if enabled
+		// Load metrics module if enabled (currently unused but loaded for future use)
 		if (this.config.enableMetrics) {
 			import('./prometheus-metrics').then(m => {
 				this.metricsModule = m
+				this.debug('📊 Prometheus metrics loaded for logger')
 			}).catch(() => {
-				// Metrics not available
+				// Metrics module not available - silent fail
 			})
 		}
 	}

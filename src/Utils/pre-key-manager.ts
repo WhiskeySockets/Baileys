@@ -123,4 +123,21 @@ export class PreKeyManager {
 			}
 		})
 	}
+
+	/**
+	 * Cleanup all queues and resources
+	 * Should be called during connection cleanup to prevent memory leaks
+	 */
+	destroy(): void {
+		this.logger.debug('🗑️ Destroying PreKeyManager')
+
+		this.queues.forEach((queue, keyType) => {
+			queue.clear()
+			queue.pause()
+			this.logger.debug(`Queue for ${keyType} cleared and paused`)
+		})
+
+		this.queues.clear()
+		this.logger.debug('PreKeyManager destroyed - all queues cleaned up')
+	}
 }

@@ -505,6 +505,12 @@ export const makeSocket = (config: SocketConfig) => {
 	let qrTimer: NodeJS.Timeout
 	let closed = false
 
+	// Session TTL and cleanup
+	const SESSION_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
+	let sessionStartTime: number | undefined
+	let ttlTimer: NodeJS.Timeout | undefined
+	let ttlGraceTimer: NodeJS.Timeout | undefined
+
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
 		logger.error({ err }, `unexpected error in '${msg}'`)
@@ -727,6 +733,147 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
+	/**
+	 * PreKey Auto-Sync: Proactive validation every 6 hours
+	 * Prevents "Identity key field not found" errors by ensuring keys are always valid
+	 * Returns cleanup function to remove event listener
+	 */
+	const startPreKeyAutoSync = () => {
+		const SYNC_INTERVAL = 6 * 60 * 60 * 1000 // 6 hours
+		let syncTimer: NodeJS.Timeout | undefined
+		let isRunning = false
+		let cleanedUp = false // PROTECTION: Prevent rescheduling after cleanup
+
+		const syncLoop = async () => {
+			// PROTECTION 1: Prevent overlapping runs
+			if (isRunning) {
+				logger.warn('🔑 PreKey sync already running, skipping this cycle')
+				return
+			}
+
+			// PROTECTION 2: Check connection state AND cleanup flag
+			if (closed || !ws.isOpen || cleanedUp) {
+				logger.debug('🔑 Connection closed, stopping PreKey sync')
+				return
+			}
+
+			isRunning = true
+			try {
+				logger.info('🔑 PreKey auto-sync started (6h interval)')
+				await uploadPreKeysToServerIfRequired()
+				logger.info('🔑 PreKey auto-sync completed successfully')
+			} catch (error) {
+				logger.error({ error }, '🔑 PreKey auto-sync failed')
+			} finally {
+				isRunning = false
+			}
+
+			// PROTECTION 3: Prevent timer accumulation and post-cleanup rescheduling
+			// Check cleanedUp flag atomically to prevent race condition
+			if (!closed && !cleanedUp && ws.isOpen) {
+				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+			}
+		}
+
+		// PROTECTION 4: Initial delay (avoid duplicate at startup)
+		// CB:success already calls uploadPreKeysToServerIfRequired(), so wait 6h before first auto-sync
+		const connectionHandler = ({ connection }: { connection: any }) => {
+			if (connection === 'open') {
+				logger.info('🔑 Starting PreKey auto-sync timer (first sync in 6h)')
+				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+			} else if (connection === 'close') {
+				// PROTECTION 5: Cleanup on disconnect
+				if (syncTimer) {
+					clearTimeout(syncTimer)
+					syncTimer = undefined
+					isRunning = false
+					logger.info('🔑 PreKey auto-sync stopped')
+				}
+			}
+		}
+
+		ev.on('connection.update', connectionHandler)
+
+		// PROTECTION 6: Return cleanup function
+		return () => {
+			cleanedUp = true // Set flag FIRST to prevent race with syncLoop reschedule
+			ev.off('connection.update', connectionHandler)
+			if (syncTimer) {
+				clearTimeout(syncTimer)
+				syncTimer = undefined
+			}
+		}
+	}
+
+	// Initialize PreKey auto-sync and store cleanup function
+	const cleanupPreKeyAutoSync = startPreKeyAutoSync()
+
+	/**
+	 * Session TTL Management: Graceful cleanup after 7 days
+	 * Prevents memory leaks and allows credential rotation in long-running sessions
+	 * Returns cleanup function to remove event listener
+	 */
+	const startSessionTTL = () => {
+		const connectionHandler = ({ connection }: { connection: any }) => {
+			if (connection === 'open') {
+				sessionStartTime = Date.now()
+
+				// PROTECTION 1: Long TTL (7 days)
+				ttlTimer = setTimeout(() => {
+					const duration = Date.now() - sessionStartTime!
+					const durationHours = Math.floor(duration / 1000 / 60 / 60)
+
+					logger.info(`🕐 Session TTL reached after ${durationHours}h, initiating graceful cleanup`)
+
+					// PROTECTION 2: Event-based (app decides)
+					ev.emit('session.ttl-expired', {
+						startTime: sessionStartTime,
+						duration: duration
+					})
+
+					// PROTECTION 3: Graceful delay before cleanup (with proper cleanup)
+					ttlGraceTimer = setTimeout(() => {
+						logger.info('🕐 Proceeding with TTL cleanup after grace period')
+						end(new Error('SESSION_TTL_EXPIRED'))
+					}, 5000) // 5s grace period
+				}, SESSION_TTL)
+
+				const ttlHours = SESSION_TTL / 1000 / 60 / 60
+				logger.info(`🕐 Session TTL started (${ttlHours}h = 7 days)`)
+			} else if (connection === 'close') {
+				// PROTECTION 4: Cleanup ALL timers on disconnect
+				if (ttlTimer) {
+					clearTimeout(ttlTimer)
+					ttlTimer = undefined
+				}
+				if (ttlGraceTimer) {
+					clearTimeout(ttlGraceTimer)
+					ttlGraceTimer = undefined
+				}
+				sessionStartTime = undefined
+				logger.info('🕐 Session TTL timers cleared')
+			}
+		}
+
+		ev.on('connection.update', connectionHandler)
+
+		// PROTECTION 5: Return cleanup function
+		return () => {
+			ev.off('connection.update', connectionHandler)
+			if (ttlTimer) {
+				clearTimeout(ttlTimer)
+				ttlTimer = undefined
+			}
+			if (ttlGraceTimer) {
+				clearTimeout(ttlGraceTimer)
+				ttlGraceTimer = undefined
+			}
+		}
+	}
+
+	// Initialize Session TTL and store cleanup function
+	const cleanupSessionTTL = startSessionTTL()
+
 	const onMessageReceived = async (data: Buffer) => {
 		await noise.decodeFrame(data, frame => {
 			// reset ping timeout
@@ -824,13 +971,26 @@ export const makeSocket = (config: SocketConfig) => {
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
 
-		// Clean up circuit breakers
-		queryCircuitBreaker?.destroy()
-		connectionCircuitBreaker?.destroy()
-		preKeyCircuitBreaker?.destroy()
-
 		// Clean up unified session manager
 		unifiedSessionManager?.destroy()
+
+		// CRITICAL: Wait for pending pre-key upload before destroying transaction capability
+		// This prevents destroying resources while they're in use
+		if (uploadPreKeysPromise) {
+			logger.debug('Waiting for pending pre-key upload to complete before cleanup')
+			try {
+				await Promise.race([
+					uploadPreKeysPromise,
+					new Promise<void>((resolve) => setTimeout(resolve, 5000)) // 5s timeout
+				])
+				logger.debug('Pending pre-key upload completed or timed out')
+			} catch (error) {
+				logger.warn({ error }, 'Pending pre-key upload failed during cleanup')
+			}
+		}
+
+		// Clean up transaction capability (PreKeyManager + queues)
+		keys.destroy?.()
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
@@ -842,14 +1002,43 @@ export const makeSocket = (config: SocketConfig) => {
 			} catch {}
 		}
 
+		// Detect socket-level session errors that require recreation
+		const statusCode = (error as Boom)?.output?.statusCode || 0
+		const isSessionError = (
+			statusCode === DisconnectReason.badSession ||
+			statusCode === DisconnectReason.restartRequired
+		)
+
+		if (isSessionError) {
+			logger.warn(
+				{ statusCode, reason: DisconnectReason[statusCode] },
+				'🔴 Socket-level session error - consumer should recreate socket'
+			)
+		}
+
+		// CRITICAL: Emit close event BEFORE cleaning up listeners
+		// This allows handlers (PreKey auto-sync, Session TTL) to receive the final close event
 		ev.emit('connection.update', {
 			connection: 'close',
 			lastDisconnect: {
 				error,
 				date: new Date()
-			}
+			},
+			isSessionError
 		})
-		ev.removeAllListeners('connection.update')
+
+		// NOW clean up our internal listeners (after they've received the close event)
+		cleanupPreKeyAutoSync()
+		cleanupSessionTTL()
+
+		// CRITICAL: Destroy circuit breakers AFTER cleanup functions complete
+		// This ensures cleanup functions can still use circuit breakers if needed
+		queryCircuitBreaker?.destroy()
+		connectionCircuitBreaker?.destroy()
+		preKeyCircuitBreaker?.destroy()
+
+		// IMPORTANT: Do NOT use removeAllListeners('connection.update')
+		// It would remove consumer listeners, breaking their reconnection logic
 	}
 
 	const waitForSocketOpen = async () => {
