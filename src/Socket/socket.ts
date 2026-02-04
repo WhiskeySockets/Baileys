@@ -12,7 +12,7 @@ import {
 	NOISE_WA_HEADER,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
-import type { LIDMapping, SocketConfig } from '../Types'
+import type { ConnectionState, LIDMapping, SocketConfig } from '../Types'
 import { DisconnectReason } from '../Types'
 import {
 	addTransactionCapability,
@@ -777,11 +777,11 @@ export const makeSocket = (config: SocketConfig) => {
 
 		// PROTECTION 4: Initial delay (avoid duplicate at startup)
 		// CB:success already calls uploadPreKeysToServerIfRequired(), so wait 6h before first auto-sync
-		const connectionHandler = ({ connection }: { connection: any }) => {
-			if (connection === 'open') {
+		const connectionHandler = (update: Partial<ConnectionState>) => {
+			if (update.connection === 'open') {
 				logger.info('🔑 Starting PreKey auto-sync timer (first sync in 6h)')
 				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
-			} else if (connection === 'close') {
+			} else if (update.connection === 'close') {
 				// PROTECTION 5: Cleanup on disconnect
 				if (syncTimer) {
 					clearTimeout(syncTimer)
@@ -814,8 +814,8 @@ export const makeSocket = (config: SocketConfig) => {
 	 * Returns cleanup function to remove event listener
 	 */
 	const startSessionTTL = () => {
-		const connectionHandler = ({ connection }: { connection: any }) => {
-			if (connection === 'open') {
+		const connectionHandler = (update: Partial<ConnectionState>) => {
+			if (update.connection === 'open') {
 				sessionStartTime = Date.now()
 
 				// PROTECTION 1: Long TTL (7 days)
@@ -840,7 +840,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 				const ttlHours = SESSION_TTL / 1000 / 60 / 60
 				logger.info(`🕐 Session TTL started (${ttlHours}h = 7 days)`)
-			} else if (connection === 'close') {
+			} else if (update.connection === 'close') {
 				// PROTECTION 4: Cleanup ALL timers on disconnect
 				if (ttlTimer) {
 					clearTimeout(ttlTimer)
