@@ -465,7 +465,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (shouldRecreateSession) {
 					logger.debug({ fromJid, retryCount, reason: recreateReason, errorCode }, 'recreating session for retry')
 					// Delete existing session to force recreation
-					await authState.keys.set({ session: { [sessionId]: null } })
+					// CRITICAL: Wrap in transaction to prevent race with other session operations
+					await authState.keys.transaction(async () => {
+						await authState.keys.set({ session: { [sessionId]: null } })
+					}, `delete-session-${sessionId}`)
 					forceIncludeKeys = true
 				}
 			} catch (error) {
@@ -1023,7 +1026,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				if (shouldRecreateSession) {
 					logger.debug({ participant, retryCount, reason: recreateReason, errorCode }, 'recreating session for outgoing retry')
-					await authState.keys.set({ session: { [sessionId]: null } })
+					// CRITICAL: Wrap in transaction to prevent race with other session operations
+					await authState.keys.transaction(async () => {
+						await authState.keys.set({ session: { [sessionId]: null } })
+					}, `delete-session-${sessionId}`)
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
