@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import * as curve from 'libsignal/src/curve'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
+export { md5, hkdf } from 'whatsapp-rust-bridge'
 
 // insure browser & node compatibility
 const { subtle } = globalThis.crypto
@@ -116,44 +117,6 @@ export function hmacSign(
 
 export function sha256(buffer: Buffer) {
 	return createHash('sha256').update(buffer).digest()
-}
-
-export function md5(buffer: Buffer) {
-	return createHash('md5').update(buffer).digest()
-}
-
-// HKDF key expansion
-export async function hkdf(
-	buffer: Uint8Array | Buffer,
-	expandedLength: number,
-	info: { salt?: Buffer; info?: string }
-): Promise<Buffer> {
-	// Normalize to a Uint8Array whose underlying buffer is a regular ArrayBuffer (not ArrayBufferLike)
-	// Cloning via new Uint8Array(...) guarantees the generic parameter is ArrayBuffer which satisfies WebCrypto types.
-	const inputKeyMaterial = new Uint8Array(buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer))
-
-	// Set default values if not provided
-	const salt = info.salt ? new Uint8Array(info.salt) : new Uint8Array(0)
-	const infoBytes = info.info ? new TextEncoder().encode(info.info) : new Uint8Array(0)
-
-	// Import the input key material (cast to BufferSource to appease TS DOM typings)
-	const importedKey = await subtle.importKey('raw', inputKeyMaterial as BufferSource, { name: 'HKDF' }, false, [
-		'deriveBits'
-	])
-
-	// Derive bits using HKDF
-	const derivedBits = await subtle.deriveBits(
-		{
-			name: 'HKDF',
-			hash: 'SHA-256',
-			salt: salt,
-			info: infoBytes
-		},
-		importedKey,
-		expandedLength * 8 // Convert bytes to bits
-	)
-
-	return Buffer.from(derivedBits)
 }
 
 export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): Promise<Buffer> {
