@@ -742,6 +742,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const SYNC_INTERVAL = 6 * 60 * 60 * 1000 // 6 hours
 		let syncTimer: NodeJS.Timeout | undefined
 		let isRunning = false
+		let cleanedUp = false // PROTECTION: Prevent rescheduling after cleanup
 
 		const syncLoop = async () => {
 			// PROTECTION 1: Prevent overlapping runs
@@ -750,8 +751,8 @@ export const makeSocket = (config: SocketConfig) => {
 				return
 			}
 
-			// PROTECTION 2: Check connection state
-			if (closed || !ws.isOpen) {
+			// PROTECTION 2: Check connection state AND cleanup flag
+			if (closed || !ws.isOpen || cleanedUp) {
 				logger.debug('🔑 Connection closed, stopping PreKey sync')
 				return
 			}
@@ -767,9 +768,9 @@ export const makeSocket = (config: SocketConfig) => {
 				isRunning = false
 			}
 
-			// PROTECTION 3: Prevent timer accumulation
-			// Only reschedule if connection is still open
-			if (!closed && ws.isOpen) {
+			// PROTECTION 3: Prevent timer accumulation and post-cleanup rescheduling
+			// Check cleanedUp flag atomically to prevent race condition
+			if (!closed && !cleanedUp && ws.isOpen) {
 				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
 			}
 		}
@@ -795,6 +796,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		// PROTECTION 6: Return cleanup function
 		return () => {
+			cleanedUp = true // Set flag FIRST to prevent race with syncLoop reschedule
 			ev.off('connection.update', connectionHandler)
 			if (syncTimer) {
 				clearTimeout(syncTimer)
@@ -980,12 +982,6 @@ export const makeSocket = (config: SocketConfig) => {
 		// Clean up transaction capability (PreKeyManager + queues)
 		keys.destroy?.()
 
-		// Clean up PreKey auto-sync event listener
-		cleanupPreKeyAutoSync()
-
-		// Clean up Session TTL event listener
-		cleanupSessionTTL()
-
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')
@@ -1010,6 +1006,8 @@ export const makeSocket = (config: SocketConfig) => {
 			)
 		}
 
+		// CRITICAL: Emit close event BEFORE cleaning up listeners
+		// This allows handlers (PreKey auto-sync, Session TTL) to receive the final close event
 		ev.emit('connection.update', {
 			connection: 'close',
 			lastDisconnect: {
@@ -1018,7 +1016,13 @@ export const makeSocket = (config: SocketConfig) => {
 			},
 			isSessionError
 		})
-		ev.removeAllListeners('connection.update')
+
+		// NOW clean up our internal listeners (after they've received the close event)
+		cleanupPreKeyAutoSync()
+		cleanupSessionTTL()
+
+		// IMPORTANT: Do NOT use removeAllListeners('connection.update')
+		// It would remove consumer listeners, breaking their reconnection logic
 	}
 
 	const waitForSocketOpen = async () => {
@@ -1418,7 +1422,7 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	// update credentials when required
-	ev.on('creds.update', async update => {
+	ev.on('creds.update', update => {
 		const name = update.me?.name
 		// if name has just been received
 		if (creds.me?.name !== name) {
