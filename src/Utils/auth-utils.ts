@@ -303,11 +303,6 @@ export const addTransactionCapability = (
 		isInTransaction,
 
 		transaction: async (work, key) => {
-			// CRITICAL: Prevent transactions after destroy to avoid use-after-free
-			if (destroyed) {
-				throw new Error('Transaction capability destroyed - socket closed')
-			}
-
 			const existing = txStorage.getStore()
 
 			// Nested transaction - reuse existing context
@@ -322,6 +317,12 @@ export const addTransactionCapability = (
 
 			try {
 				return await mutex.runExclusive(async () => {
+					// CRITICAL: Check destroyed flag INSIDE mutex to prevent race condition
+					// This ensures atomic check-and-execute: if we acquire mutex, resources exist
+					if (destroyed) {
+						throw new Error('Transaction capability destroyed - socket closed')
+					}
+
 					const ctx: TransactionContext = {
 						cache: {},
 						mutations: {},
