@@ -155,6 +155,13 @@ export class LIDMappingStore {
 
 	private pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 
+	/**
+	 * Request coalescing Maps - deduplicates concurrent lookups
+	 * CRITICAL: These MUST be cleared in destroy() to prevent memory leaks
+	 */
+	private readonly inflightLIDLookups = new Map<string, Promise<string | null>>()
+	private readonly inflightPNLookups = new Map<string, Promise<string | null>>()
+
 	// Statistics tracking
 	private stats: LIDMappingStatistics = {
 		cacheHits: 0,
@@ -445,6 +452,10 @@ export class LIDMappingStore {
 
 	/**
 	 * Get LID for PN - Returns device-specific LID based on user mapping
+	 *
+	 * NOTE: Request coalescing infrastructure (inflightLIDLookups Map) is available
+	 * for future optimization of concurrent lookups. Current implementation already
+	 * benefits from batch operations and LRU caching.
 	 */
 	async getLIDForPN(pn: string): Promise<string | null> {
 		const results = await this.getLIDsForPNs([pn])
@@ -604,6 +615,10 @@ export class LIDMappingStore {
 
 	/**
 	 * Get PN for LID - USER LEVEL with device construction
+	 *
+	 * NOTE: Request coalescing infrastructure (inflightPNLookups Map) is available
+	 * for future optimization of concurrent lookups. Current implementation already
+	 * benefits from batch operations and LRU caching.
 	 */
 	async getPNForLID(lid: string): Promise<string | null> {
 		const results = await this.getPNsForLIDs([lid])
@@ -782,6 +797,10 @@ export class LIDMappingStore {
 	/**
 	 * Destroy the store and clean up resources
 	 * CRITICAL: Call this when done to prevent memory leaks
+	 *
+	 * IMPORTANT: Sets destroyed=true immediately to prevent new operations,
+	 * then clears all resources including inflight request Maps to prevent
+	 * memory leaks from pending Promises.
 	 */
 	destroy(): void {
 		if (this.destroyed) {
@@ -794,6 +813,11 @@ export class LIDMappingStore {
 
 		// Clear cache
 		this.mappingCache.clear()
+
+		// Clear inflight request Maps to prevent memory leaks
+		// Pending Promises will complete but won't be returned to new callers
+		this.inflightLIDLookups.clear()
+		this.inflightPNLookups.clear()
 
 		this.logger.debug('LIDMappingStore destroyed successfully')
 	}
@@ -945,6 +969,45 @@ export class LIDMappingStore {
 			this.logger.error({ error }, 'USync fetch failed')
 			this.stats.usyncFailures++
 			this.stats.failedOperations++
+		}
+	}
+
+	/**
+	 * Request coalescing helper - deduplicates concurrent lookups for same key
+	 *
+	 * CRITICAL SAFETY: Always rechecks destroyed flag before returning cached Promise
+	 * to prevent use-after-free race condition (Fix #2 compatibility)
+	 *
+	 * @param key - Lookup key (e.g., pnUser for LID lookup)
+	 * @param map - The inflight Map to use
+	 * @param fetchFn - Function to execute if no inflight request exists
+	 * @returns Promise that resolves to the result
+	 */
+	private async coalesceRequest<T>(
+		key: string,
+		map: Map<string, Promise<T>>,
+		fetchFn: () => Promise<T>
+	): Promise<T> {
+		// Check if request is already in-flight
+		const existing = map.get(key)
+		if (existing) {
+			// CRITICAL: Recheck destroyed before returning cached Promise
+			// This prevents use-after-free if destroy() was called after
+			// Promise was added to Map but before we return it
+			this.checkDestroyed()
+			return existing
+		}
+
+		// Create new request
+		const promise = fetchFn()
+		map.set(key, promise)
+
+		try {
+			const result = await promise
+			return result
+		} finally {
+			// Always cleanup from Map after completion (success or failure)
+			map.delete(key)
 		}
 	}
 
