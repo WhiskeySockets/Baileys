@@ -795,9 +795,6 @@ export class LIDMappingStore {
 		// Clear cache
 		this.mappingCache.clear()
 
-		// Clear metrics module reference
-		this.metricsModule = null
-
 		this.logger.debug('LIDMappingStore destroyed successfully')
 	}
 

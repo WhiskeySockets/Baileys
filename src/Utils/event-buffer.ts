@@ -427,7 +427,7 @@ export const makeEventBuffer = (
 	if (config.enableMetrics) {
 		import('./prometheus-metrics').then(m => {
 			metricsModule = m
-			logger.debug('📊 Prometheus metrics loaded, flushing buffered metrics', { queuedCount: metricsQueue.length })
+			logger.debug({ queuedCount: metricsQueue.length }, '📊 Prometheus metrics loaded, flushing buffered metrics')
 			// Flush buffered metrics
 			metricsQueue.forEach(fn => fn())
 			metricsQueue = []
