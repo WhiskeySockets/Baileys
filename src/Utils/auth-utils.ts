@@ -320,7 +320,7 @@ export const addTransactionCapability = (
 					// CRITICAL: Check destroyed flag INSIDE mutex to prevent race condition
 					// This ensures atomic check-and-execute: if we acquire mutex, resources exist
 					if (destroyed) {
-						throw new Error('Transaction capability destroyed - socket closed')
+						throw new Error('Transaction capability destroyed - cannot initiate new transactions')
 					}
 
 					const ctx: TransactionContext = {
