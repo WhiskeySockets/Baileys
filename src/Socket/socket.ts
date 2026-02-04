@@ -971,11 +971,6 @@ export const makeSocket = (config: SocketConfig) => {
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
 
-		// Clean up circuit breakers
-		queryCircuitBreaker?.destroy()
-		connectionCircuitBreaker?.destroy()
-		preKeyCircuitBreaker?.destroy()
-
 		// Clean up unified session manager
 		unifiedSessionManager?.destroy()
 
@@ -1020,6 +1015,12 @@ export const makeSocket = (config: SocketConfig) => {
 		// NOW clean up our internal listeners (after they've received the close event)
 		cleanupPreKeyAutoSync()
 		cleanupSessionTTL()
+
+		// CRITICAL: Destroy circuit breakers AFTER cleanup functions complete
+		// This ensures cleanup functions can still use circuit breakers if needed
+		queryCircuitBreaker?.destroy()
+		connectionCircuitBreaker?.destroy()
+		preKeyCircuitBreaker?.destroy()
 
 		// IMPORTANT: Do NOT use removeAllListeners('connection.update')
 		// It would remove consumer listeners, breaking their reconnection logic
