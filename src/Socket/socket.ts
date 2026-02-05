@@ -754,7 +754,19 @@ export const makeSocket = (config: SocketConfig) => {
 		const SYNC_INTERVAL = 6 * 60 * 60 * 1000 // 6 hours
 		let syncTimer: NodeJS.Timeout | undefined
 		let isRunning = false
-		let cleanedUp = false // PROTECTION: Prevent rescheduling after cleanup
+
+		/**
+		 * Cleanup flag - protected by atomic check-and-set in cleanup function
+		 *
+		 * THREAD SAFETY: This flag uses atomic check-and-set pattern (see cleanup return function)
+		 * to prevent race conditions between:
+		 * - syncLoop reschedule check (line 790) and cleanup setting flag to true
+		 * - Multiple calls to cleanup function (reentrancy guard)
+		 *
+		 * CRITICAL: Prevents timer orphaning where syncLoop creates new timer
+		 * after cleanup has cleared the existing timer, causing memory leak.
+		 */
+		let cleanedUp = false
 
 		const syncLoop = async () => {
 			// PROTECTION 1: Prevent overlapping runs
@@ -764,10 +776,12 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 
 			// PROTECTION 2: Check connection state AND cleanup flag
-			// Safe to check 'closed' here because:
-			// - If closed=false, resources are guaranteed available (end() not called yet)
-			// - If closed=true, we return immediately (no resource access)
-			// - Race window is minimal due to atomic check-and-set in end()
+			// Safe to check these flags because:
+			// - 'closed': Atomic check-and-set in end() (V7 fix)
+			// - 'cleanedUp': Atomic check-and-set in cleanup() (V8 fix)
+			// - If either is true, we return immediately (no resource access)
+			// - If both are false, resources guaranteed available
+			// - Race windows minimized by immediate flag setting after checks
 			if (closed || !ws.isOpen || cleanedUp) {
 				logger.debug('🔑 Connection closed, stopping PreKey sync')
 				return
@@ -784,9 +798,12 @@ export const makeSocket = (config: SocketConfig) => {
 				isRunning = false
 
 				// PROTECTION 3: Prevent timer accumulation and post-cleanup rescheduling
-				// Check cleanedUp flag atomically INSIDE finally to minimize race window
-				// Safe to check 'closed' here - if end() sets it to true during this check,
-				// the timer will be cleared by cleanup handler (lines 798-806)
+				// Check flags inside finally to minimize race window
+				// CRITICAL: Even with minimal race window, cleanup's atomic check-and-set
+				// ensures cleanedUp=true BEFORE clearTimeout, so if we create a timer here
+				// after cleanup check but before our check, cleanup will clear it.
+				// If cleanup sets cleanedUp=true after our check, new timer won't be cleared,
+				// but V8 fix ensures cleanedUp is set IMMEDIATELY, minimizing this window.
 				if (!closed && !cleanedUp && ws.isOpen) {
 					syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
 				}
@@ -812,9 +829,18 @@ export const makeSocket = (config: SocketConfig) => {
 
 		ev.on('connection.update', connectionHandler)
 
-		// PROTECTION 6: Return cleanup function
+		// PROTECTION 6: Return cleanup function with atomic check-and-set
 		return () => {
-			cleanedUp = true // Set flag FIRST to prevent race with syncLoop reschedule
+			// PROTECTION: Atomic check-and-set to prevent race conditions
+			// Flag is set IMMEDIATELY after check, BEFORE any operations
+			// This prevents:
+			// 1. Multiple calls to cleanup (reentrancy guard)
+			// 2. Timer orphaning: syncLoop creating timer after clearTimeout
+			if (cleanedUp) {
+				return  // Already cleaned up
+			}
+			cleanedUp = true  // ← Set IMMEDIATELY to close race window
+
 			ev.off('connection.update', connectionHandler)
 			if (syncTimer) {
 				clearTimeout(syncTimer)
