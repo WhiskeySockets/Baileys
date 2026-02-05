@@ -113,8 +113,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 *
 	 * MEMORY SAFETY: Limited by DEFAULT_CACHE_MAX_KEYS.SIGNAL_STORE with 1-hour TTL.
 	 * Auto-purges expired entries to maintain memory bounds.
+	 *
+	 * TYPE SAFETY: Only successful lookups (non-null values) are cached.
+	 * Null/undefined values are NOT cached to prevent blocking newly arrived keys.
+	 * LRUCache.get() returns undefined for missing keys.
 	 */
-	const appStateSyncKeyCache = new LRUCache<string, proto.Message.IAppStateSyncKeyData | null>({
+	const appStateSyncKeyCache = new LRUCache<string, proto.Message.IAppStateSyncKeyData>({
 		max: DEFAULT_CACHE_MAX_KEYS.SIGNAL_STORE, // Use constant from Defaults (10,000)
 		ttl: DEFAULT_CACHE_TTLS.MSG_RETRY * 1000, // 1 hour TTL (convert seconds to ms)
 		ttlAutopurge: true, // Automatically remove expired entries
@@ -135,9 +139,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		// Use get() directly to avoid race between has() and get() (Fix: Copilot C)
 		const cached = appStateSyncKeyCache.get(keyId)
 		if (cached !== undefined) {
-			// Null in cache means we explicitly cached a null (which we don't do anymore)
-			// Undefined means not in cache
-			return cached ?? undefined
+			// Cache hit - return the cached key
+			return cached
 		}
 
 		// Cache miss - fetch from database
