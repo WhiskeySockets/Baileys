@@ -2,7 +2,7 @@ import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { LRUCache } from 'lru-cache'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, DEFAULT_CACHE_MAX_KEYS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import type {
 	BotListInfo,
 	CacheStore,
@@ -111,12 +111,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * App State Sync Key Cache with LRU eviction policy
 	 * Prevents repeated database lookups for same keys during sync operations.
 	 *
-	 * MEMORY SAFETY: Limited to 1000 entries with 1-hour TTL to prevent unbounded growth.
+	 * MEMORY SAFETY: Limited by DEFAULT_CACHE_MAX_KEYS.SIGNAL_STORE with 1-hour TTL.
 	 * Auto-purges expired entries to maintain memory bounds.
 	 */
 	const appStateSyncKeyCache = new LRUCache<string, proto.Message.IAppStateSyncKeyData | null>({
-		max: 1000, // Limit total number of cached keys
-		ttl: 60 * 60 * 1000, // 1 hour TTL per key
+		max: DEFAULT_CACHE_MAX_KEYS.SIGNAL_STORE, // Use constant from Defaults (10,000)
+		ttl: DEFAULT_CACHE_TTLS.MSG_RETRY * 1000, // 1 hour TTL (convert seconds to ms)
 		ttlAutopurge: true, // Automatically remove expired entries
 		updateAgeOnGet: true // LRU refresh on access
 	})
@@ -127,18 +127,28 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 *
 	 * Performance: 5x faster sync operations by eliminating redundant key fetches.
 	 * Memory: Bounded by LRU policy (max 1000 keys, 1h TTL)
+	 *
+	 * CRITICAL FIX: Only cache successful lookups (non-null values) to prevent
+	 * stale null values from blocking newly arrived keys via APP_STATE_SYNC_KEY_SHARE.
 	 */
 	const getCachedAppStateSyncKey = async (keyId: string) => {
-		// Check cache first
-		if (appStateSyncKeyCache.has(keyId)) {
-			return appStateSyncKeyCache.get(keyId) ?? undefined
+		// Use get() directly to avoid race between has() and get() (Fix: Copilot C)
+		const cached = appStateSyncKeyCache.get(keyId)
+		if (cached !== undefined) {
+			// Null in cache means we explicitly cached a null (which we don't do anymore)
+			// Undefined means not in cache
+			return cached ?? undefined
 		}
 
 		// Cache miss - fetch from database
 		const key = await getAppStateSyncKey(keyId)
 
-		// Store in cache (null is cached to prevent repeated lookups for missing keys)
-		appStateSyncKeyCache.set(keyId, key ?? null)
+		// CRITICAL: Only cache non-null values
+		// Null/undefined means key doesn't exist YET, but may arrive via APP_STATE_SYNC_KEY_SHARE
+		// If we cache null, the cache (TTL 1h) will block newly arrived keys
+		if (key) {
+			appStateSyncKeyCache.set(keyId, key)
+		}
 
 		return key
 	}
