@@ -503,6 +503,18 @@ export const makeSocket = (config: SocketConfig) => {
 	let epoch = 1
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
+
+	/**
+	 * Connection closed flag - protected by atomic check-and-set in end()
+	 *
+	 * THREAD SAFETY: This flag uses atomic check-and-set pattern (see end() function)
+	 * to prevent race conditions between:
+	 * - Multiple simultaneous calls to end() (prevents double cleanup)
+	 * - Operations checking flag while end() is destroying resources
+	 *
+	 * USAGE: Always check this flag BEFORE accessing socket resources (ws, keys, etc.)
+	 * The flag is set IMMEDIATELY in end() before any async operations to minimize race window.
+	 */
 	let closed = false
 
 	// Session TTL and cleanup
@@ -752,6 +764,10 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 
 			// PROTECTION 2: Check connection state AND cleanup flag
+			// Safe to check 'closed' here because:
+			// - If closed=false, resources are guaranteed available (end() not called yet)
+			// - If closed=true, we return immediately (no resource access)
+			// - Race window is minimal due to atomic check-and-set in end()
 			if (closed || !ws.isOpen || cleanedUp) {
 				logger.debug('🔑 Connection closed, stopping PreKey sync')
 				return
@@ -769,6 +785,8 @@ export const makeSocket = (config: SocketConfig) => {
 
 				// PROTECTION 3: Prevent timer accumulation and post-cleanup rescheduling
 				// Check cleanedUp flag atomically INSIDE finally to minimize race window
+				// Safe to check 'closed' here - if end() sets it to true during this check,
+				// the timer will be cleared by cleanup handler (lines 798-806)
 				if (!closed && !cleanedUp && ws.isOpen) {
 					syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
 				}
@@ -921,12 +939,17 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const end = async (error: Error | undefined) => {
+		// PROTECTION: Atomic check-and-set to prevent race conditions
+		// Flag is set IMMEDIATELY after check, BEFORE any async operations
+		// This minimizes the race window and prevents:
+		// 1. Multiple simultaneous calls to end() from destroying resources twice
+		// 2. Operations checking 'closed' while resources are being destroyed
 		if (closed) {
 			logger.trace({ trace: error?.stack }, 'connection already closed')
 			return
 		}
+		closed = true  // ← Set IMMEDIATELY to close race window
 
-		closed = true
 		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
 
 		// Record connection error metric
