@@ -165,9 +165,14 @@ export class LIDMappingStore {
 	/**
 	 * Request coalescing Maps - deduplicates concurrent lookups
 	 *
-	 * MEMORY SAFETY: These MUST be cleared in destroy() to prevent memory leaks
+	 * USAGE: Active in getLIDForPN() and getPNForLID() to deduplicate
+	 * concurrent lookups for the same user. In message bursts, multiple
+	 * concurrent calls share a single database lookup.
 	 *
-	 * THREAD SAFETY: Protected by operationsInProgress counter.
+	 * MEMORY SAFETY: Cleared in destroy() to prevent memory leaks.
+	 * Pending Promises complete but won't be returned to new callers.
+	 *
+	 * THREAD SAFETY: Protected by operationsInProgress counter (V4 fix).
 	 * - Maps are only cleared when operationsInProgress === 0
 	 * - Operations using coalesceRequest() MUST be wrapped with trackOperation()
 	 * - This ensures maps won't be cleared while coalesceRequest() is accessing them
@@ -470,13 +475,35 @@ export class LIDMappingStore {
 	/**
 	 * Get LID for PN - Returns device-specific LID based on user mapping
 	 *
-	 * NOTE: Request coalescing infrastructure (inflightLIDLookups Map) is available
-	 * for future optimization of concurrent lookups. Current implementation already
-	 * benefits from batch operations and LRU caching.
+	 * OPTIMIZATION: Uses request coalescing to deduplicate concurrent lookups
+	 * for the same PN. In message bursts, multiple concurrent calls for the same
+	 * user will share a single database lookup, reducing load and improving latency.
+	 *
+	 * Thread Safety: Protected by trackOperation() wrapper (V4 fix)
 	 */
 	async getLIDForPN(pn: string): Promise<string | null> {
-		const results = await this.getLIDsForPNs([pn])
-		return results?.[0]?.lid || null
+		this.checkDestroyed()
+
+		return this.trackOperation(async () => {
+			// Early validation
+			if (!isAnyPnUser(pn)) return null
+
+			const decoded = jidDecode(pn)
+			if (!decoded) return null
+
+			const pnUser = decoded.user
+
+			// Use request coalescing to deduplicate concurrent lookups
+			// Safe because: wrapped in trackOperation() prevents resource cleanup
+			return this.coalesceRequest(
+				pnUser,
+				this.inflightLIDLookups,
+				async () => {
+					const results = await this.getLIDsForPNs([pn])
+					return results?.[0]?.lid || null
+				}
+			)
+		})
 	}
 
 	/**
@@ -637,13 +664,35 @@ export class LIDMappingStore {
 	/**
 	 * Get PN for LID - USER LEVEL with device construction
 	 *
-	 * NOTE: Request coalescing infrastructure (inflightPNLookups Map) is available
-	 * for future optimization of concurrent lookups. Current implementation already
-	 * benefits from batch operations and LRU caching.
+	 * OPTIMIZATION: Uses request coalescing to deduplicate concurrent lookups
+	 * for the same LID. In message bursts, multiple concurrent calls for the same
+	 * user will share a single database lookup, reducing load and improving latency.
+	 *
+	 * Thread Safety: Protected by trackOperation() wrapper (V4 fix)
 	 */
 	async getPNForLID(lid: string): Promise<string | null> {
-		const results = await this.getPNsForLIDs([lid])
-		return results?.[0]?.pn || null
+		this.checkDestroyed()
+
+		return this.trackOperation(async () => {
+			// Early validation
+			if (!isAnyLidUser(lid)) return null
+
+			const decoded = jidDecode(lid)
+			if (!decoded) return null
+
+			const lidUser = decoded.user
+
+			// Use request coalescing to deduplicate concurrent lookups
+			// Safe because: wrapped in trackOperation() prevents resource cleanup
+			return this.coalesceRequest(
+				lidUser,
+				this.inflightPNLookups,
+				async () => {
+					const results = await this.getPNsForLIDs([lid])
+					return results?.[0]?.pn || null
+				}
+			)
+		})
 	}
 
 	/**
