@@ -21,6 +21,7 @@ export type BrowsersMap = {
 	macOS(browser: string): [string, string, string]
 	baileys(browser: string): [string, string, string]
 	windows(browser: string): [string, string, string]
+	android(browser: string): [string, string, string]
 	appropriate(browser: string): [string, string, string]
 }
 
