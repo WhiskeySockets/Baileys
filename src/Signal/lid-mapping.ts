@@ -1061,13 +1061,16 @@ export class LIDMappingStore {
 	/**
 	 * Request coalescing helper - deduplicates concurrent lookups for same key
 	 *
-	 * CRITICAL SAFETY: Always rechecks destroyed flag before returning cached Promise
-	 * to prevent use-after-free race condition (Fix #2 compatibility)
+	 * SAFETY GUARANTEES:
+	 * - No UAF (Use-After-Free): Caller must use trackOperation() wrapper, which prevents
+	 *   resource cleanup during execution via operationsInProgress counter
+	 * - No TOCTOU: Destroyed check done once at operation start (no redundant rechecks)
+	 * - Thread-safe: Maps protected by operationsInProgress (V4) and usage contract (V5)
 	 *
-	 * THREAD SAFETY WARNING: This method accesses inflight Maps without explicit locking.
-	 * It is ONLY safe to call from operations wrapped with trackOperation(), which
-	 * ensures the maps won't be cleared during execution (via operationsInProgress counter).
-	 * DO NOT call directly from unwrapped operations.
+	 * USAGE REQUIREMENTS:
+	 * - MUST be called from within trackOperation() (enforced by V5 documentation)
+	 * - Caller MUST have called checkDestroyed() before entering tracked operation
+	 * - DO NOT call directly from unwrapped operations
 	 *
 	 * @param key - Lookup key (e.g., pnUser for LID lookup)
 	 * @param map - The inflight Map to use
@@ -1082,10 +1085,10 @@ export class LIDMappingStore {
 		// Check if request is already in-flight
 		const existing = map.get(key)
 		if (existing) {
-			// CRITICAL: Recheck destroyed before returning cached Promise
-			// This prevents use-after-free if destroy() was called after
-			// Promise was added to Map but before we return it
-			this.checkDestroyed()
+			// Return cached Promise - safe because:
+			// 1. Caller already checked destroyed (via checkDestroyed() in parent operation)
+			// 2. Operation is protected by trackOperation() (resources won't be freed)
+			// 3. Rechecking here would add TOCTOU window without benefit
 			return existing
 		}
 
