@@ -503,6 +503,18 @@ export const makeSocket = (config: SocketConfig) => {
 	let epoch = 1
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
+
+	/**
+	 * Connection closed flag - protected by atomic check-and-set in end()
+	 *
+	 * THREAD SAFETY: This flag uses atomic check-and-set pattern (see end() function)
+	 * to prevent race conditions between:
+	 * - Multiple simultaneous calls to end() (prevents double cleanup)
+	 * - Operations checking flag while end() is destroying resources
+	 *
+	 * USAGE: Always check this flag BEFORE accessing socket resources (ws, keys, etc.)
+	 * The flag is set IMMEDIATELY in end() before any async operations to minimize race window.
+	 */
 	let closed = false
 
 	// Session TTL and cleanup
@@ -742,7 +754,19 @@ export const makeSocket = (config: SocketConfig) => {
 		const SYNC_INTERVAL = 6 * 60 * 60 * 1000 // 6 hours
 		let syncTimer: NodeJS.Timeout | undefined
 		let isRunning = false
-		let cleanedUp = false // PROTECTION: Prevent rescheduling after cleanup
+
+		/**
+		 * Cleanup flag - protected by atomic check-and-set in cleanup function
+		 *
+		 * THREAD SAFETY: This flag uses atomic check-and-set pattern (see cleanup return function)
+		 * to prevent race conditions between:
+		 * - syncLoop reschedule check (line 790) and cleanup setting flag to true
+		 * - Multiple calls to cleanup function (reentrancy guard)
+		 *
+		 * CRITICAL: Prevents timer orphaning where syncLoop creates new timer
+		 * after cleanup has cleared the existing timer, causing memory leak.
+		 */
+		let cleanedUp = false
 
 		const syncLoop = async () => {
 			// PROTECTION 1: Prevent overlapping runs
@@ -752,6 +776,12 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 
 			// PROTECTION 2: Check connection state AND cleanup flag
+			// Safe to check these flags because:
+			// - 'closed': Atomic check-and-set in end() (V7 fix)
+			// - 'cleanedUp': Atomic check-and-set in cleanup() (V8 fix)
+			// - If either is true, we return immediately (no resource access)
+			// - If both are false, resources guaranteed available
+			// - Race windows minimized by immediate flag setting after checks
 			if (closed || !ws.isOpen || cleanedUp) {
 				logger.debug('🔑 Connection closed, stopping PreKey sync')
 				return
@@ -768,7 +798,12 @@ export const makeSocket = (config: SocketConfig) => {
 				isRunning = false
 
 				// PROTECTION 3: Prevent timer accumulation and post-cleanup rescheduling
-				// Check cleanedUp flag atomically INSIDE finally to minimize race window
+				// Check flags inside finally to minimize race window
+				// CRITICAL: Even with minimal race window, cleanup's atomic check-and-set
+				// ensures cleanedUp=true BEFORE clearTimeout, so if we create a timer here
+				// after cleanup check but before our check, cleanup will clear it.
+				// If cleanup sets cleanedUp=true after our check, new timer won't be cleared,
+				// but V8 fix ensures cleanedUp is set IMMEDIATELY, minimizing this window.
 				if (!closed && !cleanedUp && ws.isOpen) {
 					syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
 				}
@@ -794,9 +829,18 @@ export const makeSocket = (config: SocketConfig) => {
 
 		ev.on('connection.update', connectionHandler)
 
-		// PROTECTION 6: Return cleanup function
+		// PROTECTION 6: Return cleanup function with atomic check-and-set
 		return () => {
-			cleanedUp = true // Set flag FIRST to prevent race with syncLoop reschedule
+			// PROTECTION: Atomic check-and-set to prevent race conditions
+			// Flag is set IMMEDIATELY after check, BEFORE any operations
+			// This prevents:
+			// 1. Multiple calls to cleanup (reentrancy guard)
+			// 2. Timer orphaning: syncLoop creating timer after clearTimeout
+			if (cleanedUp) {
+				return  // Already cleaned up
+			}
+			cleanedUp = true  // ← Set IMMEDIATELY to close race window
+
 			ev.off('connection.update', connectionHandler)
 			if (syncTimer) {
 				clearTimeout(syncTimer)
@@ -814,12 +858,33 @@ export const makeSocket = (config: SocketConfig) => {
 	 * Returns cleanup function to remove event listener
 	 */
 	const startSessionTTL = () => {
+		/**
+		 * Cleanup flag - protected by atomic check-and-set in cleanup function
+		 *
+		 * THREAD SAFETY: This flag uses atomic check-and-set pattern to prevent
+		 * race conditions between:
+		 * - ttlTimer callback creating ttlGraceTimer after cleanup cleared timers
+		 * - Multiple cleanup calls (connectionHandler + cleanup function)
+		 *
+		 * CRITICAL: Prevents timer orphaning where ttlTimer expires and creates
+		 * ttlGraceTimer after cleanup has cleared ttlTimer, causing end() to be
+		 * called after socket cleanup is complete.
+		 */
+		let cleanedUp = false
+
 		const connectionHandler = (update: Partial<ConnectionState>) => {
 			if (update.connection === 'open') {
 				sessionStartTime = Date.now()
 
 				// PROTECTION 1: Long TTL (7 days)
 				ttlTimer = setTimeout(() => {
+					// PROTECTION: Check cleanup flag to prevent orphan timer creation
+					// If cleanup was called while ttlTimer was pending, abort immediately
+					if (cleanedUp) {
+						logger.debug('🕐 TTL timer fired but cleanup already called, aborting')
+						return
+					}
+
 					const duration = Date.now() - sessionStartTime!
 					const durationHours = Math.floor(duration / 1000 / 60 / 60)
 
@@ -832,7 +897,20 @@ export const makeSocket = (config: SocketConfig) => {
 					})
 
 					// PROTECTION 3: Graceful delay before cleanup (with proper cleanup)
+					// Check cleanup flag again before creating grace timer to prevent orphaning
+					if (cleanedUp) {
+						logger.debug('🕐 Cleanup called before grace timer creation, aborting')
+						return
+					}
+
 					ttlGraceTimer = setTimeout(() => {
+						// PROTECTION: Check cleanup flag before calling end()
+						// Prevents calling end() after socket cleanup is complete
+						if (cleanedUp) {
+							logger.debug('🕐 Grace timer fired but cleanup already called, aborting')
+							return
+						}
+
 						logger.info('🕐 Proceeding with TTL cleanup after grace period')
 						end(new Error('SESSION_TTL_EXPIRED'))
 					}, 5000) // 5s grace period
@@ -842,6 +920,14 @@ export const makeSocket = (config: SocketConfig) => {
 				logger.info(`🕐 Session TTL started (${ttlHours}h = 7 days)`)
 			} else if (update.connection === 'close') {
 				// PROTECTION 4: Cleanup ALL timers on disconnect
+				// Safe to check cleanedUp here - if cleanup function already ran,
+				// we return early to avoid redundant cleanup
+				if (cleanedUp) {
+					logger.debug('🕐 Session TTL already cleaned up via cleanup function')
+					return
+				}
+
+				// Clear all timers - cleanedUp flag in callbacks prevents orphaning
 				if (ttlTimer) {
 					clearTimeout(ttlTimer)
 					ttlTimer = undefined
@@ -851,14 +937,25 @@ export const makeSocket = (config: SocketConfig) => {
 					ttlGraceTimer = undefined
 				}
 				sessionStartTime = undefined
-				logger.info('🕐 Session TTL timers cleared')
+				logger.info('🕐 Session TTL timers cleared on disconnect')
 			}
 		}
 
 		ev.on('connection.update', connectionHandler)
 
-		// PROTECTION 5: Return cleanup function
+		// PROTECTION 5: Return cleanup function with atomic check-and-set
 		return () => {
+			// PROTECTION: Atomic check-and-set to prevent race conditions
+			// Flag is set IMMEDIATELY after check, BEFORE any operations
+			// This prevents:
+			// 1. Multiple cleanup calls (reentrancy guard)
+			// 2. Timer callbacks from creating new timers or calling end()
+			if (cleanedUp) {
+				logger.debug('🕐 Session TTL cleanup already called')
+				return
+			}
+			cleanedUp = true  // ← Set IMMEDIATELY to close race window
+
 			ev.off('connection.update', connectionHandler)
 			if (ttlTimer) {
 				clearTimeout(ttlTimer)
@@ -868,6 +965,7 @@ export const makeSocket = (config: SocketConfig) => {
 				clearTimeout(ttlGraceTimer)
 				ttlGraceTimer = undefined
 			}
+			logger.debug('🕐 Session TTL cleanup function executed')
 		}
 	}
 
@@ -921,12 +1019,17 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const end = async (error: Error | undefined) => {
+		// PROTECTION: Atomic check-and-set to prevent race conditions
+		// Flag is set IMMEDIATELY after check, BEFORE any async operations
+		// This minimizes the race window and prevents:
+		// 1. Multiple simultaneous calls to end() from destroying resources twice
+		// 2. Operations checking 'closed' while resources are being destroyed
 		if (closed) {
 			logger.trace({ trace: error?.stack }, 'connection already closed')
 			return
 		}
+		closed = true  // ← Set IMMEDIATELY to close race window
 
-		closed = true
 		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
 
 		// Record connection error metric

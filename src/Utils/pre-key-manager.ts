@@ -8,10 +8,33 @@ import type { ILogger } from './logger'
 export class PreKeyManager {
 	private readonly queues = new Map<string, PQueue>()
 
+	/**
+	 * Destroyed flag - protected by atomic check-and-set in destroy()
+	 *
+	 * THREAD SAFETY: Prevents operations from executing after destroy() is called.
+	 * All public methods check this flag before proceeding.
+	 *
+	 * CRITICAL: Prevents race conditions where:
+	 * - Operations add tasks to queues after they've been cleared/paused
+	 * - New queues are created after destroy() has cleaned them up
+	 * - Tasks execute on destroyed resources
+	 */
+	private destroyed = false
+
 	constructor(
 		private readonly store: SignalKeyStore,
 		private readonly logger: ILogger
 	) {}
+
+	/**
+	 * Check if manager has been destroyed
+	 * @throws Error if manager has been destroyed
+	 */
+	private checkDestroyed(): void {
+		if (this.destroyed) {
+			throw new Error('PreKeyManager has been destroyed - cannot perform operations')
+		}
+	}
 
 	/**
 	 * Get or create a queue for a specific key type
@@ -34,6 +57,9 @@ export class PreKeyManager {
 		mutations: SignalDataSet,
 		isInTransaction: boolean
 	): Promise<void> {
+		// PROTECTION: Check destroyed flag before processing
+		this.checkDestroyed()
+
 		const keyData = data[keyType]
 		if (!keyData) return
 
@@ -105,6 +131,9 @@ export class PreKeyManager {
 	 * Validate and process pre-key deletions outside transactions
 	 */
 	async validateDeletions(data: SignalDataSet, keyType: keyof SignalDataTypeMap): Promise<void> {
+		// PROTECTION: Check destroyed flag before processing
+		this.checkDestroyed()
+
 		const keyData = data[keyType]
 		if (!keyData) return
 
@@ -129,6 +158,18 @@ export class PreKeyManager {
 	 * Should be called during connection cleanup to prevent memory leaks
 	 */
 	destroy(): void {
+		// PROTECTION: Atomic check-and-set to prevent race conditions
+		// Flag is set IMMEDIATELY after check, BEFORE any operations
+		// This prevents:
+		// 1. Multiple calls to destroy() (reentrancy guard)
+		// 2. Operations from executing after destroy() starts
+		// 3. New queues from being created after cleanup
+		if (this.destroyed) {
+			this.logger.debug('PreKeyManager already destroyed')
+			return
+		}
+		this.destroyed = true  // ← Set IMMEDIATELY to close race window
+
 		this.logger.debug('🗑️ Destroying PreKeyManager')
 
 		this.queues.forEach((queue, keyType) => {
