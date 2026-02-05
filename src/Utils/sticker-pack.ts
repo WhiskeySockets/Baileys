@@ -41,8 +41,13 @@ export const isWebPBuffer = (buffer: Buffer): boolean => {
  * - VP8X header com animation flag (bit 1)
  * - Chunks ANIM (animation) ou ANMF (animation frame)
  *
+ * SECURITY: Implements robust validation to prevent:
+ * - Integer overflow attacks (malicious chunk sizes)
+ * - Out-of-bounds reads (buffer overflow)
+ * - Infinite loop DoS (iteration limit)
+ *
  * @param buffer - WebP buffer to analyze
- * @returns true if WebP is animated
+ * @returns true if WebP is animated, false if static or malformed
  *
  * @example
  * ```typescript
@@ -55,11 +60,27 @@ export const isWebPBuffer = (buffer: Buffer): boolean => {
 export const isAnimatedWebP = (buffer: Buffer): boolean => {
 	if (!isWebPBuffer(buffer)) return false
 
-	let offset = 12 // Skip RIFF header (12 bytes)
+	const MAX_CHUNK_SIZE = 100 * 1024 * 1024 // 100MB max per chunk
+	const MAX_ITERATIONS = 1000 // Prevent infinite loop
 
-	while (offset < buffer.length - 8) {
+	let offset = 12 // Skip RIFF header (12 bytes)
+	let iterations = 0
+
+	while (offset < buffer.length - 8 && iterations++ < MAX_ITERATIONS) {
 		const chunkFourCC = buffer.toString('ascii', offset, offset + 4)
 		const chunkSize = buffer.readUInt32LE(offset + 4)
+
+		// SECURITY: Validate chunk size to prevent integer overflow and buffer overflow
+		if (chunkSize < 0 || chunkSize > MAX_CHUNK_SIZE) {
+			// Invalid chunk size - treat as non-animated
+			return false
+		}
+
+		// SECURITY: Verify chunk fits within buffer bounds
+		if (offset + 8 + chunkSize > buffer.length) {
+			// Chunk extends beyond buffer - malformed file
+			return false
+		}
 
 		// VP8X extended header - check animation flag
 		if (chunkFourCC === 'VP8X' && offset + 8 < buffer.length) {
@@ -118,54 +139,149 @@ const convertToWebP = async (
 }
 
 /**
- * Gera hash SHA256 em formato base64 URL-safe
+ * Gera hash SHA256 em formato base64 URL-safe (RFC 4648)
  * Usado para nomear arquivos de stickers no ZIP (auto-deduplicação)
  *
+ * SECURITY: Correctly implements base64url encoding to prevent hash collisions:
+ * - '+' → '-'
+ * - '/' → '_' (DIFFERENT from '+' mapping)
+ * - '=' padding removed
+ *
  * @param buffer - Buffer to hash
- * @returns Base64 URL-safe SHA256 hash
+ * @returns Base64 URL-safe SHA256 hash (RFC 4648 compliant)
  */
 const generateSha256Hash = (buffer: Buffer): string => {
 	return createHash('sha256')
 		.update(buffer)
 		.digest('base64')
-		.replace(/\//g, '-') // Base64 URL-safe
-		.replace(/\+/g, '-')
-		.replace(/=/g, '')
+		.replace(/\+/g, '-') // + becomes -
+		.replace(/\//g, '_') // / becomes _ (CRITICAL: different from + mapping!)
+		.replace(/=/g, '')   // Remove padding
 }
 
 /**
- * Converte WAMediaUpload para Buffer
+ * Converte WAMediaUpload para Buffer com limites de segurança
  * Suporta Buffer, Stream e URL
+ *
+ * SECURITY: Implements protections against:
+ * - Memory exhaustion (size limits)
+ * - Slow read attacks (timeouts)
+ * - Resource DoS (stream cleanup)
  *
  * @param media - Media input (Buffer, Stream or URL)
  * @param context - Context for error messages (e.g., 'sticker', 'cover')
+ * @param options - Optional size limit and timeout
  * @returns Buffer with media content
  *
- * @throws {Boom} If media format is invalid
+ * @throws {Boom} If media format is invalid, too large, or timeout
  */
-const mediaToBuffer = async (media: WAMediaUpload, context: string): Promise<Buffer> => {
-	if (Buffer.isBuffer(media)) {
-		return media
-	} else if (typeof media === 'object' && 'stream' in media) {
-		// Read stream to buffer
-		const chunks: Buffer[] = []
-		for await (const chunk of media.stream) {
-			chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-		}
-		return Buffer.concat(chunks)
-	} else if (typeof media === 'object' && 'url' in media) {
-		// Download from URL
-		const url = media.url.toString()
-		const response = await fetch(url)
+const mediaToBuffer = async (
+	media: WAMediaUpload,
+	context: string,
+	options?: { maxSize?: number; timeout?: number }
+): Promise<Buffer> => {
+	const MAX_SIZE = options?.maxSize || 10 * 1024 * 1024 // 10MB default
+	const TIMEOUT = options?.timeout || 30000 // 30s default
 
-		if (!response.ok) {
-			throw new Boom(`Failed to download ${context} from URL: ${url}`, {
-				statusCode: 400,
-				data: { url, status: response.status }
+	if (Buffer.isBuffer(media)) {
+		// SECURITY: Validate buffer size
+		if (media.length > MAX_SIZE) {
+			throw new Boom(`${context} size (${(media.length / 1024).toFixed(2)}KB) exceeds ${MAX_SIZE / 1024}KB limit`, {
+				statusCode: 413
 			})
 		}
+		return media
+	} else if (typeof media === 'object' && 'stream' in media) {
+		// SECURITY: Read stream with size limit and timeout
+		const chunks: Buffer[] = []
+		let totalSize = 0
 
-		return Buffer.from(await response.arrayBuffer())
+		const timeoutPromise = new Promise<never>((_, reject) =>
+			setTimeout(() => reject(new Boom(`${context} stream timeout after ${TIMEOUT}ms`, { statusCode: 408 })), TIMEOUT)
+		)
+
+		try {
+			await Promise.race([
+				(async () => {
+					for await (const chunk of media.stream) {
+						const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+						totalSize += buffer.length
+
+						// SECURITY: Check size limit
+						if (totalSize > MAX_SIZE) {
+							throw new Boom(
+								`${context} stream size (${(totalSize / 1024).toFixed(2)}KB) exceeds ${MAX_SIZE / 1024}KB limit`,
+								{ statusCode: 413 }
+							)
+						}
+
+						chunks.push(buffer)
+					}
+				})(),
+				timeoutPromise
+			])
+
+			return Buffer.concat(chunks)
+		} catch (error) {
+			// SECURITY: Cleanup on error
+			media.stream.destroy()
+			throw error
+		}
+	} else if (typeof media === 'object' && 'url' in media) {
+		// SECURITY: Download from URL with size limit and timeout
+		const url = media.url.toString()
+
+		const controller = new AbortController()
+		const timeoutId = setTimeout(() => controller.abort(), TIMEOUT)
+
+		try {
+			const response = await fetch(url, {
+				signal: controller.signal
+			})
+
+			if (!response.ok) {
+				throw new Boom(`Failed to download ${context} from URL: ${url}`, {
+					statusCode: 400,
+					data: { url, status: response.status }
+				})
+			}
+
+			// SECURITY: Check Content-Length header before downloading
+			const contentLength = response.headers.get('content-length')
+			if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+				throw new Boom(
+					`${context} URL file size (${(parseInt(contentLength) / 1024).toFixed(2)}KB) exceeds ${MAX_SIZE / 1024}KB limit`,
+					{ statusCode: 413, data: { url, contentLength } }
+				)
+			}
+
+			// SECURITY: Stream download with size validation
+			const chunks: Buffer[] = []
+			let totalSize = 0
+
+			if (!response.body) {
+				throw new Boom(`${context} URL response has no body`, { statusCode: 400, data: { url } })
+			}
+
+			for await (const chunk of response.body as any) {
+				const buffer = Buffer.from(chunk)
+				totalSize += buffer.length
+
+				// SECURITY: Enforce size limit during download
+				if (totalSize > MAX_SIZE) {
+					throw new Boom(
+						`${context} download (${(totalSize / 1024).toFixed(2)}KB) exceeded ${MAX_SIZE / 1024}KB limit`,
+						{ statusCode: 413, data: { url } }
+					)
+				}
+
+				chunks.push(buffer)
+			}
+
+			return Buffer.concat(chunks)
+		} finally {
+			clearTimeout(timeoutId)
+		}
 	} else {
 		throw new Boom(`Invalid ${context} data format`, { statusCode: 400 })
 	}
@@ -227,37 +343,57 @@ export const prepareStickerPackMessage = async (
 	const { upload, logger, mediaUploadTimeoutMs } = options
 	const { stickers, cover, name, publisher, description, packId } = stickerPack
 
-	// Helper function to encrypt and upload media
+	// Helper function to encrypt and upload media with guaranteed cleanup
+	// SECURITY FIX #5: Try/finally ensures temp file cleanup even on upload failure
 	const uploadMedia = async (buffer: Buffer, mediaType: MediaType, opts?: { mediaKey?: Uint8Array }) => {
-		// Encrypt the media
-		const encrypted = await encryptedStream(buffer, mediaType, {
-			logger,
-			mediaKey: opts?.mediaKey
-		})
+		let encFilePath: string | undefined
 
-		// Upload encrypted file
-		const result = await upload(encrypted.encFilePath, {
-			fileEncSha256B64: encrypted.fileEncSha256.toString('base64'),
-			mediaType,
-			timeoutMs: mediaUploadTimeoutMs
-		})
+		try {
+			// Encrypt the media
+			const encrypted = await encryptedStream(buffer, mediaType, {
+				logger,
+				mediaKey: opts?.mediaKey
+			})
 
-		// Clean up encrypted file
-		await fs.unlink(encrypted.encFilePath)
+			encFilePath = encrypted.encFilePath
 
-		return {
-			mediaKey: encrypted.mediaKey,
-			fileSha256: encrypted.fileSha256,
-			fileEncSha256: encrypted.fileEncSha256,
-			directPath: result.directPath,
-			mediaKeyTimestamp: result.ts
+			// Upload encrypted file
+			const result = await upload(encrypted.encFilePath, {
+				fileEncSha256B64: encrypted.fileEncSha256.toString('base64'),
+				mediaType,
+				timeoutMs: mediaUploadTimeoutMs
+			})
+
+			return {
+				mediaKey: encrypted.mediaKey,
+				fileSha256: encrypted.fileSha256,
+				fileEncSha256: encrypted.fileEncSha256,
+				directPath: result.directPath,
+				mediaKeyTimestamp: result.ts
+			}
+		} finally {
+			// SECURITY: Always cleanup temp file, even on error
+			if (encFilePath) {
+				try {
+					await fs.unlink(encFilePath)
+					logger?.trace({ encFilePath }, 'Cleaned up temporary encrypted file')
+				} catch (unlinkError) {
+					// Log but don't fail - file may not exist
+					logger?.warn({ encFilePath, error: unlinkError }, 'Failed to cleanup temp file')
+				}
+			}
 		}
 	}
 
 	// 1. Validações - Padrão WhatsApp oficial: 3-30 stickers
-	if (stickers.length < 3 || stickers.length > 30) {
+	// SECURITY FIX #4: Validate actual valid stickers (not undefined/null)
+	const validStickers = stickers.filter((s): s is NonNullable<typeof s> => s !== null && s !== undefined)
+
+	if (validStickers.length < 3 || validStickers.length > 30) {
 		throw new Boom(
-			`Sticker pack must contain between 3 and 30 stickers per WhatsApp official spec. Provided: ${stickers.length}`,
+			`Sticker pack must contain between 3 and 30 valid stickers per WhatsApp official spec. ` +
+				`Provided: ${validStickers.length} valid stickers ` +
+				`(${stickers.length} total, ${stickers.length - validStickers.length} invalid/undefined)`,
 			{ statusCode: 400 }
 		)
 	}
@@ -281,121 +417,240 @@ export const prepareStickerPackMessage = async (
 	const stickerPackId = packId || generateMessageIDV2()
 
 	// 3. Processa stickers e cria estrutura ZIP
+	// SECURITY FIX #6: Parallel processing for better performance (30 stickers = significant speedup)
+	// SECURITY FIX #7: Track deduplication to merge metadata correctly
 	const stickerData: Record<string, [Uint8Array, { level: 0 }]> = {}
 	const stickerMetadata: proto.Message.StickerPackMessage.ISticker[] = []
+	// Track metadata by hash to merge duplicates
+	const metadataByHash = new Map<string, proto.Message.StickerPackMessage.ISticker>()
 
-	for (let i = 0; i < stickers.length; i++) {
-		const sticker = stickers[i]
-		if (!sticker) continue // Skip undefined stickers
+	// Process all stickers in parallel for performance
+	const processedStickers = await Promise.all(
+		stickers.map(async (sticker, i) => {
+			if (!sticker) return null // Skip undefined stickers
 
-		logger?.trace({ index: i }, 'Processing sticker')
+			// SECURITY FIX #8: Better error context for debugging
+			try {
+				logger?.trace({ index: i }, 'Processing sticker')
 
-		// Obtém buffer do sticker
-		const buffer = await mediaToBuffer(sticker.data, `sticker ${i + 1}`)
+				// Obtém buffer do sticker
+				const buffer = await mediaToBuffer(sticker.data, `sticker ${i + 1}`)
 
-		// Converte para WebP
-		const { webpBuffer, isAnimated } = await convertToWebP(buffer, logger)
+				// Converte para WebP
+				const { webpBuffer, isAnimated } = await convertToWebP(buffer, logger)
 
-		// Validação de tamanho (1MB hard limit, mas avisa se exceder recomendado)
-		const sizeKB = webpBuffer.length / 1024
-		const recommendedLimit = isAnimated ? 500 : 100
+				// Validação de tamanho (1MB hard limit, mas avisa se exceder recomendado)
+				const sizeKB = webpBuffer.length / 1024
+				const recommendedLimit = isAnimated ? 500 : 100
 
-		if (webpBuffer.length > 1024 * 1024) {
-			throw new Boom(
-				`Sticker ${i + 1} exceeds the 1MB hard limit (${sizeKB.toFixed(2)}KB). ` +
-					`Please compress or reduce quality.`,
-				{ statusCode: 400 }
-			)
-		}
+				if (webpBuffer.length > 1024 * 1024) {
+					throw new Boom(
+						`Sticker ${i + 1} exceeds the 1MB hard limit (${sizeKB.toFixed(2)}KB). ` +
+							`Please compress or reduce quality.`,
+						{ statusCode: 400 }
+					)
+				}
 
-		if (sizeKB > recommendedLimit) {
-			logger?.warn(
-				{ index: i, sizeKB, recommendedLimit, isAnimated },
-				`Sticker ${i + 1} exceeds WhatsApp recommended size (${recommendedLimit}KB). ` +
-					`This may cause slower sending or delivery issues.`
-			)
-		}
+				if (sizeKB > recommendedLimit) {
+					logger?.warn(
+						{ index: i, sizeKB, recommendedLimit, isAnimated },
+						`Sticker ${i + 1} exceeds WhatsApp recommended size (${recommendedLimit}KB). ` +
+							`This may cause slower sending or delivery issues.`
+					)
+				}
 
-		// Gera nome do arquivo: hash.webp (deduplicação automática)
-		const sha256Hash = generateSha256Hash(webpBuffer)
-		const fileName = `${sha256Hash}.webp`
+				// Gera nome do arquivo: hash.webp (deduplicação automática)
+				const sha256Hash = generateSha256Hash(webpBuffer)
+				const fileName = `${sha256Hash}.webp`
 
-		// Adiciona ao ZIP (se já existe, sobrescreve - deduplicação)
-		stickerData[fileName] = [new Uint8Array(webpBuffer), { level: 0 as 0 }]
+				logger?.trace(
+					{ index: i, fileName, sizeKB: sizeKB.toFixed(2), isAnimated },
+					'Sticker processed successfully'
+				)
 
-		// Metadata do sticker
-		stickerMetadata.push({
-			fileName,
-			isAnimated,
-			emojis: sticker.emojis || [],
-			accessibilityLabel: sticker.accessibilityLabel,
-			isLottie: false,
-			mimetype: 'image/webp'
+				return {
+					fileName,
+					webpBuffer,
+					isAnimated,
+					emojis: sticker.emojis || [],
+					accessibilityLabel: sticker.accessibilityLabel
+				}
+			} catch (error) {
+				// SECURITY FIX #8: Wrap errors with sticker context
+				throw new Boom(`Failed to process sticker ${i + 1}: ${(error as Error).message}`, {
+					statusCode: error instanceof Boom ? error.output.statusCode : 500,
+					data: { stickerIndex: i, originalError: error }
+				})
+			}
 		})
+	)
 
-		logger?.trace(
-			{ index: i, fileName, sizeKB: sizeKB.toFixed(2), isAnimated },
-			'Sticker processed successfully'
+	// Build stickerData and merge metadata for duplicates
+	let duplicateCount = 0
+	for (const result of processedStickers) {
+		if (!result) continue
+
+		const { fileName, webpBuffer, isAnimated, emojis, accessibilityLabel } = result
+
+		// SECURITY FIX #7: Check if this hash already exists (duplicate sticker)
+		const existingMetadata = metadataByHash.get(fileName)
+
+		if (existingMetadata) {
+			// Duplicate detected - merge metadata (combine emojis and labels)
+			duplicateCount++
+
+			// Merge emojis (deduplicate)
+			const mergedEmojis = Array.from(new Set([...existingMetadata.emojis!, ...emojis]))
+			existingMetadata.emojis = mergedEmojis
+
+			// Merge accessibility labels (concatenate with separator if both exist)
+			if (accessibilityLabel) {
+				if (existingMetadata.accessibilityLabel) {
+					existingMetadata.accessibilityLabel += ` / ${accessibilityLabel}`
+				} else {
+					existingMetadata.accessibilityLabel = accessibilityLabel
+				}
+			}
+
+			logger?.debug(
+				{ fileName, mergedEmojis, duplicateCount },
+				'Duplicate sticker detected - merged metadata'
+			)
+		} else {
+			// New sticker - add to ZIP and create metadata
+			stickerData[fileName] = [new Uint8Array(webpBuffer), { level: 0 as 0 }]
+
+			const metadata: proto.Message.StickerPackMessage.ISticker = {
+				fileName,
+				isAnimated,
+				emojis,
+				accessibilityLabel,
+				isLottie: false,
+				mimetype: 'image/webp'
+			}
+
+			metadataByHash.set(fileName, metadata)
+			stickerMetadata.push(metadata)
+		}
+	}
+
+	if (duplicateCount > 0) {
+		logger?.info(
+			{ duplicateCount, uniqueStickers: stickerMetadata.length },
+			`Removed ${duplicateCount} duplicate stickers via deduplication`
 		)
 	}
 
 	// 4. Processa cover image (tray icon)
-	logger?.trace('Processing cover image')
-	const coverBuffer = await mediaToBuffer(cover, 'cover image')
+	// SECURITY FIX #8: Error context for cover processing
+	let coverBuffer: Buffer
+	let coverWebP: Buffer
+	let coverFileName: string
 
-	// Converte cover para WebP e adiciona ao ZIP
-	const { webpBuffer: coverWebP } = await convertToWebP(coverBuffer, logger)
-	const coverFileName = `${stickerPackId}.webp`
-	stickerData[coverFileName] = [new Uint8Array(coverWebP), { level: 0 as 0 }]
+	try {
+		logger?.trace('Processing cover image')
+		coverBuffer = await mediaToBuffer(cover, 'cover image')
+
+		// Converte cover para WebP e adiciona ao ZIP
+		const result = await convertToWebP(coverBuffer, logger)
+		coverWebP = result.webpBuffer
+		coverFileName = `${stickerPackId}.webp`
+		stickerData[coverFileName] = [new Uint8Array(coverWebP), { level: 0 as 0 }]
+	} catch (error) {
+		throw new Boom(`Failed to process cover image: ${(error as Error).message}`, {
+			statusCode: error instanceof Boom ? error.output.statusCode : 500,
+			data: { originalError: error }
+		})
+	}
 
 	// 5. Cria ZIP (level 0 = sem compressão para velocidade)
-	const uniqueFiles = Object.keys(stickerData).length
-	logger?.trace({ totalFiles: uniqueFiles, includingCover: true }, 'Creating ZIP file')
+	// SECURITY FIX #8: Error context for ZIP creation
+	let zipBuffer: Buffer
+	let uniqueFiles: number
 
-	const zipBuffer = Buffer.from(zipSync(stickerData))
+	try {
+		uniqueFiles = Object.keys(stickerData).length
+		logger?.trace({ totalFiles: uniqueFiles, includingCover: true }, 'Creating ZIP file')
 
-	logger?.info({ zipSizeKB: (zipBuffer.length / 1024).toFixed(2) }, 'ZIP file created successfully')
+		zipBuffer = Buffer.from(zipSync(stickerData))
 
-	// Validação de tamanho total (30MB limit para segurança)
-	const MAX_PACK_SIZE = 30 * 1024 * 1024
-	if (zipBuffer.length > MAX_PACK_SIZE) {
-		throw new Boom(
-			`Total pack size exceeds ${MAX_PACK_SIZE / 1024 / 1024}MB limit. ` +
-				`Current size: ${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB. ` +
-				`Try compressing stickers or reducing pack size.`,
-			{ statusCode: 400 }
-		)
+		logger?.info({ zipSizeKB: (zipBuffer.length / 1024).toFixed(2) }, 'ZIP file created successfully')
+
+		// Validação de tamanho total (30MB limit para segurança)
+		const MAX_PACK_SIZE = 30 * 1024 * 1024
+		if (zipBuffer.length > MAX_PACK_SIZE) {
+			throw new Boom(
+				`Total pack size exceeds ${MAX_PACK_SIZE / 1024 / 1024}MB limit. ` +
+					`Current size: ${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB. ` +
+					`Try compressing stickers or reducing pack size.`,
+				{ statusCode: 400 }
+			)
+		}
+	} catch (error) {
+		throw new Boom(`Failed to create ZIP archive: ${(error as Error).message}`, {
+			statusCode: error instanceof Boom ? error.output.statusCode : 500,
+			data: { originalError: error }
+		})
 	}
 
 	// 6. Upload do ZIP criptografado
-	logger?.trace('Uploading encrypted sticker pack ZIP')
-	const stickerPackUpload = await uploadMedia(zipBuffer, 'sticker-pack')
+	// SECURITY FIX #8: Error context for sticker pack upload
+	let stickerPackUpload: Awaited<ReturnType<typeof uploadMedia>>
 
-	// 7. Gera thumbnail 252x252 JPEG
-	logger?.trace('Generating thumbnail (252x252 JPEG)')
-	const lib = await getImageProcessingLibrary()
-	let thumbnailBuffer: Buffer
-
-	if (!lib?.sharp) {
-		throw new Boom(
-			'Sharp library is required for thumbnail generation. Install with: yarn add sharp',
-			{ statusCode: 400 }
-		)
+	try {
+		logger?.trace('Uploading encrypted sticker pack ZIP')
+		stickerPackUpload = await uploadMedia(zipBuffer, 'sticker-pack')
+	} catch (error) {
+		throw new Boom(`Failed to upload sticker pack: ${(error as Error).message}`, {
+			statusCode: error instanceof Boom ? error.output.statusCode : 500,
+			data: { originalError: error }
+		})
 	}
 
-	thumbnailBuffer = await lib
-		.sharp(coverBuffer)
-		.resize(252, 252, { fit: 'cover', position: 'center' })
-		.jpeg({ quality: 85 })
-		.toBuffer()
+	// 7. Gera thumbnail 252x252 JPEG
+	// SECURITY FIX #8: Error context for thumbnail generation
+	let thumbnailBuffer: Buffer
 
-	logger?.trace({ thumbnailSizeKB: (thumbnailBuffer.length / 1024).toFixed(2) }, 'Thumbnail generated')
+	try {
+		logger?.trace('Generating thumbnail (252x252 JPEG)')
+		const lib = await getImageProcessingLibrary()
+
+		if (!lib?.sharp) {
+			throw new Boom(
+				'Sharp library is required for thumbnail generation. Install with: yarn add sharp',
+				{ statusCode: 400 }
+			)
+		}
+
+		thumbnailBuffer = await lib
+			.sharp(coverBuffer)
+			.resize(252, 252, { fit: 'cover', position: 'center' })
+			.jpeg({ quality: 85 })
+			.toBuffer()
+
+		logger?.trace({ thumbnailSizeKB: (thumbnailBuffer.length / 1024).toFixed(2) }, 'Thumbnail generated')
+	} catch (error) {
+		throw new Boom(`Failed to generate thumbnail: ${(error as Error).message}`, {
+			statusCode: error instanceof Boom ? error.output.statusCode : 500,
+			data: { originalError: error }
+		})
+	}
 
 	// 8. Upload do thumbnail (REUTILIZA mesma mediaKey - requerido pelo protocolo!)
-	logger?.trace('Uploading thumbnail with same mediaKey')
-	const thumbUpload = await uploadMedia(thumbnailBuffer, 'thumbnail-sticker-pack', {
-		mediaKey: stickerPackUpload.mediaKey // CRÍTICO: mesma chave!
-	})
+	// SECURITY FIX #8: Error context for thumbnail upload
+	let thumbUpload: Awaited<ReturnType<typeof uploadMedia>>
+
+	try {
+		logger?.trace('Uploading thumbnail with same mediaKey')
+		thumbUpload = await uploadMedia(thumbnailBuffer, 'thumbnail-sticker-pack', {
+			mediaKey: stickerPackUpload.mediaKey // CRÍTICO: mesma chave!
+		})
+	} catch (error) {
+		throw new Boom(`Failed to upload thumbnail: ${(error as Error).message}`, {
+			statusCode: error instanceof Boom ? error.output.statusCode : 500,
+			data: { originalError: error }
+		})
+	}
 
 	// 9. Monta mensagem protobuf
 	logger?.info(
