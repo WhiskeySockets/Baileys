@@ -858,12 +858,33 @@ export const makeSocket = (config: SocketConfig) => {
 	 * Returns cleanup function to remove event listener
 	 */
 	const startSessionTTL = () => {
+		/**
+		 * Cleanup flag - protected by atomic check-and-set in cleanup function
+		 *
+		 * THREAD SAFETY: This flag uses atomic check-and-set pattern to prevent
+		 * race conditions between:
+		 * - ttlTimer callback creating ttlGraceTimer after cleanup cleared timers
+		 * - Multiple cleanup calls (connectionHandler + cleanup function)
+		 *
+		 * CRITICAL: Prevents timer orphaning where ttlTimer expires and creates
+		 * ttlGraceTimer after cleanup has cleared ttlTimer, causing end() to be
+		 * called after socket cleanup is complete.
+		 */
+		let cleanedUp = false
+
 		const connectionHandler = (update: Partial<ConnectionState>) => {
 			if (update.connection === 'open') {
 				sessionStartTime = Date.now()
 
 				// PROTECTION 1: Long TTL (7 days)
 				ttlTimer = setTimeout(() => {
+					// PROTECTION: Check cleanup flag to prevent orphan timer creation
+					// If cleanup was called while ttlTimer was pending, abort immediately
+					if (cleanedUp) {
+						logger.debug('🕐 TTL timer fired but cleanup already called, aborting')
+						return
+					}
+
 					const duration = Date.now() - sessionStartTime!
 					const durationHours = Math.floor(duration / 1000 / 60 / 60)
 
@@ -876,7 +897,20 @@ export const makeSocket = (config: SocketConfig) => {
 					})
 
 					// PROTECTION 3: Graceful delay before cleanup (with proper cleanup)
+					// Check cleanup flag again before creating grace timer to prevent orphaning
+					if (cleanedUp) {
+						logger.debug('🕐 Cleanup called before grace timer creation, aborting')
+						return
+					}
+
 					ttlGraceTimer = setTimeout(() => {
+						// PROTECTION: Check cleanup flag before calling end()
+						// Prevents calling end() after socket cleanup is complete
+						if (cleanedUp) {
+							logger.debug('🕐 Grace timer fired but cleanup already called, aborting')
+							return
+						}
+
 						logger.info('🕐 Proceeding with TTL cleanup after grace period')
 						end(new Error('SESSION_TTL_EXPIRED'))
 					}, 5000) // 5s grace period
@@ -886,6 +920,14 @@ export const makeSocket = (config: SocketConfig) => {
 				logger.info(`🕐 Session TTL started (${ttlHours}h = 7 days)`)
 			} else if (update.connection === 'close') {
 				// PROTECTION 4: Cleanup ALL timers on disconnect
+				// Safe to check cleanedUp here - if cleanup function already ran,
+				// we return early to avoid redundant cleanup
+				if (cleanedUp) {
+					logger.debug('🕐 Session TTL already cleaned up via cleanup function')
+					return
+				}
+
+				// Clear all timers - cleanedUp flag in callbacks prevents orphaning
 				if (ttlTimer) {
 					clearTimeout(ttlTimer)
 					ttlTimer = undefined
@@ -895,14 +937,25 @@ export const makeSocket = (config: SocketConfig) => {
 					ttlGraceTimer = undefined
 				}
 				sessionStartTime = undefined
-				logger.info('🕐 Session TTL timers cleared')
+				logger.info('🕐 Session TTL timers cleared on disconnect')
 			}
 		}
 
 		ev.on('connection.update', connectionHandler)
 
-		// PROTECTION 5: Return cleanup function
+		// PROTECTION 5: Return cleanup function with atomic check-and-set
 		return () => {
+			// PROTECTION: Atomic check-and-set to prevent race conditions
+			// Flag is set IMMEDIATELY after check, BEFORE any operations
+			// This prevents:
+			// 1. Multiple cleanup calls (reentrancy guard)
+			// 2. Timer callbacks from creating new timers or calling end()
+			if (cleanedUp) {
+				logger.debug('🕐 Session TTL cleanup already called')
+				return
+			}
+			cleanedUp = true  // ← Set IMMEDIATELY to close race window
+
 			ev.off('connection.update', connectionHandler)
 			if (ttlTimer) {
 				clearTimeout(ttlTimer)
@@ -912,6 +965,7 @@ export const makeSocket = (config: SocketConfig) => {
 				clearTimeout(ttlGraceTimer)
 				ttlGraceTimer = undefined
 			}
+			logger.debug('🕐 Session TTL cleanup function executed')
 		}
 	}
 
