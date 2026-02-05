@@ -164,7 +164,13 @@ export class LIDMappingStore {
 
 	/**
 	 * Request coalescing Maps - deduplicates concurrent lookups
-	 * CRITICAL: These MUST be cleared in destroy() to prevent memory leaks
+	 *
+	 * MEMORY SAFETY: These MUST be cleared in destroy() to prevent memory leaks
+	 *
+	 * THREAD SAFETY: Protected by operationsInProgress counter.
+	 * - Maps are only cleared when operationsInProgress === 0
+	 * - Operations using coalesceRequest() MUST be wrapped with trackOperation()
+	 * - This ensures maps won't be cleared while coalesceRequest() is accessing them
 	 */
 	private readonly inflightLIDLookups = new Map<string, Promise<string | null>>()
 	private readonly inflightPNLookups = new Map<string, Promise<string | null>>()
@@ -1057,6 +1063,11 @@ export class LIDMappingStore {
 	 *
 	 * CRITICAL SAFETY: Always rechecks destroyed flag before returning cached Promise
 	 * to prevent use-after-free race condition (Fix #2 compatibility)
+	 *
+	 * THREAD SAFETY WARNING: This method accesses inflight Maps without explicit locking.
+	 * It is ONLY safe to call from operations wrapped with trackOperation(), which
+	 * ensures the maps won't be cleared during execution (via operationsInProgress counter).
+	 * DO NOT call directly from unwrapped operations.
 	 *
 	 * @param key - Lookup key (e.g., pnUser for LID lookup)
 	 * @param map - The inflight Map to use
