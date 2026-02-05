@@ -133,7 +133,7 @@ const convertToWebP = async (
 	}
 
 	logger?.trace('Converting image to WebP using Sharp')
-	const webpBuffer = await lib.sharp(buffer).webp().toBuffer()
+	const webpBuffer = await lib.sharp.default(buffer).webp().toBuffer()
 
 	return { webpBuffer, isAnimated: false }
 }
@@ -622,8 +622,8 @@ export const prepareStickerPackMessage = async (
 			)
 		}
 
-		thumbnailBuffer = await lib
-			.sharp(coverBuffer)
+		thumbnailBuffer = await lib.sharp
+			.default(coverBuffer)
 			.resize(252, 252, { fit: 'cover', position: 'center' })
 			.jpeg({ quality: 85 })
 			.toBuffer()
