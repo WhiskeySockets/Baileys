@@ -161,14 +161,14 @@ const generateSha256Hash = (buffer: Buffer): string => {
 
 /**
  * Converte WAMediaUpload para Buffer com limites de segurança
- * Suporta Buffer, Stream e URL
+ * Suporta Buffer, Stream, URL e Data URLs
  *
  * SECURITY: Implements protections against:
  * - Memory exhaustion (size limits)
  * - Slow read attacks (timeouts)
  * - Resource DoS (stream cleanup)
  *
- * @param media - Media input (Buffer, Stream or URL)
+ * @param media - Media input (Buffer, Stream, URL or Data URL)
  * @param context - Context for error messages (e.g., 'sticker', 'cover')
  * @param options - Optional size limit and timeout
  * @returns Buffer with media content
@@ -191,46 +191,36 @@ const mediaToBuffer = async (
 			})
 		}
 		return media
-	} else if (typeof media === 'object' && 'stream' in media) {
-		// SECURITY: Read stream with size limit and timeout
-		const chunks: Buffer[] = []
-		let totalSize = 0
-
-		const timeoutPromise = new Promise<never>((_, reject) =>
-			setTimeout(() => reject(new Boom(`${context} stream timeout after ${TIMEOUT}ms`, { statusCode: 408 })), TIMEOUT)
-		)
-
-		try {
-			await Promise.race([
-				(async () => {
-					for await (const chunk of media.stream) {
-						const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-						totalSize += buffer.length
-
-						// SECURITY: Check size limit
-						if (totalSize > MAX_SIZE) {
-							throw new Boom(
-								`${context} stream size (${(totalSize / 1024).toFixed(2)}KB) exceeds ${MAX_SIZE / 1024}KB limit`,
-								{ statusCode: 413 }
-							)
-						}
-
-						chunks.push(buffer)
-					}
-				})(),
-				timeoutPromise
-			])
-
-			return Buffer.concat(chunks)
-		} catch (error) {
-			// SECURITY: Cleanup on error
-			media.stream.destroy()
-			throw error
-		}
 	} else if (typeof media === 'object' && 'url' in media) {
-		// SECURITY: Download from URL with size limit and timeout
 		const url = media.url.toString()
 
+		// ENHANCEMENT: Support Data URLs (data:image/...)
+		if (url.startsWith('data:')) {
+			try {
+				const base64Data = url.split(',')[1]
+				if (!base64Data) {
+					throw new Boom(`Invalid data URL for ${context}: missing base64 data`, { statusCode: 400 })
+				}
+				const buffer = Buffer.from(base64Data, 'base64')
+
+				// SECURITY: Validate buffer size
+				if (buffer.length > MAX_SIZE) {
+					throw new Boom(
+						`${context} data URL size (${(buffer.length / 1024).toFixed(2)}KB) exceeds ${MAX_SIZE / 1024}KB limit`,
+						{ statusCode: 413 }
+					)
+				}
+
+				return buffer
+			} catch (error) {
+				if (error instanceof Boom) throw error
+				throw new Boom(`Failed to parse data URL for ${context}: ${(error as Error).message}`, {
+					statusCode: 400
+				})
+			}
+		}
+
+		// HTTP/HTTPS URLs - download with size limit and timeout
 		const controller = new AbortController()
 		const timeoutId = setTimeout(() => controller.abort(), TIMEOUT)
 
@@ -281,6 +271,42 @@ const mediaToBuffer = async (
 			return Buffer.concat(chunks)
 		} finally {
 			clearTimeout(timeoutId)
+		}
+	} else if (typeof media === 'object' && 'stream' in media) {
+		// SECURITY: Read stream with size limit and timeout
+		const chunks: Buffer[] = []
+		let totalSize = 0
+
+		const timeoutPromise = new Promise<never>((_, reject) =>
+			setTimeout(() => reject(new Boom(`${context} stream timeout after ${TIMEOUT}ms`, { statusCode: 408 })), TIMEOUT)
+		)
+
+		try {
+			await Promise.race([
+				(async () => {
+					for await (const chunk of media.stream) {
+						const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+						totalSize += buffer.length
+
+						// SECURITY: Check size limit
+						if (totalSize > MAX_SIZE) {
+							throw new Boom(
+								`${context} stream size (${(totalSize / 1024).toFixed(2)}KB) exceeds ${MAX_SIZE / 1024}KB limit`,
+								{ statusCode: 413 }
+							)
+						}
+
+						chunks.push(buffer)
+					}
+				})(),
+				timeoutPromise
+			])
+
+			return Buffer.concat(chunks)
+		} catch (error) {
+			// SECURITY: Cleanup on error
+			media.stream.destroy()
+			throw error
 		}
 	} else {
 		throw new Boom(`Invalid ${context} data format`, { statusCode: 400 })
@@ -437,23 +463,72 @@ export const prepareStickerPackMessage = async (
 				const buffer = await mediaToBuffer(sticker.data, `sticker ${i + 1}`)
 
 				// Converte para WebP
-				const { webpBuffer, isAnimated } = await convertToWebP(buffer, logger)
+				let { webpBuffer, isAnimated } = await convertToWebP(buffer, logger)
 
-				// Validação de tamanho (1MB hard limit, mas avisa se exceder recomendado)
-				const sizeKB = webpBuffer.length / 1024
+				// ENHANCEMENT: Auto-compression if exceeds 1MB (try quality 70, then 50)
+				const MAX_STICKER_SIZE = 1024 * 1024 // 1MB
 				const recommendedLimit = isAnimated ? 500 : 100
 
-				if (webpBuffer.length > 1024 * 1024) {
-					throw new Boom(
-						`Sticker ${i + 1} exceeds the 1MB hard limit (${sizeKB.toFixed(2)}KB). ` +
-							`Please compress or reduce quality.`,
-						{ statusCode: 400 }
+				if (webpBuffer.length > MAX_STICKER_SIZE) {
+					logger?.warn(
+						{ index: i, sizeKB: (webpBuffer.length / 1024).toFixed(2) },
+						`Sticker ${i + 1} exceeds 1MB, attempting compression...`
 					)
+
+					const lib = await getImageProcessingLibrary()
+
+					if (lib?.sharp) {
+						// Try quality 70
+						try {
+							const compressed70 = await lib.sharp.default(buffer).webp({ quality: 70 }).toBuffer()
+
+							if (compressed70.length <= MAX_STICKER_SIZE) {
+								webpBuffer = compressed70
+								logger?.info(
+									{ index: i, originalKB: (webpBuffer.length / 1024).toFixed(2), compressedKB: (compressed70.length / 1024).toFixed(2) },
+									`Sticker ${i + 1} compressed successfully (quality 70)`
+								)
+							} else {
+								// Try quality 50
+								const compressed50 = await lib.sharp.default(buffer).webp({ quality: 50 }).toBuffer()
+
+								if (compressed50.length <= MAX_STICKER_SIZE) {
+									webpBuffer = compressed50
+									logger?.info(
+										{ index: i, originalKB: (webpBuffer.length / 1024).toFixed(2), compressedKB: (compressed50.length / 1024).toFixed(2) },
+										`Sticker ${i + 1} compressed successfully (quality 50)`
+									)
+								} else {
+									// Still too large
+									throw new Boom(
+										`Sticker ${i + 1} still exceeds 1MB after compression (${(compressed50.length / 1024).toFixed(2)}KB). ` +
+											`Please use a smaller image.`,
+										{ statusCode: 400 }
+									)
+								}
+							}
+						} catch (compressionError) {
+							// If compression fails, throw error about size
+							throw new Boom(
+								`Sticker ${i + 1} exceeds 1MB and compression failed: ${(compressionError as Error).message}`,
+								{ statusCode: 400 }
+							)
+						}
+					} else {
+						// No Sharp available, can't compress
+						throw new Boom(
+							`Sticker ${i + 1} exceeds the 1MB hard limit (${(webpBuffer.length / 1024).toFixed(2)}KB). ` +
+								`Sharp library required for auto-compression. Install with: yarn add sharp`,
+							{ statusCode: 400 }
+						)
+					}
 				}
 
-				if (sizeKB > recommendedLimit) {
+				// Check recommended size (warning only)
+				const finalSizeKB = webpBuffer.length / 1024
+				if (finalSizeKB > recommendedLimit) {
 					logger?.warn(
-						{ index: i, sizeKB, recommendedLimit, isAnimated },
+						{ index: i, sizeKB: finalSizeKB, recommendedLimit, isAnimated },
 						`Sticker ${i + 1} exceeds WhatsApp recommended size (${recommendedLimit}KB). ` +
 							`This may cause slower sending or delivery issues.`
 					)
@@ -464,7 +539,7 @@ export const prepareStickerPackMessage = async (
 				const fileName = `${sha256Hash}.webp`
 
 				logger?.trace(
-					{ index: i, fileName, sizeKB: sizeKB.toFixed(2), isAnimated },
+					{ index: i, fileName, sizeKB: finalSizeKB.toFixed(2), isAnimated },
 					'Sticker processed successfully'
 				)
 
