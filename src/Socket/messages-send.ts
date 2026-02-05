@@ -1374,6 +1374,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				: message.audioMessage ? 'audio'
 				: message.documentMessage ? 'document'
 				: message.stickerMessage ? 'sticker'
+				: message.stickerPackMessage ? 'sticker_pack'
 				: message.reactionMessage ? 'reaction'
 				: 'other'
 			recordMessageSent(msgType)
