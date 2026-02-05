@@ -153,6 +153,13 @@ export class LIDMappingStore {
 	private readonly config: LIDMappingConfig
 	private destroyed: boolean = false
 
+	/**
+	 * Operation counter for safe resource cleanup
+	 * Tracks number of operations currently in progress to prevent UAF in destroy()
+	 * Incremented at operation start, decremented at operation end
+	 */
+	private operationsInProgress: number = 0
+
 	private pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 
 	/**
@@ -310,8 +317,11 @@ export class LIDMappingStore {
 	 */
 	async storeLIDPNMappings(pairs: LIDMapping[]): Promise<{ stored: number; skipped: number; errors: number }> {
 		this.checkDestroyed()
-		this.stats.totalOperations++
-		this.stats.lastOperationAt = Date.now()
+
+		// Track operation to prevent UAF during destroy()
+		return this.trackOperation(async () => {
+			this.stats.totalOperations++
+			this.stats.lastOperationAt = Date.now()
 
 		const result = { stored: 0, skipped: 0, errors: 0 }
 
@@ -444,10 +454,11 @@ export class LIDMappingStore {
 			}
 		}
 
-		this.logger.trace({ result, totalPairs: pairs.length, cacheMisses: cacheMissPnUsers.length }, 'Stored LID-PN mappings with batch optimization')
-		this.recordMetrics('store', result.stored)
+			this.logger.trace({ result, totalPairs: pairs.length, cacheMisses: cacheMissPnUsers.length }, 'Stored LID-PN mappings with batch optimization')
+			this.recordMetrics('store', result.stored)
 
-		return result
+			return result
+		}) // End trackOperation
 	}
 
 	/**
@@ -471,10 +482,13 @@ export class LIDMappingStore {
 	 */
 	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
 		this.checkDestroyed()
-		this.stats.totalOperations++
-		this.stats.lastOperationAt = Date.now()
 
-		const usyncFetch: { [_: string]: number[] } = {}
+		// Track operation to prevent UAF during destroy()
+		return this.trackOperation(async () => {
+			this.stats.totalOperations++
+			this.stats.lastOperationAt = Date.now()
+
+			const usyncFetch: { [_: string]: number[] } = {}
 		const successfulPairs: { [_: string]: LIDMapping } = {}
 		const failedPns = new Set<string>()
 		const pendingByPnUser = new Map<string, Array<{ pn: string; decoded: ReturnType<typeof jidDecode> }>>()
@@ -609,8 +623,9 @@ export class LIDMappingStore {
 			)
 		}
 
-		this.recordMetrics('get-lid', Object.keys(successfulPairs).length)
-		return Object.keys(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
+			this.recordMetrics('get-lid', Object.keys(successfulPairs).length)
+			return Object.keys(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
+		}) // End trackOperation
 	}
 
 	/**
@@ -630,10 +645,13 @@ export class LIDMappingStore {
 	 */
 	async getPNsForLIDs(lids: string[]): Promise<LIDMapping[] | null> {
 		this.checkDestroyed()
-		this.stats.totalOperations++
-		this.stats.lastOperationAt = Date.now()
 
-		const successfulPairs: { [_: string]: LIDMapping } = {}
+		// Track operation to prevent UAF during destroy()
+		return this.trackOperation(async () => {
+			this.stats.totalOperations++
+			this.stats.lastOperationAt = Date.now()
+
+			const successfulPairs: { [_: string]: LIDMapping } = {}
 		const failedLids = new Set<string>()
 		const pendingByLidUser = new Map<string, Array<{ lid: string; decoded: ReturnType<typeof jidDecode> }>>()
 
@@ -725,8 +743,9 @@ export class LIDMappingStore {
 			)
 		}
 
-		this.recordMetrics('get-pn', Object.keys(successfulPairs).length)
-		return Object.keys(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
+			this.recordMetrics('get-pn', Object.keys(successfulPairs).length)
+			return Object.keys(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
+		}) // End trackOperation
 	}
 
 	/**
@@ -735,25 +754,28 @@ export class LIDMappingStore {
 	async hasMappingForPN(pn: string): Promise<boolean> {
 		this.checkDestroyed()
 
-		if (!isAnyPnUser(pn)) return false
+		// Track operation to prevent UAF during destroy()
+		return this.trackOperation(async () => {
+			if (!isAnyPnUser(pn)) return false
 
-		const decoded = jidDecode(pn)
-		if (!decoded) return false
+			const decoded = jidDecode(pn)
+			if (!decoded) return false
 
-		const pnUser = decoded.user
+			const pnUser = decoded.user
 
-		// Check cache first
-		if (this.mappingCache.has(`pn:${pnUser}`)) {
-			return true
-		}
+			// Check cache first
+			if (this.mappingCache.has(`pn:${pnUser}`)) {
+				return true
+			}
 
-		// Check database
-		try {
-			const stored = await this.keys.get('lid-mapping', [pnUser])
-			return !!stored[pnUser]
-		} catch {
-			return false
-		}
+			// Check database
+			try {
+				const stored = await this.keys.get('lid-mapping', [pnUser])
+				return !!stored[pnUser]
+			} catch {
+				return false
+			}
+		}) // End trackOperation
 	}
 
 	/**
@@ -765,22 +787,25 @@ export class LIDMappingStore {
 	async deleteMappingFromCache(pn: string): Promise<boolean> {
 		this.checkDestroyed()
 
-		if (!isAnyPnUser(pn)) return false
+		// Track operation to prevent UAF during destroy()
+		return this.trackOperation(async () => {
+			if (!isAnyPnUser(pn)) return false
 
-		const decoded = jidDecode(pn)
-		if (!decoded) return false
+			const decoded = jidDecode(pn)
+			if (!decoded) return false
 
-		const pnUser = decoded.user
-		const lidUser = this.mappingCache.get(`pn:${pnUser}`)
+			const pnUser = decoded.user
+			const lidUser = this.mappingCache.get(`pn:${pnUser}`)
 
-		// Remove from cache only - persistent storage maintains history
-		this.mappingCache.delete(`pn:${pnUser}`)
-		if (lidUser) {
-			this.mappingCache.delete(`lid:${lidUser}`)
-		}
+			// Remove from cache only - persistent storage maintains history
+			this.mappingCache.delete(`pn:${pnUser}`)
+			if (lidUser) {
+				this.mappingCache.delete(`lid:${lidUser}`)
+			}
 
-		this.logger.debug({ pnUser }, 'Mapping deleted from cache')
-		return true
+			this.logger.debug({ pnUser }, 'Mapping deleted from cache')
+			return true
+		}) // End trackOperation
 	}
 
 	/**
@@ -798,9 +823,14 @@ export class LIDMappingStore {
 	 * Destroy the store and clean up resources
 	 * CRITICAL: Call this when done to prevent memory leaks
 	 *
-	 * IMPORTANT: Sets destroyed=true immediately to prevent new operations,
-	 * then clears all resources including inflight request Maps to prevent
-	 * memory leaks from pending Promises.
+	 * IMPORTANT BEHAVIOR (following auth-utils.ts pattern):
+	 * - Always sets destroyed=true to prevent NEW operations
+	 * - If operations are active (operationsInProgress > 0), returns early WITHOUT destroying resources
+	 * - This creates intentional temporary inconsistent state:
+	 *   * destroyed=true (new operations rejected)
+	 *   * resources exist (active operations complete safely)
+	 *   * resources cleaned up by GC after active operations finish
+	 * - If no active operations, destroys resources immediately
 	 */
 	destroy(): void {
 		if (this.destroyed) {
@@ -808,8 +838,24 @@ export class LIDMappingStore {
 			return
 		}
 
-		this.logger.debug('Destroying LIDMappingStore')
+		// CRITICAL: Set destroyed flag FIRST to prevent new operations
+		// Note: Flag is set even if early return occurs (see doc above)
 		this.destroyed = true
+		this.logger.debug('🗑️ Cleaning up LIDMappingStore resources')
+
+		// Check if there are operations in progress
+		if (this.operationsInProgress > 0) {
+			this.logger.warn(
+				{ operationsInProgress: this.operationsInProgress },
+				'⚠️ Cannot destroy LIDMappingStore - operations still in progress. Resources will be cleaned by GC after completion.'
+			)
+			// Return early WITHOUT destroying resources
+			// This allows active operations to complete safely
+			return
+		}
+
+		// No active operations - safe to destroy resources immediately
+		this.logger.debug('No operations in progress - destroying resources immediately')
 
 		// Clear cache
 		this.mappingCache.clear()
@@ -819,7 +865,7 @@ export class LIDMappingStore {
 		this.inflightLIDLookups.clear()
 		this.inflightPNLookups.clear()
 
-		this.logger.debug('LIDMappingStore destroyed successfully')
+		this.logger.debug('✅ LIDMappingStore destroyed successfully')
 	}
 
 	// ========================================================================
@@ -828,6 +874,9 @@ export class LIDMappingStore {
 
 	/**
 	 * Check if store has been destroyed and throw if so
+	 *
+	 * NOTE: This is a fail-fast guard with TOCTOU window.
+	 * Critical operations must use trackOperation() wrapper for atomic safety.
 	 */
 	private checkDestroyed(): void {
 		if (this.destroyed) {
@@ -835,6 +884,37 @@ export class LIDMappingStore {
 				'LIDMappingStore has been destroyed',
 				LIDMappingErrorCode.DESTROYED
 			)
+		}
+	}
+
+	/**
+	 * Track operation lifecycle for safe resource cleanup
+	 * Wraps operation execution with counter increment/decrement
+	 *
+	 * CRITICAL SAFETY: Prevents UAF by tracking active operations.
+	 * destroy() will NOT clean resources if operations are in progress.
+	 *
+	 * @param operation - Async operation to execute
+	 * @returns Promise with operation result
+	 */
+	private async trackOperation<T>(operation: () => Promise<T>): Promise<T> {
+		// Increment counter BEFORE starting operation
+		this.operationsInProgress++
+
+		try {
+			// Recheck destroyed after incrementing counter
+			// This ensures we fail fast if destroyed between checkDestroyed() and here
+			if (this.destroyed) {
+				throw new LIDMappingError(
+					'LIDMappingStore has been destroyed',
+					LIDMappingErrorCode.DESTROYED
+				)
+			}
+
+			return await operation()
+		} finally {
+			// ALWAYS decrement counter, even on error
+			this.operationsInProgress--
 		}
 	}
 
