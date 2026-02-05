@@ -2,7 +2,6 @@ import NodeCache from '@cacheable/node-cache'
 import { AsyncLocalStorage } from 'async_hooks'
 import { Mutex } from 'async-mutex'
 import { randomBytes } from 'crypto'
-import PQueue from 'p-queue'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
@@ -46,57 +45,50 @@ export function makeCacheableSignalKeyStore(
 			deleteOnExpire: true
 		})
 
-	// Mutex for protecting cache operations
-	const cacheMutex = new Mutex()
-
 	function getUniqueId(type: string, id: string) {
 		return `${type}.${id}`
 	}
 
 	return {
 		async get(type, ids) {
-			return cacheMutex.runExclusive(async () => {
-				const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
-				const idsToFetch: string[] = []
+			const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
+			const idsToFetch: string[] = []
 
-				for (const id of ids) {
-					const item = (await cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))) as any
-					if (typeof item !== 'undefined') {
+			for (const id of ids) {
+				const item = (await cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))) as any
+				if (typeof item !== 'undefined') {
+					data[id] = item
+				} else {
+					idsToFetch.push(id)
+				}
+			}
+
+			if (idsToFetch.length) {
+				logger?.trace({ items: idsToFetch.length }, 'loading from store')
+				const fetched = await store.get(type, idsToFetch)
+				for (const id of idsToFetch) {
+					const item = fetched[id]
+					if (item) {
 						data[id] = item
-					} else {
-						idsToFetch.push(id)
+						// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+						await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
 					}
 				}
+			}
 
-				if (idsToFetch.length) {
-					logger?.trace({ items: idsToFetch.length }, 'loading from store')
-					const fetched = await store.get(type, idsToFetch)
-					for (const id of idsToFetch) {
-						const item = fetched[id]
-						if (item) {
-							data[id] = item
-							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
-						}
-					}
-				}
-
-				return data
-			})
+			return data
 		},
 		async set(data) {
-			return cacheMutex.runExclusive(async () => {
-				let keys = 0
-				for (const type in data) {
-					for (const id in data[type as keyof SignalDataTypeMap]) {
-						await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
-						keys += 1
-					}
+			let keys = 0
+			for (const type in data) {
+				for (const id in data[type as keyof SignalDataTypeMap]) {
+					await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+					keys += 1
 				}
+			}
 
-				logger?.trace({ keys }, 'updated cache')
-				await store.set(data)
-			})
+			logger?.trace({ keys }, 'updated cache')
+			await store.set(data)
 		},
 		async clear() {
 			await cache.flushAll()
@@ -119,8 +111,8 @@ export const addTransactionCapability = (
 ): SignalKeyStoreWithTransaction => {
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
 
-	// Queues for concurrency control (keyed by signal data type - bounded set)
-	const keyQueues = new Map<string, PQueue>()
+	// Mutexes for concurrency control (keyed by signal data type - bounded set)
+	const keyMutexes = new Map<string, Mutex>()
 
 	// Transaction mutexes with reference counting for cleanup
 	const txMutexes = new Map<string, Mutex>()
@@ -130,14 +122,14 @@ export const addTransactionCapability = (
 	const preKeyManager = new PreKeyManager(state, logger)
 
 	/**
-	 * Get or create a queue for a specific key type
+	 * Get or create a mutex for a specific key type
 	 */
-	function getQueue(key: string): PQueue {
-		if (!keyQueues.has(key)) {
-			keyQueues.set(key, new PQueue({ concurrency: 1 }))
+	function getKeyMutex(key: string): Mutex {
+		if (!keyMutexes.has(key)) {
+			keyMutexes.set(key, new Mutex())
 		}
 
-		return keyQueues.get(key)!
+		return keyMutexes.get(key)!
 	}
 
 	/**
@@ -253,7 +245,7 @@ export const addTransactionCapability = (
 			const ctx = txStorage.getStore()
 
 			if (!ctx) {
-				// No transaction - direct write with queue protection
+				// No transaction - direct write with mutex protection
 				const types = Object.keys(data)
 
 				// Process pre-keys with validation
@@ -264,10 +256,10 @@ export const addTransactionCapability = (
 					}
 				}
 
-				// Write all data in parallel
+				// Write all data in parallel (each type protected by its own mutex)
 				await Promise.all(
 					types.map(type =>
-						getQueue(type).add(async () => {
+						getKeyMutex(type).runExclusive(async () => {
 							const typeData = { [type]: data[type as keyof SignalDataTypeMap] } as SignalDataSet
 							await state.set(typeData)
 						})
