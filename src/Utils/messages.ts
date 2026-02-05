@@ -47,6 +47,7 @@ import {
 	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
+import { prepareStickerPackMessage } from './sticker-pack.js'
 import { shouldIncludeReportingToken } from './reporting-utils'
 
 type ExtractByKey<T, K extends PropertyKey> = T extends Record<K, any> ? T : never
@@ -1493,6 +1494,16 @@ export const generateWAMessageContent = async (
 		}
 	} else if (hasNonNullishProperty(message, 'requestPhoneNumber')) {
 		m.requestPhoneNumberMessage = {}
+	} else if (hasNonNullishProperty(message, 'stickerPack')) {
+		// Prepare sticker pack message (3-30 stickers per WhatsApp official spec)
+		options.logger?.info('Generating sticker pack message')
+
+		const stickerPackMessage = await prepareStickerPackMessage(message.stickerPack, {
+			upload: options.upload,
+			logger: options.logger
+		})
+
+		m.stickerPackMessage = stickerPackMessage
 	} else if (hasNonNullishProperty(message, 'limitSharing')) {
 		m.protocolMessage = {
 			type: proto.Message.ProtocolMessage.Type.LIMIT_SHARING,

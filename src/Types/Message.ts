@@ -39,6 +39,59 @@ import type { ILogger } from '../Utils/logger'
 export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
+
+/**
+ * Individual sticker in a sticker pack
+ */
+export type Sticker = {
+	/** Buffer, Stream or URL of the sticker image (will be converted to WebP if needed) */
+	data: WAMediaUpload
+	/** Array of emojis associated with this sticker (max 3 recommended per WhatsApp standards) */
+	emojis?: string[]
+	/** Accessibility label for screen readers (max 125 chars for static, 255 for animated) */
+	accessibilityLabel?: string
+}
+
+/**
+ * Sticker Pack message - send a complete pack of stickers
+ *
+ * Follows WhatsApp official specifications:
+ * - 3-30 stickers per pack (enforced)
+ * - WebP format (auto-converted)
+ * - Max 100KB per static sticker, 500KB per animated (recommended, not enforced)
+ * - Either all static OR all animated (recommended)
+ *
+ * @example
+ * ```typescript
+ * await sock.sendMessage(jid, {
+ *   stickerPack: {
+ *     name: 'My Awesome Pack',
+ *     publisher: 'Your Name',
+ *     description: 'Cool stickers collection',
+ *     cover: Buffer.from(...), // or URL or Stream
+ *     stickers: [
+ *       { data: Buffer.from(...), emojis: ['😀', '😃'] },
+ *       { data: 'https://example.com/sticker.webp', emojis: ['😎'] }
+ *     ]
+ *   }
+ * })
+ * ```
+ */
+export type StickerPack = {
+	/** Array of stickers (minimum 3, maximum 30 per WhatsApp official spec) */
+	stickers: Sticker[]
+	/** Cover/tray icon for the pack (will be auto-resized to 252x252 JPEG) */
+	cover: WAMediaUpload
+	/** Pack name (max 128 characters) */
+	name: string
+	/** Publisher/author name (max 128 characters) */
+	publisher: string
+	/** Optional pack description */
+	description?: string
+	/** Optional custom pack ID (auto-generated if omitted) */
+	packId?: string
+}
+
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
 
@@ -817,6 +870,44 @@ export type AnyRegularMessageContent = (
 			 * @internal Used internally by generateWAMessage
 			 */
 			album: AlbumMessageOptions
+	  }
+	| {
+			/**
+			 * Sticker Pack - Send a complete pack of stickers (3-30 stickers)
+			 *
+			 * The pack will appear in the recipient's sticker tray, similar to official sticker packs.
+			 * All stickers are automatically converted to WebP format if needed.
+			 *
+			 * @example
+			 * ```typescript
+			 * import { readFileSync } from 'fs'
+			 *
+			 * await sock.sendMessage(jid, {
+			 *   stickerPack: {
+			 *     name: 'Emoji Pack',
+			 *     publisher: 'InfiniteAPI',
+			 *     description: 'Fun emoji stickers',
+			 *     cover: readFileSync('./pack-cover.png'),
+			 *     stickers: [
+			 *       { data: readFileSync('./sticker1.webp'), emojis: ['😀'] },
+			 *       { data: readFileSync('./sticker2.png'), emojis: ['😎', '🔥'] },
+			 *       { data: { url: 'https://example.com/sticker3.webp' }, emojis: ['🎉'] }
+			 *     ]
+			 *   }
+			 * })
+			 * ```
+			 *
+			 * **Requirements:**
+			 * - `fflate` package (installed automatically)
+			 * - `sharp` package for image processing: `yarn add sharp`
+			 *
+			 * **Specifications (WhatsApp Official):**
+			 * - Minimum 3 stickers, maximum 30 per pack
+			 * - Recommended: 100KB per static sticker, 500KB per animated
+			 * - WebP format (auto-converted from PNG/JPG/etc)
+			 * - Best practice: All stickers either static OR animated, not mixed
+			 */
+			stickerPack: StickerPack
 	  }
 	| SharePhoneNumber
 	| RequestPhoneNumber
