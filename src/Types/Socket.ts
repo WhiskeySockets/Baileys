@@ -7,6 +7,18 @@ import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
 import type { SignalRepositoryWithLIDStore } from './Signal'
 
+/**
+ * Represents a dispatcher for the fetch API, primarily for use with Node.js's undici.
+ */
+export type FetchDispatcher = object
+
+/**
+ * Extended RequestInit that includes undici's dispatcher property for Node.js environments.
+ */
+export interface CustomRequestInit extends RequestInit {
+	dispatcher?: FetchDispatcher
+}
+
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
 
@@ -50,8 +62,12 @@ export type SocketConfig = {
 	version: WAVersion
 	/** override browser config */
 	browser: WABrowserDescription
-	/** agent used for fetch requests -- uploading/downloading media */
-	fetchAgent?: Agent
+	/**
+	 * A dispatcher for all HTTP requests (media uploads/downloads, etc.).
+	 * Provide an `undici` dispatcher, such as `ProxyAgent`.
+	 * @deprecated Use `options.dispatcher` instead for consistency across all HTTP operations
+	 */
+	fetchAgent?: FetchDispatcher
 	/** should the QR be printed in the terminal
 	 * @deprecated This feature has been removed
 	 */
@@ -131,7 +147,7 @@ export type SocketConfig = {
 	}
 
 	/** options for HTTP fetch requests */
-	options: RequestInit
+	options: CustomRequestInit
 	/**
 	 * fetch a message from your store
 	 * implement this so that messages failed to send
