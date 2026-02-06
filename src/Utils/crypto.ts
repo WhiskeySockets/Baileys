@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import * as curve from 'libsignal/src/curve'
+import { calculateAgreement, calculateSignature, generateKeyPair, verifySignature } from 'whatsapp-rust-bridge'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
 export { md5, hkdf } from 'whatsapp-rust-bridge'
@@ -13,7 +13,7 @@ export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) =>
 
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
-		const { pubKey, privKey } = curve.generateKeyPair()
+		const { pubKey, privKey } = generateKeyPair()
 		return {
 			private: Buffer.from(privKey),
 			// remove version byte
@@ -21,13 +21,13 @@ export const Curve = {
 		}
 	},
 	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array) => {
-		const shared = curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
+		const shared = calculateAgreement(generateSignalPubKey(publicKey), privateKey)
 		return Buffer.from(shared)
 	},
-	sign: (privateKey: Uint8Array, buf: Uint8Array) => curve.calculateSignature(privateKey, buf),
+	sign: (privateKey: Uint8Array, buf: Uint8Array) => calculateSignature(privateKey, buf),
 	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
 		try {
-			curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
+			verifySignature(generateSignalPubKey(pubKey), message, signature)
 			return true
 		} catch (error) {
 			return false
