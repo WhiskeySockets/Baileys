@@ -102,7 +102,7 @@ export const shouldIncludeReportingToken = (message: proto.IMessage): boolean =>
 	!message.encEventResponseMessage &&
 	!message.pollUpdateMessage
 
-const generateMsgSecretKey = async (
+const generateMsgSecretKey = (
 	modificationType: string,
 	origMsgId: string,
 	origMsgSender: string,
@@ -321,7 +321,7 @@ export const getMessageReportingToken = async (
 	const from = key.fromMe ? key.remoteJid! : key.participant || key.remoteJid!
 	const to = key.fromMe ? key.participant || key.remoteJid! : key.remoteJid!
 
-	const reportingSecret = await generateMsgSecretKey(ENC_SECRET_REPORT_TOKEN, key.id, from, to, msgSecret)
+	const reportingSecret = generateMsgSecretKey(ENC_SECRET_REPORT_TOKEN, key.id, from, to, msgSecret)
 
 	const content = extractReportingTokenContent(msgProtobuf, compiledReportingFields)
 	if (!content || content.length === 0) {

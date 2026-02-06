@@ -824,7 +824,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				)
 				const random = randomBytes(32)
 				const linkCodeSalt = randomBytes(32)
-				const linkCodePairingExpanded = await hkdf(companionSharedKey, 32, {
+				const linkCodePairingExpanded = hkdf(companionSharedKey, 32, {
 					salt: linkCodeSalt,
 					info: 'link_code_pairing_key_bundle_encryption_key'
 				})
@@ -838,7 +838,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
 				const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 				const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
-				authState.creds.advSecretKey = (await hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
+				authState.creds.advSecretKey = Buffer.from(hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
 				await query({
 					tag: 'iq',
 					attrs: {
