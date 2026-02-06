@@ -119,10 +119,11 @@ export function sha256(buffer: Buffer) {
 	return createHash('sha256').update(buffer).digest()
 }
 
+const TEXT_ENCODER = new TextEncoder()
+
 export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): Promise<Buffer> {
 	// Convert inputs to formats Web Crypto API can work with
-	const encoder = new TextEncoder()
-	const pairingCodeBuffer = encoder.encode(pairingCode)
+	const pairingCodeBuffer = TEXT_ENCODER.encode(pairingCode)
 	const saltBuffer = new Uint8Array(salt instanceof Uint8Array ? salt : new Uint8Array(salt))
 
 	// Import the pairing code as key material

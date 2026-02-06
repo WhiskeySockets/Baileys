@@ -41,6 +41,7 @@ import {
 	assertNodeErrorFree,
 	type BinaryNode,
 	binaryNodeToString,
+	contentToString,
 	encodeBinaryNode,
 	getAllBinaryNodeChildren,
 	getBinaryNodeChild,
@@ -631,6 +632,13 @@ export const makeSocket = (config: SocketConfig) => {
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
 
+		// Flush any buffered signal store writes before closing
+		try {
+			await authState.keys.flush?.()
+		} catch (err) {
+			logger.error({ err }, 'failed to flush signal store on close')
+		}
+
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')
@@ -882,7 +890,7 @@ export const makeSocket = (config: SocketConfig) => {
 				return
 			}
 
-			const ref = (refNode.content as Buffer).toString('utf-8')
+			const ref = contentToString(refNode.content)
 			const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
 
 			ev.emit('connection.update', { qr })

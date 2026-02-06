@@ -53,17 +53,37 @@ export const jidEncode = (user: string | number | null, server: JidServer, devic
 }
 
 export const jidDecode = (jid: string | undefined): FullJid | undefined => {
-	// todo: investigate how to implement hosted ids in this case
-	const sepIdx = typeof jid === 'string' ? jid.indexOf('@') : -1
+	if (typeof jid !== 'string') {
+		return undefined
+	}
+
+	const sepIdx = jid.indexOf('@')
 	if (sepIdx < 0) {
 		return undefined
 	}
 
-	const server = jid!.slice(sepIdx + 1)
-	const userCombined = jid!.slice(0, sepIdx)
+	const server = jid.slice(sepIdx + 1)
+	const userCombined = jid.slice(0, sepIdx)
 
-	const [userAgent, device] = userCombined.split(':')
-	const [user, agent] = userAgent!.split('_')
+	let user: string
+	let agent: number | undefined
+	let device: number | undefined
+
+	const colonIdx = userCombined.indexOf(':')
+	if (colonIdx >= 0) {
+		user = userCombined.slice(0, colonIdx)
+		const parsed = parseInt(userCombined.slice(colonIdx + 1), 10)
+		device = Number.isFinite(parsed) ? parsed : undefined
+	} else {
+		user = userCombined
+	}
+
+	const underscoreIdx = user.indexOf('_')
+	if (underscoreIdx >= 0) {
+		const parsed = parseInt(user.slice(underscoreIdx + 1), 10)
+		agent = Number.isFinite(parsed) ? parsed : undefined
+		user = user.slice(0, underscoreIdx)
+	}
 
 	let domainType = WAJIDDomains.WHATSAPP
 	if (server === 'lid') {
@@ -73,14 +93,14 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	} else if (server === 'hosted.lid') {
 		domainType = WAJIDDomains.HOSTED_LID
 	} else if (agent) {
-		domainType = parseInt(agent)
+		domainType = agent
 	}
 
 	return {
 		server: server as JidServer,
-		user: user!,
+		user,
 		domainType,
-		device: device ? +device : undefined
+		device
 	}
 }
 

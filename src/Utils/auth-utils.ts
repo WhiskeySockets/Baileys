@@ -1,5 +1,4 @@
 import { AsyncLocalStorage } from 'async_hooks'
-import { Mutex } from 'async-mutex'
 import { randomBytes } from 'crypto'
 import { LRUCache } from 'lru-cache'
 import PQueue from 'p-queue'
@@ -16,7 +15,10 @@ import type {
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
 import type { ILogger } from './logger'
+import { makeMutex, type Mutex } from './make-mutex'
 import { PreKeyManager } from './pre-key-manager'
+
+const FLUSH_DEBOUNCE_MS = 500
 
 /**
  * Transaction context stored in AsyncLocalStorage
@@ -28,7 +30,12 @@ interface TransactionContext {
 }
 
 /**
- * Adds caching capability to a SignalKeyStore
+ * Adds caching capability to a SignalKeyStore with write buffering.
+ * Reads are served from an in-memory LRU cache (fetching from the backing
+ * store on cache miss). Writes update the cache immediately but are buffered
+ * and flushed to the backing store on a debounce timer or via explicit
+ * flush() call. This mirrors WhatsApp Web's memory-mode signal store pattern.
+ *
  * @param store the store to add caching to
  * @param logger to log trace events
  * @param _cache cache store to use
@@ -50,60 +57,124 @@ export function makeCacheableSignalKeyStore(
 		flushAll: () => lruCache.clear()
 	}
 
-	// Mutex for protecting cache operations
-	const cacheMutex = new Mutex()
+	// Buffered writes waiting to be flushed to the backing store
+	let pendingWrites: SignalDataSet = {}
+	let flushTimer: ReturnType<typeof setTimeout> | null = null
+	let flushPromise: Promise<void> | null = null
 
 	function getUniqueId(type: string, id: string) {
 		return `${type}.${id}`
 	}
 
+	function hasPendingWrites(): boolean {
+		for (const key in pendingWrites) {
+			if (Object.keys(pendingWrites[key as keyof SignalDataSet]!).length > 0) {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	async function doFlush(): Promise<void> {
+		if (!hasPendingWrites()) {
+			return
+		}
+
+		const toFlush = pendingWrites
+		pendingWrites = {}
+
+		logger?.trace({ types: Object.keys(toFlush) }, 'flushing buffered signal writes')
+		await store.set(toFlush)
+	}
+
+	function scheduleFlush(): void {
+		if (flushTimer) {
+			return
+		}
+
+		flushTimer = setTimeout(() => {
+			flushTimer = null
+			flushPromise = doFlush()
+				.catch(err => logger?.error({ err }, 'failed to flush buffered signal writes'))
+				.then(() => {
+					flushPromise = null
+				})
+		}, FLUSH_DEBOUNCE_MS)
+	}
+
 	return {
 		async get(type, ids) {
-			return cacheMutex.runExclusive(async () => {
-				const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
-				const idsToFetch: string[] = []
+			const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
+			const idsToFetch: string[] = []
 
-				for (const id of ids) {
-					const item = (await cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))) as any
-					if (typeof item !== 'undefined') {
+			for (const id of ids) {
+				const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id)) as any
+				if (typeof item !== 'undefined') {
+					data[id] = item
+				} else {
+					idsToFetch.push(id)
+				}
+			}
+
+			if (idsToFetch.length) {
+				logger?.trace({ items: idsToFetch.length }, 'loading from store')
+				const fetched = await store.get(type, idsToFetch)
+				for (const id of idsToFetch) {
+					const item = fetched[id]
+					if (item) {
 						data[id] = item
-					} else {
-						idsToFetch.push(id)
+						cache.set(getUniqueId(type, id), item)
 					}
 				}
+			}
 
-				if (idsToFetch.length) {
-					logger?.trace({ items: idsToFetch.length }, 'loading from store')
-					const fetched = await store.get(type, idsToFetch)
-					for (const id of idsToFetch) {
-						const item = fetched[id]
-						if (item) {
-							data[id] = item
-							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
-						}
-					}
-				}
-
-				return data
-			})
+			return data
 		},
 		async set(data) {
-			return cacheMutex.runExclusive(async () => {
-				let keys = 0
-				for (const type in data) {
-					for (const id in data[type as keyof SignalDataTypeMap]) {
-						await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
-						keys += 1
-					}
+			let keys = 0
+			for (const type in data) {
+				for (const id in data[type as keyof SignalDataTypeMap]) {
+					cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+					keys += 1
 				}
+			}
 
-				logger?.trace({ keys }, 'updated cache')
-				await store.set(data)
-			})
+			// Buffer writes instead of writing through immediately
+			for (const key in data) {
+				const typedKey = key as keyof SignalDataSet
+				pendingWrites[typedKey] = pendingWrites[typedKey] || ({} as any)
+				Object.assign(pendingWrites[typedKey]!, data[typedKey])
+			}
+
+			logger?.trace({ keys }, 'buffered cache update')
+			scheduleFlush()
+		},
+		async flush() {
+			if (flushTimer) {
+				clearTimeout(flushTimer)
+				flushTimer = null
+			}
+
+			// Wait for any in-progress flush to complete first
+			if (flushPromise) {
+				await flushPromise
+			}
+
+			await doFlush()
 		},
 		async clear() {
-			await cache.flushAll()
+			if (flushTimer) {
+				clearTimeout(flushTimer)
+				flushTimer = null
+			}
+
+			if (flushPromise) {
+				await flushPromise
+			}
+
+			pendingWrites = {}
+			cache.flushAll()
 			await store.clear?.()
 		}
 	}
@@ -149,7 +220,7 @@ export const addTransactionCapability = (
 	 */
 	function getTxMutex(key: string): Mutex {
 		if (!txMutexes.has(key)) {
-			txMutexes.set(key, new Mutex())
+			txMutexes.set(key, makeMutex())
 			txMutexRefCounts.set(key, 0)
 		}
 
@@ -171,13 +242,10 @@ export const addTransactionCapability = (
 		const count = (txMutexRefCounts.get(key) ?? 1) - 1
 		txMutexRefCounts.set(key, count)
 
-		// Cleanup if no more references and mutex is not locked
+		// Cleanup if no more references
 		if (count <= 0) {
-			const mutex = txMutexes.get(key)
-			if (mutex && !mutex.isLocked()) {
-				txMutexes.delete(key)
-				txMutexRefCounts.delete(key)
-			}
+			txMutexes.delete(key)
+			txMutexRefCounts.delete(key)
 		}
 	}
 
@@ -234,7 +302,7 @@ export const addTransactionCapability = (
 				ctx.dbQueries++
 				logger.trace({ type, count: missing.length }, 'fetching missing keys in transaction')
 
-				const fetched = await getTxMutex(type).runExclusive(() => state.get(type, missing))
+				const fetched = await getTxMutex(type).mutex(() => state.get(type, missing))
 
 				// Update cache
 				ctx.cache[type] = ctx.cache[type] || ({} as any)
@@ -286,6 +354,23 @@ export const addTransactionCapability = (
 			for (const key_ in data) {
 				const key = key_ as keyof SignalDataTypeMap
 
+				// Session writes bypass transaction buffering: write directly to
+				// the underlying store so concurrent operations (e.g. decrypt
+				// running outside this transaction) see the latest session state.
+				// Signal session counter increments are non-reversible (the WASM
+				// cipher has already advanced the counter), so transactional
+				// rollback is meaningless for sessions.
+				if (key === 'session') {
+					// Update transaction cache for reads within this transaction
+					ctx.cache.session = ctx.cache.session || ({} as any)
+					Object.assign(ctx.cache.session!, data.session)
+					// Write through to the underlying store (updates LRU cache
+					// immediately). Do NOT add to ctx.mutations — the commit must
+					// not overwrite concurrent session changes from other operations.
+					await state.set({ session: data.session })
+					continue
+				}
+
 				// Ensure structures exist
 				ctx.cache[key] = ctx.cache[key] || ({} as any)
 				ctx.mutations[key] = ctx.mutations[key] || ({} as any)
@@ -317,7 +402,7 @@ export const addTransactionCapability = (
 			acquireTxMutexRef(key)
 
 			try {
-				return await mutex.runExclusive(async () => {
+				return await mutex.mutex(async () => {
 					const ctx: TransactionContext = {
 						cache: {},
 						mutations: {},

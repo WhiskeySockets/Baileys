@@ -93,6 +93,8 @@ export type SignalKeyStore = {
 	set(data: SignalDataSet): Awaitable<void>
 	/** clear all the data in the store */
 	clear?(): Awaitable<void>
+	/** flush any buffered writes to the backing store */
+	flush?(): Promise<void>
 }
 
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {

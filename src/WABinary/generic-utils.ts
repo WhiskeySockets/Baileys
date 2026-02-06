@@ -40,17 +40,28 @@ export const getAllBinaryNodeChildren = ({ content }: BinaryNode) => {
 	return []
 }
 
+const TEXT_DECODER = new TextDecoder()
+
+/** Convert BinaryNode content (Uint8Array or string) to a UTF-8 string */
+export const contentToString = (content: BinaryNode['content']): string => {
+	if (content instanceof Uint8Array) {
+		return TEXT_DECODER.decode(content)
+	}
+
+	return typeof content === 'string' ? content : ''
+}
+
 export const getBinaryNodeChildBuffer = (node: BinaryNode | undefined, childTag: string) => {
 	const child = getBinaryNodeChild(node, childTag)?.content
-	if (Buffer.isBuffer(child) || child instanceof Uint8Array) {
+	if (child instanceof Uint8Array) {
 		return child
 	}
 }
 
 export const getBinaryNodeChildString = (node: BinaryNode | undefined, childTag: string) => {
 	const child = getBinaryNodeChild(node, childTag)?.content
-	if (Buffer.isBuffer(child) || child instanceof Uint8Array) {
-		return Buffer.from(child).toString('utf-8')
+	if (child instanceof Uint8Array) {
+		return TEXT_DECODER.decode(child)
 	} else if (typeof child === 'string') {
 		return child
 	}
@@ -121,7 +132,12 @@ export function binaryNodeToString(node: BinaryNode | BinaryNode['content'], i =
 	}
 
 	if (node instanceof Uint8Array) {
-		return tabs(i) + Buffer.from(node).toString('hex')
+		let hex = ''
+		for (let j = 0; j < node.length; j++) {
+			hex += node[j]!.toString(16).padStart(2, '0')
+		}
+
+		return tabs(i) + hex
 	}
 
 	if (Array.isArray(node)) {

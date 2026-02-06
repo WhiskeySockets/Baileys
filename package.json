@@ -21,6 +21,7 @@
     "engine-requirements.js"
   ],
   "scripts": {
+    "benchmark": "tsx --expose-gc --cpu-prof --cpu-prof-dir benchmark --heap-prof --heap-prof-dir benchmark ./Example/benchmark.ts",
     "build:all": "npm run build && npm run build:docs",
     "build:docs": "typedoc",
     "build": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
@@ -43,7 +44,6 @@
   "dependencies": {
     "@cacheable/node-cache": "^1.4.0",
     "@hapi/boom": "^9.1.3",
-    "async-mutex": "^0.5.0",
     "lru-cache": "^11.1.0",
     "music-metadata": "^11.7.0",
     "p-queue": "^9.0.0",

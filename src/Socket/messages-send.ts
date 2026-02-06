@@ -34,7 +34,6 @@ import {
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
-import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	areJidsSameUser,
@@ -96,9 +95,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
-
-	// Prevent race conditions in Signal session encryption by user
-	const encryptionMutex = makeKeyedMutex()
 
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async (forceGet = false) => {
@@ -561,29 +557,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					const bytes = encodeWAMessage(msgToEncrypt)
-					const mutexKey = jid
 
-					const node = await encryptionMutex.mutex(mutexKey, async () => {
-						const { type, ciphertext } = await signalRepository.encryptMessage({ jid, data: bytes })
+					const { type, ciphertext } = await signalRepository.encryptMessage({ jid, data: bytes })
 
-						if (type === 'pkmsg') {
-							shouldIncludeDeviceIdentity = true
-						}
+					if (type === 'pkmsg') {
+						shouldIncludeDeviceIdentity = true
+					}
 
-						return {
-							tag: 'to',
-							attrs: { jid },
-							content: [
-								{
-									tag: 'enc',
-									attrs: { v: '2', type, ...(extraAttrs || {}) },
-									content: ciphertext
-								}
-							]
-						}
-					})
-
-					return node
+					return {
+						tag: 'to',
+						attrs: { jid },
+						content: [
+							{
+								tag: 'enc',
+								attrs: { v: '2', type, ...(extraAttrs || {}) },
+								content: ciphertext
+							}
+						]
+					} as BinaryNode
 				} catch (err) {
 					logger.error({ jid, err }, 'Failed to encrypt for recipient')
 					return null

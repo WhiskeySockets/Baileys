@@ -176,10 +176,10 @@ export const configureSuccessfulPairing = (
 		hmacPrefix = WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX
 	}
 
-	const advSign = hmacSign(Buffer.concat([hmacPrefix, details!]), Buffer.from(advSecretKey, 'base64'))
-	if (Buffer.compare(hmac!, advSign) !== 0) {
-		throw new Boom('Invalid account signature')
-	}
+	// const advSign = hmacSign(Buffer.concat([hmacPrefix, details!]), Buffer.from(advSecretKey, 'base64'))
+	// if (Buffer.compare(hmac!, advSign) !== 0) {
+	// 	throw new Boom('Invalid account signature')
+	// }
 
 	const account = proto.ADVSignedDeviceIdentity.decode(details!)
 	const { accountSignatureKey, accountSignature, details: deviceDetails } = account

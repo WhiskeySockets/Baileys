@@ -16,6 +16,7 @@ import { proto } from '../../WAProto/index.js'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import type { ILogger } from '../Utils/logger'
+import { makeKeyedMutex } from '../Utils/make-mutex'
 import {
 	isHostedLidUser,
 	isHostedPnUser,
@@ -65,11 +66,37 @@ export function makeLibSignalRepository(
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
+
+	// Per-session mutex: serializes encrypt and decrypt for the same JID.
+	// Prevents session counter corruption when encrypt (inside relayMessage
+	// transaction) and decrypt (outside it) interleave on the same session.
+	const sessionMutex = makeKeyedMutex()
 	const migratedSessionCache = new LRUCache<string, true>({
 		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
+
+	const resolveSignalAddress = async (jid: string): Promise<string> => {
+		const addr = jidToSignalProtocolAddress(jid).toString()
+		if (addr.includes('.')) {
+			const [deviceId, device] = addr.split('.')
+			const [user, domainType_] = deviceId!.split('_')
+			const domainType = parseInt(domainType_ || '0')
+
+			if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return addr
+
+			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
+
+			const lidForPN = await lidMapping.getLIDForPN(pnJid)
+			if (lidForPN) {
+				const lidAddr = jidToSignalProtocolAddress(lidForPN)
+				return lidAddr.toString()
+			}
+		}
+
+		return addr
+	}
 
 	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
@@ -97,52 +124,51 @@ export function makeLibSignalRepository(
 			}, item.groupId)
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
-			const addr = jidToSignalProtocolAddress(jid)
-			const session = new SessionCipher(storage, addr)
+			const lockKey = await resolveSignalAddress(jid)
+			return sessionMutex.mutex(lockKey, async () => {
+				const addr = jidToSignalProtocolAddress(jid)
+				const session = new SessionCipher(storage, addr)
 
-			// Extract and save sender's identity key before decryption for identity change detection
-			if (type === 'pkmsg') {
-				const identityKey = extractIdentityFromPkmsg(ciphertext)
-				if (identityKey) {
-					const addrStr = addr.toString()
-					const identityChanged = await storage.saveIdentity(addrStr, identityKey)
-					if (identityChanged) {
-						logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
+				// Extract and save sender's identity key before decryption for identity change detection
+				if (type === 'pkmsg') {
+					const identityKey = extractIdentityFromPkmsg(ciphertext)
+					if (identityKey) {
+						const addrStr = addr.toString()
+						const identityChanged = await storage.saveIdentity(addrStr, identityKey)
+						if (identityChanged) {
+							logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
+						}
 					}
 				}
-			}
 
-			async function doDecrypt() {
-				let result: Uint8Array
-				switch (type) {
-					case 'pkmsg':
-						result = await session.decryptPreKeyWhisperMessage(ciphertext)
-						break
-					case 'msg':
-						result = await session.decryptWhisperMessage(ciphertext)
-						break
-				}
+				return parsedKeys.transaction(async () => {
+					let result: Uint8Array
+					switch (type) {
+						case 'pkmsg':
+							result = await session.decryptPreKeyWhisperMessage(ciphertext)
+							break
+						case 'msg':
+							result = await session.decryptWhisperMessage(ciphertext)
+							break
+					}
 
-				return result
-			}
-
-			// If it's not a sync message, we need to ensure atomicity
-			// For regular messages, we use a transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
-				return await doDecrypt()
-			}, jid)
+					return result
+				}, lockKey)
+			})
 		},
 
 		async encryptMessage({ jid, data }) {
-			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new SessionCipher(storage, addr)
+			const lockKey = await resolveSignalAddress(jid)
+			return sessionMutex.mutex(lockKey, async () => {
+				const addr = jidToSignalProtocolAddress(jid)
+				const cipher = new SessionCipher(storage, addr)
 
-			// Use transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
-				const { type: sigType, body } = await cipher.encrypt(data)
-				const type = sigType === 3 ? 'pkmsg' : 'msg'
-				return { type, ciphertext: body }
-			}, jid)
+				return parsedKeys.transaction(async () => {
+					const { type: sigType, body } = await cipher.encrypt(data)
+					const type = sigType === 3 ? 'pkmsg' : 'msg'
+					return { type, ciphertext: body }
+				}, lockKey)
+			})
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
@@ -166,10 +192,11 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
+			const lockKey = await resolveSignalAddress(jid)
 			const cipher = new SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			return parsedKeys.transaction(async () => {
 				await cipher.initOutgoing(session)
-			}, jid)
+			}, lockKey)
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()

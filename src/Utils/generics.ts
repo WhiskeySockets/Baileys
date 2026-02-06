@@ -126,7 +126,6 @@ export const debouncedTimeout = (intervalMs = 1000, task?: () => void) => {
 export const delay = (ms: number) => delayCancellable(ms).delay
 
 export const delayCancellable = (ms: number) => {
-	const stack = new Error().stack
 	let timeout: NodeJS.Timeout
 	let reject: (error: any) => void
 	const delay: Promise<void> = new Promise((resolve, _reject) => {
@@ -135,14 +134,7 @@ export const delayCancellable = (ms: number) => {
 	})
 	const cancel = () => {
 		clearTimeout(timeout)
-		reject(
-			new Boom('Cancelled', {
-				statusCode: 500,
-				data: {
-					stack
-				}
-			})
-		)
+		// No-op if we don't want to capture stack traces for every single delay
 	}
 
 	return { delay, cancel }
@@ -156,7 +148,6 @@ export async function promiseTimeout<T>(
 		return new Promise(promise)
 	}
 
-	const stack = new Error().stack
 	// Create a promise that rejects in <ms> milliseconds
 	const { delay, cancel } = delayCancellable(ms)
 	const p = new Promise((resolve, reject) => {
@@ -164,10 +155,7 @@ export async function promiseTimeout<T>(
 			.then(() =>
 				reject(
 					new Boom('Timed Out', {
-						statusCode: DisconnectReason.timedOut,
-						data: {
-							stack
-						}
+						statusCode: DisconnectReason.timedOut
 					})
 				)
 			)
@@ -176,6 +164,21 @@ export async function promiseTimeout<T>(
 		promise(resolve, reject)
 	}).finally(cancel)
 	return p as Promise<T>
+}
+
+// Simple buffer for low-entropy random values
+const randomBuffer = new Uint8Array(1024)
+let randomBufferIndex = 1024
+
+const getBufferedRandomBytes = (length: number) => {
+	if (randomBufferIndex + length > randomBuffer.length) {
+		randomBytes(randomBuffer.length).copy(randomBuffer)
+		randomBufferIndex = 0
+	}
+
+	const result = randomBuffer.slice(randomBufferIndex, randomBufferIndex + length)
+	randomBufferIndex += length
+	return result
 }
 
 // inspired from whatsmeow code
@@ -192,8 +195,8 @@ export const generateMessageIDV2 = (userId?: string): string => {
 		}
 	}
 
-	const random = randomBytes(16)
-	random.copy(data, 28)
+	const random = getBufferedRandomBytes(16)
+	data.set(random, 28)
 
 	const hash = createHash('sha256').update(data).digest()
 	return '3EB0' + hash.toString('hex').toUpperCase().substring(0, 18)
