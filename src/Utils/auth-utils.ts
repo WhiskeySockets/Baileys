@@ -134,17 +134,14 @@ export function makeCacheableSignalKeyStore(
 		async set(data) {
 			let keys = 0
 			for (const type in data) {
-				for (const id in data[type as keyof SignalDataTypeMap]) {
-					cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+				const typedKey = type as keyof SignalDataSet
+				const typeData = data[typedKey]!
+				const pending = (pendingWrites[typedKey] = pendingWrites[typedKey] || ({} as any))
+				for (const id in typeData) {
+					cache.set(getUniqueId(type, id), typeData[id]!)
+					pending[id] = typeData[id]
 					keys += 1
 				}
-			}
-
-			// Buffer writes instead of writing through immediately
-			for (const key in data) {
-				const typedKey = key as keyof SignalDataSet
-				pendingWrites[typedKey] = pendingWrites[typedKey] || ({} as any)
-				Object.assign(pendingWrites[typedKey]!, data[typedKey])
 			}
 
 			logger?.trace({ keys }, 'buffered cache update')
