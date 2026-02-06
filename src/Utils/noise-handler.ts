@@ -24,8 +24,8 @@ class TransportState {
 	private readonly iv = new Uint8Array(IV_LENGTH)
 
 	constructor(
-		private readonly encKey: Buffer,
-		private readonly decKey: Buffer
+		private readonly encKey: Uint8Array,
+		private readonly decKey: Uint8Array
 	) {}
 
 	encrypt(plaintext: Uint8Array): Uint8Array {
@@ -64,9 +64,9 @@ export const makeNoiseHandler = ({
 
 	const data = Buffer.from(NOISE_MODE)
 	let hash = data.byteLength === 32 ? data : sha256(data)
-	let salt = hash
-	let encKey = hash
-	let decKey = hash
+	let salt: Uint8Array = hash
+	let encKey: Uint8Array = hash
+	let decKey: Uint8Array = hash
 	let counter = 0
 	let sentIntro = false
 
@@ -116,23 +116,23 @@ export const makeNoiseHandler = ({
 		return result
 	}
 
-	const localHKDF = async (data: Uint8Array) => {
-		const key = await hkdf(Buffer.from(data), 64, { salt, info: '' })
+	const localHKDF = (data: Uint8Array): [Uint8Array, Uint8Array] => {
+		const key = hkdf(Buffer.from(data), 64, { salt, info: '' })
 		return [key.subarray(0, 32), key.subarray(32)]
 	}
 
-	const mixIntoKey = async (data: Uint8Array) => {
-		const [write, read] = await localHKDF(data)
-		salt = write!
-		encKey = read!
-		decKey = read!
+	const mixIntoKey = (data: Uint8Array) => {
+		const [write, read] = localHKDF(data)
+		salt = write
+		encKey = read
+		decKey = read
 		counter = 0
 	}
 
 	const finishInit = async () => {
 		isWaitingForTransport = true
-		const [write, read] = await localHKDF(new Uint8Array(0))
-		transport = new TransportState(write!, read!)
+		const [write, read] = localHKDF(new Uint8Array(0))
+		transport = new TransportState(write, read)
 		isWaitingForTransport = false
 
 		logger.trace('Noise handler transitioned to Transport state')
@@ -179,12 +179,12 @@ export const makeNoiseHandler = ({
 		authenticate,
 		mixIntoKey,
 		finishInit,
-		processHandshake: async ({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
+		processHandshake: ({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
 			authenticate(serverHello!.ephemeral!)
-			await mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
+			mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
 
 			const decStaticContent = decrypt(serverHello!.static!)
-			await mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
+			mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
 
 			const certDecoded = decrypt(serverHello!.payload!)
 
@@ -223,7 +223,7 @@ export const makeNoiseHandler = ({
 			}
 
 			const keyEnc = encrypt(noiseKey.public)
-			await mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
+			mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
 
 			return keyEnc
 		},

@@ -68,7 +68,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		getMessage
 	} = config
 	const sock = makeSocket(config)
-	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
+	const {
+		ev,
+		ws,
+		authState,
+		generateMessageTag,
+		sendNode,
+		query,
+		signalRepository,
+		onUnexpectedError,
+		sendUnifiedSession
+	} = sock
 
 	let privacySettings: { [_: string]: string } | undefined
 
@@ -468,6 +478,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const resyncAppState = ev.createBufferedFunction(
 		async (collections: readonly WAPatchName[], isInitialSync: boolean) => {
+			const appStateSyncKeyCache = new Map<string, proto.Message.IAppStateSyncKeyData | null>()
+
+			const getCachedAppStateSyncKey = async (
+				keyId: string
+			): Promise<proto.Message.IAppStateSyncKeyData | null | undefined> => {
+				if (appStateSyncKeyCache.has(keyId)) {
+					return appStateSyncKeyCache.get(keyId) ?? undefined
+				}
+
+				const key = await getAppStateSyncKey(keyId)
+				appStateSyncKeyCache.set(keyId, key ?? null)
+				return key
+			}
+
 			// we use this to determine which events to fire
 			// otherwise when we resync from scratch -- all notifications will fire
 			const initialVersionMap: { [T in WAPatchName]?: number } = {}
@@ -537,7 +561,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								const { state: newState, mutationMap } = await decodeSyncdSnapshot(
 									name,
 									snapshot,
-									getAppStateSyncKey,
+									getCachedAppStateSyncKey,
 									initialVersionMap[name],
 									appStateMacVerification.snapshot
 								)
@@ -555,7 +579,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									name,
 									patches,
 									states[name],
-									getAppStateSyncKey,
+									getCachedAppStateSyncKey,
 									config.options,
 									initialVersionMap[name],
 									logger,
@@ -659,13 +683,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const sendPresenceUpdate = async (type: WAPresence, toJid?: string) => {
 		const me = authState.creds.me!
-		if (type === 'available' || type === 'unavailable') {
+		const isAvailableType = type === 'available'
+		if (isAvailableType || type === 'unavailable') {
 			if (!me.name) {
 				logger.warn('no name present, ignoring presence update request...')
 				return
 			}
 
-			ev.emit('connection.update', { isOnline: type === 'available' })
+			ev.emit('connection.update', { isOnline: isAvailableType })
+
+			if (isAvailableType) {
+				void sendUnifiedSession()
+			}
 
 			await sendNode({
 				tag: 'presence',

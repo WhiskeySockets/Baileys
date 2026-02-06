@@ -3,7 +3,7 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT, STATUS_EXPIRY_SECONDS } from '../Defaults'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -33,6 +33,7 @@ import {
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
+	handleIdentityChange,
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
@@ -550,21 +551,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await uploadPreKeys()
 			}
 		} else {
-			const identityNode = getBinaryNodeChild(node, 'identity')
-			if (identityNode) {
-				logger.info({ jid: from }, 'identity changed')
-				if (identityAssertDebounce.get(from!)) {
-					logger.debug({ jid: from }, 'skipping identity assert (debounced)')
-					return
-				}
+			const result = await handleIdentityChange(node, {
+				meId: authState.creds.me?.id,
+				meLid: authState.creds.me?.lid,
+				validateSession: signalRepository.validateSession,
+				assertSessions,
+				debounceCache: identityAssertDebounce,
+				logger
+			})
 
-				identityAssertDebounce.set(from!, true)
-				try {
-					await assertSessions([from!], true)
-				} catch (error) {
-					logger.warn({ error, jid: from }, 'failed to assert sessions after identity change')
-				}
-			} else {
+			if (result.action === 'no_identity_node') {
 				logger.info({ node }, 'unknown encrypt notification')
 			}
 		}
@@ -755,6 +751,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const setPicture = getBinaryNodeChild(node, 'set')
 				const delPicture = getBinaryNodeChild(node, 'delete')
 
+				// TODO: WAJIDHASH stuff proper support inhouse
 				ev.emit('contacts.update', [
 					{
 						id: jidNormalizedUser(node?.attrs?.from) || (setPicture || delPicture)?.attrs?.hash || '',
@@ -821,7 +818,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				)
 				const random = randomBytes(32)
 				const linkCodeSalt = randomBytes(32)
-				const linkCodePairingExpanded = await hkdf(companionSharedKey, 32, {
+				const linkCodePairingExpanded = hkdf(companionSharedKey, 32, {
 					salt: linkCodeSalt,
 					info: 'link_code_pairing_key_bundle_encryption_key'
 				})
@@ -835,7 +832,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
 				const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 				const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
-				authState.creds.advSecretKey = (await hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
+				authState.creds.advSecretKey = Buffer.from(hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
 				await query({
 					tag: 'iq',
 					attrs: {
@@ -1225,11 +1222,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (
-						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
-						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
-					) {
+					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+						return sendMessageAck(node, NACK_REASONS.ParsingError)
+					}
+
+					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
 						return sendMessageAck(node)
+					}
+
+					// Skip retry for expired status messages (>24h old)
+					if (isJidStatusBroadcast(msg.key.remoteJid!)) {
+						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+						if (messageAge > STATUS_EXPIRY_SECONDS) {
+							logger.debug(
+								{ msgId: msg.key.id, messageAge, remoteJid: msg.key.remoteJid },
+								'skipping retry for expired status message'
+							)
+							return sendMessageAck(node)
+						}
 					}
 
 					const errorMessage = msg?.messageStubParameters?.[0] || ''
