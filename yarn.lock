@@ -3007,7 +3007,7 @@ __metadata:
     jimp: "npm:^1.6.0"
     jiti: "npm:^2.4.2"
     json: "npm:^11.0.0"
-    libsignal: "git+https://github.com/whiskeysockets/libsignal-node"
+    libsignal: "git+https://github.com/whiskeysockets/libsignal-wasm"
     link-preview-js: "npm:^3.0.0"
     lru-cache: "npm:^11.1.0"
     music-metadata: "npm:^11.7.0"
@@ -3728,13 +3728,6 @@ __metadata:
   version: 6.2.2
   resolution: "css-what@npm:6.2.2"
   checksum: 10c0/91e24c26fb977b4ccef30d7007d2668c1c10ac0154cc3f42f7304410e9594fb772aea4f30c832d2993b132ca8d99338050866476210316345ec2e7d47b248a56
-  languageName: node
-  linkType: hard
-
-"curve25519-js@npm:^0.0.4":
-  version: 0.0.4
-  resolution: "curve25519-js@npm:0.0.4"
-  checksum: 10c0/5b6c3a0dcaf045588aa78c2d1113310bf93fda9c59bd533b2a06da807024eec92feb39b203d1db9c09eda94bba1252d507fb3901283d32898e43090546785ddd
   languageName: node
   linkType: hard
 
@@ -6977,13 +6970,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libsignal@git+https://github.com/whiskeysockets/libsignal-node":
-  version: 2.0.1
-  resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
+"libsignal@git+https://github.com/whiskeysockets/libsignal-wasm":
+  version: 2.0.2
+  resolution: "libsignal@https://github.com/whiskeysockets/libsignal-wasm.git#commit=a0533bbcc2caa090ab2c620b9399f1811987daa6"
   dependencies:
-    curve25519-js: "npm:^0.0.4"
     protobufjs: "npm:6.8.8"
-  checksum: 10c0/d1ae7d8a5fadd6bb1c486d1b2ebc388967fee57c13f52b473127c1cbd9cd647b44545ff07c2b9cc49b3dea4e25ccfcfece31c526fdbdbf065837c85d189e97a0
+    whatsapp-rust-bridge: "npm:>=0.5.0"
+  checksum: 10c0/787f403ebee37c11cf9c48dd0783bee8fe35dddddf8124a0db03bd5a531fd79dcd41660d12f024966e62c4eb13bb37f80f259f4cb2a2888b90d37a29c1e6e1a9
   languageName: node
   linkType: hard
 
@@ -10185,7 +10178,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"whatsapp-rust-bridge@npm:0.5.2":
+"whatsapp-rust-bridge@npm:0.5.2, whatsapp-rust-bridge@npm:>=0.5.0":
   version: 0.5.2
   resolution: "whatsapp-rust-bridge@npm:0.5.2"
   checksum: 10c0/022bff4659398144afe6834c279a9fc617a7cbc9177212874150ff2b39019044d2833af85d8ad8d5a40887ad84e7584edead15333e3acce58f989ef7cfd1e6f9
