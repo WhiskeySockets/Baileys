@@ -640,7 +640,7 @@ export const makeSocket = (config: SocketConfig) => {
 				ws.on('error', err => {
 					logger.error({ err: err })
 				})
-				ws.close()
+				await ws.close()
 			} catch {}
 		}
 

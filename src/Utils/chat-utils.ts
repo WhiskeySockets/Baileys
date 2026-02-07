@@ -262,6 +262,7 @@ export const decodeSyncdMutations = async (
 				data: { msgMutations }
 			})
 		}
+
 		const keys = mutationKeys(keyEnc.keyData!)
 		derivedKeyCache.set(base64Key, keys)
 		return keys
