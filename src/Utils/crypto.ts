@@ -53,7 +53,13 @@ const GCM_TAG_LENGTH = 128 >> 3
 export function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
 	const cipher = createCipheriv('aes-256-gcm', key, iv)
 	cipher.setAAD(additionalData)
-	return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
+	const encrypted = cipher.update(plaintext)
+	cipher.final()
+	const tag = cipher.getAuthTag()
+	const result = Buffer.allocUnsafe(encrypted.length + tag.length)
+	result.set(encrypted)
+	result.set(tag, encrypted.length)
+	return result
 }
 
 /**
@@ -62,14 +68,13 @@ export function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8A
  * */
 export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
 	const decipher = createDecipheriv('aes-256-gcm', key, iv)
-	// decrypt additional adata
-	const enc = ciphertext.slice(0, ciphertext.length - GCM_TAG_LENGTH)
-	const tag = ciphertext.slice(ciphertext.length - GCM_TAG_LENGTH)
-	// set additional data
+	const enc = ciphertext.subarray(0, ciphertext.length - GCM_TAG_LENGTH)
+	const tag = ciphertext.subarray(ciphertext.length - GCM_TAG_LENGTH)
 	decipher.setAAD(additionalData)
 	decipher.setAuthTag(tag)
-
-	return Buffer.concat([decipher.update(enc), decipher.final()])
+	const decrypted = decipher.update(enc)
+	decipher.final()
+	return decrypted
 }
 
 export function aesEncryptCTR(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array) {

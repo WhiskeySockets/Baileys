@@ -53,10 +53,12 @@ export const isStringNullOrEmpty = (value: string | null | undefined): value is 
 	value == null || value === ''
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
-	const pad = randomBytes(1)
+	const pad = getBufferedRandomBytes(1)
 	const padLength = (pad[0]! & 0x0f) + 1
-
-	return Buffer.concat([msg, Buffer.alloc(padLength, padLength)])
+	const result = Buffer.allocUnsafe(msg.byteLength + padLength)
+	result.set(msg)
+	result.fill(padLength, msg.byteLength)
+	return result
 }
 
 export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {

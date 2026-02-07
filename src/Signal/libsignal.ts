@@ -384,6 +384,8 @@ export function makeLibSignalRepository(
 	return repository
 }
 
+const addressCache = new LRUCache<string, ProtocolAddress>({ max: 1000 })
+
 const jidToSignalProtocolAddress = (jid: string): ProtocolAddress => {
 	const decoded = jidDecode(jid)!
 	const { user, device, server, domainType } = decoded
@@ -401,7 +403,14 @@ const jidToSignalProtocolAddress = (jid: string): ProtocolAddress => {
 		throw new Error('Unexpected non-hosted device JID with device 99. This ID seems invalid. ID:' + jid)
 	}
 
-	return new ProtocolAddress(signalUser, finalDevice)
+	const cacheKey = `${signalUser}.${finalDevice}`
+	let addr = addressCache.get(cacheKey)
+	if (!addr) {
+		addr = new ProtocolAddress(signalUser, finalDevice)
+		addressCache.set(cacheKey, addr)
+	}
+
+	return addr
 }
 
 const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName => {
