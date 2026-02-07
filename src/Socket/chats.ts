@@ -372,29 +372,55 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		return getBinaryNodeChildren(listNode, 'item').map(n => n.attrs.jid)
 	}
 
-	const updateBlockStatus = async (jid: string, action: 'block' | 'unblock') => {
+	const updateBlockStatus = async (
+		jid: string,
+		action: 'block' | 'unblock'
+	) => {
 		let lid: string
-		let pn_jid: string
+		let pn_jid: string | undefined
 
 		if (isLidUser(jid)) {
 			lid = jid
-			const pn = await signalRepository.lidMapping.getPNForLID(jid)
-			if (!pn) {
-				throw new Boom(`Unable to resolve PN JID for LID: ${jid}`)
+
+			if (action === 'block') {
+				const pn = await signalRepository.lidMapping.getPNForLID(jid)
+				if (!pn) {
+					throw new Boom(`Unable to resolve PN JID for LID: ${jid}`)
+				}
+				pn_jid = jidNormalizedUser(pn)
 			}
 
-			pn_jid = jidNormalizedUser(pn)
 		} else if (isPnUser(jid)) {
-			pn_jid = jidNormalizedUser(jid)
+			if (action === 'block') {
+				pn_jid = jidNormalizedUser(jid)
 
-			const mapped = await signalRepository.lidMapping.getLIDForPN(jid)
-			if (!mapped) {
-				throw new Boom(`Unable to resolve LID for PN JID: ${jid}`)
+				const mapped = await signalRepository.lidMapping.getLIDForPN(jid)
+				if (!mapped) {
+					throw new Boom(`Unable to resolve LID for PN JID: ${jid}`)
+				}
+				lid = mapped
+			} else {
+				lid = jidNormalizedUser(jid)
 			}
 
-			lid = mapped
 		} else {
 			throw new Boom(`Invalid jid: ${jid}`)
+		}
+
+		const itemAttrs: {
+			action: 'block' | 'unblock'
+			jid: string
+			pn_jid?: string
+		} = {
+			action,
+			jid: lid
+		}
+
+		if (action === 'block') {
+			if (!pn_jid) {
+				throw new Boom(`pn_jid required for block: ${jid}`)
+			}
+			itemAttrs.pn_jid = pn_jid
 		}
 
 		await query({
@@ -407,11 +433,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			content: [
 				{
 					tag: 'item',
-					attrs: {
-						action,
-						jid: lid,
-						pn_jid
-					}
+					attrs: itemAttrs
 				}
 			]
 		})
