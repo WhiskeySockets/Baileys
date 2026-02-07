@@ -88,6 +88,8 @@ export type SocketConfig = {
 	callOfferCache?: CacheStore
 	/** cache to track placeholder resends */
 	placeholderResendCache?: CacheStore
+	/** cache for LID to PN mappings */
+	lidMappingCache?: CacheStore
 	/** width for link preview images */
 	linkPreviewImageThumbnailWidth: number
 	/** Should Baileys ask the phone for full history, will be received async */
@@ -145,6 +147,7 @@ export type SocketConfig = {
 	makeSignalRepository: (
 		auth: SignalAuthState,
 		logger: ILogger,
-		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>,
+		lidMappingCache?: CacheStore
 	) => SignalRepositoryWithLIDStore
 }

@@ -1,18 +1,35 @@
 import { LRUCache } from 'lru-cache'
-import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
+import type { CacheStore, LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
 import { isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJIDDomains } from '../WABinary'
 
+// Wrapper to make LRUCache compatible with CacheStore interface
+class LRUCacheWrapper implements CacheStore {
+	constructor(private cache: LRUCache<string, string>) {}
+
+	get<T>(key: string): T | undefined {
+		return this.cache.get(key) as T | undefined
+	}
+
+	set<T>(key: string, value: T): void {
+		this.cache.set(key, value as string)
+	}
+
+	del(key: string): void {
+		this.cache.delete(key)
+	}
+
+	flushAll(): void {
+		this.cache.clear()
+	}
+}
+
 export class LIDMappingStore {
-	private readonly mappingCache = new LRUCache<string, string>({
-		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
-		ttlAutopurge: true,
-		updateAgeOnGet: true
-	})
+	private readonly mappingCache?: CacheStore
 	private readonly keys: SignalKeyStoreWithTransaction
 	private readonly logger: ILogger
 
-	private pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+	private readonly pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 
 	private readonly inflightLIDLookups = new Map<string, Promise<LIDMapping[] | null>>()
 	private readonly inflightPNLookups = new Map<string, Promise<LIDMapping[] | null>>()
@@ -20,11 +37,21 @@ export class LIDMappingStore {
 	constructor(
 		keys: SignalKeyStoreWithTransaction,
 		logger: ILogger,
-		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>,
+		cache?: CacheStore
 	) {
 		this.keys = keys
 		this.pnToLIDFunc = pnToLIDFunc
 		this.logger = logger
+		this.mappingCache =
+			cache ||
+			new LRUCacheWrapper(
+				new LRUCache<string, string>({
+					ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
+					ttlAutopurge: true,
+					updateAgeOnGet: true
+				})
+			)
 	}
 
 	async storeLIDPNMappings(pairs: LIDMapping[]): Promise<void> {
@@ -50,7 +77,7 @@ export class LIDMappingStore {
 		const existingMappings = new Map<string, string>()
 
 		for (const { pnUser } of validatedPairs) {
-			const cached = this.mappingCache.get(`pn:${pnUser}`)
+			const cached = this.mappingCache ? await this.mappingCache.get<string>(`pn:${pnUser}`) : undefined
 			if (cached) {
 				existingMappings.set(pnUser, cached)
 			} else {
@@ -67,8 +94,8 @@ export class LIDMappingStore {
 				const existingLidUser = stored[pnUser]
 				if (existingLidUser) {
 					existingMappings.set(pnUser, existingLidUser)
-					this.mappingCache.set(`pn:${pnUser}`, existingLidUser)
-					this.mappingCache.set(`lid:${existingLidUser}`, pnUser)
+					await this.mappingCache?.set(`pn:${pnUser}`, existingLidUser)
+					await this.mappingCache?.set(`lid:${existingLidUser}`, pnUser)
 				}
 			}
 		}
@@ -100,8 +127,8 @@ export class LIDMappingStore {
 
 		// Update cache after successful DB write
 		for (const [pnUser, lidUser] of Object.entries(pairMap)) {
-			this.mappingCache.set(`pn:${pnUser}`, lidUser)
-			this.mappingCache.set(`lid:${lidUser}`, pnUser)
+			await this.mappingCache?.set(`pn:${pnUser}`, lidUser)
+			await this.mappingCache?.set(`lid:${lidUser}`, pnUser)
 		}
 	}
 
@@ -161,7 +188,7 @@ export class LIDMappingStore {
 			if (!decoded) continue
 
 			const pnUser = decoded.user
-			const cached = this.mappingCache.get(`pn:${pnUser}`)
+			const cached = this.mappingCache ? await this.mappingCache.get<string>(`pn:${pnUser}`) : undefined
 			if (cached && typeof cached === 'string') {
 				if (!addResolvedPair(pn, decoded, cached)) {
 					this.logger.warn(`Invalid entry for ${pn} (pair not resolved)`)
@@ -180,13 +207,13 @@ export class LIDMappingStore {
 			for (const pnUser of pnUsers) {
 				const lidUser = stored[pnUser]
 				if (lidUser && typeof lidUser === 'string') {
-					this.mappingCache.set(`pn:${pnUser}`, lidUser)
-					this.mappingCache.set(`lid:${lidUser}`, pnUser)
+					await this.mappingCache?.set(`pn:${pnUser}`, lidUser)
+					await this.mappingCache?.set(`lid:${lidUser}`, pnUser)
 				}
 			}
 
 			for (const { pn, pnUser, decoded } of pending) {
-				const cached = this.mappingCache.get(`pn:${pnUser}`)
+				const cached = this.mappingCache ? await this.mappingCache.get<string>(`pn:${pnUser}`) : undefined
 				if (cached && typeof cached === 'string') {
 					if (!addResolvedPair(pn, decoded, cached)) {
 						this.logger.warn(`Invalid entry for ${pn} (pair not resolved)`)
@@ -292,7 +319,7 @@ export class LIDMappingStore {
 			if (!decoded) continue
 
 			const lidUser = decoded.user
-			const cached = this.mappingCache.get(`lid:${lidUser}`)
+			const cached = this.mappingCache ? await this.mappingCache.get<string>(`lid:${lidUser}`) : undefined
 			if (cached && typeof cached === 'string') {
 				addResolvedPair(lid, decoded, cached)
 				continue
@@ -306,12 +333,12 @@ export class LIDMappingStore {
 			const stored = await this.keys.get('lid-mapping', reverseKeys)
 
 			for (const { lid, lidUser, decoded } of pending) {
-				let pnUser = this.mappingCache.get(`lid:${lidUser}`)
+				let pnUser = this.mappingCache ? await this.mappingCache.get<string>(`lid:${lidUser}`) : undefined
 				if (!pnUser || typeof pnUser !== 'string') {
 					pnUser = stored[`${lidUser}_reverse`]
 					if (pnUser && typeof pnUser === 'string') {
-						this.mappingCache.set(`lid:${lidUser}`, pnUser)
-						this.mappingCache.set(`pn:${pnUser}`, lidUser)
+						await this.mappingCache?.set(`lid:${lidUser}`, pnUser)
+						await this.mappingCache?.set(`pn:${pnUser}`, lidUser)
 					}
 				}
 

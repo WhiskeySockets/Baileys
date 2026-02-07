@@ -73,7 +73,8 @@ export const makeSocket = (config: SocketConfig) => {
 		defaultQueryTimeoutMs,
 		transactionOpts,
 		qrTimeout,
-		makeSignalRepository
+		makeSignalRepository,
+		lidMappingCache
 	} = config
 
 	const publicWAMBuffer = new BinaryInfo()
@@ -370,7 +371,7 @@ export const makeSocket = (config: SocketConfig) => {
 	const { creds } = authState
 	// add transaction capability
 	const keys = addTransactionCapability(authState.keys, logger, transactionOpts)
-	const signalRepository = makeSignalRepository({ creds, keys }, logger, pnFromLIDUSync)
+	const signalRepository = makeSignalRepository({ creds, keys }, logger, pnFromLIDUSync, lidMappingCache)
 
 	let lastDateRecv: Date
 	let epoch = 1

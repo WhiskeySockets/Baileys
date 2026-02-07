@@ -3,7 +3,7 @@ import * as libsignal from 'libsignal'
 // @ts-ignore
 import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
 import { LRUCache } from 'lru-cache'
-import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
+import type { CacheStore, LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
@@ -50,14 +50,20 @@ function extractIdentityFromPkmsg(ciphertext: Uint8Array): Uint8Array | undefine
 export function makeLibSignalRepository(
 	auth: SignalAuthState,
 	logger: ILogger,
-	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>,
+	lidMappingCache?: CacheStore
 ): SignalRepositoryWithLIDStore {
-	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
+	const lidMapping = new LIDMappingStore(
+		auth.keys as SignalKeyStoreWithTransaction,
+		logger,
+		pnToLIDFunc,
+		lidMappingCache
+	)
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
-	const migratedSessionCache = new LRUCache<string, true>({
-		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
+	const migratedSessionCacheStore = new LRUCache<string, true>({
+		ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
@@ -254,7 +260,7 @@ export function makeLibSignalRepository(
 			// Filter out cached devices before database fetch
 			const uncachedDevices = userDevices.filter(device => {
 				const deviceKey = `${user}.${device}`
-				return !migratedSessionCache.has(deviceKey)
+				return !migratedSessionCacheStore.has(deviceKey)
 			})
 
 			// Bulk check session existence only for uncached devices
@@ -355,7 +361,7 @@ export function makeLibSignalRepository(
 						for (const op of migrationOps) {
 							if (sessionUpdates[op.toAddr.toString()]) {
 								const deviceKey = `${op.pnUser}.${op.deviceId}`
-								migratedSessionCache.set(deviceKey, true)
+								migratedSessionCacheStore.set(deviceKey, true)
 							}
 						}
 					}
