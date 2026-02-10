@@ -1227,6 +1227,42 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+						// Message arrived without encryption (e.g. CTWA ads messages).
+						// Check if this is eligible for placeholder resend (matching WA Web filters).
+						const unavailableNode = getBinaryNodeChild(node, 'unavailable')
+						const unavailableType = unavailableNode?.attrs?.type
+						if (unavailableType === 'bot_unavailable_fanout' || unavailableType === 'hosted_unavailable_fanout') {
+							logger.debug(
+								{ msgId: msg.key.id, unavailableType },
+								'skipping placeholder resend for excluded unavailable type'
+							)
+							return sendMessageAck(node)
+						}
+
+						// WA Web enforces a 14-day maximum age for placeholder resend requests
+						const PLACEHOLDER_MAX_AGE_SECONDS = 14 * 24 * 60 * 60
+						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+						if (messageAge > PLACEHOLDER_MAX_AGE_SECONDS) {
+							logger.debug({ msgId: msg.key.id, messageAge }, 'skipping placeholder resend for old message')
+							return sendMessageAck(node)
+						}
+
+						// Request the real content from the phone via placeholder resend PDO.
+						const cleanKey: proto.IMessageKey = {
+							remoteJid: msg.key.remoteJid,
+							fromMe: msg.key.fromMe,
+							id: msg.key.id,
+							participant: msg.key.participant
+						}
+						requestPlaceholderResend(cleanKey)
+							.then(requestId => {
+								if (requestId) {
+									logger.debug({ msgId: msg.key.id, requestId }, 'requested placeholder resend for unavailable message')
+								}
+							})
+							.catch(err => {
+								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
+							})
 						return sendMessageAck(node)
 					}
 
