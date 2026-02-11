@@ -1347,6 +1347,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
 
 		const call: WACallEvent = {
+			node,
 			chatId: attrs.from!,
 			from,
 			callerPn: infoChild.attrs['caller_pn'],
@@ -1361,6 +1362,76 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
 			call.groupJid = infoChild.attrs['group-jid']
 			await callOfferCache.set(call.id, call)
+			// Decrypt call enc
+			const { fullMessage: msg, decrypt } = decryptMessageNode(
+				node,
+				authState.creds.me!.id,
+				authState.creds.me!.lid || '',
+				signalRepository,
+				logger
+			)
+
+			await decrypt()
+
+			// call key enc failed to decrypt
+			if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
+				if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+					return sendMessageAck(node, NACK_REASONS.ParsingError)
+				}
+
+				const errorMessage = msg?.messageStubParameters?.[0] || ''
+				const isPreKeyError = errorMessage.includes('PreKey')
+
+				logger.debug(`[handleCall] Attempting retry request for failed decryption`)
+
+				// Handle both pre-key and normal retries in single mutex
+				await retryMutex.mutex(async () => {
+					try {
+						if (!ws.isOpen) {
+							logger.debug({ node }, 'Connection closed, skipping retry')
+							return
+						}
+
+						// Handle pre-key errors with upload and delay
+						if (isPreKeyError) {
+							logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
+
+							try {
+								logger.debug('Uploading pre-keys for error recovery')
+								await uploadPreKeys(5)
+								logger.debug('Waiting for server to process new pre-keys')
+								await delay(1000)
+							} catch (uploadErr) {
+								logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+							}
+						}
+
+						const encNode = getBinaryNodeChild(node, 'enc')
+						await sendRetryRequest(node, !encNode)
+						if (retryRequestDelayMs) {
+							await delay(retryRequestDelayMs)
+						}
+					} catch (err) {
+						logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
+						// Still attempt retry even if pre-key upload failed
+						try {
+							const encNode = getBinaryNodeChild(node, 'enc')
+							await sendRetryRequest(node, !encNode)
+						} catch (retryErr) {
+							logger.error({ retryErr }, 'Failed to send retry after error handling')
+						}
+					}
+
+					await sendMessageAck(node, NACK_REASONS.UnhandledError)
+				})
+			} else {
+				// call key enc decrypted
+				if (messageRetryManager && msg.key.id) {
+					messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
+				}
+
+				call.callKey = msg.message?.call?.callKey
+			}
 		}
 
 		const existingCall = await callOfferCache.get<WACallEvent>(call.id)

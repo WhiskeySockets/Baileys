@@ -1,6 +1,9 @@
+import type { BinaryNode } from '../WABinary'
+
 export type WACallUpdateType = 'offer' | 'ringing' | 'timeout' | 'reject' | 'accept' | 'terminate'
 
 export type WACallEvent = {
+	node: BinaryNode
 	chatId: string
 	from: string
 	callerPn?: string
@@ -12,4 +15,5 @@ export type WACallEvent = {
 	status: WACallUpdateType
 	offline: boolean
 	latencyMs?: number
+	callKey?: Uint8Array | null
 }
