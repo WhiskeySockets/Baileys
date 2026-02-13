@@ -30,6 +30,7 @@ import {
 	encodeSignedDeviceIdentity,
 	extractAddressingContext,
 	getCallStatusFromNode,
+	getDecryptionJid,
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
@@ -40,6 +41,7 @@ import {
 	NO_MESSAGE_FOUND_ERROR_TEXT,
 	toNumber,
 	unixTimestampSeconds,
+	unpadRandomMax16,
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
@@ -85,6 +87,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendNode,
 		relayMessage,
 		sendReceipt,
+		sendCallReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager
@@ -1344,12 +1347,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		const callId = infoChild.attrs['call-id']!
-		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
+		const caller = infoChild.attrs['call-creator']! || infoChild.attrs['caller_pn'] || infoChild.attrs.from!
 
 		const call: WACallEvent = {
 			node,
 			chatId: attrs.from!,
-			from,
+			caller,
 			callerPn: infoChild.attrs['caller_pn'],
 			id: callId,
 			date: new Date(+attrs.t! * 1000),
@@ -1363,75 +1366,126 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			call.groupJid = infoChild.attrs['group-jid']
 			await callOfferCache.set(call.id, call)
 			// Decrypt call enc
-			const { fullMessage: msg, decrypt } = decryptMessageNode(
-				node,
-				authState.creds.me!.id,
-				authState.creds.me!.lid || '',
-				signalRepository,
-				logger
-			)
+			if (Array.isArray(infoChild.content)) {
+				for (const encNode of infoChild.content) {
+					if (encNode.tag !== 'enc') {
+						continue
+					}
 
-			await decrypt()
+					if (!(encNode.content instanceof Uint8Array)) {
+						continue
+					}
 
-			// call key enc failed to decrypt
-			if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-				if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
-					return sendMessageAck(node, NACK_REASONS.ParsingError)
-				}
+					let msgBuffer: Uint8Array
 
-				const errorMessage = msg?.messageStubParameters?.[0] || ''
-				const isPreKeyError = errorMessage.includes('PreKey')
+					const decryptionJid = await getDecryptionJid(caller, signalRepository)
 
-				logger.debug(`[handleCall] Attempting retry request for failed decryption`)
+					if (
+						infoChild.attrs['call-creator'] &&
+						infoChild.attrs['caller_pn'] &&
+						isLidUser(infoChild.attrs['call-creator'])
+					) {
+						// TODO: How does HOSTED enc work here?
+						await signalRepository.lidMapping.storeLIDPNMappings([
+							{ lid: infoChild.attrs['call-creator'], pn: infoChild.attrs['caller_pn'] }
+						])
+						await signalRepository.migrateSession(infoChild.attrs['caller_pn'], infoChild.attrs['call-creator'])
+					}
 
-				// Handle both pre-key and normal retries in single mutex
-				await retryMutex.mutex(async () => {
 					try {
-						if (!ws.isOpen) {
-							logger.debug({ node }, 'Connection closed, skipping retry')
-							return
+						//eslint-disable-next-line max-depth
+						switch (encNode.attrs.type) {
+							case 'skmsg':
+								// TODO: investigate group calls
+								msgBuffer = await signalRepository.decryptGroupMessage({
+									group: attrs.from!,
+									authorJid: caller,
+									msg: encNode.content
+								})
+								break
+							case 'pkmsg':
+							case 'msg':
+								msgBuffer = await signalRepository.decryptMessage({
+									jid: decryptionJid,
+									type: encNode.attrs.type,
+									ciphertext: encNode.content
+								})
+								break
+							default:
+								throw new Error(`Unknown e2e type: ${encNode.attrs.type}`)
 						}
 
-						// Handle pre-key errors with upload and delay
-						if (isPreKeyError) {
-							logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
-
+						let msg: proto.IMessage = proto.Message.decode(unpadRandomMax16(msgBuffer))
+						msg = msg.deviceSentMessage?.message || msg
+						//eslint-disable-next-line max-depth
+						if (msg.senderKeyDistributionMessage) {
+							//eslint-disable-next-line max-depth
 							try {
-								logger.debug('Uploading pre-keys for error recovery')
-								await uploadPreKeys(5)
-								logger.debug('Waiting for server to process new pre-keys')
-								await delay(1000)
-							} catch (uploadErr) {
-								logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+								await signalRepository.processSenderKeyDistributionMessage({
+									authorJid: caller,
+									item: msg.senderKeyDistributionMessage
+								})
+							} catch (err) {
+								logger.error({ caller, callId, err }, 'failed to process sender key distribution message from call')
 							}
 						}
 
-						const encNode = getBinaryNodeChild(node, 'enc')
-						await sendRetryRequest(node, !encNode)
-						if (retryRequestDelayMs) {
-							await delay(retryRequestDelayMs)
-						}
-					} catch (err) {
-						logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
-						// Still attempt retry even if pre-key upload failed
-						try {
-							const encNode = getBinaryNodeChild(node, 'enc')
-							await sendRetryRequest(node, !encNode)
-						} catch (retryErr) {
-							logger.error({ retryErr }, 'Failed to send retry after error handling')
-						}
+						//eslint-disable-next-line max-depth
+						if (!msg.call) logger.error({ caller, callId, msg }, 'missing call message from call enc')
+
+						call.callKey = msg.call?.callKey
+					} catch (err: any) {
+						const errorMessage = err.message.toString()
+						const isPreKeyError = errorMessage.includes('PreKey')
+						logger.error({ err, caller, callId, isPreKeyError }, 'failed to decrypt call enc')
+
+						logger.debug({}, `[handleCall] Attempting retry request for failed decryption`)
+
+						// Handle both pre-key and normal retries in single mutex
+						await retryMutex.mutex(async () => {
+							try {
+								if (!ws.isOpen) {
+									logger.debug({ node }, 'Connection closed, skipping retry')
+									return
+								}
+
+								// Handle pre-key errors with upload and delay
+								if (isPreKeyError) {
+									logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
+
+									try {
+										logger.debug('Uploading pre-keys for error recovery')
+										await uploadPreKeys(5)
+										logger.debug('Waiting for server to process new pre-keys')
+										await delay(1000)
+									} catch (uploadErr) {
+										logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+									}
+								}
+
+								// TODO: Implement voip_1x1_retry
+								//const encNode = getBinaryNodeChild(infoChild, 'enc')
+								//await sendRetryRequest(node, !encNode)
+								if (retryRequestDelayMs) {
+									await delay(retryRequestDelayMs)
+								}
+							} catch (err) {
+								logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
+								// Still attempt retry even if pre-key upload failed
+								try {
+									//const encNode = getBinaryNodeChild(infoChild, 'enc')
+									//await sendRetryRequest(node, !encNode)
+								} catch (retryErr) {
+									logger.error({ retryErr }, 'Failed to send retry after error handling')
+								}
+							}
+						})
 					}
-
-					await sendMessageAck(node, NACK_REASONS.UnhandledError)
-				})
-			} else {
-				// call key enc decrypted
-				if (messageRetryManager && msg.key.id) {
-					messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
 				}
-
-				call.callKey = msg.message?.call?.callKey
 			}
+			await sendCallReceipt(node)
+		} else {
+			await sendMessageAck(node)
 		}
 
 		const existingCall = await callOfferCache.get<WACallEvent>(call.id)
@@ -1449,8 +1503,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		ev.emit('call', [call])
-
-		await sendMessageAck(node)
 	}
 
 	const handleBadAck = async ({ attrs }: BinaryNode) => {
@@ -1618,38 +1670,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	})
 	ws.on('CB:ack,class:message', (node: BinaryNode) => {
 		handleBadAck(node).catch(error => onUnexpectedError(error, 'handling bad ack'))
-	})
-
-	ev.on('call', async ([call]) => {
-		if (!call) {
-			return
-		}
-
-		// missed call + group call notification message generation
-		if (call.status === 'timeout' || (call.status === 'offer' && call.isGroup)) {
-			const msg: WAMessage = {
-				key: {
-					remoteJid: call.chatId,
-					id: call.id,
-					fromMe: false
-				},
-				messageTimestamp: unixTimestampSeconds(call.date)
-			}
-			if (call.status === 'timeout') {
-				if (call.isGroup) {
-					msg.messageStubType = call.isVideo
-						? WAMessageStubType.CALL_MISSED_GROUP_VIDEO
-						: WAMessageStubType.CALL_MISSED_GROUP_VOICE
-				} else {
-					msg.messageStubType = call.isVideo ? WAMessageStubType.CALL_MISSED_VIDEO : WAMessageStubType.CALL_MISSED_VOICE
-				}
-			} else {
-				msg.message = { call: { callKey: Buffer.from(call.id) } }
-			}
-
-			const protoMsg = proto.WebMessageInfo.fromObject(msg) as WAMessage
-			await upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
-		}
 	})
 
 	ev.on('connection.update', ({ isOnline }) => {

@@ -5,7 +5,7 @@ export type WACallUpdateType = 'offer' | 'ringing' | 'timeout' | 'reject' | 'acc
 export type WACallEvent = {
 	node: BinaryNode
 	chatId: string
-	from: string
+	caller: string
 	callerPn?: string
 	isGroup?: boolean
 	groupJid?: string

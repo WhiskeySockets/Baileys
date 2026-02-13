@@ -25,6 +25,7 @@ import {
 	generateMessageIDV2,
 	generateParticipantHashV2,
 	generateWAMessage,
+	getCallStatusFromNode,
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
@@ -41,6 +42,7 @@ import {
 	type BinaryNode,
 	type BinaryNodeAttributes,
 	type FullJid,
+	getAllBinaryNodeChildren,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isHostedLidUser,
@@ -131,6 +133,40 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		return mediaConn
+	}
+
+	/**
+	 * Call receipt
+	 */
+	const sendCallReceipt = async (node: BinaryNode) => {
+		if (!authState.creds.me) throw new Boom('Client must be logged in')
+
+		if (node.tag !== 'call') {
+			logger.error({ node }, 'sendCallReceipt called on a node that isnt a <call/>')
+			return
+		}
+
+		const [infoNode] = getAllBinaryNodeChildren(node)
+		if (!infoNode) {
+			logger.error({ node }, '[sendCallReceipt] call node is missing an info child')
+			return
+		}
+
+		const { tag: type, attrs: callAttrs } = infoNode
+
+		const receipt: BinaryNode = {
+			tag: 'receipt',
+			attrs: {
+				id: node.attrs.id!,
+				to: node.attrs.from!,
+				from: authState.creds.me.id
+			},
+			content: [
+				{ tag: type, attrs: { 'call-creator': callAttrs['call-creator'] || '', 'call-id': callAttrs['call-id'] || '' } }
+			]
+		}
+
+		await sendNode(receipt)
 	}
 
 	/**
@@ -1155,6 +1191,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		getUSyncDevices,
 		messageRetryManager,
 		updateMemberLabel,
+		sendCallReceipt,
 		updateMediaMessage: async (message: WAMessage) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!

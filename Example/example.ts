@@ -200,6 +200,10 @@ const startSock = async() => {
 				logger.debug(events['chats.update'])
 			}
 
+			if (events['call']) {
+				logger.debug(events['call'], 'call received')
+			}
+
 			if(events['contacts.update']) {
 				for(const contact of events['contacts.update']) {
 					if(typeof contact.imgUrl !== 'undefined') {
