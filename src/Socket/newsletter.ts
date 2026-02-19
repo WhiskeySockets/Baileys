@@ -1,8 +1,9 @@
-import type { NewsletterCreateResponse, SocketConfig, WAMediaUpload } from '../Types'
+import { proto } from '../../WAProto/index.js'
+import type { NewsletterCreateResponse, SocketConfig, WAMediaUpload, WAMessage } from '../Types'
 import type { NewsletterMetadata, NewsletterUpdate } from '../Types'
 import { QueryIds, XWAPaths } from '../Types'
 import { generateProfilePicture } from '../Utils/messages-media'
-import { getBinaryNodeChild } from '../WABinary'
+import { getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
@@ -44,6 +45,7 @@ const parseNewsletterMetadata = (result: unknown): NewsletterMetadata | null => 
 export const makeNewsletterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
 	const { query, generateMessageTag } = sock
+	const { logger } = config
 
 	const executeWMexQuery = <T>(variables: Record<string, unknown>, queryId: string, dataPath: string): Promise<T> => {
 		return genericExecuteWMexQuery<T>(variables, queryId, dataPath, query, generateMessageTag)
@@ -153,7 +155,12 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 			})
 		},
 
-		newsletterFetchMessages: async (jid: string, count: number, since: number, after: number) => {
+		newsletterFetchMessages: async (
+			jid: string,
+			count: number,
+			since?: number,
+			after?: number
+		): Promise<WAMessage[]> => {
 			const messageUpdateAttrs: { count: string; since?: string; after?: string } = {
 				count: count.toString()
 			}
@@ -180,7 +187,51 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 					}
 				]
 			})
-			return result
+
+			// Response structure: iq -> message_updates -> messages -> message[]
+			const messageUpdatesNode = getBinaryNodeChild(result, 'message_updates')
+			if (!messageUpdatesNode) {
+				return []
+			}
+
+			// WA Web: flattenedChildWithTag(message_updates, "messages")
+			const messagesNode = getBinaryNodeChild(messageUpdatesNode, 'messages')
+			if (!messagesNode) {
+				return []
+			}
+
+			const messages: WAMessage[] = []
+			// WA Web: mapChildrenWithTag(messages, "message", 0, 300, ...)
+			for (const child of getBinaryNodeChildren(messagesNode, 'message')) {
+				const plaintextNode = getBinaryNodeChild(child, 'plaintext')
+				if (!plaintextNode?.content) {
+					continue
+				}
+
+				try {
+					const contentBuf =
+						typeof plaintextNode.content === 'string'
+							? Buffer.from(plaintextNode.content, 'binary')
+							: Buffer.from(plaintextNode.content as Uint8Array)
+					const messageProto = proto.Message.decode(contentBuf).toJSON()
+					const fullMessage = proto.WebMessageInfo.fromObject({
+						key: {
+							remoteJid: jid,
+							// IQ response uses "id" attr; push notifications use "message_id"
+							id: child.attrs.id || child.attrs.message_id || child.attrs.server_id,
+							server_id: child.attrs.server_id,
+							fromMe: false
+						},
+						message: messageProto,
+						messageTimestamp: child.attrs.t ? +child.attrs.t : undefined
+					}).toJSON() as WAMessage
+					messages.push(fullMessage)
+				} catch (error) {
+					logger.error({ error }, 'Failed to decode newsletter message')
+				}
+			}
+
+			return messages
 		},
 
 		subscribeNewsletterUpdates: async (jid: string): Promise<{ duration: string } | null> => {
