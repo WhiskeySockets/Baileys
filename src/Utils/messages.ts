@@ -365,11 +365,26 @@ export const generateForwardMessageContent = (message: WAMessage, forceForward?:
 	}
 
 	const key_ = content?.[key] as { contextInfo: proto.IContextInfo }
+	const contextInfo: proto.IContextInfo = {}
 	if (score > 0) {
-		key_.contextInfo = { forwardingScore: score, isForwarded: true }
-	} else {
-		key_.contextInfo = {}
+		contextInfo.forwardingScore = score
+		contextInfo.isForwarded = true
 	}
+
+	// when forwarding a newsletter/channel message, add the newsletter context
+	// so the server knows where to find the original media
+	const remoteJid = message.key?.remoteJid
+	if (remoteJid && isJidNewsletter(remoteJid)) {
+		contextInfo.forwardedNewsletterMessageInfo = {
+			newsletterJid: remoteJid,
+			serverMessageId: message.key?.server_id ? parseInt(message.key.server_id) : null,
+			newsletterName: null
+		}
+		// strip messageContextInfo (contains messageSecret etc.) as WA Web does
+		delete content.messageContextInfo
+	}
+
+	key_.contextInfo = contextInfo
 
 	return content
 }
