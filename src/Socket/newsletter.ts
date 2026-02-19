@@ -155,21 +155,34 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 			})
 		},
 
+		/**
+		 * Fetch messages from a newsletter/channel.
+		 * @param type  'jid' to look up by newsletter JID, 'invite' to look up by invite code
+		 * @param key   the newsletter JID (e.g. "120363xxx@newsletter") or invite code
+		 * @param count number of messages to fetch (max 300)
+		 * @param after fetch messages after this server_id (for pagination)
+		 * @param before fetch messages before this server_id (for pagination)
+		 */
 		newsletterFetchMessages: async (
-			jid: string,
+			type: 'jid' | 'invite',
+			key: string,
 			count: number,
-			since?: number,
-			after?: number
+			after?: number,
+			before?: number
 		): Promise<WAMessage[]> => {
-			const messageUpdateAttrs: { count: string; since?: string; after?: string } = {
-				count: count.toString()
+			// WA Web: GetNewsletterMessages endpoint
+			// Request: iq(to=s.whatsapp.net) -> messages(count, type, jid|key, [after|before])
+			const messagesAttrs: Record<string, string> = {
+				count: count.toString(),
+				type,
+				[type === 'jid' ? 'jid' : 'key']: key
 			}
-			if (typeof since === 'number') {
-				messageUpdateAttrs.since = since.toString()
+			if (after) {
+				messagesAttrs.after = after.toString()
 			}
 
-			if (after) {
-				messageUpdateAttrs.after = after.toString()
+			if (before) {
+				messagesAttrs.before = before.toString()
 			}
 
 			const result = await query({
@@ -178,30 +191,20 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 					id: generateMessageTag(),
 					type: 'get',
 					xmlns: 'newsletter',
-					to: jid
+					to: 's.whatsapp.net'
 				},
-				content: [
-					{
-						tag: 'message_updates',
-						attrs: messageUpdateAttrs
-					}
-				]
+				content: [{ tag: 'messages', attrs: messagesAttrs }]
 			})
 
-			// Response structure: iq -> message_updates -> messages -> message[]
-			const messageUpdatesNode = getBinaryNodeChild(result, 'message_updates')
-			if (!messageUpdatesNode) {
-				return []
-			}
-
-			// WA Web: flattenedChildWithTag(message_updates, "messages")
-			const messagesNode = getBinaryNodeChild(messageUpdatesNode, 'messages')
+			// Response: iq -> messages(jid="newsletter_jid") -> message[]
+			const messagesNode = getBinaryNodeChild(result, 'messages')
 			if (!messagesNode) {
 				return []
 			}
 
+			// The response messages node carries the newsletter JID
+			const newsletterJid = messagesNode.attrs.jid || (type === 'jid' ? key : undefined)
 			const messages: WAMessage[] = []
-			// WA Web: mapChildrenWithTag(messages, "message", 0, 300, ...)
 			for (const child of getBinaryNodeChildren(messagesNode, 'message')) {
 				const plaintextNode = getBinaryNodeChild(child, 'plaintext')
 				if (!plaintextNode?.content) {
@@ -216,9 +219,8 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 					const messageProto = proto.Message.decode(contentBuf).toJSON()
 					const fullMessage = proto.WebMessageInfo.fromObject({
 						key: {
-							remoteJid: jid,
-							// IQ response uses "id" attr; push notifications use "message_id"
-							id: child.attrs.id || child.attrs.message_id || child.attrs.server_id,
+							remoteJid: newsletterJid,
+							id: child.attrs.id || child.attrs.server_id,
 							server_id: child.attrs.server_id,
 							fromMe: false
 						},
