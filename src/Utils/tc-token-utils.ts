@@ -147,6 +147,12 @@ export async function storeTcTokensFromIqResult({
 			continue
 		}
 
+		// Don't overwrite a valid timestamped token with a timestamp-less one —
+		// it would be treated as immediately expired by isTcTokenExpired
+		if (existingTs > 0 && !incomingTs) {
+			continue
+		}
+
 		await keys.set({
 			tctoken: {
 				[storageJid]: {

@@ -1069,7 +1069,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const issueTimestamp = unixTimestampSeconds()
 				getPrivacyTokens([destinationJid], issueTimestamp)
 					.then(async result => {
-						// Store any tokens the server returned in the IQ response
+						// Store any tokens the server returned in the IQ response.
+						// Note: onNewJidStored not passed — the pruning index lives in messages-recv
+						// (higher layer). This is benign: fire-and-forget only runs for contacts
+						// we're actively messaging, so their JIDs will be tracked via the receive path.
 						await storeTcTokensFromIqResult({
 							result,
 							fallbackJid: tcTokenJid,
