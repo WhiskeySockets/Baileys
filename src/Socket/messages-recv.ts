@@ -51,7 +51,7 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
-import { isTcTokenExpired, resolveTcTokenJid } from '../Utils/tc-token-utils'
+import { isTcTokenExpired, resolveTcTokenJid, storeTcTokensFromIqResult } from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -98,6 +98,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		messageRetryManager,
 		getPrivacyTokens
 	} = sock
+
+	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
@@ -579,10 +581,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Matches WAWebSendTcTokenWhenDeviceIdentityChange
 				try {
 					const normalizedJid = jidNormalizedUser(from)
-					const tcJid = await resolveTcTokenJid(
-						normalizedJid,
-						signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
-					)
+					const tcJid = await resolveTcTokenJid(normalizedJid, getLIDForPN)
 					const tcTokenData = await authState.keys.get('tctoken', [tcJid])
 					const senderTs = tcTokenData?.[tcJid]?.senderTimestamp
 
@@ -590,12 +589,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if (senderTs !== null && senderTs !== undefined && !isTcTokenExpired(senderTs)) {
 						logger.debug({ jid: normalizedJid, senderTimestamp: senderTs }, 'identity changed, re-issuing tctoken')
 						// Pass original senderTimestamp to match WA Web
-						getPrivacyTokens([normalizedJid], senderTs).catch(err => {
-							logger.debug(
-								{ jid: normalizedJid, err: err?.message },
-								'failed to re-issue tctoken after identity change'
+						getPrivacyTokens([normalizedJid], senderTs)
+							.then(result =>
+								storeTcTokensFromIqResult({
+									result,
+									fallbackJid: tcJid,
+									keys: authState.keys,
+									getLIDForPN,
+									onNewJidStored: trackTcTokenJid
+								})
 							)
-						})
+							.catch(err => {
+								logger.debug(
+									{ jid: normalizedJid, err: err?.message },
+									'failed to re-issue tctoken after identity change'
+								)
+							})
 					}
 				} catch (err: any) {
 					logger.warn({ from, err: err?.message }, 'error checking tctoken for re-issuance after identity change')
@@ -960,31 +969,50 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	/** debounced save of tctoken JID index */
 	let tcTokenIndexTimer: ReturnType<typeof setTimeout> | undefined
+
+	function flushTcTokenIndex() {
+		if (tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+			tcTokenIndexTimer = undefined
+		}
+
+		return authState.keys.set({
+			tctoken: {
+				[TC_TOKEN_INDEX_KEY]: {
+					token: Buffer.from(JSON.stringify([...tcTokenKnownJids]))
+				}
+			}
+		})
+	}
+
 	function scheduleTcTokenIndexSave() {
 		if (tcTokenIndexTimer) {
 			clearTimeout(tcTokenIndexTimer)
 		}
 
 		tcTokenIndexTimer = setTimeout(async () => {
+			tcTokenIndexTimer = undefined
 			try {
-				await authState.keys.set({
-					tctoken: {
-						[TC_TOKEN_INDEX_KEY]: {
-							token: Buffer.from(JSON.stringify([...tcTokenKnownJids]))
-						}
-					}
-				})
+				await flushTcTokenIndex()
 			} catch (err: any) {
 				logger.warn({ err: err?.message }, 'failed to save tctoken index')
 			}
 		}, 5000)
 	}
 
+	/** track a new JID in the tctoken index (for cross-session pruning) */
+	function trackTcTokenJid(jid: string) {
+		if (!tcTokenKnownJids.has(jid)) {
+			tcTokenKnownJids.add(jid)
+			scheduleTcTokenIndexSave()
+		}
+	}
+
 	const handlePrivacyTokenNotification = async (node: BinaryNode) => {
 		const tokensNode = getBinaryNodeChild(node, 'tokens')
-		const from = jidNormalizedUser(node.attrs.from)
-
 		if (!tokensNode) return
+
+		const from = jidNormalizedUser(node.attrs.from)
 
 		// WA Web uses: senderLid ?? toLid(from) for the storage key
 		// The sender_lid attribute provides the LID directly when available
@@ -992,50 +1020,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			node.attrs.sender_lid && isLidUser(jidNormalizedUser(node.attrs.sender_lid))
 				? jidNormalizedUser(node.attrs.sender_lid)
 				: undefined
-		const storageJid =
-			senderLid ??
-			(await resolveTcTokenJid(from, signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)))
+		const fallbackJid = senderLid ?? (await resolveTcTokenJid(from, getLIDForPN))
 
-		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
+		logger.debug({ from, storageJid: fallbackJid }, 'processing privacy token notification')
 
-		for (const tokenNode of tokenNodes) {
-			const { attrs, content } = tokenNode
-			const type = attrs.type
-			const timestamp = attrs.t
-
-			if (type === 'trusted_contact' && content instanceof Uint8Array) {
-				logger.debug(
-					{
-						from,
-						storageJid,
-						timestamp,
-						tcToken: content
-					},
-					'received trusted contact token'
-				)
-
-				// Preserve existing senderTimestamp to avoid racing with fire-and-forget
-				const existingData = await authState.keys.get('tctoken', [storageJid])
-				const existing = existingData[storageJid]
-
-				// Timestamp monotonicity guard — only store if incoming timestamp >= existing
-				// Matches WA Web handleIncomingTcToken
-				const existingTs = existing?.timestamp ? Number(existing.timestamp) : 0
-				const incomingTs = timestamp ? Number(timestamp) : 0
-				if (existingTs > 0 && incomingTs > 0 && existingTs > incomingTs) {
-					logger.debug({ storageJid, existingTs, incomingTs }, 'skipping tctoken store — existing timestamp is newer')
-					continue
-				}
-
-				await authState.keys.set({
-					tctoken: { [storageJid]: { ...existing, token: Buffer.from(content), timestamp } }
-				})
-				if (!tcTokenKnownJids.has(storageJid)) {
-					tcTokenKnownJids.add(storageJid)
-					scheduleTcTokenIndexSave()
-				}
-			}
-		}
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid,
+			keys: authState.keys,
+			getLIDForPN,
+			onNewJidStored: trackTcTokenJid
+		})
 	}
 
 	async function decipherLinkPublicKey(data: Uint8Array | Buffer) {
@@ -1591,13 +1586,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// After a brief delay the server should have pushed a privacy_token
 				// notification, making the re-send succeed.
 				const msgId = attrs.id
-				const jid = attrs.from
+				const jid = jidNormalizedUser(attrs.from)
 				if (msgId && jid && !tcTokenRetriedMsgIds.has(msgId)) {
-					// Safety cap: prevent unbounded growth in pathological scenarios
-					if (tcTokenRetriedMsgIds.size >= 500) {
-						tcTokenRetriedMsgIds.clear()
-					}
-
+					// Each entry auto-expires via setTimeout(60s), so the set
+					// is naturally bounded under normal conditions.
 					tcTokenRetriedMsgIds.add(msgId)
 					setTimeout(() => tcTokenRetriedMsgIds.delete(msgId), 60_000)
 
@@ -1801,10 +1793,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	/** timestamp of last tctoken prune run — throttles to once per 24h */
 	let lastTcTokenPruneTs = 0
 
-	ev.on('connection.update', ({ isOnline }) => {
+	ev.on('connection.update', ({ isOnline, connection }) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
+		}
+
+		// Flush pending tctoken index save on disconnect to avoid writing after close
+		if (connection === 'close' && tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+			tcTokenIndexTimer = undefined
+			// Best-effort flush — may fail if store is already closed
+			try {
+				void Promise.resolve(flushTcTokenIndex()).catch(() => {})
+			} catch {
+				/* ignore sync errors */
+			}
 		}
 
 		// Prune expired tctokens when coming online, at most once per 24 hours

@@ -36,7 +36,12 @@ import {
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
-import { isTcTokenExpired, resolveTcTokenJid, shouldSendNewTcToken } from '../Utils/tc-token-utils'
+import {
+	isTcTokenExpired,
+	resolveTcTokenJid,
+	shouldSendNewTcToken,
+	storeTcTokensFromIqResult
+} from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -82,6 +87,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		groupMetadata,
 		groupToggleEphemeral
 	} = sock
+
+	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
 	const userDevicesCache =
 		config.userDevicesCache ||
@@ -1019,12 +1026,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const is1on1Send = !isGroup && !isRetryResend && !isStatus && !isNewsletter && !isPeerMessage
 
 			// Resolve destination to LID for tctoken storage — matches Signal session key pattern
-			const tcTokenJid = is1on1Send
-				? await resolveTcTokenJid(
-						destinationJid,
-						signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
-					)
-				: destinationJid
+			const tcTokenJid = is1on1Send ? await resolveTcTokenJid(destinationJid, getLIDForPN) : destinationJid
 			const contactTcTokenData = is1on1Send ? await authState.keys.get('tctoken', [tcTokenJid]) : {}
 			const existingTokenEntry = contactTcTokenData[tcTokenJid]
 			let tcTokenBuffer = existingTokenEntry?.token
@@ -1066,17 +1068,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (is1on1Send && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
 				const issueTimestamp = unixTimestampSeconds()
 				getPrivacyTokens([destinationJid], issueTimestamp)
-					.then(async () => {
+					.then(async result => {
+						// Store any tokens the server returned in the IQ response
+						await storeTcTokensFromIqResult({
+							result,
+							fallbackJid: tcTokenJid,
+							keys: authState.keys,
+							getLIDForPN
+						})
+
 						// Persist senderTimestamp to prevent redundant issuances.
 						// WA Web stores tcTokenSenderTimestamp in the chat table unconditionally.
-						// In Baileys we use the tctoken key store, which requires a token field.
 						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
 						const currentEntry = currentData[tcTokenJid]
 						await authState.keys.set({
 							tctoken: {
 								[tcTokenJid]: {
-									token: currentEntry?.token ?? Buffer.alloc(0),
-									timestamp: currentEntry?.timestamp,
+									// Spread preserves token+timestamp if they exist,
+									// falls back to empty buffer if no token received yet
+									token: Buffer.alloc(0),
+									...currentEntry,
 									senderTimestamp: issueTimestamp
 								}
 							}
