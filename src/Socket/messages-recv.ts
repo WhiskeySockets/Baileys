@@ -1601,7 +1601,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					tcTokenRetriedMsgIds.add(msgId)
 					setTimeout(() => tcTokenRetriedMsgIds.delete(msgId), 60_000)
 
-					const msg = await getMessage(key)
+					const msg =
+						(await getMessage(key)) ??
+						// Fallback to retry manager cache — the user's getMessage store
+						// may not have persisted the message yet (ack arrives <30ms after send)
+						messageRetryManager?.getRecentMessage(jid, msgId)?.message
 					if (msg) {
 						//eslint-disable-next-line max-depth
 						try {
