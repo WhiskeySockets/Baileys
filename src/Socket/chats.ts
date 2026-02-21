@@ -52,6 +52,8 @@ import {
 	jidNormalizedUser,
 	isPnUser,
 	isLidUser,
+	isHostedLidUser,
+	isHostedPnUser,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -377,7 +379,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		let lid: string
 		let pn_jid: string | undefined
 
-		if (isLidUser(normalizedJid)) {
+		if (isLidUser(normalizedJid) || isHostedLidUser(normalizedJid)) {
 			lid = normalizedJid
 
 			if (action === 'block') {
@@ -388,7 +390,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 				pn_jid = jidNormalizedUser(pn)
 			}
-		} else if (isPnUser(normalizedJid)) {
+		} else if (isPnUser(normalizedJid) || isHostedPnUser(normalizedJid)) {
 			const mapped = await signalRepository.lidMapping.getLIDForPN(normalizedJid)
 			if (!mapped) {
 				throw new Boom(`Unable to resolve LID for PN JID: ${jid}`, { statusCode: 400 })
