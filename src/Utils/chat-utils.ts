@@ -140,6 +140,24 @@ export const ensureLTHashStateVersion = (state: LTHashState): LTHashState => {
 	return state
 }
 
+export const MAX_SYNC_ATTEMPTS = 2
+
+/**
+ * Matches WA Web's SyncdFatalError classification:
+ * XMPP 400/404/405/406 are fatal, TypeError indicates WASM crash.
+ */
+export const isAppStateSyncIrrecoverable = (error: any, attempts: number): boolean => {
+	const statusCode = error?.output?.statusCode
+	return (
+		attempts >= MAX_SYNC_ATTEMPTS ||
+		statusCode === 400 ||
+		statusCode === 404 ||
+		statusCode === 405 ||
+		statusCode === 406 ||
+		error?.name === 'TypeError'
+	)
+}
+
 export const encodeSyncdPatch = async (
 	{ type, index, syncAction, apiVersion, operation }: WAPatchCreate,
 	myAppStateKeyId: string,
