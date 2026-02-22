@@ -414,7 +414,7 @@ export const decodeSyncdSnapshot = async (
 		const base64Key = Buffer.from(snapshot.keyId!.id!).toString('base64')
 		const keyEnc = await getAppStateSyncKey(base64Key)
 		if (!keyEnc) {
-			throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
+			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 404 })
 		}
 
 		const result = mutationKeys(keyEnc.keyData!)
@@ -482,7 +482,7 @@ export const decodePatches = async (
 			const base64Key = Buffer.from(keyId!.id!).toString('base64')
 			const keyEnc = await getAppStateSyncKey(base64Key)
 			if (!keyEnc) {
-				throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
+				throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 404 })
 			}
 
 			const result = mutationKeys(keyEnc.keyData!)
