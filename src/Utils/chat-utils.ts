@@ -74,7 +74,7 @@ const to64BitNetworkOrder = (e: number) => {
 
 type Mac = { indexMac: Uint8Array; valueMac: Uint8Array; operation: proto.SyncdMutation.SyncdOperation }
 
-const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' | 'indexValueMap'>) => {
+export const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' | 'indexValueMap'>) => {
 	indexValueMap = { ...indexValueMap }
 	const addBuffs: Uint8Array[] = []
 	const subBuffs: Uint8Array[] = []
@@ -85,7 +85,10 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 			const prevOp = indexValueMap[indexMacBase64]
 			if (operation === proto.SyncdMutation.SyncdOperation.REMOVE) {
 				if (!prevOp) {
-					throw new Boom('tried remove, but no previous op', { data: { indexMac, valueMac } })
+					// WA Web does not throw here — it logs a warning and skips the subtract.
+					// The missing REMOVE will cause an LTHash mismatch, which is handled
+					// by the MAC validation layer (snapshot recovery or retry).
+					return
 				}
 
 				// remove from index value mac, since this mutation is erased

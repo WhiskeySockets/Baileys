@@ -613,8 +613,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						} catch (error: any) {
 							attemptsMap[name] = (attemptsMap[name] || 0) + 1
 
+							// WA Web classifies XMPP 400/404/405/406 as SyncdFatalError (immediate give up).
+							// TypeError indicates a WASM crash (e.g. undefined hash passed to LTHash).
+							const statusCode = error.output?.statusCode
 							const isIrrecoverableError =
-								attemptsMap[name] >= MAX_SYNC_ATTEMPTS || error.output?.statusCode === 404 || error.name === 'TypeError'
+								attemptsMap[name] >= MAX_SYNC_ATTEMPTS ||
+								statusCode === 400 ||
+								statusCode === 404 ||
+								statusCode === 405 ||
+								statusCode === 406 ||
+								error.name === 'TypeError'
 							logger.info(
 								{ name, error: error.stack },
 								`failed to sync state from v${states[name].version}` +
