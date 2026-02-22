@@ -614,15 +614,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 							attemptsMap[name] = (attemptsMap[name] || 0) + 1
 
 							const irrecoverable = isAppStateSyncIrrecoverable(error, attemptsMap[name])
-							logger.info(
-								{ name, error: error.stack },
-								`failed to sync state from v${states[name].version}` +
-									(irrecoverable ? ', giving up' : ', forcing snapshot retry')
-							)
+							const logData = {
+								name,
+								attempt: attemptsMap[name],
+								version: states[name].version,
+								statusCode: error.output?.statusCode,
+								errorType: error.name,
+								error: error.stack
+							}
 
 							if (irrecoverable) {
+								logger.warn(logData, `failed to sync ${name} from v${states[name].version}, giving up`)
 								collectionsToHandle.delete(name)
 							} else {
+								logger.info(logData, `failed to sync ${name} from v${states[name].version}, forcing snapshot retry`)
 								// force a full snapshot on retry to recover from
 								// corrupted local state (e.g. LTHash MAC mismatch)
 								forceSnapshotCollections.add(name)
