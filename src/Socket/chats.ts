@@ -1,7 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, HISTORY_SYNC_PAUSED_TIMEOUT_MS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import type {
 	BotListInfo,
 	CacheStore,
@@ -40,6 +40,8 @@ import {
 	generateProfilePicture,
 	getHistoryMsg,
 	isAppStateSyncIrrecoverable,
+	isMissingKeyError,
+	MAX_SYNC_ATTEMPTS,
 	newLTHashState,
 	processSyncAction
 } from '../Utils'
@@ -99,6 +101,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	// Timeout for AwaitingInitialSync state
 	let awaitingSyncTimeout: NodeJS.Timeout | undefined
+
+	// In-memory history sync completion tracking (resets on reconnection)
+	const historySyncStatus = {
+		initialBootstrapComplete: false,
+		recentSyncComplete: false
+	}
+	let historySyncPausedTimeout: NodeJS.Timeout | undefined
+
+	// Collections blocked on missing app state sync keys (mirrors WA Web's "Blocked" state).
+	// When a key arrives via APP_STATE_SYNC_KEY_SHARE, these are re-synced.
+	const blockedCollections = new Set<WAPatchName>()
 
 	const placeholderResendCache =
 		config.placeholderResendCache ||
@@ -613,7 +626,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						} catch (error: any) {
 							attemptsMap[name] = (attemptsMap[name] || 0) + 1
 
-							const irrecoverable = isAppStateSyncIrrecoverable(error, attemptsMap[name])
 							const logData = {
 								name,
 								attempt: attemptsMap[name],
@@ -623,7 +635,23 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								error: error.stack
 							}
 
-							if (irrecoverable) {
+							if (isMissingKeyError(error) && attemptsMap[name] >= MAX_SYNC_ATTEMPTS) {
+								// WA Web treats missing keys as "Blocked" — park the collection
+								// until the key arrives via APP_STATE_SYNC_KEY_SHARE.
+								logger.warn(
+									logData,
+									`${name} blocked on missing key from v${states[name].version}, parking after ${attemptsMap[name]} attempts`
+								)
+								blockedCollections.add(name)
+								collectionsToHandle.delete(name)
+							} else if (isMissingKeyError(error)) {
+								// Retry with a snapshot which may use a different key.
+								logger.info(
+									logData,
+									`${name} blocked on missing key from v${states[name].version}, retrying with snapshot`
+								)
+								forceSnapshotCollections.add(name)
+							} else if (isAppStateSyncIrrecoverable(error, attemptsMap[name])) {
 								logger.warn(logData, `failed to sync ${name} from v${states[name].version}, giving up`)
 								collectionsToHandle.delete(name)
 							} else {
@@ -1092,6 +1120,56 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType! as proto.HistorySync.HistorySyncType)
 			: false
 
+		if (historyMsg && shouldProcessHistoryMsg) {
+			const syncType = historyMsg.syncType as proto.HistorySync.HistorySyncType
+
+			// INITIAL_BOOTSTRAP — fire immediately, no progress check (same as WA Web K function)
+			if (
+				syncType === proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP &&
+				!historySyncStatus.initialBootstrapComplete
+			) {
+				historySyncStatus.initialBootstrapComplete = true
+				ev.emit('messaging-history.status', {
+					syncType,
+					status: 'complete',
+					explicit: true
+				})
+			}
+
+			// RECENT with progress === 100 — explicit completion
+			if (
+				syncType === proto.HistorySync.HistorySyncType.RECENT &&
+				historyMsg.progress === 100 &&
+				!historySyncStatus.recentSyncComplete
+			) {
+				historySyncStatus.recentSyncComplete = true
+				clearTimeout(historySyncPausedTimeout)
+				historySyncPausedTimeout = undefined
+				ev.emit('messaging-history.status', {
+					syncType,
+					status: 'complete',
+					explicit: true
+				})
+			}
+
+			// Reset 120s paused timeout on any RECENT chunk (like WA Web's handleChunkProgress)
+			if (syncType === proto.HistorySync.HistorySyncType.RECENT && !historySyncStatus.recentSyncComplete) {
+				clearTimeout(historySyncPausedTimeout)
+				historySyncPausedTimeout = setTimeout(() => {
+					if (!historySyncStatus.recentSyncComplete) {
+						historySyncStatus.recentSyncComplete = true
+						ev.emit('messaging-history.status', {
+							syncType: proto.HistorySync.HistorySyncType.RECENT,
+							status: 'paused',
+							explicit: false
+						})
+					}
+
+					historySyncPausedTimeout = undefined
+				}, HISTORY_SYNC_PAUSED_TIMEOUT_MS)
+			}
+		}
+
 		// State machine: decide on sync and flush
 		if (historyMsg && syncState === SyncState.AwaitingInitialSync) {
 			if (awaitingSyncTimeout) {
@@ -1112,6 +1190,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		const doAppStateSync = async () => {
 			if (syncState === SyncState.Syncing) {
+				// All collections will be synced, so clear any blocked ones
+				blockedCollections.clear()
 				logger.info('Doing app state sync')
 				await resyncAppState(ALL_WA_PATCH_NAMES, true)
 
@@ -1180,6 +1260,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	})
 
 	ev.on('connection.update', ({ connection, receivedPendingNotifications }) => {
+		if (connection === 'close') {
+			blockedCollections.clear()
+			clearTimeout(historySyncPausedTimeout)
+			historySyncPausedTimeout = undefined
+		}
+
 		if (connection === 'open') {
 			if (fireInitQueries) {
 				executeInitQueries().catch(error => onUnexpectedError(error, 'init queries'))
@@ -1193,6 +1279,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		if (!receivedPendingNotifications || syncState !== SyncState.Connecting) {
 			return
 		}
+
+		historySyncStatus.initialBootstrapComplete = false
+		historySyncStatus.recentSyncComplete = false
+		clearTimeout(historySyncPausedTimeout)
+		historySyncPausedTimeout = undefined
 
 		syncState = SyncState.AwaitingInitialSync
 		logger.info('Connection is now AwaitingInitialSync, buffering events')
@@ -1221,7 +1312,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			return
 		}
 
-		logger.info('History sync is enabled, awaiting notification with a 20s timeout.')
+		logger.info('First connection, awaiting history sync notification with a 20s timeout.')
 
 		if (awaitingSyncTimeout) {
 			clearTimeout(awaitingSyncTimeout)
@@ -1232,8 +1323,35 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
 				syncState = SyncState.Online
 				ev.flush()
+
+				// Increment so subsequent reconnections skip the 20s wait.
+				// Late-arriving history is still processed via processMessage
+				// regardless of the state machine phase.
+				const accountSyncCounter = (authState.creds.accountSyncCounter || 0) + 1
+				ev.emit('creds.update', { accountSyncCounter })
 			}
 		}, 20_000)
+	})
+
+	// When an app state sync key arrives (myAppStateKeyId is set) and there are
+	// collections blocked on a missing key, trigger a re-sync for just those collections.
+	// This mirrors WA Web's Blocked → retry-on-key-arrival behavior.
+	ev.on('creds.update', ({ myAppStateKeyId }) => {
+		if (!myAppStateKeyId || blockedCollections.size === 0) {
+			return
+		}
+
+		// If we're in the middle of a full sync, doAppStateSync handles all collections
+		if (syncState === SyncState.Syncing) {
+			blockedCollections.clear()
+			return
+		}
+
+		const collections = [...blockedCollections] as WAPatchName[]
+		blockedCollections.clear()
+
+		logger.info({ collections }, 'app state sync key arrived, re-syncing blocked collections')
+		resyncAppState(collections, false).catch(error => onUnexpectedError(error, 'blocked collections resync'))
 	})
 
 	ev.on('lid-mapping.update', async ({ lid, pn }) => {

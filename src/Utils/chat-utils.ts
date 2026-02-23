@@ -143,19 +143,21 @@ export const ensureLTHashStateVersion = (state: LTHashState): LTHashState => {
 export const MAX_SYNC_ATTEMPTS = 2
 
 /**
- * Matches WA Web's SyncdFatalError classification:
- * XMPP 400/404/405/406 are fatal, TypeError indicates WASM crash.
+ * Check if an error is a missing app state sync key.
+ * WA Web treats these as "Blocked" (waits for key arrival), not fatal.
+ * In Baileys we retry with a snapshot which may use a different key.
+ */
+export const isMissingKeyError = (error: any): boolean => {
+	return error?.data?.isMissingKey === true
+}
+
+/**
+ * Determines if an app state sync error is unrecoverable.
+ * TypeError indicates a WASM crash; otherwise we give up after MAX_SYNC_ATTEMPTS.
+ * Missing keys are NOT checked here — they are handled separately as "Blocked".
  */
 export const isAppStateSyncIrrecoverable = (error: any, attempts: number): boolean => {
-	const statusCode = error?.output?.statusCode
-	return (
-		attempts >= MAX_SYNC_ATTEMPTS ||
-		statusCode === 400 ||
-		statusCode === 404 ||
-		statusCode === 405 ||
-		statusCode === 406 ||
-		error?.name === 'TypeError'
-	)
+	return attempts >= MAX_SYNC_ATTEMPTS || error?.name === 'TypeError'
 }
 
 export const encodeSyncdPatch = async (
@@ -166,7 +168,7 @@ export const encodeSyncdPatch = async (
 ) => {
 	const key = !!myAppStateKeyId ? await getAppStateSyncKey(myAppStateKeyId) : undefined
 	if (!key) {
-		throw new Boom(`myAppStateKey ("${myAppStateKeyId}") not present`, { statusCode: 404 })
+		throw new Boom(`myAppStateKey ("${myAppStateKeyId}") not present`, { data: { isMissingKey: true } })
 	}
 
 	const encKeyId = Buffer.from(myAppStateKeyId, 'base64')
@@ -287,8 +289,7 @@ export const decodeSyncdMutations = async (
 		const keyEnc = await getAppStateSyncKey(base64Key)
 		if (!keyEnc) {
 			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, {
-				statusCode: 404,
-				data: { msgMutations }
+				data: { isMissingKey: true, msgMutations }
 			})
 		}
 
@@ -310,7 +311,7 @@ export const decodeSyncdPatch = async (
 		const base64Key = Buffer.from(msg.keyId!.id!).toString('base64')
 		const mainKeyObj = await getAppStateSyncKey(base64Key)
 		if (!mainKeyObj) {
-			throw new Boom(`failed to find key "${base64Key}" to decode patch`, { statusCode: 404, data: { msg } })
+			throw new Boom(`failed to find key "${base64Key}" to decode patch`, { data: { isMissingKey: true, msg } })
 		}
 
 		const mainKey = mutationKeys(mainKeyObj.keyData!)
@@ -432,7 +433,7 @@ export const decodeSyncdSnapshot = async (
 		const base64Key = Buffer.from(snapshot.keyId!.id!).toString('base64')
 		const keyEnc = await getAppStateSyncKey(base64Key)
 		if (!keyEnc) {
-			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 404 })
+			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { data: { isMissingKey: true } })
 		}
 
 		const result = mutationKeys(keyEnc.keyData!)
@@ -500,7 +501,7 @@ export const decodePatches = async (
 			const base64Key = Buffer.from(keyId!.id!).toString('base64')
 			const keyEnc = await getAppStateSyncKey(base64Key)
 			if (!keyEnc) {
-				throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 404 })
+				throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { data: { isMissingKey: true } })
 			}
 
 			const result = mutationKeys(keyEnc.keyData!)
