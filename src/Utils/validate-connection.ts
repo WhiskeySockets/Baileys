@@ -20,7 +20,7 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 			secondary: config.version[1],
 			tertiary: config.version[2]
 		},
-		platform: proto.ClientPayload.UserAgent.Platform.WEB,
+		platform: proto.ClientPayload.UserAgent.Platform.MACOS,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
 		osVersion: '0.1',
 		device: 'Desktop',
