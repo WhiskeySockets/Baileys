@@ -367,6 +367,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stanza.attrs.from = authState.creds.me!.id
 		}
 
+		if (tag === 'call') {
+			stanza.attrs.type = (content?.[0] as BinaryNode)?.tag
+		}
+
 		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
