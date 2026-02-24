@@ -979,8 +979,63 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 	// stream fail, possible logout
 	ws.on('CB:failure', (node: BinaryNode) => {
-		const reason = +(node.attrs.reason || 500)
-		void end(new Boom('Connection Failure', { statusCode: reason, data: node.attrs }))
+		const reasonCode = +(node.attrs.reason || 500)
+		let statusCode: DisconnectReason
+		let shouldClearAuth = false
+		
+		// Classify disconnect reasons to determine proper handling
+		switch (reasonCode) {
+			case 401:
+				statusCode = DisconnectReason.loggedOut
+				shouldClearAuth = true
+				break
+			case 403:
+				statusCode = DisconnectReason.forbidden
+				shouldClearAuth = true
+				break
+			case 405:
+				// Method not allowed - indicates stale/corrupt session
+				statusCode = DisconnectReason.methodNotAllowed
+				shouldClearAuth = true
+				logger.warn({ reasonCode, attrs: node.attrs }, 'received method not allowed (405) - session likely corrupt, clearing auth')
+				break
+			case 409:
+				statusCode = DisconnectReason.conflict
+				shouldClearAuth = true
+				break
+			case 411:
+				statusCode = DisconnectReason.multideviceMismatch
+				break
+			case 412:
+				// Precondition failed - session state mismatch
+				statusCode = DisconnectReason.preconditionFailed
+				shouldClearAuth = true
+				logger.warn({ reasonCode, attrs: node.attrs }, 'received precondition failed (412) - session state mismatch, clearing auth')
+				break
+			case 440:
+				statusCode = DisconnectReason.connectionReplaced
+				shouldClearAuth = true
+				break
+			case 515:
+				statusCode = DisconnectReason.restartRequired
+				break
+			default:
+				// Unknown reason codes default to badSession
+				statusCode = DisconnectReason.badSession
+				logger.warn({ reasonCode, attrs: node.attrs }, 'received unknown disconnect reason code')
+				break
+		}
+
+		// Clear authentication state for terminal errors that indicate session corruption
+		if (shouldClearAuth && authState?.creds) {
+			logger.info({ reasonCode, statusCode }, 'clearing authentication state due to terminal disconnect reason')
+			// Clear critical session data that could cause reconnection issues
+			authState.creds.me = undefined
+			authState.creds.platform = undefined
+		}
+
+		const errorMsg = `Connection Failure (reason: ${reasonCode}, classified as: ${statusCode}${shouldClearAuth ? ', auth cleared' : ''})`
+		void end(new Boom(errorMsg, { statusCode, data: node.attrs }))
 	})
 
 	ws.on('CB:ib,,downgrade_webclient', () => {
