@@ -1165,6 +1165,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
+		let acked = false
+
 		try {
 			const {
 				fullMessage: msg,
@@ -1189,22 +1191,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 			}
 
-			if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
-				messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
-				logger.debug(
-					{
-						jid: msg.key.remoteJid,
-						id: msg.key.id
-					},
-					'Added message to recent cache for retry receipts'
-				)
-			}
-
 			await messageMutex.mutex(async () => {
 				await decrypt()
+
+				if (msg.key?.remoteJid && msg.key?.id && msg.message && messageRetryManager) {
+					messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message)
+				}
+
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+						acked = true
 						return sendMessageAck(node, NACK_REASONS.ParsingError)
 					}
 
@@ -1222,12 +1219,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								{ msgId: msg.key.id, unavailableType },
 								'skipping placeholder resend for excluded unavailable type'
 							)
+							acked = true
 							return sendMessageAck(node)
 						}
 
 						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
 						if (messageAge > PLACEHOLDER_MAX_AGE_SECONDS) {
 							logger.debug({ msgId: msg.key.id, messageAge }, 'skipping placeholder resend for old message')
+							acked = true
 							return sendMessageAck(node)
 						}
 
@@ -1265,6 +1264,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							.catch(err => {
 								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
 							})
+						acked = true
 						await sendMessageAck(node)
 						// Don't return — fall through to upsertMessage so the stub is emitted
 					} else {
@@ -1276,6 +1276,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									{ msgId: msg.key.id, messageAge, remoteJid: msg.key.remoteJid },
 									'skipping retry for expired status message'
 								)
+								acked = true
 								return sendMessageAck(node)
 							}
 						}
@@ -1323,6 +1324,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								}
 							}
 
+							acked = true
 							await sendMessageAck(node, NACK_REASONS.UnhandledError)
 						})
 					}
@@ -1350,6 +1352,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							type = 'inactive'
 						}
 
+						acked = true
 						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
 
 						// send ack for history message
@@ -1359,6 +1362,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync') // TODO: investigate
 						}
 					} else {
+						acked = true
 						await sendMessageAck(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
@@ -1370,9 +1374,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
-			await sendMessageAck(node, NACK_REASONS.UnhandledError).catch(ackErr =>
-				logger.error({ ackErr }, 'failed to ack message after error')
-			)
+			if (!acked) {
+				await sendMessageAck(node, NACK_REASONS.UnhandledError).catch(ackErr =>
+					logger.error({ ackErr }, 'failed to ack message after error')
+				)
+			}
 		}
 	}
 
