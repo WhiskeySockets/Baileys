@@ -59,6 +59,7 @@ export const DECRYPTION_RETRY_CONFIG = {
 	sessionRecordErrors: ['No session record', 'SessionError: No session record']
 }
 
+/** NACK reason codes we send to the server (client → server) */
 export const NACK_REASONS = {
 	ParsingError: 487,
 	UnrecognizedStanza: 488,
@@ -74,6 +75,24 @@ export const NACK_REASONS = {
 	UnsupportedLIDGroup: 551,
 	DBOperationFailed: 552
 }
+
+/**
+ * Server-side error codes returned in ack stanzas (server → client).
+ * These are distinct from the client-side NackReason enum
+ * (WAWebCreateNackFromStanza) which covers client→server nack codes.
+ * 421 and 475 happen to overlap numerically, but 463 and 479 are
+ * server-specific codes not present in the client enum.
+ */
+export const SERVER_ERROR_CODES = {
+	/** Group addressing mode is stale — re-query group metadata */
+	StaleGroupAddressingMode: '421',
+	/** 1:1 message missing privacy token (tctoken) */
+	MissingTcToken: '463',
+	/** New chat messages rate limited */
+	NewChatMessagesCapped: '475',
+	/** Stanza validation failure (SMAX_INVALID) — likely stale device session */
+	SmaxInvalid: '479'
+} as const
 
 type MessageType =
 	| 'chat'

@@ -352,27 +352,61 @@ export const getStatusFromReceiptType = (type: string | undefined) => {
 	return status
 }
 
-const CODE_MAP: { [_: string]: DisconnectReason } = {
-	conflict: DisconnectReason.connectionReplaced
-}
-
 /**
- * Stream errors generally provide a reason, map that to a baileys DisconnectReason
- * @param reason the string reason given, eg. "conflict"
+ * Parse stream:error node and map to a DisconnectReason.
+ * Matches WA Web's WAWebHandleStreamError parser.
+ *
+ * Stream error types:
+ * - conflict[@type=replaced] → connectionReplaced (session opened elsewhere)
+ * - conflict[@type=device_removed] → loggedOut (device unlinked)
+ * - code=515 → restartRequired (re-registration needed)
+ * - code=516 → sessionInvalidated (full logout)
+ * - ack child → badSession (message-level error surfaced as stream error)
+ * - xml-not-well-formed → badSession (we sent a malformed stanza)
  */
 export const getErrorCodeFromStreamError = (node: BinaryNode) => {
 	const [reasonNode] = getAllBinaryNodeChildren(node)
-	let reason = reasonNode?.tag || 'unknown'
-	const statusCode = +(node.attrs.code || CODE_MAP[reason] || DisconnectReason.badSession)
 
-	if (statusCode === DisconnectReason.restartRequired) {
-		reason = 'restart required'
+	// 1. Conflict child — check type attribute
+	// WA Web: 'replaced' is explicit, everything else (including 'device_removed') is the default
+	// Reference: WAWebHandleStreamError parser
+	if (reasonNode?.tag === 'conflict') {
+		const conflictType = reasonNode.attrs?.type
+		if (conflictType === 'replaced') {
+			return { reason: 'replaced', statusCode: DisconnectReason.connectionReplaced }
+		}
+
+		// 'device_removed' or any unknown conflict type → treat as device removed (logout)
+		return { reason: 'device_removed', statusCode: DisconnectReason.loggedOut }
 	}
 
-	return {
-		reason,
-		statusCode
+	// 2. Numeric code attribute (515, 516, etc.)
+	if (node.attrs.code) {
+		const code = +node.attrs.code
+		if (code === DisconnectReason.restartRequired) {
+			return { reason: 'restart required', statusCode: DisconnectReason.restartRequired }
+		}
+
+		if (code === DisconnectReason.sessionInvalidated) {
+			return { reason: 'session invalidated', statusCode: DisconnectReason.sessionInvalidated }
+		}
+
+		return { reason: `code ${code}`, statusCode: code }
 	}
+
+	// 3. Ack child — message-level error escalated to stream
+	if (reasonNode?.tag === 'ack') {
+		return { reason: 'ack', statusCode: DisconnectReason.badSession }
+	}
+
+	// 4. xml-not-well-formed — we sent a malformed stanza
+	if (reasonNode?.tag === 'xml-not-well-formed') {
+		return { reason: 'xml-not-well-formed', statusCode: DisconnectReason.badSession }
+	}
+
+	// 5. Unknown
+	const reason = reasonNode?.tag || 'unknown'
+	return { reason, statusCode: DisconnectReason.badSession }
 }
 
 export const getCallStatusFromNode = ({ tag, attrs }: BinaryNode) => {
