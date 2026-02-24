@@ -377,6 +377,8 @@ export const makeSocket = (config: SocketConfig) => {
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
 	let closed = false
+	let keepAliveFailureCount = 0
+	let lastKeepAliveResponse: Date
 
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
@@ -584,6 +586,9 @@ export const makeSocket = (config: SocketConfig) => {
 		await noise.decodeFrame(data, frame => {
 			// reset ping timeout
 			lastDateRecv = new Date()
+			lastKeepAliveResponse = new Date()
+			// Reset failure count when receiving any message
+			keepAliveFailureCount = 0
 
 			let anyTriggered = false
 
@@ -630,6 +635,10 @@ export const makeSocket = (config: SocketConfig) => {
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
+		
+		// Reset keep-alive state
+		keepAliveFailureCount = 0
+		lastKeepAliveResponse = undefined as any
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
@@ -681,27 +690,70 @@ export const makeSocket = (config: SocketConfig) => {
 				lastDateRecv = new Date()
 			}
 
+			if (!lastKeepAliveResponse) {
+				lastKeepAliveResponse = new Date()
+			}
+
 			const diff = Date.now() - lastDateRecv.getTime()
+			const keepAliveResponseDiff = Date.now() - lastKeepAliveResponse.getTime()
+			
+			// More generous timeout for long-running sessions (3x the keep-alive interval + exponential backoff)
+			const baseTimeoutMs = keepAliveIntervalMs * 3
+			const exponentialBackoffMs = Math.min(keepAliveFailureCount * 30000, 300000) // Max 5 minutes additional
+			const timeoutThreshold = baseTimeoutMs + exponentialBackoffMs
+			
 			/*
-				check if it's been a suspicious amount of time since the server responded with our last seen
-				it could be that the network is down
+				Check if it's been a suspicious amount of time since the server responded.
+				We use a more generous timeout to handle scenarios where:
+				- Phone is asleep/offline for extended periods
+				- Network connectivity is temporarily poor
+				- Server is experiencing temporary issues
 			*/
-			if (diff > keepAliveIntervalMs + 5000) {
+			if (diff > timeoutThreshold && keepAliveResponseDiff > timeoutThreshold) {
+				logger.warn({
+					diffMs: diff,
+					keepAliveResponseDiffMs: keepAliveResponseDiff,
+					timeoutThresholdMs: timeoutThreshold,
+					keepAliveFailureCount: keepAliveFailureCount
+				}, 'Keep-alive timeout threshold exceeded, closing connection')
+				
 				void end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if (ws.isOpen) {
-				// if its all good, send a keep alive request
-				query({
-					tag: 'iq',
-					attrs: {
-						id: generateMessageTag(),
-						to: S_WHATSAPP_NET,
-						type: 'get',
-						xmlns: 'w:p'
-					},
-					content: [{ tag: 'ping', attrs: {} }]
-				}).catch(err => {
-					logger.error({ trace: err.stack }, 'error in sending keep alive')
-				})
+				// If it's been a while since last message but not timeout yet, send keep-alive
+				const shouldSendKeepAlive = diff > keepAliveIntervalMs || keepAliveResponseDiff > keepAliveIntervalMs
+				
+				if (shouldSendKeepAlive) {
+					logger.debug({
+						diffMs: diff,
+						keepAliveResponseDiffMs: keepAliveResponseDiff,
+						keepAliveFailureCount: keepAliveFailureCount
+					}, 'Sending keep-alive ping')
+					
+					// Send a keep alive request with timeout handling
+					query({
+						tag: 'iq',
+						attrs: {
+							id: generateMessageTag(),
+							to: S_WHATSAPP_NET,
+							type: 'get',
+							xmlns: 'w:p'
+						},
+						content: [{ tag: 'ping', attrs: {} }]
+					}, keepAliveIntervalMs * 2) // Double the interval for ping timeout
+					.then(() => {
+						// Reset failure count on successful keep-alive response
+						keepAliveFailureCount = 0
+						lastKeepAliveResponse = new Date()
+						logger.debug('Keep-alive ping successful, reset failure count')
+					})
+					.catch(err => {
+						keepAliveFailureCount = Math.min(keepAliveFailureCount + 1, 10) // Cap at 10
+						logger.warn({ 
+							trace: err.stack, 
+							keepAliveFailureCount: keepAliveFailureCount 
+						}, 'Keep-alive ping failed, incrementing failure count')
+					})
+				}
 			} else {
 				logger.warn('keep alive called when WS not open')
 			}
