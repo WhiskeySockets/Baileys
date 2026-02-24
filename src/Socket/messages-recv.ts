@@ -1064,12 +1064,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			participant: attrs.participant
 		}
 
-		if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
-			logger.debug({ remoteJid }, 'ignoring receipt from jid')
-			await sendMessageAck(node)
-			return
-		}
-
 		const ids = [attrs.id!]
 		if (Array.isArray(content)) {
 			const items = getBinaryNodeChildren(content[0], 'item')
@@ -1144,11 +1138,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async (node: BinaryNode) => {
 		const remoteJid = node.attrs.from
-		if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
-			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
-			await sendMessageAck(node)
-			return
-		}
 
 		try {
 			await Promise.all([
@@ -1180,12 +1169,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
-		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
-			logger.debug({ key: node.attrs.key }, 'ignored message')
-			await sendMessageAck(node, NACK_REASONS.UnhandledError)
-			return
-		}
-
 		const encNode = getBinaryNodeChild(node, 'enc')
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 		if (encNode?.attrs.type === 'msmsg') {
@@ -1588,6 +1571,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		identifier: string,
 		exec: (node: BinaryNode) => Promise<void>
 	) => {
+		// Fast path: ack and drop ignored JIDs before entering the buffer/queue
+		if (type !== 'call') {
+			const from = node.attrs.from
+			if (from && from !== S_WHATSAPP_NET && shouldIgnoreJid(from)) {
+				await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
+				return
+			}
+		}
+
 		const isOffline = !!node.attrs.offline
 
 		if (isOffline) {
