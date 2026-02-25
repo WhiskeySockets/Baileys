@@ -86,12 +86,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		config.userDevicesCache ||
 		new NodeCache<JidWithDevice[]>({
 			stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
-			useClones: false
+			useClones: false,
+			maxKeys: 1000
 		})
 
 	const peerSessionsCache = new NodeCache<boolean>({
 		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES,
-		useClones: false
+		useClones: false,
+		maxKeys: 1000
 	})
 
 	// Initialize message retry manager if enabled
@@ -354,10 +356,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			if (userDevicesCache.mset) {
 				// if the cache supports mset, we can set all devices in one go
-				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+				try {
+					await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+				} catch {
+					/* maxKeys exceeded */
+				}
 			} else {
 				for (const key in deviceMap) {
-					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+					if (deviceMap[key]) {
+						try {
+							await userDevicesCache.set(key, deviceMap[key])
+						} catch {
+							/* maxKeys exceeded */
+						}
+					}
 				}
 			}
 
@@ -432,7 +444,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			} else {
 				const sessionValidation = await signalRepository.validateSession(jid)
 				const hasSession = sessionValidation.exists
-				peerSessionsCache.set(signalId, hasSession)
+				try {
+					peerSessionsCache.set(signalId, hasSession)
+				} catch {
+					/* maxKeys exceeded */
+				}
 				if (hasSession && !force) {
 					continue
 				}
@@ -478,7 +494,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// Cache fetched sessions using wire JIDs
 			for (const wireJid of wireJids) {
 				const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
-				peerSessionsCache.set(signalId, true)
+				try {
+					peerSessionsCache.set(signalId, true)
+				} catch {
+					/* maxKeys exceeded */
+				}
 			}
 		}
 
@@ -1138,6 +1158,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
 
 	const waitForMsgMediaUpdate = bindWaitForEvent(ev, 'messages.media-update')
+
+	// Clean up local resources when connection closes
+	ev.on('connection.update', ({ connection }) => {
+		if (connection === 'close') {
+			messageRetryManager?.destroy()
+			userDevicesCache.flushAll()
+			peerSessionsCache.flushAll()
+		}
+	})
 
 	return {
 		...sock,

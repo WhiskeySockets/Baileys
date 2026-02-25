@@ -1,11 +1,12 @@
-import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
+import { NativeLRUCache } from '../Utils/lru-cache'
 import { isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJIDDomains } from '../WABinary'
 
 export class LIDMappingStore {
-	private readonly mappingCache = new LRUCache<string, string>({
-		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
+	private readonly mappingCache = new NativeLRUCache<string, string>({
+		max: 5000,
+		ttl: 3 * 24 * 60 * 60 * 1000, // 3 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
@@ -324,5 +325,15 @@ export class LIDMappingStore {
 		}
 
 		return Object.values(successfulPairs).length ? Object.values(successfulPairs) : null
+	}
+
+	/**
+	 * Release all resources held by the LID mapping store.
+	 * Should be called when the socket is closed to prevent memory leaks.
+	 */
+	destroy(): void {
+		this.mappingCache.clear()
+		this.inflightLIDLookups.clear()
+		this.inflightPNLookups.clear()
 	}
 }

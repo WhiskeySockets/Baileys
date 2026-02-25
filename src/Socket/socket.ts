@@ -631,9 +631,7 @@ export const makeSocket = (config: SocketConfig) => {
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
 
-		ws.removeAllListeners('close')
-		ws.removeAllListeners('open')
-		ws.removeAllListeners('message')
+		ws.removeAllListeners()
 
 		if (!ws.isClosed && !ws.isClosing) {
 			try {
@@ -648,7 +646,13 @@ export const makeSocket = (config: SocketConfig) => {
 				date: new Date()
 			}
 		})
-		ev.removeAllListeners('connection.update')
+
+		ev.removeAllListeners()
+
+		ev.release()
+
+		// Release signal repository caches (LID mapping, migrated sessions)
+		signalRepository.destroy()
 	}
 
 	const waitForSocketOpen = async () => {

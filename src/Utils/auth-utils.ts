@@ -1,6 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
-import { AsyncLocalStorage } from 'async_hooks'
 import { Mutex } from 'async-mutex'
+import { AsyncLocalStorage } from 'async_hooks'
 import { randomBytes } from 'crypto'
 import PQueue from 'p-queue'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
@@ -43,7 +43,8 @@ export function makeCacheableSignalKeyStore(
 		new NodeCache<SignalDataTypeMap[keyof SignalDataTypeMap]>({
 			stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
 			useClones: false,
-			deleteOnExpire: true
+			deleteOnExpire: true,
+			maxKeys: 2000 // Prevent unbounded session key accumulation
 		})
 
 	// Mutex for protecting cache operations

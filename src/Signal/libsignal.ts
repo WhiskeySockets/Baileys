@@ -2,11 +2,11 @@
 import * as libsignal from 'libsignal'
 // @ts-ignore
 import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
-import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
+import { NativeLRUCache } from '../Utils/lru-cache'
 import {
 	isHostedLidUser,
 	isHostedPnUser,
@@ -16,10 +16,10 @@ import {
 	transferDevice,
 	WAJIDDomains
 } from '../WABinary'
+import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
-import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
 /** Extract identity key from PreKeyWhisperMessage for identity change detection */
@@ -56,8 +56,9 @@ export function makeLibSignalRepository(
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
-	const migratedSessionCache = new LRUCache<string, true>({
-		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
+	const migratedSessionCache = new NativeLRUCache<string, true>({
+		max: 5000,
+		ttl: 3 * 24 * 60 * 60 * 1000, // 3 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
@@ -365,6 +366,14 @@ export function makeLibSignalRepository(
 				},
 				`migrate-${deviceJids.length}-sessions-${jidDecode(toJid)?.user}`
 			)
+		},
+		/**
+		 * Release all resources held by the signal repository.
+		 * Should be called when the socket is closed to prevent memory leaks.
+		 */
+		destroy() {
+			migratedSessionCache.clear()
+			lidMapping.destroy()
 		}
 	}
 

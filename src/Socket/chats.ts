@@ -103,7 +103,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		config.placeholderResendCache ||
 		(new NodeCache<number>({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
-			useClones: false
+			useClones: false,
+			maxKeys: 5000
 		}) as CacheStore)
 
 	if (!config.placeholderResendCache) {
@@ -1219,6 +1220,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
 		} catch (error) {
 			logger.warn({ lid, pn, error }, 'Failed to store LID-PN mapping')
+		}
+	})
+
+	// Clean up local resources when connection closes
+	ev.on('connection.update', ({ connection }) => {
+		if (connection === 'close') {
+			if (awaitingSyncTimeout) {
+				clearTimeout(awaitingSyncTimeout)
+				awaitingSyncTimeout = undefined
+			}
+
+			placeholderResendCache.flushAll()
 		}
 	})
 

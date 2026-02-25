@@ -53,6 +53,8 @@ export class WebSocketClient extends AbstractSocketClient {
 
 		await closePromise
 
+		// Remove all listeners from the underlying WebSocket to break closure references
+		this.socket.removeAllListeners()
 		this.socket = null
 	}
 	send(str: string | Uint8Array, cb?: (err?: Error) => void): boolean {

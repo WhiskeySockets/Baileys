@@ -1,6 +1,6 @@
-import { LRUCache } from 'lru-cache'
 import type { proto } from '../../WAProto/index.js'
 import type { ILogger } from './logger'
+import { NativeLRUCache } from './lru-cache'
 
 /** Number of sent messages to cache in memory for handling retry receipts */
 const RECENT_MESSAGES_SIZE = 512
@@ -63,7 +63,7 @@ export enum RetryReason {
 const MAC_ERROR_CODES = new Set([RetryReason.SignalErrorInvalidMessage, RetryReason.SignalErrorBadMac])
 
 export class MessageRetryManager {
-	private recentMessagesMap = new LRUCache<string, RecentMessage>({
+	private recentMessagesMap = new NativeLRUCache<string, RecentMessage>({
 		max: RECENT_MESSAGES_SIZE,
 		ttl: 5 * 60 * 1000,
 		ttlAutopurge: true,
@@ -76,11 +76,11 @@ export class MessageRetryManager {
 		}
 	})
 	private messageKeyIndex = new Map<string, string>()
-	private sessionRecreateHistory = new LRUCache<string, number>({
+	private sessionRecreateHistory = new NativeLRUCache<string, number>({
 		ttl: RECREATE_SESSION_TIMEOUT * 2,
 		ttlAutopurge: true
 	})
-	private retryCounters = new LRUCache<string, number>({
+	private retryCounters = new NativeLRUCache<string, number>({
 		ttl: 15 * 60 * 1000,
 		ttlAutopurge: true,
 		updateAgeOnGet: true
@@ -291,5 +291,26 @@ export class MessageRetryManager {
 
 		this.recentMessagesMap.delete(keyStr)
 		this.messageKeyIndex.delete(messageId)
+	}
+
+	/**
+	 * Destroy the retry manager and release all resources.
+	 * Should be called when the socket connection is closed.
+	 */
+	destroy(): void {
+		// Clear all pending phone request timeouts to prevent timer leaks
+		for (const messageId of Object.keys(this.pendingPhoneRequests)) {
+			clearTimeout(this.pendingPhoneRequests[messageId])
+		}
+
+		this.pendingPhoneRequests = {}
+
+		// Clear all LRU caches and maps
+		this.recentMessagesMap.clear()
+		this.messageKeyIndex.clear()
+		this.sessionRecreateHistory.clear()
+		this.retryCounters.clear()
+
+		this.logger.debug('MessageRetryManager destroyed')
 	}
 }
