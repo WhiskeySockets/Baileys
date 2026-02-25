@@ -61,6 +61,13 @@ type BaileysBufferableEventEmitter = BaileysEventEmitter & {
 	flush(): boolean
 	/** is there an ongoing buffer */
 	isBuffering(): boolean
+	/**
+	 * Release all resources held by the event buffer.
+	 * Should be called when the socket is closed to prevent memory leaks.
+	 */
+	release(): void
+	/** Remove all listeners, optionally for a specific event. Overrides parent to allow no-arg call. */
+	removeAllListeners<T extends keyof BaileysEventMap>(event?: T): void
 }
 
 /**
@@ -76,7 +83,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	let bufferTimeout: NodeJS.Timeout | null = null
 	let flushPendingTimeout: NodeJS.Timeout | null = null // Add a specific timer for the debounced flush to prevent leak
 	let bufferCount = 0
-	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
+	const MAX_HISTORY_CACHE_SIZE = 3000 // Limit the history cache size to prevent memory bloat
 	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
 
 	// take the generic event and fire it as a baileys event
@@ -208,10 +215,11 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 				buffer()
 				try {
 					const result = await work(...args)
-					// If this is the only buffer, flush after a small delay
-					if (bufferCount === 1) {
-						setTimeout(() => {
-							if (isBuffering && bufferCount === 1) {
+					// If this is the only buffer, schedule a guarded flush
+					if (bufferCount === 1 && !flushPendingTimeout) {
+						flushPendingTimeout = setTimeout(() => {
+							flushPendingTimeout = null
+							if (isBuffering && bufferCount <= 1) {
 								flush()
 							}
 						}, 100) // Small delay to allow nested buffers
@@ -225,7 +233,10 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 					if (bufferCount === 0) {
 						// Only schedule ONE timeout, not 10,000
 						if (!flushPendingTimeout) {
-							flushPendingTimeout = setTimeout(flush, 100)
+							flushPendingTimeout = setTimeout(() => {
+								flushPendingTimeout = null
+								flush()
+							}, 100)
 						}
 					}
 				}
@@ -233,7 +244,28 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		},
 		on: (...args) => ev.on(...args),
 		off: (...args) => ev.off(...args),
-		removeAllListeners: (...args) => ev.removeAllListeners(...args)
+		removeAllListeners: (...args) => ev.removeAllListeners(...args),
+		release() {
+			// Clear all timers
+			if (bufferTimeout) {
+				clearTimeout(bufferTimeout)
+				bufferTimeout = null
+			}
+
+			if (flushPendingTimeout) {
+				clearTimeout(flushPendingTimeout)
+				flushPendingTimeout = null
+			}
+
+			// Clear cached data
+			historyCache.clear()
+			data = makeBufferData()
+			isBuffering = false
+			bufferCount = 0
+
+			// Remove all internal event listeners
+			ev.removeAllListeners()
+		}
 	}
 }
 

@@ -1,6 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
-import { AsyncLocalStorage } from 'async_hooks'
 import { Mutex } from 'async-mutex'
+import { AsyncLocalStorage } from 'async_hooks'
 import { randomBytes } from 'crypto'
 import PQueue from 'p-queue'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
@@ -75,8 +75,12 @@ export function makeCacheableSignalKeyStore(
 						const item = fetched[id]
 						if (item) {
 							data[id] = item
-							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
+							try {
+								// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+								await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
+							} catch (e) {
+								logger?.warn({ err: e }, 'failed to cache signal key, continuing without cache')
+							}
 						}
 					}
 				}
@@ -89,7 +93,11 @@ export function makeCacheableSignalKeyStore(
 				let keys = 0
 				for (const type in data) {
 					for (const id in data[type as keyof SignalDataTypeMap]) {
-						await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+						try {
+							await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+						} catch (e) {
+							logger?.warn({ err: e }, 'failed to cache signal key, continuing without cache')
+						}
 						keys += 1
 					}
 				}

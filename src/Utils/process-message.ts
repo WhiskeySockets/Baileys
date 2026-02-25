@@ -277,11 +277,13 @@ const processMessage = async (
 				if (process) {
 					// TODO: investigate
 					if (histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND) {
+						// Cap processedHistoryMessages to the last 100 entries to prevent unbounded growth
+						const MAX_PROCESSED_HISTORY = 100
+						const prevProcessed = creds.processedHistoryMessages || []
+						const newEntry = { key: message.key, messageTimestamp: message.messageTimestamp }
+						const updatedProcessed = [...prevProcessed, newEntry].slice(-MAX_PROCESSED_HISTORY)
 						ev.emit('creds.update', {
-							processedHistoryMessages: [
-								...(creds.processedHistoryMessages || []),
-								{ key: message.key, messageTimestamp: message.messageTimestamp }
-							]
+							processedHistoryMessages: updatedProcessed
 						})
 					}
 
