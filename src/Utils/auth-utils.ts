@@ -43,8 +43,7 @@ export function makeCacheableSignalKeyStore(
 		new NodeCache<SignalDataTypeMap[keyof SignalDataTypeMap]>({
 			stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
 			useClones: false,
-			deleteOnExpire: true,
-			maxKeys: 2000 // Prevent unbounded session key accumulation
+			deleteOnExpire: true
 		})
 
 	// Mutex for protecting cache operations
@@ -76,8 +75,12 @@ export function makeCacheableSignalKeyStore(
 						const item = fetched[id]
 						if (item) {
 							data[id] = item
-							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
+							try {
+								// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+								await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
+							} catch (e) {
+								logger?.warn({ err: e }, 'failed to cache signal key, continuing without cache')
+							}
 						}
 					}
 				}
@@ -90,7 +93,11 @@ export function makeCacheableSignalKeyStore(
 				let keys = 0
 				for (const type in data) {
 					for (const id in data[type as keyof SignalDataTypeMap]) {
-						await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+						try {
+							await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+						} catch (e) {
+							logger?.warn({ err: e }, 'failed to cache signal key, continuing without cache')
+						}
 						keys += 1
 					}
 				}
