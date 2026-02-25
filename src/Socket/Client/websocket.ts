@@ -45,17 +45,19 @@ export class WebSocketClient extends AbstractSocketClient {
 			return
 		}
 
+		const socket = this.socket
+		this.socket = null
+
 		const closePromise = new Promise<void>(resolve => {
-			this.socket?.once('close', resolve)
+			socket.once('close', resolve)
 		})
 
-		this.socket.close()
+		socket.close()
 
 		await closePromise
 
 		// Remove all listeners from the underlying WebSocket to break closure references
-		this.socket.removeAllListeners()
-		this.socket = null
+		socket.removeAllListeners()
 	}
 	send(str: string | Uint8Array, cb?: (err?: Error) => void): boolean {
 		this.socket?.send(str, cb)
