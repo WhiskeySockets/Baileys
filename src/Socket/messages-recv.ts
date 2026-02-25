@@ -17,6 +17,8 @@ import type {
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
+	WAInitiateCallOptions,
+	WAInitiateCallResult,
 	WAMessage,
 	WAMessageKey,
 	WAPatchName
@@ -93,6 +95,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
+		generateMessageTag,
 		messageRetryManager
 	} = sock
 
@@ -399,6 +402,103 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			]
 		}
 		await query(stanza)
+	}
+
+	const initiateCall = async (jid: string, options: WAInitiateCallOptions = {}): Promise<WAInitiateCallResult> => {
+		const meId = authState.creds.me?.id
+		if (!meId) {
+			throw new Boom('Not authenticated')
+		}
+
+		const callId = randomBytes(8).toString('hex')
+		const isVideo = !!options.isVideo
+		const isGroup = isJidGroup(jid)
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				id: generateMessageTag(),
+				from: meId,
+				to: jid,
+				t: String(unixTimestampSeconds()),
+				...(authState.creds.me?.name ? { notify: authState.creds.me.name } : {})
+			},
+			content: [
+				{
+					tag: 'offer',
+					attrs: {
+						'call-id': callId,
+						'call-creator': meId,
+						count: '0'
+					},
+					content: [
+						{
+							tag: isVideo ? 'video' : 'audio',
+							attrs: {}
+						},
+						{
+							tag: 'net',
+							attrs: {}
+						},
+						{
+							tag: 'encopt',
+							attrs: { key: randomBytes(2).toString('hex') }
+						},
+						{
+							tag: 'relaylatency',
+							attrs: {}
+						},
+						{
+							tag: 'te',
+							attrs: {}
+						}
+					]
+				}
+			]
+		}
+
+		await query(stanza)
+		await callOfferCache.set(callId, {
+			chatId: jid,
+			from: meId,
+			id: callId,
+			date: new Date(),
+			offline: false,
+			status: 'offer',
+			isVideo,
+			isGroup,
+			groupJid: isGroup ? jid : undefined
+		})
+
+		// TODO: implement ICE/DTLS-SRTP call media setup once full signaling requirements are mapped.
+		return { callId, to: jid, isVideo }
+	}
+
+	const cancelCall = async (callId: string, callTo: string) => {
+		const meId = authState.creds.me?.id
+		if (!meId) {
+			throw new Boom('Not authenticated')
+		}
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				from: meId,
+				to: callTo
+			},
+			content: [
+				{
+					tag: 'terminate',
+					attrs: {
+						'call-id': callId,
+						'call-creator': meId,
+						count: '0'
+					}
+				}
+			]
+		}
+
+		await query(stanza)
+		await callOfferCache.del(callId)
 	}
 
 	const sendRetryRequest = async (node: BinaryNode, forceIncludeKeys = false) => {
@@ -1660,7 +1760,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		...sock,
 		sendMessageAck,
 		sendRetryRequest,
+		initiateCall,
 		rejectCall,
+		cancelCall,
 		fetchMessageHistory,
 		requestPlaceholderResend,
 		messageRetryManager
