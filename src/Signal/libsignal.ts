@@ -534,6 +534,12 @@ export function makeLibSignalRepository(
 				return !migratedSessionCache.has(deviceKey)
 			})
 
+			// All devices already confirmed as migrated — skip DB lookups entirely
+			if (uncachedDevices.length === 0) {
+				logger.debug({ fromJid, totalDevices: userDevices.length }, 'bulk device migration - all devices already cached, skipping')
+				return { migrated: 0, skipped: 0, total: userDevices.length }
+			}
+
 			// Bulk check session existence only for uncached devices
 			const deviceSessionKeys = uncachedDevices.map(device => `${user}.${device}`)
 			const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
@@ -564,6 +570,15 @@ export function makeLibSignalRepository(
 				},
 				'bulk device migration complete - all user devices processed'
 			)
+
+			// No PN-format sessions found: all devices are already migrated to LID addressing.
+			// Cache them now so subsequent messages skip redundant DB lookups entirely.
+			if (deviceJids.length === 0) {
+				for (const device of uncachedDevices) {
+					migratedSessionCache.set(`${user}.${device}`, true)
+				}
+				return { migrated: 0, skipped: 0, total: userDevices.length }
+			}
 
 			// Single transaction for all migrations
 			return parsedKeys.transaction(
@@ -630,14 +645,12 @@ export function makeLibSignalRepository(
 					if (Object.keys(sessionUpdates).length > 0) {
 						await parsedKeys.set({ session: sessionUpdates })
 						logger.debug({ migratedSessions: migratedCount }, 'bulk session migration complete')
+					}
 
-						// Cache device-level migrations
-						for (const op of migrationOps) {
-							if (sessionUpdates[op.toAddr.toString()]) {
-								const deviceKey = `${op.pnUser}.${op.deviceId}`
-								migratedSessionCache.set(deviceKey, true)
-							}
-						}
+					// Cache ALL processed devices (migrated, skipped, or closed-session) to prevent
+					// redundant DB lookups on subsequent messages from the same contact.
+					for (const op of migrationOps) {
+						migratedSessionCache.set(`${op.pnUser}.${op.deviceId}`, true)
 					}
 
 					const skippedCount = totalOps - migratedCount
