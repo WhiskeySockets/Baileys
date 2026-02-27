@@ -297,6 +297,11 @@ export function makeLibSignalRepository(
 		ttlAutopurge: true
 	})
 
+	// In-flight deduplication map for migrateSession: if N concurrent callers arrive
+	// for the same PN user before the first migration completes, they all share one
+	// Promise instead of each spawning their own DB transactions.
+	const migrationInFlight = new Map<string, Promise<{ migrated: number; skipped: number; total: number }>>()
+
 	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
@@ -502,6 +507,16 @@ export function makeLibSignalRepository(
 
 			const { user } = decoded1
 
+			// In-flight deduplication: if a migration is already running for this PN user,
+			// return the existing Promise. The check+set is synchronous (before any await)
+			// so it is safe in Node.js's single-threaded model.
+			const inFlight = migrationInFlight.get(user)
+			if (inFlight) {
+				logger.trace({ fromJid }, 'migrateSession: reusing in-flight migration for same user')
+				return inFlight
+			}
+
+			const migrationPromise = (async (): Promise<{ migrated: number; skipped: number; total: number }> => {
 			// Get user's device list — use in-memory cache to avoid a DB round-trip on
 			// every incoming LID message. Cache is invalidated after 5 minutes.
 			// We use undefined to mean "not yet checked" and [] to mean "checked, no devices
@@ -617,9 +632,11 @@ export function makeLibSignalRepository(
 					const totalOps = migrationOps.length
 					let migratedCount = 0
 
-					// Bulk fetch PN sessions - already exist (verified during device discovery)
-					const pnAddrStrings = Array.from(new Set(migrationOps.map(op => op.fromAddr.toString())))
-					const pnSessions = await parsedKeys.get('session', pnAddrStrings)
+					// Reuse existingSessions fetched above — for PN users on s.whatsapp.net the
+					// signal-address format (user.device) is identical to deviceSessionKeys, so
+					// existingSessions already contains every session needed here.
+					// Avoids a redundant storage round-trip inside the transaction.
+					const pnSessions = existingSessions
 
 					// Prepare bulk session updates (PN → LID migration + deletion)
 					const sessionUpdates: { [key: string]: Uint8Array | null } = {}
@@ -659,6 +676,11 @@ export function makeLibSignalRepository(
 				},
 				`migrate-${deviceJids.length}-sessions-${jidDecode(toJid)?.user}`
 			)
+			})()
+
+			migrationInFlight.set(user, migrationPromise)
+			migrationPromise.finally(() => migrationInFlight.delete(user))
+			return migrationPromise
 		}
 	}
 

@@ -1548,10 +1548,17 @@ export const makeSocket = (config: SocketConfig) => {
 		recordConnectionAttempt('success')
 		incrementActiveConnections()
 
-		// Start session cleanup scheduler
-		sessionCleanup.start()
+		// Defer session cleanup start by 5 s to avoid DB contention during the
+		// initial message flood right after CB:success. The heavyweight
+		// getAllSessionKeys() scan would otherwise compete with migrateSession()
+		// for the same storage locks while the offline-message backlog is draining.
+		// start() is idempotent (guarded by cleanupInterval check) so deferring is safe.
+		const _cleanupStartTimer = setTimeout(() => sessionCleanup.start(), 5_000)
+		if (typeof (_cleanupStartTimer as NodeJS.Timeout).unref === 'function') {
+			;(_cleanupStartTimer as NodeJS.Timeout).unref()
+		}
 
-		// Start session activity tracker
+		// Start session activity tracker immediately (lightweight, no DB scan)
 		sessionActivityTracker.start()
 
 		// Update server time offset from success node
