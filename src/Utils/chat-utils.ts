@@ -840,6 +840,22 @@ export const processSyncAction = (
 				phoneNumber: action.contactAction.pnJid || undefined
 			}
 		])
+		// Extract LID→phone mapping from contactAction if both fields are present
+		if (action.contactAction.lidJid && action.contactAction.pnJid) {
+			ev.emit('lid-mapping.update', {
+				lid: action.contactAction.lidJid,
+				pn: action.contactAction.pnJid
+			})
+		}
+	} else if (action?.pnForLidChatAction) {
+		// pnForLidChatAction maps a LID chat (id) to a phone number (pnJid)
+		// This is the primary device's per-chat LID→phone mapping from its address book
+		if (id && action.pnForLidChatAction.pnJid) {
+			ev.emit('lid-mapping.update', {
+				lid: id,
+				pn: action.pnForLidChatAction.pnJid
+			})
+		}
 	} else if (action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
 		if (name && me?.name !== name) {
