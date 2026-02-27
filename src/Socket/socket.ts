@@ -353,11 +353,10 @@ export const makeSocket = (config: SocketConfig) => {
 		// "socket" pattern → incorrectly tripped the breaker after 5 timeouts.
 		const responsePromise = waitForMessage<any>(msgId, timeoutMs)
 
-		// Fire the send.  If the socket is closed, waitForMessage will throw via its
-		// ws.on('close') handler — so we do not need to forward sendNode errors here.
-		sendNode(node).catch(err => {
-			logger?.debug?.({ msgId, err: err?.message }, 'sendNode failed in queryInternal')
-		})
+		// Await the send so that real sendNode failures (e.g. serialisation errors)
+		// are surfaced to the caller immediately rather than silently discarded.
+		// Socket-close errors are also propagated by waitForMessage via ws.on('close').
+		await sendNode(node)
 
 		const result = await responsePromise
 

@@ -174,7 +174,13 @@ export class MessageRetryManager {
 		// (device suffix present/absent, LID vs PN, etc.)
 		const indexedKeyStr = this.messageKeyIndex.get(id)
 		if (indexedKeyStr) {
-			return this.recentMessagesMap.get(indexedKeyStr)
+			const message = this.recentMessagesMap.get(indexedKeyStr)
+			if (!message) {
+				// The LRU cache evicted this entry; clean up the stale index reference
+				// to prevent repeated futile lookups on subsequent retry receipts.
+				this.messageKeyIndex.delete(id)
+			}
+			return message
 		}
 
 		return undefined

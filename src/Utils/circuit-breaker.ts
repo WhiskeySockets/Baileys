@@ -719,7 +719,7 @@ export function createConnectionCircuitBreaker(customOptions?: Partial<CircuitBr
 			// CircuitTimeoutError messages embed the circuit name (e.g. "socket-query"), which
 			// accidentally matches the "socket" pattern below and causes a self-reinforcing loop
 			// where the breaker's own timeouts keep tripping the breaker. Exclude them explicitly.
-			if (error.name === 'CircuitTimeoutError') return false
+			if (error instanceof CircuitTimeoutError) return false
 			const message = error.message.toLowerCase()
 			const code = (error as NodeJS.ErrnoException).code?.toLowerCase() || ''
 			return connectionErrorPatterns.some(pattern => message.includes(pattern) || code.includes(pattern))
