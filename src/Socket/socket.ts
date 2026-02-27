@@ -343,12 +343,23 @@ export const makeSocket = (config: SocketConfig) => {
 
 		const msgId = node.attrs.id
 
-		const result = await promiseTimeout<any>(timeoutMs, async (resolve, reject) => {
-			const result = waitForMessage(msgId, timeoutMs).catch(reject)
-			sendNode(node)
-				.then(async () => resolve(await result))
-				.catch(reject)
+		// Register the response listener BEFORE sending — avoids a race where the server
+		// responds before we start listening.  waitForMessage already handles its own
+		// timeout (returns undefined) and connection-close errors (throws), so we do NOT
+		// wrap it in a second promiseTimeout.  The outer wrapper caused a race condition
+		// where both timers fired at ~the same deadline: the outer one threw
+		// Boom('Timed Out') while sendNode was still pending, producing a spurious error
+		// whose message contained "socket-query" → matched the circuit-breaker's
+		// "socket" pattern → incorrectly tripped the breaker after 5 timeouts.
+		const responsePromise = waitForMessage<any>(msgId, timeoutMs)
+
+		// Fire the send.  If the socket is closed, waitForMessage will throw via its
+		// ws.on('close') handler — so we do not need to forward sendNode errors here.
+		sendNode(node).catch(err => {
+			logger?.debug?.({ msgId, err: err?.message }, 'sendNode failed in queryInternal')
 		})
+
+		const result = await responsePromise
 
 		if (result && 'tag' in result) {
 			assertNodeErrorFree(result)

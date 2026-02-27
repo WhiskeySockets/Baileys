@@ -506,16 +506,16 @@ export function makeLibSignalRepository(
 
 			// Get user's device list — use in-memory cache to avoid a DB round-trip on
 			// every incoming LID message. Cache is invalidated after 5 minutes.
+			// We use undefined to mean "not yet checked" and [] to mean "checked, no devices
+			// found" so that DB misses are also cached and don't cause a per-message lookup.
 			let userDevices: string[] | undefined = deviceListCache.get(user)
-			if (!userDevices) {
+			if (userDevices === undefined) {
 				const result = await parsedKeys.get('device-list', [user])
-				userDevices = result[user]
-				if (userDevices) {
-					deviceListCache.set(user, userDevices)
-				}
+				userDevices = result[user] ?? []
+				deviceListCache.set(user, userDevices)
 			}
 
-			if (!userDevices) {
+			if (userDevices.length === 0) {
 				return { migrated: 0, skipped: 0, total: 0 }
 			}
 
