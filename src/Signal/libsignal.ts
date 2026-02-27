@@ -281,7 +281,7 @@ export function makeLibSignalRepository(
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
-		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
+		ttl: 3 * 24 * 60 * 60 * 1000, // 3 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
@@ -502,17 +502,18 @@ export function makeLibSignalRepository(
 
 			const { user } = decoded1
 
-			logger.debug({ fromJid }, 'bulk device migration - loading all user devices')
-
 			// Get user's device list — use in-memory cache to avoid a DB round-trip on
 			// every incoming LID message. Cache is invalidated after 5 minutes.
 			// We use undefined to mean "not yet checked" and [] to mean "checked, no devices
 			// found" so that DB misses are also cached and don't cause a per-message lookup.
 			let userDevices: string[] | undefined = deviceListCache.get(user)
 			if (userDevices === undefined) {
+				logger.debug({ fromJid }, 'bulk device migration - loading all user devices from DB')
 				const result = await parsedKeys.get('device-list', [user])
 				userDevices = result[user] ?? []
 				deviceListCache.set(user, userDevices)
+			} else {
+				logger.trace({ fromJid, deviceCount: userDevices.length }, 'bulk device migration - device list from cache')
 			}
 
 			if (userDevices.length === 0) {
