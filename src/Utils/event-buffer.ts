@@ -278,6 +278,14 @@ function append<E extends BufferableEvent>(
 				}
 			}
 
+			// Accumulate LID→phone mappings from history sync
+			if ((eventData as any).lidPnMappings?.length) {
+				if (!(data.historySets as any).lidPnMappings) {
+					(data.historySets as any).lidPnMappings = []
+				}
+				(data.historySets as any).lidPnMappings.push(...(eventData as any).lidPnMappings)
+			}
+
 			data.historySets.empty = false
 			data.historySets.syncType = eventData.syncType
 			data.historySets.progress = eventData.progress
@@ -570,8 +578,9 @@ function consolidateEvents(data: BufferedEventData) {
 			syncType: data.historySets.syncType,
 			progress: data.historySets.progress,
 			isLatest: data.historySets.isLatest,
-			peerDataRequestSessionId: data.historySets.peerDataRequestSessionId
-		}
+			peerDataRequestSessionId: data.historySets.peerDataRequestSessionId,
+			...((data.historySets as any).lidPnMappings?.length ? { lidPnMappings: (data.historySets as any).lidPnMappings } : {})
+		} as any
 	}
 
 	const chatUpsertList = Object.values(data.chatUpserts)
