@@ -68,14 +68,14 @@ export function makeLibSignalRepository(
 	 * acquire different mutex locks, allowing concurrent session modifications.
 	 * See: https://github.com/WhiskeySockets/Baileys/issues/1769
 	 */
-	const resolveCanonicalJid = async(jid: string): Promise<string> => {
-		if(isLidUser(jid) || isHostedLidUser(jid)) {
+	const resolveCanonicalJid = async (jid: string): Promise<string> => {
+		if (isLidUser(jid) || isHostedLidUser(jid)) {
 			return jid
 		}
 
-		if(isPnUser(jid) || isHostedPnUser(jid)) {
+		if (isPnUser(jid) || isHostedPnUser(jid)) {
 			const lid = await lidMapping.getLIDForPN(jid)
-			if(lid) {
+			if (lid) {
 				return lid
 			}
 		}
@@ -431,32 +431,32 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
  */
 const PREKEY_GRACE_PERIOD_MS = 5 * 60 * 1000 // 5 minutes
 const PREKEY_CLEANUP_INTERVAL_MS = 60_000 // 1 minute
-const pendingPreKeyDeletions = new Map<string, { id: number, expiry: number, keys: SignalAuthState['keys'] }>()
+const pendingPreKeyDeletions = new Map<string, { id: number; expiry: number; keys: SignalAuthState['keys'] }>()
 
 let preKeyCleanupTimer: ReturnType<typeof setInterval> | undefined
 
 function ensurePreKeyCleanup() {
-	if(preKeyCleanupTimer) {
+	if (preKeyCleanupTimer) {
 		return
 	}
 
 	preKeyCleanupTimer = setInterval(() => {
 		const now = Date.now()
-		for(const [key, entry] of pendingPreKeyDeletions) {
-			if(now >= entry.expiry) {
-				entry.keys.set({ 'pre-key': { [entry.id]: null } })
+		for (const [key, entry] of pendingPreKeyDeletions) {
+			if (now >= entry.expiry) {
+				void entry.keys.set({ 'pre-key': { [entry.id]: null } })
 				pendingPreKeyDeletions.delete(key)
 			}
 		}
 
-		if(pendingPreKeyDeletions.size === 0 && preKeyCleanupTimer) {
+		if (pendingPreKeyDeletions.size === 0 && preKeyCleanupTimer) {
 			clearInterval(preKeyCleanupTimer)
 			preKeyCleanupTimer = undefined
 		}
 	}, PREKEY_CLEANUP_INTERVAL_MS)
 
 	// Don't block process exit
-	if(preKeyCleanupTimer && typeof preKeyCleanupTimer === 'object' && 'unref' in preKeyCleanupTimer) {
+	if (preKeyCleanupTimer && typeof preKeyCleanupTimer === 'object' && 'unref' in preKeyCleanupTimer) {
 		preKeyCleanupTimer.unref()
 	}
 }
