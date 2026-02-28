@@ -99,10 +99,13 @@ export const cleanMessage = (message: WAMessage, meId: string, meLid: string) =>
 					// fromMe automatically becomes false
 					false
 			// set the remoteJid to being the same as the chat the message came from
-			// TODO: investigate inconsistencies
 			msgKey.remoteJid = message.key.remoteJid
 			// set participant of the message
 			msgKey.participant = msgKey.participant || message.key.participant
+		} else {
+			// fromMe reactions: normalise remoteJid to match the chat JID
+			// ensures DM reaction keys are consistent with group behavior
+			msgKey.remoteJid = message.key.remoteJid
 		}
 	}
 }
