@@ -49,18 +49,26 @@ const parseTagAttributes = (tag: string) => {
 
 const getMetaContent = (html: string, names: string[]) => {
 	const metaTagRegex = /<meta\b[^>]*>/gi
+	const normalizedNames = names.map((n) => n.toLowerCase())
+	const found: Record<string, string> = {}
 	let tagMatch: RegExpExecArray | null
 	while ((tagMatch = metaTagRegex.exec(html))) {
 		const tag = tagMatch[0]
 		const attrs = parseTagAttributes(tag)
 		const name = (attrs.name || attrs.property || '').toLowerCase()
 		const content = attrs.content
-		if (!content) {
+		if (!content || !name) {
 			continue
 		}
 
-		if (names.includes(name)) {
-			return decodeEntities(content)
+		if (normalizedNames.includes(name) && !(name in found)) {
+			found[name] = decodeEntities(content)
+		}
+	}
+
+	for (const name of normalizedNames) {
+		if (name in found) {
+			return found[name]
 		}
 	}
 }
