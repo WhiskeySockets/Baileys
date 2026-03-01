@@ -276,7 +276,6 @@ export const decryptMessageNode = (
 	meLid: string,
 	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger,
-	autoCleanCorrupted = true
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
 	return {
@@ -422,34 +421,19 @@ export const decryptMessageNode = (
 							if (isRetryExhausted) {
 								logger.error(
 									errorContext,
-									`⚠️ Session corrupted and recovery failed after ${err.attempts} attempts. Auto-cleanup will attempt to recover.`
+									`⚠️ Session corrupted after ${err.attempts} attempts. Retry+pkmsg flow will recover.`
 								)
 							} else {
 								// First occurrence - log as warning since auto-recovery will attempt
 								logger.warn(errorContext, '⚠️ Corrupted session detected - attempting auto-recovery')
 							}
 
-							// Automatic cleanup of corrupted session (if enabled)
-							// eslint-disable-next-line max-depth
-							if (autoCleanCorrupted) {
-								// eslint-disable-next-line max-depth
-								try {
-									const deletedCount = await cleanupCorruptedSession(decryptionJid, repository, logger)
-
-									// Mask only user portion of JID for privacy (preserve domain info)
-									const { user, server } = jidDecode(decryptionJid) || {}
-									const maskedUser =
-										user && user.length > 8 ? `${user.substring(0, 4)}****${user.substring(user.length - 4)}` : user
-									const maskedJid = maskedUser && server ? `${maskedUser}@${server}` : decryptionJid
-
-									logger.info(
-										{ jid: decryptionJid, maskedJid, targetedDevices: deletedCount },
-										`🔄 Session Reset | JID: ${maskedJid} | Targeted: ${deletedCount} devices | Will recreate on next message`
-									)
-								} catch (cleanupErr) {
-									logger.error({ decryptionJid, err: cleanupErr }, '❌ Failed to cleanup corrupted session')
-								}
-							}
+							// Session cleanup is deferred to retry exhaustion (safety net).
+							// The Signal Protocol handles recovery naturally via retry+pkmsg:
+							// Bad MAC -> retry receipt -> sender re-sends as pkmsg -> new session.
+							// Deleting sessions here (hot path) causes cascading failures when
+							// multiple messages from the same contact arrive simultaneously.
+							// See: messages-recv.ts sendRetryRequest() for deferred cleanup.
 						} else if (isSessionRecord) {
 							// Session record errors are transient - retry should handle them
 							// eslint-disable-next-line max-depth
@@ -504,10 +488,14 @@ export function isCorruptedSessionError(error: any): boolean {
 }
 
 /**
- * Clean up corrupted session by deleting all device sessions for a JID
- * Signal Protocol will automatically recreate the session on next message
+ * Clean up corrupted session by deleting all device sessions for a JID.
+ * Signal Protocol will automatically recreate the session on next message.
+ *
+ * NOTE: This should NOT be called on every Bad MAC error (hot path).
+ * Instead, let the retry+pkmsg flow handle recovery naturally (like WhatsApp does).
+ * Only call this as a safety net when retries are exhausted.
  */
-async function cleanupCorruptedSession(
+export async function cleanupCorruptedSession(
 	jid: string,
 	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger

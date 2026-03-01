@@ -211,15 +211,33 @@ export class MessageRetryManager {
 			}
 		}
 
-		// MAC errors require IMMEDIATE session recreation regardless of history
-		// This handles the case where contact reinstalled WhatsApp (identity key changed)
+		// MAC errors require session recreation, but rate-limited to prevent loops.
+		// When multiple messages fail with Bad MAC simultaneously, only the first
+		// should trigger recreation; subsequent ones within the cooldown window
+		// piggyback on the same new session established by the retry+pkmsg flow.
 		if (errorCode !== undefined && MAC_ERROR_CODES.has(errorCode)) {
-			this.sessionRecreateHistory.set(jid, Date.now())
+			const now = Date.now()
+			const prevTime = this.sessionRecreateHistory.get(jid)
+			const MAC_ERROR_COOLDOWN_MS = 10_000 // 10 seconds
+
+			if (prevTime && now - prevTime < MAC_ERROR_COOLDOWN_MS) {
+				const reasonName = RetryReason[errorCode] || `code_${errorCode}`
+				this.logger.debug(
+					{ jid, errorCode: reasonName, msSinceLast: now - prevTime },
+					'MAC error session recreation skipped — cooldown active'
+				)
+				return {
+					reason: '',
+					recreate: false
+				}
+			}
+
+			this.sessionRecreateHistory.set(jid, now)
 			this.statistics.sessionRecreations++
 			const reasonName = RetryReason[errorCode] || `code_${errorCode}`
 			metrics.signalMacErrors?.inc({ action: 'session_recreation' })
 			metrics.signalSessionRecreations?.inc({ reason: 'mac_error' })
-			this.logger.warn({ jid, errorCode: reasonName }, 'MAC error detected, forcing immediate session recreation')
+			this.logger.warn({ jid, errorCode: reasonName }, 'MAC error detected, recreating session')
 			return {
 				reason: `MAC error (${reasonName}) - contact may have reinstalled WhatsApp`,
 				recreate: true
