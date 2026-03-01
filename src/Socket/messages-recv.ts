@@ -49,7 +49,9 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	normalizeKeyLidToPn,
 	normalizeMessageJids,
+	resolveLidToPn,
 	SERVER_ERROR_CODES,
 	toNumber,
 	unixTimestampSeconds,
@@ -365,10 +367,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'NotificationNewsletterAdminPromote':
 				for (const update of updates) {
 					if (update.jid && update.user) {
+						const [resolvedAuthor, resolvedUser] = await Promise.all([
+							resolveLidToPn(node.attrs.from!, signalRepository.lidMapping, logger),
+							resolveLidToPn(update.user, signalRepository.lidMapping, logger)
+						])
 						ev.emit('newsletter-participants.update', {
 							id: update.jid,
-							author: node.attrs.from!,
-							user: update.user,
+							author: resolvedAuthor || node.attrs.from!,
+							user: resolvedUser || update.user,
 							new_role: 'ADMIN',
 							action: 'promote'
 						})
@@ -387,7 +393,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const handleNewsletterNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from!
 		const child = getAllBinaryNodeChildren(node)[0]!
-		const author = node.attrs.participant!
+		const rawAuthor = node.attrs.participant!
+		// Resolve author LID→PN (participant is a user JID that could be LID)
+		const author = await resolveLidToPn(rawAuthor, signalRepository.lidMapping, logger) || rawAuthor
 
 		logger.info({ from, child }, 'got newsletter notification')
 
@@ -414,10 +422,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 
 			case 'participant':
+				const resolvedParticipantUser = await resolveLidToPn(child.attrs.jid!, signalRepository.lidMapping, logger) || child.attrs.jid!
 				const participantUpdate = {
 					id: from,
 					author,
-					user: child.attrs.jid!,
+					user: resolvedParticipantUser,
 					action: child.attrs.action!,
 					new_role: child.attrs.role!
 				}
@@ -1406,8 +1415,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleGroupNotification = (fullNode: BinaryNode, child: BinaryNode, msg: Partial<WAMessage>) => {
-		// TODO: Support PN/LID (Here is only LID now)
+	const handleGroupNotification = async (fullNode: BinaryNode, child: BinaryNode, msg: Partial<WAMessage>) => {
+		const lidMapping = signalRepository.lidMapping
 
 		const actingParticipantLid = fullNode.attrs.participant
 		const actingParticipantPn = fullNode.attrs.participant_pn
@@ -1415,13 +1424,52 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const affectedParticipantLid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || actingParticipantLid!
 		const affectedParticipantPn = getBinaryNodeChild(child, 'participant')?.attrs?.phone_number || actingParticipantPn!
 
+		// Resolve acting participant to PN — prefer inline PN, fall back to LID→PN resolution
+		const actingParticipant = actingParticipantPn
+			|| await resolveLidToPn(actingParticipantLid, lidMapping, logger)
+
+		// Resolve affected participant to PN
+		const affectedParticipant = affectedParticipantPn
+			|| await resolveLidToPn(affectedParticipantLid, lidMapping, logger)
+
+		// Store LID↔PN mappings from notification attributes
+		const mappingsToStore: Array<{ lid: string; pn: string }> = []
+		if (actingParticipantLid && actingParticipantPn && isLidUser(actingParticipantLid) && isPnUser(actingParticipantPn)) {
+			mappingsToStore.push({ lid: actingParticipantLid, pn: actingParticipantPn })
+		}
+
 		switch (child?.tag) {
 			case 'create':
 				const metadata = extractGroupMetadata(child)
 
+				// Normalize group metadata participant IDs to PN
+				for (const p of metadata.participants) {
+					if (isLidUser(p.id)) {
+						// Use inline phoneNumber if available, otherwise resolve via mapping
+						if (p.phoneNumber) {
+							// Store the mapping
+							mappingsToStore.push({ lid: p.id, pn: p.phoneNumber })
+							p.lid = p.id
+							p.id = p.phoneNumber
+						} else {
+							const resolved = await resolveLidToPn(p.id, lidMapping, logger)
+							if (resolved && resolved !== p.id) {
+								p.lid = p.id
+								p.id = resolved
+							}
+						}
+					}
+				}
+
+				// Resolve metadata owner to PN
+				if (metadata.owner && isLidUser(metadata.owner)) {
+					const resolvedOwner = metadata.ownerPn || await resolveLidToPn(metadata.owner, lidMapping, logger)
+					if (resolvedOwner) metadata.owner = resolvedOwner
+				}
+
 				msg.messageStubType = WAMessageStubType.GROUP_CREATE
 				msg.messageStubParameters = [metadata.subject]
-				msg.key = { participant: metadata.owner, participantAlt: metadata.ownerPn }
+				msg.key = { participant: actingParticipant }
 
 				ev.emit('chats.upsert', [
 					{
@@ -1433,8 +1481,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				ev.emit('groups.upsert', [
 					{
 						...metadata,
-						author: actingParticipantLid,
-						authorPn: actingParticipantPn
+						author: actingParticipant
 					}
 				])
 				break
@@ -1448,8 +1495,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 				break
 			case 'modify':
-				const oldNumber = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid!)
-				msg.messageStubParameters = oldNumber || []
+				const oldNumbers = await Promise.all(
+					getBinaryNodeChildren(child, 'participant').map(async p => {
+						const resolved = await resolveLidToPn(p.attrs.jid!, lidMapping, logger)
+						return resolved || p.attrs.jid!
+					})
+				)
+				msg.messageStubParameters = oldNumbers || []
 				msg.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER
 				break
 			case 'promote':
@@ -1460,21 +1512,48 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const stubType = `GROUP_PARTICIPANT_${child.tag.toUpperCase()}`
 				msg.messageStubType = WAMessageStubType[stubType as keyof typeof WAMessageStubType]
 
-				const participants = getBinaryNodeChildren(child, 'participant').map(({ attrs }) => {
-					// TODO: Store LID MAPPINGS
-					return {
-						id: attrs.jid!,
-						phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
-						lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
-						admin: (attrs.type || null) as GroupParticipant['admin']
-					}
-				})
+				const participants = await Promise.all(
+					getBinaryNodeChildren(child, 'participant').map(async ({ attrs }) => {
+						const rawJid = attrs.jid!
+						let id = rawJid
+						let phoneNumber: string | undefined
+						let lid: string | undefined
+
+						if (isLidUser(rawJid)) {
+							// Primary is LID — resolve to PN
+							phoneNumber = isPnUser(attrs.phone_number) ? attrs.phone_number : undefined
+							if (phoneNumber) {
+								mappingsToStore.push({ lid: rawJid, pn: phoneNumber })
+								lid = rawJid
+								id = phoneNumber
+							} else {
+								const resolved = await resolveLidToPn(rawJid, lidMapping, logger)
+								if (resolved && resolved !== rawJid) {
+									lid = rawJid
+									id = resolved
+								}
+							}
+						} else if (isPnUser(rawJid) && isLidUser(attrs.lid)) {
+							// Primary is PN — store LID for reference
+							lid = attrs.lid
+							mappingsToStore.push({ lid: attrs.lid!, pn: rawJid })
+						}
+
+						return {
+							id,
+							phoneNumber,
+							lid,
+							admin: (attrs.type || null) as GroupParticipant['admin']
+						}
+					})
+				)
 
 				if (
 					participants.length === 1 &&
 					// if recv. "remove" message and sender removed themselves
 					// mark as left
-					(areJidsSameUser(participants[0]!.id, actingParticipantLid) ||
+					(areJidsSameUser(participants[0]!.id, actingParticipant) ||
+						areJidsSameUser(participants[0]!.id, actingParticipantLid) ||
 						areJidsSameUser(participants[0]!.id, actingParticipantPn)) &&
 					child.tag === 'remove'
 				) {
@@ -1525,20 +1604,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'created_membership_requests':
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
 				msg.messageStubParameters = [
-					JSON.stringify({ lid: affectedParticipantLid, pn: affectedParticipantPn }),
+					JSON.stringify({ lid: affectedParticipantLid, pn: affectedParticipant }),
 					'created',
 					child.attrs.request_method!
 				]
 				break
 			case 'revoked_membership_requests':
 				const isDenied = areJidsSameUser(affectedParticipantLid, actingParticipantLid)
-				// TODO: LIDMAPPING SUPPORT
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
 				msg.messageStubParameters = [
-					JSON.stringify({ lid: affectedParticipantLid, pn: affectedParticipantPn }),
+					JSON.stringify({ lid: affectedParticipantLid, pn: affectedParticipant }),
 					isDenied ? 'revoked' : 'rejected'
 				]
 				break
+		}
+
+		// Persist any LID↔PN mappings discovered from notification attributes
+		if (mappingsToStore.length) {
+			await lidMapping.storeLIDPNMappings(mappingsToStore).catch(err => {
+				logger.warn({ err, count: mappingsToStore.length }, 'Failed to store LID↔PN mappings from group notification')
+			})
 		}
 	}
 
@@ -1556,11 +1641,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleMexNewsletterNotification(node)
 				break
 			case 'w:gp2':
-				// TODO: HANDLE PARTICIPANT_PN
-				handleGroupNotification(node, child!, result)
+				await handleGroupNotification(node, child!, result)
 				break
 			case 'mediaretry':
 				const event = decodeMediaRetryNode(node)
+				// Normalize LID→PN in media retry key before emitting
+				await normalizeKeyLidToPn(event.key, signalRepository.lidMapping, logger)
 				ev.emit('messages.media-update', [event])
 				break
 			case 'encrypt':
@@ -1591,13 +1677,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const setPicture = getBinaryNodeChild(node, 'set')
 				const delPicture = getBinaryNodeChild(node, 'delete')
 
-				// TODO: WAJIDHASH stuff proper support inhouse
-				ev.emit('contacts.update', [
-					{
-						id: jidNormalizedUser(node?.attrs?.from) || (setPicture || delPicture)?.attrs?.hash || '',
-						imgUrl: setPicture ? 'changed' : 'removed'
-					}
-				])
+				{
+					const rawPictureJid = jidNormalizedUser(node?.attrs?.from) || (setPicture || delPicture)?.attrs?.hash || ''
+					const pictureJid = await resolveLidToPn(rawPictureJid, signalRepository.lidMapping, logger) || rawPictureJid
+					ev.emit('contacts.update', [
+						{
+							id: pictureJid,
+							imgUrl: setPicture ? 'changed' : 'removed'
+						}
+					])
+				}
 
 				if (isJidGroup(from)) {
 					const node = setPicture || delPicture
@@ -1635,7 +1724,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					const blocklists = getBinaryNodeChildren(child, 'item')
 
 					for (const { attrs } of blocklists) {
-						const blocklist = [attrs.jid!]
+						const resolvedBlockJid = await resolveLidToPn(attrs.jid!, signalRepository.lidMapping, logger) || attrs.jid!
+						const blocklist = [resolvedBlockJid]
 						const type = attrs.action === 'block' ? 'add' : 'remove'
 						ev.emit('blocklist.update', { blocklist, type })
 					}
@@ -1927,6 +2017,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			participant: attrs.participant
 		}
 
+		// Normalize LID→PN in receipt key so events always emit PN JIDs
+		const lidMapping = signalRepository.lidMapping
+		const [resolvedRemoteJid, resolvedParticipant] = await Promise.all([
+			resolveLidToPn(key.remoteJid, lidMapping, logger),
+			resolveLidToPn(key.participant, lidMapping, logger)
+		])
+		if (resolvedRemoteJid) key.remoteJid = resolvedRemoteJid
+		if (resolvedParticipant) key.participant = resolvedParticipant
+
 		if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 			logger.trace({ remoteJid }, 'ignoring receipt from jid')
 			await sendMessageAck(node)
@@ -1953,12 +2052,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							if (attrs.participant) {
 								const updateKey: keyof MessageUserReceipt =
 									status === proto.WebMessageInfo.Status.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
+								const resolvedReceiptUserJid = await resolveLidToPn(attrs.participant, lidMapping, logger) || jidNormalizedUser(attrs.participant)
 								ev.emit(
 									'message-receipt.update',
 									ids.map(id => ({
 										key: { ...key, id },
 										receipt: {
-											userJid: jidNormalizedUser(attrs.participant),
+											userJid: jidNormalizedUser(resolvedReceiptUserJid),
 											[updateKey]: +attrs.t!
 										}
 									}))
@@ -2087,10 +2187,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Check if mapping already exists to avoid unnecessary storage operations
 				const existingMapping = await signalRepository.lidMapping.getPNForLID(alt)
 				if (!existingMapping) {
-					// Store mapping in background (non-critical, doesn't block decrypt)
-					signalRepository.lidMapping
+					// MUST await: normalizeMessageJids() runs after this and needs the mapping
+					// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
+					await signalRepository.lidMapping
 						.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-						.catch(error => logger.warn({ error, alt, primaryJid }, 'Background LID mapping storage failed'))
+						.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
 				}
 
 				// CRITICAL: ALWAYS migrate session, even if mapping exists
@@ -2103,10 +2204,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Check if reverse mapping exists
 				const existingMapping = await signalRepository.lidMapping.getLIDForPN(alt)
 				if (!existingMapping) {
-					// Store mapping in background (non-critical)
-					signalRepository.lidMapping
+					// MUST await: normalizeMessageJids() runs after this and needs the mapping
+					// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
+					await signalRepository.lidMapping
 						.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-						.catch(error => logger.warn({ error, alt, primaryJid }, 'Background LID mapping storage failed'))
+						.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
 				}
 
 				// CRITICAL: ALWAYS migrate session, even if mapping exists
@@ -2607,6 +2709,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await callOfferCache.del(call.id)
 			}
 
+			// Normalize LID→PN in call event JIDs before emitting to consumers
+			const callLidMapping = signalRepository.lidMapping
+			const [resolvedChatId, resolvedFrom, resolvedLinkCreator] = await Promise.all([
+				resolveLidToPn(call.chatId, callLidMapping, logger),
+				resolveLidToPn(call.from, callLidMapping, logger),
+				resolveLidToPn(call.linkCreator, callLidMapping, logger)
+			])
+			if (resolvedChatId) call.chatId = resolvedChatId
+			if (resolvedFrom) call.from = resolvedFrom
+			if (resolvedLinkCreator) call.linkCreator = resolvedLinkCreator
+			// Resolve participant JIDs in parallel
+			if (call.participants) {
+				await Promise.all(call.participants.map(async (p) => {
+					if (p.jid) {
+						const resolved = p.userPn || await resolveLidToPn(p.jid, callLidMapping, logger)
+						if (resolved) p.jid = resolved
+					}
+				}))
+			}
+
 			ev.emit('call', [call])
 		}
 
@@ -2615,6 +2737,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleBadAck = async ({ attrs }: BinaryNode) => {
 		const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
+		await normalizeKeyLidToPn(key, signalRepository.lidMapping, logger)
 
 		// WARNING: REFRAIN FROM ENABLING THIS FOR NOW. IT WILL CAUSE A LOOP
 		// // current hypothesis is that if pash is sent in the ack
@@ -2802,10 +2925,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// Top-level <relay> stanzas carry TURN server info, tokens and crypto keys
 	ws.on('CB:relay', async (node: BinaryNode) => {
 		const callId = node.attrs['call-id']
-		const callCreator = node.attrs['call-creator']
+		const rawCallCreator = node.attrs['call-creator']
 		// Both callId and callCreator must be present to emit a valid event
 		// (call link relays may arrive without these attrs — just log them)
-		if (callId && callCreator) {
+		if (callId && rawCallCreator) {
+			// Resolve LID→PN for call creator
+			const callCreator = await resolveLidToPn(rawCallCreator, signalRepository.lidMapping, logger) || rawCallCreator
 			logger.debug(
 				{ callId, callCreator, uuid: node.attrs.uuid },
 				'received relay info'

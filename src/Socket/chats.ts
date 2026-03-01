@@ -50,7 +50,8 @@ import {
 	isMissingKeyError,
 	MAX_SYNC_ATTEMPTS,
 	newLTHashState,
-	processSyncAction
+	processSyncAction,
+	resolveLidToPn
 } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
@@ -757,9 +758,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}, authState?.creds?.me?.id || 'resync-app-state')
 
 			const { onMutation } = newAppStateChunkHandler(isInitialSync)
+			const lidMapping = signalRepository.lidMapping
 			for (const key in globalMutationMap) {
 				const mutation = globalMutationMap[key]
 				if (!mutation) continue
+				// Normalize LID→PN in sync action index[1] (chat/contact ID)
+				if (mutation.index[1] && isAnyLidUser(mutation.index[1])) {
+					const resolved = await resolveLidToPn(mutation.index[1], lidMapping, logger)
+					if (resolved) mutation.index[1] = resolved
+				}
+
 				onMutation(mutation)
 			}
 		}
@@ -912,16 +920,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 	}
 
-	const handlePresenceUpdate = ({ tag, attrs, content }: BinaryNode) => {
+	const handlePresenceUpdate = async ({ tag, attrs, content }: BinaryNode) => {
 		let presence: PresenceData | undefined
-		const jid = attrs.from
-		const participant = attrs.participant || attrs.from
-		if (!jid) {
+		const rawJid = attrs.from
+		const rawParticipant = attrs.participant || attrs.from
+		if (!rawJid) {
 			logger.warn({ attrs }, 'handlePresenceUpdate: jid (attrs.from) is missing, skipping')
 			return
 		}
 
-		if (shouldIgnoreJid(jid) && jid !== S_WHATSAPP_NET) {
+		if (shouldIgnoreJid(rawJid) && rawJid !== S_WHATSAPP_NET) {
 			return
 		}
 
@@ -933,7 +941,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		} else if (Array.isArray(content)) {
 			const [firstChild] = content
 			if (!firstChild) {
-				logger.warn({ jid }, 'handlePresenceUpdate: firstChild content is empty, skipping')
+				logger.warn({ jid: rawJid }, 'handlePresenceUpdate: firstChild content is empty, skipping')
 				return
 			}
 
@@ -952,12 +960,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		if (presence) {
-			if (!participant) {
-				logger.warn({ jid }, 'handlePresenceUpdate: participant is missing, skipping')
+			if (!rawParticipant) {
+				logger.warn({ jid: rawJid }, 'handlePresenceUpdate: participant is missing, skipping')
 				return
 			}
 
-			ev.emit('presence.update', { id: jid, presences: { [participant]: presence } })
+			// Resolve LID→PN so consumers always see phone-number JIDs
+			const lidMapping = signalRepository.lidMapping
+			const [jid, participant] = await Promise.all([
+				resolveLidToPn(rawJid, lidMapping, logger),
+				resolveLidToPn(rawParticipant, lidMapping, logger)
+			])
+
+			ev.emit('presence.update', { id: jid!, presences: { [participant!]: presence } })
 		}
 	}
 
@@ -1031,8 +1046,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				undefined,
 				logger
 			)
+			const lidMapping = signalRepository.lidMapping
 			for (const key in mutationMap) {
-				onMutation(mutationMap[key]!)
+				const mutation = mutationMap[key]!
+				// Normalize LID→PN in sync action index[1] (chat/contact ID)
+				if (mutation.index[1] && isAnyLidUser(mutation.index[1])) {
+					const resolved = await resolveLidToPn(mutation.index[1], lidMapping, logger)
+					if (resolved) mutation.index[1] = resolved
+				}
+
+				onMutation(mutation)
 			}
 		}
 	}
@@ -1376,8 +1399,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ws.on('CB:presence', handlePresenceUpdate)
-	ws.on('CB:chatstate', handlePresenceUpdate)
+	ws.on('CB:presence', (node: BinaryNode) => {
+		handlePresenceUpdate(node).catch(err => onUnexpectedError(err, 'handling presence update'))
+	})
+	ws.on('CB:chatstate', (node: BinaryNode) => {
+		handlePresenceUpdate(node).catch(err => onUnexpectedError(err, 'handling chatstate update'))
+	})
 
 	ws.on('CB:ib,,dirty', async (node: BinaryNode) => {
 		const { attrs } = getBinaryNodeChild(node, 'dirty')!

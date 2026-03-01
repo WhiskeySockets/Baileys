@@ -19,10 +19,13 @@ import type {
 	WAMessage,
 	WAMessageKey
 } from '../Types'
+import type { LIDMappingStore } from '../Signal/lid-mapping'
 import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import {
 	areJidsSameUser,
+	isAnyLidUser,
+	isAnyPnUser,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidBroadcast,
@@ -125,42 +128,94 @@ export const cleanMessage = (message: WAMessage, meId: string, meLid: string) =>
 	}
 }
 
+/**
+ * Resolves a LID JID to its PN equivalent using the LID mapping store.
+ * Returns the original JID if it's not a LID or if no mapping is found.
+ * Safe to call with any JID type (group, newsletter, PN, etc.).
+ */
+export const resolveLidToPn = async (
+	jid: string | undefined | null,
+	lidMapping: LIDMappingStore,
+	logger?: ILogger
+): Promise<string | undefined> => {
+	if (!jid) {
+		return undefined
+	}
+
+	if (isAnyLidUser(jid)) {
+		const pn = await lidMapping.getPNForLID(jid)
+		if (pn) {
+			logger?.debug({ lid: jid, pn }, 'Resolved LID to PN')
+		}
+
+		return pn || jid
+	}
+
+	return jid
+}
+
+/**
+ * Normalizes a WAMessageKey by resolving LID→PN for remoteJid and participant.
+ */
+export const normalizeKeyLidToPn = async (
+	key: WAMessageKey,
+	lidMapping: LIDMappingStore,
+	logger?: ILogger
+): Promise<void> => {
+	const [resolvedRemoteJid, resolvedParticipant] = await Promise.all([
+		resolveLidToPn(key.remoteJid, lidMapping, logger),
+		resolveLidToPn(key.participant, lidMapping, logger)
+	])
+	if (resolvedRemoteJid) {
+		key.remoteJid = resolvedRemoteJid
+	}
+
+	if (resolvedParticipant) {
+		key.participant = resolvedParticipant
+	}
+}
+
 export const normalizeMessageJids = async (
 	message: WAMessage,
 	signalRepository: SignalRepositoryWithLIDStore,
 	logger?: ILogger
 ): Promise<void> => {
-	const resolveLidToPn = async (jid: string | undefined | null): Promise<string | undefined> => {
-		if (!jid) {
-			return undefined
-		}
+	const lidMapping = signalRepository.lidMapping
+	const key = message.key
 
-		if (isLidUser(jid) || isHostedLidUser(jid)) {
-			const pn = await signalRepository.lidMapping.getPNForLID(jid)
-			if (pn) {
-				logger?.debug({ lid: jid, pn }, 'Resolved LID to PN for inbound message')
-			} else {
-				logger?.debug({ lid: jid }, 'PN not found for inbound LID, keeping LID')
-			}
-
-			return pn || jid
-		}
-
-		return jid
+	// FAST PATH: Use alt JIDs directly when available (avoids LIDMappingStore race condition).
+	// The stanza always carries both formats (LID + PN) in the attributes.
+	// When addressing_mode=lid, remoteJid is LID and remoteJidAlt is PN.
+	// When addressing_mode=pn, remoteJid is already PN (no conversion needed).
+	if (key.remoteJid && isAnyLidUser(key.remoteJid) && key.remoteJidAlt && isAnyPnUser(key.remoteJidAlt)) {
+		logger?.debug({ lid: key.remoteJid, pn: key.remoteJidAlt }, 'Resolved remoteJid LID→PN via alt (fast path)')
+		key.remoteJid = key.remoteJidAlt
 	}
 
-	// Execute both lookups in parallel instead of sequentially to reduce latency
-	const [resolvedRemoteJid, resolvedParticipant] = await Promise.all([
-		resolveLidToPn(message.key.remoteJid),
-		resolveLidToPn(message.key.participant)
-	])
-
-	if (resolvedRemoteJid) {
-		message.key.remoteJid = resolvedRemoteJid
+	if (key.participant && isAnyLidUser(key.participant) && key.participantAlt && isAnyPnUser(key.participantAlt)) {
+		logger?.debug({ lid: key.participant, pn: key.participantAlt }, 'Resolved participant LID→PN via alt (fast path)')
+		key.participant = key.participantAlt
 	}
 
-	if (resolvedParticipant) {
-		message.key.participant = resolvedParticipant
+	// SLOW PATH: Resolve any remaining LIDs via LIDMappingStore lookup
+	await normalizeKeyLidToPn(key, lidMapping, logger)
+
+	// Also normalize participantAlt (the alternative JID format — can be LID when addressing_mode=pn)
+	if (key.participantAlt && isAnyLidUser(key.participantAlt)) {
+		const resolved = await resolveLidToPn(key.participantAlt, lidMapping, logger)
+		if (resolved) {
+			key.participantAlt = resolved
+		}
+	}
+
+	// Normalize nested message keys (reaction, poll) that may contain LID JIDs
+	const content = normalizeMessageContent(message.message)
+	if (content?.reactionMessage?.key) {
+		await normalizeKeyLidToPn(content.reactionMessage.key, lidMapping, logger)
+	}
+
+	if (content?.pollUpdateMessage?.pollCreationMessageKey) {
+		await normalizeKeyLidToPn(content.pollUpdateMessage.pollCreationMessageKey, lidMapping, logger)
 	}
 }
 
@@ -534,6 +589,12 @@ const processMessage = async (
 								'CTWA: Successfully recovered message via placeholder resend'
 							)
 
+							// Normalize LID→PN in PDO-recovered message key before emitting
+							// eslint-disable-next-line max-depth
+							if (webMessageInfo.key && signalRepository) {
+								await normalizeKeyLidToPn(webMessageInfo.key as WAMessageKey, signalRepository.lidMapping, logger)
+							}
+
 							// wait till another upsert event is available, don't want it to be part of the PDO response message
 							// TODO: parse through proper message handling utilities (to add relevant key fields)
 							ev.emit('messages.upsert', {
@@ -674,9 +735,13 @@ const processMessage = async (
 						response: responseMsg
 					}
 
+					// Normalize creationMsgKey JIDs for the emitted event
+					const normalizedCreationKey = { ...creationMsgKey }
+					await normalizeKeyLidToPn(normalizedCreationKey, signalRepository.lidMapping, logger)
+
 					ev.emit('messages.update', [
 						{
-							key: creationMsgKey,
+							key: normalizedCreationKey,
 							update: {
 								eventResponses: [eventResponse]
 							}
@@ -719,7 +784,7 @@ const processMessage = async (
 			})
 		}
 
-		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid.phoneNumber)) // ADD SUPPORT FOR LID
+		const participantsIncludesMe = () => participants.find(p => areJidsSameUser(meId, p.id) || areJidsSameUser(meId, p.phoneNumber))
 
 		switch (message.messageStubType) {
 			case WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER:
