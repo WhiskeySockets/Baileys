@@ -5,6 +5,7 @@ import { extractImageThumb } from './messages-media'
 import { Readable } from 'stream'
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
+import { ProxyAgent } from 'undici'
 
 const THUMBNAIL_WIDTH_PX = 192
 const MAX_LINK_PREVIEW_DOWNLOAD_BYTES = 10 * 1024 * 1024
@@ -233,6 +234,9 @@ const assertHtmlContentType = async (response: Response) => {
 	}
 }
 
+const HEAD_MARKERS = ['</head>', '<body']
+const MARKER_OVERLAP = Math.max(...HEAD_MARKERS.map((m) => m.length)) - 1
+
 const readResponseBody = async (response: Response, maxBytes: number, abortController: AbortController) => {
 	if (!response.body) {
 		return Buffer.alloc(0)
@@ -241,6 +245,7 @@ const readResponseBody = async (response: Response, maxBytes: number, abortContr
 	const stream = toNodeStream(response.body)
 	const chunks: Buffer[] = []
 	let totalBytes = 0
+	let tailStr = ''
 
 	for await (const chunk of stream) {
 		const buff = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
@@ -253,13 +258,14 @@ const readResponseBody = async (response: Response, maxBytes: number, abortContr
 			throw new Error(`response exceeded ${maxBytes} bytes`)
 		}
 
-		// Early exit once we've passed the head section — all OG tags will be there
-		const partial = Buffer.concat(chunks).toString('utf8')
-		if (partial.includes('</head>') || partial.includes('<body')) {
+		const window = tailStr + buff.toString('utf8')
+		if (HEAD_MARKERS.some((m) => window.includes(m))) {
 			abortController.abort('head section complete')
 			stream.destroy()
 			break
 		}
+
+		tailStr = window.length > MARKER_OVERLAP ? window.slice(-MARKER_OVERLAP) : window
 	}
 
 	return Buffer.concat(chunks)
@@ -272,8 +278,8 @@ const fetchWithGuards = async (
 ): Promise<{ body: Buffer; contentType: string; finalUrl: string }> => {
 	let currentUrl = new URL(input)
 
-	// Create timeout signal once so it covers the entire operation including redirects
 	const timeoutSignal = AbortSignal.timeout(fetchOpts.timeout)
+	const dispatcher = fetchOpts.proxyUrl ? new ProxyAgent(fetchOpts.proxyUrl) : undefined
 
 	for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
 		await assertSafeUrl(currentUrl)
@@ -283,7 +289,9 @@ const fetchWithGuards = async (
 			method: 'GET',
 			redirect: 'manual',
 			headers: fetchOpts.headers,
-			signal: AbortSignal.any([timeoutSignal, abortController.signal])
+			signal: AbortSignal.any([timeoutSignal, abortController.signal]),
+			// @ts-ignore undici dispatcher, Node 18+
+			dispatcher,
 		})
 
 		if (response.status >= 300 && response.status < 400) {
@@ -300,7 +308,6 @@ const fetchWithGuards = async (
 			throw new Error(`failed to fetch "${currentUrl}" with status ${response.status}`)
 		}
 
-		// Only enforce HTML content-type when fetching pages, not images
 		if (opts.requireHtml) {
 			await assertHtmlContentType(response)
 		}
@@ -310,27 +317,24 @@ const fetchWithGuards = async (
 		return {
 			body: await readResponseBody(response, fetchOpts.maxContentLength, abortController),
 			contentType: response.headers.get('content-type') || '',
-			finalUrl: currentUrl.toString()
+			finalUrl: currentUrl.toString(),
 		}
 	}
 
 	throw new Error(`too many redirects, max allowed is ${MAX_REDIRECTS}`)
 }
 
-/** Fetches an image and generates a thumbnail for it */
 const getCompressedJpegThumbnail = async (
 	url: string,
 	{ thumbnailWidth, fetchOpts }: { thumbnailWidth: number; fetchOpts: NormalizedFetchOptions }
 ) => {
 	const { body } = await fetchWithGuards(url, fetchOpts)
-
 	return await extractImageThumb(body, thumbnailWidth)
 }
 
 export type URLGenerationOptions = {
 	thumbnailWidth: number
 	fetchOpts: {
-		/** Timeout in ms */
 		timeout: number
 		proxyUrl?: string
 		headers?: HeadersInit
@@ -349,13 +353,6 @@ const SWALLOWED_ERROR_PATTERNS = [
 	'blocked private ip resolution',
 ]
 
-/**
- * Given a piece of text, checks for any URL present, generates link preview for the same and returns it
- * Return undefined if the fetch failed or no URL was found
- * @param text first matched URL in text
- * @param opts
- * @returns the URL info required to generate link preview
- */
 export const getUrlInfo = async (
 	text: string,
 	opts: URLGenerationOptions = {
@@ -372,7 +369,7 @@ export const getUrlInfo = async (
 		const normalizedFetchOpts: NormalizedFetchOptions = {
 			...opts.fetchOpts,
 			timeout: opts.fetchOpts.timeout > 0 ? opts.fetchOpts.timeout : 3000,
-			maxContentLength: opts.fetchOpts.maxContentLength || MAX_LINK_PREVIEW_DOWNLOAD_BYTES
+			maxContentLength: opts.fetchOpts.maxContentLength || MAX_LINK_PREVIEW_DOWNLOAD_BYTES,
 		}
 
 		const { body, finalUrl } = await fetchWithGuards(previewLink, normalizedFetchOpts, { requireHtml: true })
@@ -384,7 +381,6 @@ export const getUrlInfo = async (
 		}
 
 		const description = getMetaContent(html, ['og:description', 'twitter:description', 'description']) || undefined
-
 		const imageFromMeta = getMetaContent(html, ['og:image', 'twitter:image', 'twitter:image:src'])
 		const image = imageFromMeta ? toAbsoluteUrl(imageFromMeta, finalUrl) : undefined
 		const canonicalUrl =
@@ -395,7 +391,7 @@ export const getUrlInfo = async (
 			'matched-text': text,
 			title,
 			description,
-			originalThumbnailUrl: image
+			originalThumbnailUrl: image,
 		}
 
 		if (opts.uploadImage && image) {
@@ -408,8 +404,8 @@ export const getUrlInfo = async (
 					mediaTypeOverride: 'thumbnail-link',
 					options: {
 						...opts.fetchOpts,
-						maxContentLength: normalizedFetchOpts.maxContentLength
-					} as RequestInit & { maxContentLength: number }
+						maxContentLength: normalizedFetchOpts.maxContentLength,
+					} as RequestInit & { maxContentLength: number },
 				}
 			)
 			urlInfo.jpegThumbnail = imageMessage?.jpegThumbnail ? Buffer.from(imageMessage.jpegThumbnail) : undefined
@@ -420,7 +416,7 @@ export const getUrlInfo = async (
 					? (
 							await getCompressedJpegThumbnail(image, {
 								thumbnailWidth: opts.thumbnailWidth,
-								fetchOpts: normalizedFetchOpts
+								fetchOpts: normalizedFetchOpts,
 							})
 						).buffer
 					: undefined
