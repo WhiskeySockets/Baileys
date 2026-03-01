@@ -344,7 +344,9 @@ const SWALLOWED_ERROR_PATTERNS = [
 	'Invalid URL',
 	'unsupported protocol',
 	'unsupported content-type',
-	'blocked',
+	'blocked host',
+	'blocked private ip',
+	'blocked private ip resolution',
 ]
 
 /**
