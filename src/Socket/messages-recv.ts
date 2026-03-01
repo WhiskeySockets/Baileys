@@ -20,6 +20,8 @@ import type {
 	PlaceholderMessageData,
 	SocketConfig,
 	WACallEvent,
+	WACallParticipant,
+	WACallUpdateType,
 	WAMessage,
 	WAMessageKey,
 	WAPatchName
@@ -534,6 +536,663 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			]
 		}
 		await query(stanza)
+	}
+
+	/**
+	 * Offer (initiate) a call to a JID.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param jid - destination JID (e.g. "5511999999999@s.whatsapp.net" or LID)
+	 * @param isVideo - true for video call, false/undefined for voice
+	 * @returns callId (hex) and stanzaId used in the offer
+	 */
+	const offerCall = async (jid: string, isVideo?: boolean) => {
+		const meId = authState.creds.me?.id
+		if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
+
+		const callId = randomBytes(16).toString('hex').toUpperCase()
+		const stanzaId = randomBytes(16).toString('hex').toUpperCase()
+
+		const offerContent: BinaryNode[] = [
+			{ tag: 'privacy', attrs: {}, content: undefined },
+			{ tag: 'audio', attrs: { rate: '8000', enc: 'opus' }, content: undefined },
+			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
+		]
+
+		if (isVideo) {
+			offerContent.push({
+				tag: 'video',
+				attrs: {
+					screen_width: '1080',
+					screen_height: '2400',
+					dec: 'H264,H265,AV1',
+					device_orientation: '0',
+					enc: 'h.264'
+				},
+				content: undefined
+			})
+		}
+
+		offerContent.push(
+			{ tag: 'net', attrs: { medium: '3' }, content: undefined },
+			{ tag: 'capability', attrs: { ver: '1' }, content: undefined },
+			{ tag: 'enc', attrs: { v: '2', type: isVideo ? 'msg' : 'pkmsg' }, content: undefined },
+			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
+		)
+
+		// Voice calls include device-identity (verified via Frida capture)
+		if (!isVideo) {
+			offerContent.push(
+				{ tag: 'device-identity', attrs: {}, content: undefined },
+			)
+		}
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: jid,
+				id: stanzaId,
+			},
+			content: [{
+				tag: 'offer',
+				attrs: {
+					'call-creator': meId,
+					'call-id': callId,
+					'device_class': '2013',
+				},
+				content: offerContent
+			}]
+		}
+
+		await query(stanza)
+		return { callId, stanzaId }
+	}
+
+	/**
+	 * Terminate (hang up) an active or ringing call.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id from the offer
+	 * @param callTo - JID of the other party
+	 * @param callCreator - JID of who created the call (usually meId for outgoing)
+	 * @param reason - terminate reason (omit for normal hangup, or 'timeout', 'busy', etc.)
+	 * @param duration - call duration in ms (included when call was connected)
+	 */
+	const terminateCall = async (
+		callId: string,
+		callTo: string,
+		callCreator?: string,
+		reason?: string,
+		duration?: number
+	) => {
+		const meId = authState.creds.me?.id
+		if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
+
+		const terminateAttrs: Record<string, string> = {
+			'call-id': callId,
+			'call-creator': callCreator || meId,
+		}
+
+		if (reason) {
+			terminateAttrs.reason = reason
+		}
+
+		if (typeof duration === 'number') {
+			terminateAttrs.duration = String(duration)
+			terminateAttrs.audio_duration = String(duration)
+		}
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: callTo,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'terminate',
+				attrs: terminateAttrs,
+				content: undefined
+			}]
+		}
+
+		await query(stanza)
+	}
+
+	/**
+	 * Accept (answer) an incoming call.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id from the incoming offer
+	 * @param callFrom - JID of the caller (call-creator)
+	 * @param isVideo - true for video call
+	 */
+	const acceptCall = async (
+		callId: string,
+		callFrom: string,
+		isVideo?: boolean,
+	) => {
+		const meId = authState.creds.me?.id
+		if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
+
+		const acceptContent: BinaryNode[] = [
+			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
+		]
+
+		if (isVideo) {
+			acceptContent.push({
+				tag: 'video',
+				attrs: {
+					dec: 'H264,AV1',
+					device_orientation: '1',
+				},
+				content: undefined
+			})
+		}
+
+		acceptContent.push(
+			{ tag: 'net', attrs: { medium: '2' }, content: undefined },
+			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
+		)
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				from: meId,
+				to: callFrom,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'accept',
+				attrs: {
+					'call-id': callId,
+					'call-creator': callFrom,
+				},
+				content: acceptContent
+			}]
+		}
+
+		await query(stanza)
+	}
+
+	/**
+	 * Send preaccept signal for an incoming call (indicates device capabilities).
+	 * Sent before accept to communicate supported codecs.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id from the incoming offer
+	 * @param callCreator - JID of the caller
+	 * @param isVideo - true for video call
+	 */
+	const preacceptCall = async (
+		callId: string,
+		callCreator: string,
+		isVideo?: boolean,
+	) => {
+		const preacceptContent: BinaryNode[] = [
+			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
+		]
+
+		if (isVideo) {
+			preacceptContent.push({
+				tag: 'video',
+				attrs: {
+					screen_width: '1080',
+					screen_height: '2400',
+					dec: 'H264,H265,AV1',
+					device_orientation: '0',
+				},
+				content: undefined
+			})
+		}
+
+		preacceptContent.push(
+			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
+			{ tag: 'capability', attrs: { ver: '1' }, content: undefined },
+		)
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: callCreator,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'preaccept',
+				attrs: {
+					'call-id': callId,
+					'call-creator': callCreator,
+				},
+				content: preacceptContent
+			}]
+		}
+
+		await query(stanza)
+	}
+
+	/**
+	 * Report relay latency measurements to the server.
+	 * Sent after receiving relay info to report measured latency per relay server.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id
+	 * @param callCreator - JID of the call creator
+	 * @param relays - array of relay measurements
+	 * @param transactionId - optional transaction ID for group calls
+	 */
+	const sendRelayLatency = async (
+		callId: string,
+		callCreator: string,
+		relays: Array<{
+			relayName?: string
+			latency: number
+			relayId?: string
+			dlBw?: number
+			ulBw?: number
+		}>,
+		transactionId?: string,
+	) => {
+		const relayLatencyAttrs: Record<string, string> = {
+			'call-id': callId,
+			'call-creator': callCreator,
+		}
+
+		if (transactionId) {
+			relayLatencyAttrs['transaction-id'] = transactionId
+		}
+
+		const teChildren: BinaryNode[] = relays.map(r => {
+			const teAttrs: Record<string, string> = {}
+			if (r.relayName) {
+				teAttrs.relay_name = r.relayName
+			}
+
+			teAttrs.latency = String(r.latency)
+			if (r.relayId) {
+				teAttrs.relay_id = r.relayId
+			}
+
+			if (r.dlBw !== undefined) {
+				teAttrs.dl_bw = String(r.dlBw)
+			}
+
+			if (r.ulBw !== undefined) {
+				teAttrs.ul_bw = String(r.ulBw)
+			}
+
+			return { tag: 'te', attrs: teAttrs, content: undefined }
+		})
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: callCreator,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'relaylatency',
+				attrs: relayLatencyAttrs,
+				content: teChildren
+			}]
+		}
+
+		await sendNode(stanza)
+	}
+
+	/**
+	 * Send transport (p2p/ICE) candidates for a call.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id
+	 * @param callCreator - JID of the call creator
+	 * @param to - destination JID
+	 * @param candidates - array of candidate entries with priority
+	 * @param round - p2p candidate round number
+	 */
+	const sendTransport = async (
+		callId: string,
+		callCreator: string,
+		to: string,
+		candidates: Array<{ priority: string; data?: Uint8Array }>,
+		round?: number,
+	) => {
+		const transportAttrs: Record<string, string> = {
+			'call-id': callId,
+			'call-creator': callCreator,
+			'transport-message-type': '1',
+		}
+
+		if (round !== undefined) {
+			transportAttrs['p2p-cand-round'] = String(round)
+		}
+
+		const teChildren: BinaryNode[] = candidates.map(c => ({
+			tag: 'te',
+			attrs: { priority: c.priority },
+			content: c.data,
+		}))
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'transport',
+				attrs: transportAttrs,
+				content: teChildren
+			}]
+		}
+
+		await sendNode(stanza)
+	}
+
+	/**
+	 * Send call duration log to the server after a call ends.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id
+	 * @param callCreator - JID of the call creator
+	 * @param peer - JID of the other party
+	 * @param audioDuration - audio duration in ms
+	 * @param callType - call type, defaults to '1x1'
+	 */
+	const sendCallDuration = async (
+		callId: string,
+		callCreator: string,
+		peer: string,
+		audioDuration: number,
+		callType: string = '1x1',
+	) => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: 'call',
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'duration',
+				attrs: {
+					'call-id': callId,
+					'call-creator': callCreator,
+					peer,
+					audio_duration: String(audioDuration),
+					type: callType,
+				},
+				content: undefined
+			}]
+		}
+
+		await sendNode(stanza)
+	}
+
+	/**
+	 * Mute or unmute during a call (MUTE_V2).
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id
+	 * @param callCreator - JID of the call creator
+	 * @param to - destination JID
+	 * @param muted - true to mute, false to unmute
+	 */
+	const muteCall = async (
+		callId: string,
+		callCreator: string,
+		to: string,
+		muted: boolean,
+	) => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'mute_v2',
+				attrs: {
+					'mute-state': muted ? '1' : '0',
+					'call-id': callId,
+					'call-creator': callCreator,
+				},
+				content: undefined
+			}]
+		}
+
+		await sendNode(stanza)
+	}
+
+	/**
+	 * Send heartbeat to keep a group call alive.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id (also used as JID with @call)
+	 * @param callCreator - JID of the call creator
+	 */
+	const sendHeartbeat = async (
+		callId: string,
+		callCreator: string,
+	) => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: `${callId}@call`,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'heartbeat',
+				attrs: {
+					'call-id': callId,
+					'call-creator': callCreator,
+				},
+				content: undefined
+			}]
+		}
+
+		await sendNode(stanza)
+	}
+
+	/**
+	 * Send encryption re-key during a call.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id
+	 * @param callCreator - JID of the call creator
+	 * @param to - destination JID
+	 * @param transactionId - transaction ID for the rekey
+	 */
+	const sendEncRekey = async (
+		callId: string,
+		callCreator: string,
+		to: string,
+		transactionId: string,
+	) => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'enc_rekey',
+				attrs: {
+					'transaction-id': transactionId,
+					'call-id': callId,
+					'call-creator': callCreator,
+				},
+				content: [
+					{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
+					{ tag: 'enc', attrs: { v: '2', type: 'msg' }, content: undefined },
+				]
+			}]
+		}
+
+		await sendNode(stanza)
+	}
+
+	/**
+	 * Send video state change during a call.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param callId - the call-id
+	 * @param callCreator - JID of the call creator
+	 * @param to - destination JID
+	 * @param enabled - true = video on (state=1), false = video off (state=0)
+	 * @param orientation - device orientation (0=portrait, 1=landscape)
+	 */
+	const sendVideoState = async (
+		callId: string,
+		callCreator: string,
+		to: string,
+		enabled: boolean,
+		orientation: string = '1',
+	) => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to,
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'video',
+				attrs: {
+					'call-id': callId,
+					'call-creator': callCreator,
+					state: enabled ? '1' : '0',
+					device_orientation: orientation,
+				},
+				content: undefined
+			}]
+		}
+
+		await sendNode(stanza)
+	}
+
+	/**
+	 * Create a call link that others can join.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param media - 'video' or 'audio'
+	 * @returns object with token, full URL, and raw server response
+	 */
+	const createCallLink = async (
+		media: 'video' | 'audio' = 'video',
+		event?: { startTime: number },
+		timeoutMs?: number
+	) => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: 'call',
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'link_create',
+				attrs: { media },
+				content: event
+					? [{ tag: 'event', attrs: { start_time: String(event.startTime) }, content: undefined }]
+					: undefined
+			}]
+		}
+
+		const response = await query(stanza, timeoutMs)
+
+		// Extract token from server response
+		let token: string | undefined
+		const linkCreateResp = getBinaryNodeChild(response, 'link_create')
+		if (linkCreateResp) {
+			token = linkCreateResp.attrs.token || linkCreateResp.attrs['link-token']
+		}
+
+		// Fallback: check response attrs directly
+		if (!token) {
+			token = response.attrs?.token || response.attrs?.['link-token']
+		}
+
+		// Fallback: search any child with token/link-token
+		if (!token && Array.isArray(response.content)) {
+			for (const child of response.content as BinaryNode[]) {
+				if (child.attrs?.token || child.attrs?.['link-token']) {
+					token = child.attrs.token || child.attrs['link-token']
+					break
+				}
+			}
+		}
+
+		// URL format verified via Frida capture: https://call.whatsapp.com/<token>
+		const url = token
+			? `https://call.whatsapp.com/${token}`
+			: undefined
+
+		return { token, url, response }
+	}
+
+	/**
+	 * Query info about a call link before joining.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param token - the call link token (from URL: https://call.whatsapp.com/<token>)
+	 * @param media - 'video' or 'audio'
+	 * @returns server response with call info
+	 */
+	const queryCallLink = async (token: string, media: 'video' | 'audio' = 'video') => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: 'call',
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'link_query',
+				attrs: { media, token },
+				content: undefined
+			}]
+		}
+
+		return await query(stanza)
+	}
+
+	/**
+	 * Join a call via its link token.
+	 * Structure verified via Frida capture on WhatsApp Android v2.26.
+	 *
+	 * @param token - the call link token
+	 * @param media - 'video' or 'audio'
+	 * @returns server response with relay/group info
+	 */
+	const joinCallLink = async (token: string, media: 'video' | 'audio' = 'video') => {
+		const joinContent: BinaryNode[] = [
+			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
+			{ tag: 'net', attrs: { medium: '2' }, content: undefined },
+			{ tag: 'capability', attrs: { ver: '1' }, content: undefined },
+		]
+
+		if (media === 'video') {
+			joinContent.splice(1, 0, {
+				tag: 'video',
+				attrs: {
+					screen_width: '1080',
+					screen_height: '2400',
+					dec: 'H264,H265,AV1',
+					device_orientation: '0',
+				},
+				content: undefined
+			})
+		}
+
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				to: 'call',
+				id: randomBytes(16).toString('hex').toUpperCase(),
+			},
+			content: [{
+				tag: 'link_join',
+				attrs: { media, token },
+				content: joinContent
+			}]
+		}
+
+		return await query(stanza)
 	}
 
 	const sendRetryRequest = async (node: BinaryNode, forceIncludeKeys = false) => {
@@ -1818,53 +2477,138 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return pn
 	}
 
+	/** Extract participants from a node containing <user> children */
+	const extractParticipants = (parentNode: BinaryNode): WACallParticipant[] | undefined => {
+		const userNodes = getBinaryNodeChildren(parentNode, 'user')
+		if (!userNodes.length) return undefined
+		return userNodes.map(u => ({
+			jid: u.attrs.jid,
+			state: u.attrs.state,
+			userPn: u.attrs.user_pn,
+			type: u.attrs.type,
+		}))
+	}
+
 	const handleCall = async (node: BinaryNode) => {
 		const { attrs } = node
-		const [infoChild] = getAllBinaryNodeChildren(node)
-		const status = getCallStatusFromNode(infoChild!)
+		const children = getAllBinaryNodeChildren(node)
 
-		if (!infoChild) {
+		if (!children.length) {
 			throw new Boom('Missing call info in call node')
 		}
 
-		const callId = infoChild.attrs['call-id']!
-		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
+		// Process ALL children — a <call> node can carry multiple
+		// sibling stanzas (e.g. <transport> + <mute_v2>)
+		for (const infoChild of children) {
+			const status = getCallStatusFromNode(infoChild)
 
-		const call: WACallEvent = {
-			chatId: attrs.from!,
-			from,
-			id: callId,
-			date: new Date(+attrs.t! * 1000),
-			offline: !!attrs.offline,
-			status
+			const callId = infoChild.attrs['call-id']!
+			const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
+
+			const call: WACallEvent = {
+				chatId: attrs.from!,
+				from,
+				id: callId,
+				date: new Date(+attrs.t! * 1000),
+				offline: !!attrs.offline,
+				status
+			}
+
+			if (status === 'offer') {
+				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
+				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
+				call.groupJid = infoChild.attrs['group-jid']
+				// Extract and sanitize caller phone number
+				call.callerPn = sanitizeCallerPn(infoChild.attrs['caller_pn'])
+
+				// Extract call link info from group_info child
+				const groupInfo = getBinaryNodeChild(infoChild, 'group_info')
+				if (groupInfo) {
+					call.isGroup = true
+					call.linkToken = groupInfo.attrs['link-token']
+					call.media = groupInfo.attrs.media
+					call.connectedLimit = groupInfo.attrs['connected-limit']
+						? Number(groupInfo.attrs['connected-limit'])
+						: undefined
+					call.participants = extractParticipants(groupInfo)
+				}
+
+				// Extract link_info (who created the link)
+				const linkInfo = getBinaryNodeChild(infoChild, 'link_info')
+				if (linkInfo) {
+					call.linkCreator = linkInfo.attrs.link_creator
+					call.linkCreatorPn = linkInfo.attrs.link_creator_pn
+				}
+
+				await callOfferCache.set(call.id, call)
+			}
+
+			// Extract call link data from group_update
+			if (status === 'group_update') {
+				const groupInfo = getBinaryNodeChild(infoChild, 'group_info')
+				if (groupInfo) {
+					call.isGroup = true
+					call.linkToken = groupInfo.attrs['link-token']
+					call.media = groupInfo.attrs.media
+					call.connectedLimit = groupInfo.attrs['connected-limit']
+						? Number(groupInfo.attrs['connected-limit'])
+						: undefined
+					call.participants = extractParticipants(groupInfo)
+				}
+			}
+
+			// Extract reminder data (e.g. link_creator_call_started)
+			if (status === 'reminder') {
+				const groupInfo = getBinaryNodeChild(infoChild, 'group_info')
+				if (groupInfo) {
+					call.isGroup = true
+					call.linkToken = groupInfo.attrs['link-token']
+					call.media = groupInfo.attrs.media
+				}
+			}
+
+			// Extract terminate data (reason, duration, call_summary)
+			if (status === 'terminate') {
+				call.terminateReason = infoChild.attrs.reason
+				const callSummary = getBinaryNodeChild(infoChild, 'call_summary')
+				if (callSummary) {
+					call.media = callSummary.attrs.media
+					call.duration = callSummary.attrs.call_duration
+						? Number(callSummary.attrs.call_duration)
+						: undefined
+					call.participants = extractParticipants(callSummary)
+				}
+			}
+
+			// Extract video info from accept/preaccept
+			if (status === 'accept' || status === 'preaccept') {
+				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
+			}
+
+			const existingCall = await callOfferCache.get<WACallEvent>(call.id)
+
+			// use existing call info to populate this event
+			if (existingCall) {
+				call.isVideo = call.isVideo ?? existingCall.isVideo
+				call.isGroup = call.isGroup ?? existingCall.isGroup
+				call.groupJid = call.groupJid ?? existingCall.groupJid
+				// Preserve callerPn across call state updates
+				call.callerPn = call.callerPn || existingCall.callerPn
+				// Preserve call link data across updates
+				call.linkToken = call.linkToken || existingCall.linkToken
+				call.linkCreator = call.linkCreator || existingCall.linkCreator
+				call.linkCreatorPn = call.linkCreatorPn || existingCall.linkCreatorPn
+				call.media = call.media || existingCall.media
+				call.connectedLimit = call.connectedLimit ?? existingCall.connectedLimit
+			}
+
+			// delete data once call has ended
+			if (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
+				await callOfferCache.del(call.id)
+			}
+
+			ev.emit('call', [call])
 		}
-
-		if (status === 'offer') {
-			call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
-			call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
-			call.groupJid = infoChild.attrs['group-jid']
-			// Extract and sanitize caller phone number
-			call.callerPn = sanitizeCallerPn(infoChild.attrs['caller_pn'])
-			await callOfferCache.set(call.id, call)
-		}
-
-		const existingCall = await callOfferCache.get<WACallEvent>(call.id)
-
-		// use existing call info to populate this event
-		if (existingCall) {
-			call.isVideo = existingCall.isVideo
-			call.isGroup = existingCall.isGroup
-			call.groupJid = existingCall.groupJid
-			// Preserve callerPn across call state updates
-			call.callerPn = call.callerPn || existingCall.callerPn
-		}
-
-		// delete data once call has ended
-		if (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
-			await callOfferCache.del(call.id)
-		}
-
-		ev.emit('call', [call])
 
 		await sendMessageAck(node)
 	}
@@ -2055,6 +2799,33 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await processNode('call', node, 'handling call', handleCall)
 	})
 
+	// Top-level <relay> stanzas carry TURN server info, tokens and crypto keys
+	ws.on('CB:relay', async (node: BinaryNode) => {
+		const callId = node.attrs['call-id']
+		const callCreator = node.attrs['call-creator']
+		// Both callId and callCreator must be present to emit a valid event
+		// (call link relays may arrive without these attrs — just log them)
+		if (callId && callCreator) {
+			logger.debug(
+				{ callId, callCreator, uuid: node.attrs.uuid },
+				'received relay info'
+			)
+			ev.emit('call', [{
+				chatId: callCreator,
+				from: callCreator,
+				id: callId,
+				date: new Date(),
+				offline: false,
+				status: 'relay' as WACallUpdateType,
+			}])
+		} else {
+			logger.debug(
+				{ attrs: node.attrs },
+				'received relay stanza without call-id/call-creator'
+			)
+		}
+	})
+
 	ws.on('CB:receipt', async node => {
 		await processNode('receipt', node, 'handling receipt', handleReceipt)
 	})
@@ -2161,6 +2932,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendMessageAck,
 		sendRetryRequest,
 		rejectCall,
+		offerCall,
+		acceptCall,
+		preacceptCall,
+		terminateCall,
+		sendRelayLatency,
+		sendTransport,
+		sendCallDuration,
+		muteCall,
+		sendHeartbeat,
+		sendEncRekey,
+		sendVideoState,
+		createCallLink,
+		queryCallLink,
+		joinCallLink,
 		fetchMessageHistory,
 		requestPlaceholderResend,
 		messageRetryManager
