@@ -94,7 +94,13 @@ const BROWSER_TO_PLATFORM_ID: ReadonlyMap<string, string> = (() => {
 		}
 	}
 
-	return new Map(entries)
+	const map = new Map(entries)
+	// ANDROID → ANDROID_PHONE alias (DeviceProps.PlatformType has ANDROID_PHONE but not ANDROID)
+	if (!map.has('ANDROID') && map.has('ANDROID_PHONE')) {
+		map.set('ANDROID', map.get('ANDROID_PHONE')!)
+	}
+
+	return map
 })()
 
 // ============================================================
@@ -331,7 +337,8 @@ export const Browsers: BrowsersMap = {
 	macOS: (browser: string): [string, string, string] => ['Mac OS', browser, OS_VERSIONS.macOS],
 	windows: (browser: string): [string, string, string] => ['Windows', browser, OS_VERSIONS.windows],
 	baileys: (browser: string): [string, string, string] => ['Baileys', browser, OS_VERSIONS.baileys],
-	appropriate: (browser: string): [string, string, string] => [getPlatformName(), browser, getAppropriateVersion()]
+	appropriate: (browser: string): [string, string, string] => [getPlatformName(), browser, getAppropriateVersion()],
+	android: (apiLevel: string): [string, string, string] => [apiLevel, 'Android', '']
 } as const
 
 /**
@@ -378,7 +385,7 @@ export const getPlatformId = (browser: unknown): string => {
  * properties like 'toString' or 'constructor'.
  *
  * @param value - Value to check
- * @returns True if value is a valid browser preset key ('ubuntu', 'macOS', 'windows', 'baileys', 'appropriate')
+ * @returns True if value is a valid browser preset key ('ubuntu', 'macOS', 'windows', 'baileys', 'appropriate', 'android')
  *
  * @example
  * isValidBrowserPreset('ubuntu')      // true
@@ -391,6 +398,16 @@ export const getPlatformId = (browser: unknown): string => {
  *   const config = Browsers[userInput]('MyApp')
  * }
  */
+/**
+ * Checks if the browser tuple represents an Android companion device.
+ *
+ * @param browser - Browser tuple [os, platform, version]
+ * @returns True if platform is 'Android' (case-insensitive)
+ */
+export const isAndroidBrowser = (browser: [string, string, string]): boolean => {
+	return browser[1]?.toUpperCase() === 'ANDROID'
+}
+
 export const isValidBrowserPreset = (value: unknown): value is keyof BrowsersMap => {
 	return typeof value === 'string' && Object.prototype.hasOwnProperty.call(Browsers, value)
 }

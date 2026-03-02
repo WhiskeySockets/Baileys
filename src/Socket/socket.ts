@@ -38,7 +38,7 @@ import {
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
-import { getPlatformId } from '../Utils/browser-utils'
+import { getPlatformId, isAndroidBrowser } from '../Utils/browser-utils'
 import {
 	CircuitBreaker,
 	CircuitOpenError,
@@ -1352,6 +1352,14 @@ export const makeSocket = (config: SocketConfig) => {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
 			name: '~'
 		}
+
+		// Pair code with Android browser doesn't work (WA server rejects the
+		// companion registration). When Android is detected, fall back to the
+		// Chrome/macOS platform values that are known to work.
+		const isAndroid = isAndroidBrowser(browser)
+		const pairPlatformId = isAndroid ? getPlatformId('Chrome') : getPlatformId(browser[1])
+		const pairPlatformDisplay = isAndroid ? 'Chrome (Mac OS)' : `${browser[1]} (${browser[0]})`
+
 		ev.emit('creds.update', authState.creds)
 		await sendNode({
 			tag: 'iq',
@@ -1384,12 +1392,12 @@ export const makeSocket = (config: SocketConfig) => {
 						{
 							tag: 'companion_platform_id',
 							attrs: {},
-							content: getPlatformId(browser[1])
+							content: pairPlatformId
 						},
 						{
 							tag: 'companion_platform_display',
 							attrs: {},
-							content: `${browser[1]} (${browser[0]})`
+							content: pairPlatformDisplay
 						},
 						{
 							tag: 'link_code_pairing_nonce',

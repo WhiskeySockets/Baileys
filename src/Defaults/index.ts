@@ -56,10 +56,26 @@ export const PROCESSABLE_HISTORY_TYPES = [
 // 6 hours in milliseconds
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
+/**
+ * Resolves the default browser tuple from the BAILEYS_BROWSER env var.
+ *   'android'    → Browsers.android('14')
+ *   'android:15' → Browsers.android('15')
+ *   unset / other → Browsers.macOS('Chrome')
+ */
+const resolveDefaultBrowser = (): [string, string, string] => {
+	const env = process.env.BAILEYS_BROWSER?.trim().toLowerCase()
+	if (env?.startsWith('android')) {
+		const apiLevel = env.split(':')[1] || '14'
+		return Browsers.android(apiLevel)
+	}
+
+	return Browsers.macOS('Chrome')
+}
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
 	versionCheckIntervalMs: SIX_HOURS_MS,
-	browser: Browsers.macOS('Chrome'),
+	browser: resolveDefaultBrowser(),
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
 	connectTimeoutMs: 20_000,
 	keepAliveIntervalMs: 15_000,
