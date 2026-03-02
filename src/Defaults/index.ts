@@ -58,18 +58,25 @@ const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
 /**
  * Resolves the default browser tuple from the BAILEYS_BROWSER env var.
- *   'android'    → Browsers.android('14')
- *   'android:15' → Browsers.android('15')
- *   unset / other → Browsers.macOS('Chrome')
+ * Default: Android companion (SMB_ANDROID) — matches upstream PR #2201.
+ * Pair code auto-detects Android and falls back to Chrome in socket.ts.
+ *
+ *   unset / 'android'    → Browsers.android('14')
+ *   'android:15'         → Browsers.android('15')
+ *   'chrome' / 'macos'   → Browsers.macOS('Chrome')
  */
 const resolveDefaultBrowser = (): [string, string, string] => {
 	const env = process.env.BAILEYS_BROWSER?.trim().toLowerCase()
-	if (env?.startsWith('android')) {
+	if (env === 'chrome' || env === 'macos') {
+		return Browsers.macOS('Chrome')
+	}
+
+	if (env?.startsWith('android:')) {
 		const apiLevel = env.split(':')[1] || '14'
 		return Browsers.android(apiLevel)
 	}
 
-	return Browsers.macOS('Chrome')
+	return Browsers.android('14')
 }
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
