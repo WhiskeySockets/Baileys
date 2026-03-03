@@ -36,7 +36,7 @@ import {
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
-import { getPlatformId } from '../Utils/browser-utils'
+import { getPlatformId, isAndroidBrowser } from '../Utils/browser-utils'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -758,6 +758,15 @@ export const makeSocket = (config: SocketConfig) => {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
 			name: '~'
 		}
+		// Pair code companion_platform_id must be Chrome (1) when using Android
+		// browser preset. ANDROID_PHONE (16) causes silent timeout, UWP (21)
+		// causes rejection. Only Chrome (1) works for pair code via web protocol.
+		// The device still appears as "Android" in linked devices because
+		// DeviceProps.platformType=ANDROID_PHONE is set in the registration node.
+		const isAndroid = isAndroidBrowser(browser)
+		const pairPlatformId = isAndroid ? getPlatformId('Chrome') : getPlatformId(browser[1])
+		const pairPlatformDisplay = isAndroid ? 'Chrome (Mac OS)' : `${browser[1]} (${browser[0]})`
+
 		ev.emit('creds.update', authState.creds)
 		await sendNode({
 			tag: 'iq',
@@ -790,12 +799,12 @@ export const makeSocket = (config: SocketConfig) => {
 						{
 							tag: 'companion_platform_id',
 							attrs: {},
-							content: getPlatformId(browser[1])
+							content: pairPlatformId
 						},
 						{
 							tag: 'companion_platform_display',
 							attrs: {},
-							content: `${browser[1]} (${browser[0]})`
+							content: pairPlatformDisplay
 						},
 						{
 							tag: 'link_code_pairing_nonce',
