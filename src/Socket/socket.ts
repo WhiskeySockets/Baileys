@@ -1351,14 +1351,23 @@ export const makeSocket = (config: SocketConfig) => {
 			name: '~'
 		}
 
-		// Pair code with Android browser doesn't work (WA server rejects the
-		// companion registration). When Android is detected, fall back to the
-		// Chrome/macOS platform values that are known to work.
+		// Pair code companion_platform_id must be Chrome (1) when using Android
+		// browser preset. ANDROID_PHONE (16) causes silent timeout (server ignores),
+		// UWP (21) causes "cannot connect device" rejection. Only Chrome (1) works
+		// for pair code via web protocol (WA\x06\x03). The device still appears as
+		// "Android" in linked devices because DeviceProps.platformType=ANDROID_PHONE
+		// is set separately in the registration node.
 		const isAndroid = isAndroidBrowser(browser)
 		const pairPlatformId = isAndroid ? getPlatformId('Chrome') : getPlatformId(browser[1])
 		const pairPlatformDisplay = isAndroid ? 'Chrome (Mac OS)' : `${browser[1]} (${browser[0]})`
 
-		logger.info(`\uD83D\uDD17 Pair code requested | companion: ${pairPlatformDisplay} | ${isAndroid ? 'android override \u2192 Chrome' : 'native platform'}`)
+		logger.info({
+			pairCode: pairingCode,
+			jid: authState.creds.me.id,
+			companionPlatformId: pairPlatformId,
+			companionPlatformDisplay: pairPlatformDisplay,
+			isAndroid,
+		}, `pair code requested | companion: ${pairPlatformDisplay} | ${isAndroid ? 'android override -> Chrome' : 'native platform'}`)
 
 		ev.emit('creds.update', authState.creds)
 		await sendNode({

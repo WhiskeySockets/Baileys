@@ -9,25 +9,27 @@ import {
 } from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { type BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
-import { isAndroidBrowser } from './browser-utils'
 import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
-	const isAndroid = isAndroidBrowser(config.browser)
+	// Always use MACOS/Desktop identity for UserAgent — we connect via web
+	// protocol (WA\x06\x03) so the server expects a web-like UserAgent.
+	// Using SMB_ANDROID here causes pair code registration to fail with
+	// "não é possível conectar" even though the phone shows the confirmation.
+	// Android identity is only set in DeviceProps (registration node) which
+	// determines the display name in "Linked Devices".
 	return {
 		appVersion: {
 			primary: config.version[0],
 			secondary: config.version[1],
 			tertiary: config.version[2]
 		},
-		platform: isAndroid
-			? proto.ClientPayload.UserAgent.Platform.SMB_ANDROID
-			: proto.ClientPayload.UserAgent.Platform.MACOS,
+		platform: proto.ClientPayload.UserAgent.Platform.MACOS,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
-		osVersion: isAndroid ? config.browser[0] : '0.1',
-		device: isAndroid ? 'Android' : 'Desktop',
+		osVersion: '0.1',
+		device: 'Desktop',
 		osBuildNumber: '0.1',
 		localeLanguageIso6391: 'en',
 		mnc: '000',
@@ -58,11 +60,8 @@ const getClientPayload = (config: SocketConfig) => {
 	const payload: proto.IClientPayload = {
 		connectType: proto.ClientPayload.ConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ConnectReason.USER_ACTIVATED,
-		userAgent: getUserAgent(config)
-	}
-
-	if (!isAndroidBrowser(config.browser)) {
-		payload.webInfo = getWebInfo(config)
+		userAgent: getUserAgent(config),
+		webInfo: getWebInfo(config)
 	}
 
 	return payload
