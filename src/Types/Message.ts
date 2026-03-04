@@ -54,12 +54,14 @@ export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
  * Individual sticker in a sticker pack
  */
 export type Sticker = {
-	/** Buffer, Stream or URL of the sticker image (will be converted to WebP if needed) */
+	/** Buffer, Stream or URL of the sticker image (WebP or Lottie/WAS format) */
 	data: WAMediaUpload
 	/** Array of emojis associated with this sticker (max 3 recommended per WhatsApp standards) */
 	emojis?: string[]
 	/** Accessibility label for screen readers (max 125 chars for static, 255 for animated) */
 	accessibilityLabel?: string
+	/** Force Lottie format detection (auto-detected if omitted) */
+	isLottie?: boolean
 }
 
 /**
