@@ -1611,6 +1611,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						// Persist senderTimestamp unconditionally — WA Web stores it in the chat table
 						// regardless of whether a token exists. Spread preserves token+timestamp if present.
+						// WABA Android: INSERT INTO wa_trusted_contacts_send (jid, sent_tc_token_timestamp, real_issue_timestamp)
+						// VALUES (?, ?, 0) — realIssueTimestamp=0 means issued but not yet confirmed by server
 						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
 						const currentEntry = currentData[tcTokenJid]
 						await authState.keys.set({
@@ -1618,7 +1620,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								[tcTokenJid]: {
 									...currentEntry,
 									token: currentEntry?.token ?? Buffer.alloc(0),
-									senderTimestamp: issueTimestamp
+									senderTimestamp: issueTimestamp,
+									realIssueTimestamp: 0
 								}
 							}
 						})

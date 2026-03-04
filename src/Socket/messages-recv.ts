@@ -69,7 +69,7 @@ import {
 	recordMessageReceived,
 	recordMessageRetry
 } from '../Utils/prometheus-metrics.js'
-import { isTcTokenExpired, resolveTcTokenJid } from '../Utils/tc-token-utils'
+import { isTcTokenExpired, resolveTcTokenJid, storeTcTokensFromIqResult } from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -1453,6 +1453,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			})
 
 			// When a session is refreshed (identity change), re-issue tctoken fire-and-forget
+			// WABA Android: reissue stores senderTimestamp + realIssueTimestamp after IQ success
 			if (result.action === 'session_refreshed') {
 				const normalizedJid = jidNormalizedUser(from)
 				resolveTcTokenJid(normalizedJid, getLIDForPN)
@@ -1462,9 +1463,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						if (entry?.token?.length && !isTcTokenExpired(entry.timestamp)) {
 							const senderTs = unixTimestampSeconds()
 							logTcToken('reissue', { jid: normalizedJid, reason: 'session_refreshed' })
-							getPrivacyTokens([normalizedJid], senderTs).catch(err => {
-								logTcToken('reissue_fail', { jid: normalizedJid, error: err?.message })
-							})
+							getPrivacyTokens([normalizedJid], senderTs)
+								.then(async (iqResult) => {
+									await storeTcTokensFromIqResult({
+										result: iqResult,
+										fallbackJid: normalizedJid,
+										keys: authState.keys,
+										getLIDForPN,
+										onNewJidStored: (storedJid) => {
+											tcTokenKnownJids.add(storedJid)
+											scheduleTcTokenIndexSave()
+										}
+									})
+									// Persist senderTimestamp + realIssueTimestamp after IQ success
+									const currentData = await authState.keys.get('tctoken', [tcJid])
+									const currentEntry = currentData[tcJid]
+									await authState.keys.set({
+										tctoken: {
+											[tcJid]: {
+												...currentEntry,
+												token: currentEntry?.token ?? Buffer.alloc(0),
+												senderTimestamp: senderTs,
+												realIssueTimestamp: 0
+											}
+										}
+									})
+									logTcToken('reissue_ok', { jid: normalizedJid, reason: 'session_refreshed' })
+								})
+								.catch(err => {
+									logTcToken('reissue_fail', { jid: normalizedJid, error: err?.message })
+								})
 						}
 					})
 					.catch(() => {
@@ -1912,7 +1940,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						[storageJid]: {
 							...existing,
 							token: Buffer.from(content),
-							timestamp
+							timestamp,
+							// WABA Android: resets real_issue_timestamp when a new incoming token arrives
+							// (UPDATE wa_trusted_contacts_send SET real_issue_timestamp=null)
+							realIssueTimestamp: null
 						}
 					}
 				})
@@ -2823,6 +2854,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const jid = jidNormalizedUser(attrs.from)
 				logTcToken('error_463', { jid, msgId })
 
+				// WABA Android: error 463 triggers getPrivacyTokens() fire-and-forget
+				// to ensure token is available for the retry below
+				getPrivacyTokens([jid])
+					.then(async (result) => {
+						await storeTcTokensFromIqResult({
+							result,
+							fallbackJid: jid,
+							keys: authState.keys,
+							getLIDForPN,
+							onNewJidStored: (storedJid) => {
+								tcTokenKnownJids.add(storedJid)
+								scheduleTcTokenIndexSave()
+							}
+						})
+						logTcToken('fetched', { jid, reason: 'error_463' })
+					})
+					.catch(() => { /* fire-and-forget */ })
+
 				// Single-retry: wait 1.5s for the server's tctoken notification to arrive,
 				// then resend. A Set prevents infinite retry loops.
 				// Composite key (jid:msgId) ensures retries are isolated per destination.
@@ -2858,7 +2907,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					return
 				}
 			} else if (attrs.error === SERVER_ERROR_CODES.SmaxInvalid) {
-				logTcToken('error_479', { jid: attrs.from, msgId: attrs.id })
+				const jid479 = jidNormalizedUser(attrs.from)
+				logTcToken('error_479', { jid: jid479, msgId: attrs.id })
+				// WABA Android: error 479 (SmaxInvalid) also triggers token re-fetch
+				getPrivacyTokens([jid479])
+					.then(async (result) => {
+						await storeTcTokensFromIqResult({
+							result,
+							fallbackJid: jid479,
+							keys: authState.keys,
+							getLIDForPN,
+							onNewJidStored: (storedJid) => {
+								tcTokenKnownJids.add(storedJid)
+								scheduleTcTokenIndexSave()
+							}
+						})
+						logTcToken('fetched', { jid: jid479, reason: 'error_479' })
+					})
+					.catch(() => { /* fire-and-forget */ })
 			} else {
 				logger.warn({ attrs }, 'received error in ack')
 			}

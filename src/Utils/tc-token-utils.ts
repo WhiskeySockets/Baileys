@@ -159,7 +159,10 @@ export async function storeTcTokensFromIqResult({
 				[storageJid]: {
 					...existingEntry,
 					token: Buffer.from(tokenNode.content),
-					timestamp: tokenNode.attrs.t
+					timestamp: tokenNode.attrs.t,
+					// WABA Android: resets real_issue_timestamp to null when storing a new token
+					// (UPDATE wa_trusted_contacts_send SET real_issue_timestamp=null)
+					realIssueTimestamp: null
 				}
 			}
 		})
