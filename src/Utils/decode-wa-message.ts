@@ -14,7 +14,6 @@ import {
 	isJidStatusBroadcast,
 	isLidUser,
 	isPnUser,
-	jidDecode
 	//	transferDevice
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
@@ -488,8 +487,9 @@ export function isCorruptedSessionError(error: any): boolean {
 }
 
 /**
- * Clean up corrupted session by deleting all device sessions for a JID.
- * Signal Protocol will automatically recreate the session on next message.
+ * Clean up corrupted session for a specific device JID.
+ * WABA behavior: DELETE sessions WHERE recipient_id=? AND device_id=?
+ * Only deletes the exact device that was corrupted, not all devices.
  *
  * NOTE: This should NOT be called on every Bad MAC error (hot path).
  * Instead, let the retry+pkmsg flow handle recovery naturally (like WhatsApp does).
@@ -500,45 +500,7 @@ export async function cleanupCorruptedSession(
 	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger
 ): Promise<number> {
-	const { user, device } = jidDecode(jid) || {}
-	if (!user) {
-		logger.warn({ jid }, 'Cannot cleanup session - invalid JID')
-		return 0
-	}
-
-	// Build list of JIDs to delete (primary + secondary devices)
-	const jidsToDelete: string[] = []
-
-	// Determine domain type correctly (handle hosted JIDs)
-	// JID formats:
-	//   - PN: user@s.whatsapp.net
-	//   - LID: user@lid
-	//   - Hosted PN: user@hosted
-	//   - Hosted LID: user@hosted.lid
-	const isLID = jid.endsWith('@lid') || jid.endsWith('@hosted.lid')
-	const isHosted = jid.includes('@hosted')
-
-	let domain: string
-	if (isLID) {
-		domain = isHosted ? 'hosted.lid' : 'lid'
-	} else {
-		domain = isHosted ? 'hosted' : 's.whatsapp.net'
-	}
-
-	// Primary device (0)
-	jidsToDelete.push(`${user}@${domain}`)
-
-	// Secondary devices (1-5 common range for Web/Desktop/etc)
-	for (let i = 1; i <= 5; i++) {
-		jidsToDelete.push(`${user}:${i}@${domain}`)
-	}
-
-	// If specific device was identified and > 5, ensure it's included
-	if (device !== undefined && device > 5) {
-		jidsToDelete.push(`${user}:${device}@${domain}`)
-	}
-
-	await repository.deleteSession(jidsToDelete)
-
-	return jidsToDelete.length
+	await repository.deleteSession([jid])
+	logger.info({ jid }, 'Cleaned up corrupted session for specific device')
+	return 1
 }

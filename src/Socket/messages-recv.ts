@@ -1314,7 +1314,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount >= 1) {
 			try {
 				// Check if we have a session with this JID
 				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
@@ -2033,7 +2033,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount >= 1) {
 			try {
 				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
 

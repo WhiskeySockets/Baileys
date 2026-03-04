@@ -302,6 +302,25 @@ export function makeLibSignalRepository(
 	// Promise instead of each spawning their own DB transactions.
 	const migrationInFlight = new Map<string, Promise<{ migrated: number; skipped: number; total: number }>>()
 
+	// Resolve PN JID to its canonical LID JID for transaction locking.
+	// This prevents PN/LID race conditions where concurrent operations for the
+	// same logical contact acquire different mutex locks because one uses PN
+	// and the other uses LID. (Aligned with WABA behavior — all operations use LID internally.)
+	const resolveCanonicalJid = async(jid: string): Promise<string> => {
+		if (isAnyLidUser(jid)) {
+			return jid
+		}
+
+		if (isAnyPnUser(jid)) {
+			const lid = await lidMapping.getLIDForPN(jid)
+			if (lid) {
+				return lid
+			}
+		}
+
+		return jid
+	}
+
 	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
@@ -396,23 +415,24 @@ export function makeLibSignalRepository(
 				return result
 			}
 
-			// If it's not a sync message, we need to ensure atomicity
-			// For regular messages, we use a transaction to ensure atomicity
+			// Use canonical JID (PN→LID resolved) as transaction key to prevent
+			// PN/LID race conditions on the same logical session.
+			const canonicalJid = await resolveCanonicalJid(jid)
 			return parsedKeys.transaction(async () => {
 				return await doDecrypt()
-			}, jid)
+			}, canonicalJid)
 		},
 
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
-			// Use transaction to ensure atomicity
+			const canonicalJid = await resolveCanonicalJid(jid)
 			return parsedKeys.transaction(async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
 				return { type, ciphertext: Buffer.from(body, 'binary') }
-			}, jid)
+			}, canonicalJid)
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
@@ -654,9 +674,10 @@ export function makeLibSignalRepository(
 								// Session exists (guaranteed from device discovery)
 								const fromSession = libsignal.SessionRecord.deserialize(pnSession)
 								if (fromSession.haveOpenSession()) {
-									// Queue for bulk update: copy to LID, delete from PN
+									// Queue for bulk update: copy to LID, retain PN session.
+									// WABA retains both PN and LID sessions during migration to avoid
+									// No Session errors if messages arrive via PN before migration completes.
 									sessionUpdates[lidAddrStr] = fromSession.serialize()
-									sessionUpdates[pnAddrStr] = null
 
 									migratedCount++
 								}
@@ -776,6 +797,13 @@ function signalStorage(
 		return id
 	}
 
+	// Delayed PreKey deletion: grace period to handle race conditions
+	// where two pkmsg with the same preKeyId arrive nearly simultaneously.
+	// WABA deletes immediately (33ms), but we add a 5-min grace period
+	// because we can't handle "Invalid PreKey ID" errors at the native level.
+	const PREKEY_GRACE_PERIOD_MS = 5 * 60 * 1000 // 5 minutes
+	const pendingPreKeyDeletions = new Map<string, ReturnType<typeof setTimeout>>()
+
 	return {
 		loadSession: async (id: string) => {
 			try {
@@ -808,7 +836,26 @@ function signalStorage(
 				}
 			}
 		},
-		removePreKey: (id: number) => keys.set({ 'pre-key': { [id]: null } }),
+		removePreKey: (id: number) => {
+			const keyId = id.toString()
+			// Clear any existing timer for this key
+			const existing = pendingPreKeyDeletions.get(keyId)
+			if (existing) {
+				clearTimeout(existing)
+			}
+
+			// Schedule deletion after grace period
+			const timer = setTimeout(async () => {
+				pendingPreKeyDeletions.delete(keyId)
+				try {
+					await keys.set({ 'pre-key': { [id]: null } })
+				} catch {
+					// Keystore may be destroyed if connection closed — safe to ignore
+				}
+			}, PREKEY_GRACE_PERIOD_MS)
+
+			pendingPreKeyDeletions.set(keyId, timer)
+		},
 		loadSignedPreKey: () => {
 			const key = creds.signedPreKey
 			return {
@@ -898,14 +945,24 @@ function signalStorage(
 					// IDENTITY KEY CHANGED - contact reinstalled WhatsApp or switched devices
 					const previousFingerprint = generateKeyFingerprint(existingKey)
 
-					// Delete old session and save new identity key atomically
+					// Delete old session and save new identity key atomically.
+					// Store identity in BOTH LID and PN addresses (WABA stores in both
+					// recipient_account_type=0 and type=1 with CONFLICT_REPLACE).
+					const identityUpdates: Record<string, Uint8Array> = { [wireJid]: identityKey }
+					if (wireJid !== id) {
+						identityUpdates[id] = identityKey
+					}
+
 					await keys.set({
 						session: { [wireJid]: null },
-						'identity-key': { [wireJid]: identityKey }
+						'identity-key': identityUpdates
 					})
 
-					// Update cache
+					// Update cache for both addresses
 					identityKeyCache.set(wireJid, identityKey)
+					if (wireJid !== id) {
+						identityKeyCache.set(id, identityKey)
+					}
 
 					// Record metrics
 					metrics.signalIdentityChanges?.inc({ type: 'changed' })
@@ -941,10 +998,19 @@ function signalStorage(
 
 				if (!existingKey) {
 					// NEW CONTACT - Trust On First Use (TOFU)
-					await keys.set({ 'identity-key': { [wireJid]: identityKey } })
+					// Store in both LID and PN addresses (aligned with WABA dual identity storage)
+					const identityUpdates: Record<string, Uint8Array> = { [wireJid]: identityKey }
+					if (wireJid !== id) {
+						identityUpdates[id] = identityKey
+					}
 
-					// Update cache
+					await keys.set({ 'identity-key': identityUpdates })
+
+					// Update cache for both addresses
 					identityKeyCache.set(wireJid, identityKey)
+					if (wireJid !== id) {
+						identityKeyCache.set(id, identityKey)
+					}
 
 					// Record metrics
 					metrics.signalIdentityChanges?.inc({ type: 'new' })

@@ -218,7 +218,7 @@ export class MessageRetryManager {
 		if (errorCode !== undefined && MAC_ERROR_CODES.has(errorCode)) {
 			const now = Date.now()
 			const prevTime = this.sessionRecreateHistory.get(jid)
-			const MAC_ERROR_COOLDOWN_MS = 10_000 // 10 seconds
+			const MAC_ERROR_COOLDOWN_MS = 1_000 // 1 second — WABA recovers faster
 
 			if (prevTime && now - prevTime < MAC_ERROR_COOLDOWN_MS) {
 				const reasonName = RetryReason[errorCode] || `code_${errorCode}`
