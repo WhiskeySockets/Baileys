@@ -422,7 +422,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const offerContent: BinaryNode[] = [
 			{ tag: 'privacy', attrs: {}, content: undefined },
 			{ tag: 'audio', attrs: { rate: '8000', enc: 'opus' }, content: undefined },
-			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
+			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined }
 		]
 
 		if (isVideo) {
@@ -443,24 +443,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			{ tag: 'net', attrs: { medium: '3' }, content: undefined },
 			{ tag: 'capability', attrs: { ver: '1' }, content: undefined },
 			{ tag: 'enc', attrs: { v: '2', type: isVideo ? 'msg' : 'pkmsg' }, content: undefined },
-			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
+			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined }
 		)
 
 		// Voice calls include device-identity, video calls do not
 		if (!isVideo) {
-			offerContent.push(
-				{ tag: 'device-identity', attrs: {}, content: undefined },
-			)
+			offerContent.push({ tag: 'device-identity', attrs: {}, content: undefined })
 		}
 
 		const stanza: BinaryNode = {
 			tag: 'call',
 			attrs: { to: jid, id: stanzaId },
-			content: [{
-				tag: 'offer',
-				attrs: { 'call-creator': meId, 'call-id': callId, 'device_class': '2013' },
-				content: offerContent
-			}]
+			content: [
+				{
+					tag: 'offer',
+					attrs: { 'call-creator': meId, 'call-id': callId, device_class: '2013' },
+					content: offerContent
+				}
+			]
 		}
 
 		await query(stanza)
@@ -480,7 +480,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const terminateAttrs: Record<string, string> = {
 			'call-id': callId,
-			'call-creator': callCreator || meId,
+			'call-creator': callCreator || meId
 		}
 		if (reason) terminateAttrs.reason = reason
 		if (typeof duration === 'number') {
@@ -501,15 +501,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const meId = authState.creds.me?.id
 		if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
 
-		const acceptContent: BinaryNode[] = [
-			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
-		]
+		const acceptContent: BinaryNode[] = [{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined }]
 		if (isVideo) {
 			acceptContent.push({ tag: 'video', attrs: { dec: 'H264,AV1', device_orientation: '1' }, content: undefined })
 		}
+
 		acceptContent.push(
 			{ tag: 'net', attrs: { medium: '2' }, content: undefined },
-			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
+			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined }
 		)
 
 		const stanza: BinaryNode = {
@@ -522,21 +521,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	/** Send preaccept signal (codec capabilities) for an incoming call. */
 	const preacceptCall = async (callId: string, callCreator: string, isVideo?: boolean) => {
-		const preacceptContent: BinaryNode[] = [
-			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
-		]
+		const preacceptContent: BinaryNode[] = [{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined }]
 		if (isVideo) {
-			preacceptContent.push({ tag: 'video', attrs: { screen_width: '1080', screen_height: '2400', dec: 'H264,H265,AV1', device_orientation: '0' }, content: undefined })
+			preacceptContent.push({
+				tag: 'video',
+				attrs: { screen_width: '1080', screen_height: '2400', dec: 'H264,H265,AV1', device_orientation: '0' },
+				content: undefined
+			})
 		}
+
 		preacceptContent.push(
 			{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
-			{ tag: 'capability', attrs: { ver: '1' }, content: undefined },
+			{ tag: 'capability', attrs: { ver: '1' }, content: undefined }
 		)
 
 		const stanza: BinaryNode = {
 			tag: 'call',
 			attrs: { to: callCreator, id: randomBytes(16).toString('hex').toUpperCase() },
-			content: [{ tag: 'preaccept', attrs: { 'call-id': callId, 'call-creator': callCreator }, content: preacceptContent }]
+			content: [
+				{ tag: 'preaccept', attrs: { 'call-id': callId, 'call-creator': callCreator }, content: preacceptContent }
+			]
 		}
 		await query(stanza)
 	}
@@ -546,7 +550,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		callId: string,
 		callCreator: string,
 		relays: Array<{ relayName?: string; latency: number; relayId?: string; dlBw?: number; ulBw?: number }>,
-		transactionId?: string,
+		transactionId?: string
 	) => {
 		const attrs: Record<string, string> = { 'call-id': callId, 'call-creator': callCreator }
 		if (transactionId) attrs['transaction-id'] = transactionId
@@ -574,24 +578,52 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		callCreator: string,
 		to: string,
 		candidates: Array<{ priority: string; data?: Uint8Array }>,
-		round?: number,
+		round?: number
 	) => {
-		const attrs: Record<string, string> = { 'call-id': callId, 'call-creator': callCreator, 'transport-message-type': '1' }
+		const attrs: Record<string, string> = {
+			'call-id': callId,
+			'call-creator': callCreator,
+			'transport-message-type': '1'
+		}
 		if (round !== undefined) attrs['p2p-cand-round'] = String(round)
 
 		await sendNode({
 			tag: 'call',
 			attrs: { to, id: randomBytes(16).toString('hex').toUpperCase() },
-			content: [{ tag: 'transport', attrs, content: candidates.map(c => ({ tag: 'te', attrs: { priority: c.priority }, content: c.data })) }]
+			content: [
+				{
+					tag: 'transport',
+					attrs,
+					content: candidates.map(c => ({ tag: 'te', attrs: { priority: c.priority }, content: c.data }))
+				}
+			]
 		})
 	}
 
 	/** Send call duration log to the server after a call ends. */
-	const sendCallDuration = async (callId: string, callCreator: string, peer: string, audioDuration: number, callType = '1x1') => {
+	const sendCallDuration = async (
+		callId: string,
+		callCreator: string,
+		peer: string,
+		audioDuration: number,
+		callType = '1x1'
+	) => {
 		await sendNode({
 			tag: 'call',
 			attrs: { to: 'call', id: randomBytes(16).toString('hex').toUpperCase() },
-			content: [{ tag: 'duration', attrs: { 'call-id': callId, 'call-creator': callCreator, peer, audio_duration: String(audioDuration), type: callType }, content: undefined }]
+			content: [
+				{
+					tag: 'duration',
+					attrs: {
+						'call-id': callId,
+						'call-creator': callCreator,
+						peer,
+						audio_duration: String(audioDuration),
+						type: callType
+					},
+					content: undefined
+				}
+			]
 		})
 	}
 
@@ -600,7 +632,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await sendNode({
 			tag: 'call',
 			attrs: { to, id: randomBytes(16).toString('hex').toUpperCase() },
-			content: [{ tag: 'mute_v2', attrs: { 'mute-state': muted ? '1' : '0', 'call-id': callId, 'call-creator': callCreator }, content: undefined }]
+			content: [
+				{
+					tag: 'mute_v2',
+					attrs: { 'mute-state': muted ? '1' : '0', 'call-id': callId, 'call-creator': callCreator },
+					content: undefined
+				}
+			]
 		})
 	}
 
@@ -618,38 +656,63 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await sendNode({
 			tag: 'call',
 			attrs: { to, id: randomBytes(16).toString('hex').toUpperCase() },
-			content: [{
-				tag: 'enc_rekey',
-				attrs: { 'transaction-id': transactionId, 'call-id': callId, 'call-creator': callCreator },
-				content: [
-					{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
-					{ tag: 'enc', attrs: { v: '2', type: 'msg' }, content: undefined },
-				]
-			}]
+			content: [
+				{
+					tag: 'enc_rekey',
+					attrs: { 'transaction-id': transactionId, 'call-id': callId, 'call-creator': callCreator },
+					content: [
+						{ tag: 'encopt', attrs: { keygen: '2' }, content: undefined },
+						{ tag: 'enc', attrs: { v: '2', type: 'msg' }, content: undefined }
+					]
+				}
+			]
 		})
 	}
 
 	/** Send video state change during a call. */
-	const sendVideoState = async (callId: string, callCreator: string, to: string, enabled: boolean, orientation = '1') => {
+	const sendVideoState = async (
+		callId: string,
+		callCreator: string,
+		to: string,
+		enabled: boolean,
+		orientation = '1'
+	) => {
 		await sendNode({
 			tag: 'call',
 			attrs: { to, id: randomBytes(16).toString('hex').toUpperCase() },
-			content: [{ tag: 'video', attrs: { 'call-id': callId, 'call-creator': callCreator, state: enabled ? '1' : '0', device_orientation: orientation }, content: undefined }]
+			content: [
+				{
+					tag: 'video',
+					attrs: {
+						'call-id': callId,
+						'call-creator': callCreator,
+						state: enabled ? '1' : '0',
+						device_orientation: orientation
+					},
+					content: undefined
+				}
+			]
 		})
 	}
 
 	/** Create a call link that others can join. Returns { token, url, response }. */
-	const createCallLink = async (media: 'video' | 'audio' = 'video', event?: { startTime: number }, timeoutMs?: number) => {
+	const createCallLink = async (
+		media: 'video' | 'audio' = 'video',
+		event?: { startTime: number },
+		timeoutMs?: number
+	) => {
 		const stanza: BinaryNode = {
 			tag: 'call',
 			attrs: { to: 'call', id: randomBytes(16).toString('hex').toUpperCase() },
-			content: [{
-				tag: 'link_create',
-				attrs: { media },
-				content: event
-					? [{ tag: 'event', attrs: { start_time: String(event.startTime) }, content: undefined }]
-					: undefined
-			}]
+			content: [
+				{
+					tag: 'link_create',
+					attrs: { media },
+					content: event
+						? [{ tag: 'event', attrs: { start_time: String(event.startTime) }, content: undefined }]
+						: undefined
+				}
+			]
 		}
 
 		const response = await query(stanza, timeoutMs)
@@ -659,6 +722,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (linkCreateResp) {
 			token = linkCreateResp.attrs.token || linkCreateResp.attrs['link-token']
 		}
+
 		if (!token) {
 			token = response.attrs?.token || response.attrs?.['link-token']
 		}
@@ -691,10 +755,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const joinContent: BinaryNode[] = [
 			{ tag: 'audio', attrs: { rate: '16000', enc: 'opus' }, content: undefined },
 			{ tag: 'net', attrs: { medium: '2' }, content: undefined },
-			{ tag: 'capability', attrs: { ver: '1' }, content: undefined },
+			{ tag: 'capability', attrs: { ver: '1' }, content: undefined }
 		]
 		if (media === 'video') {
-			joinContent.splice(1, 0, { tag: 'video', attrs: { screen_width: '1080', screen_height: '2400', dec: 'H264,H265,AV1', device_orientation: '0' }, content: undefined })
+			joinContent.splice(1, 0, {
+				tag: 'video',
+				attrs: { screen_width: '1080', screen_height: '2400', dec: 'H264,H265,AV1', device_orientation: '0' },
+				content: undefined
+			})
 		}
 
 		return await query({
@@ -1733,7 +1801,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			jid: u.attrs.jid,
 			state: u.attrs.state,
 			userPn: u.attrs.user_pn,
-			type: u.attrs.type,
+			type: u.attrs.type
 		}))
 	}
 
@@ -1814,9 +1882,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const callSummary = getBinaryNodeChild(infoChild, 'call_summary')
 				if (callSummary) {
 					call.media = callSummary.attrs.media
-					call.duration = callSummary.attrs.call_duration
-						? Number(callSummary.attrs.call_duration)
-						: undefined
+					call.duration = callSummary.attrs.call_duration ? Number(callSummary.attrs.call_duration) : undefined
 					call.participants = extractParticipants(callSummary)
 				}
 			}
@@ -2009,23 +2075,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const callId = node.attrs['call-id']
 		const callCreator = node.attrs['call-creator']
 		if (callId && callCreator) {
-			logger.debug(
-				{ callId, callCreator, uuid: node.attrs.uuid },
-				'received relay info'
-			)
-			ev.emit('call', [{
-				chatId: callCreator,
-				from: callCreator,
-				id: callId,
-				date: new Date(),
-				offline: false,
-				status: 'relay' as WACallUpdateType,
-			}])
+			logger.debug({ callId, callCreator, uuid: node.attrs.uuid }, 'received relay info')
+			ev.emit('call', [
+				{
+					chatId: callCreator,
+					from: callCreator,
+					id: callId,
+					date: new Date(),
+					offline: false,
+					status: 'relay' as WACallUpdateType
+				}
+			])
 		} else {
-			logger.debug(
-				{ attrs: node.attrs },
-				'received relay stanza without call-id/call-creator'
-			)
+			logger.debug({ attrs: node.attrs }, 'received relay stanza without call-id/call-creator')
 		}
 	})
 
