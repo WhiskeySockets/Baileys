@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1034427372
+/// WhatsApp Version: 2.3000.1034530777
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -3967,6 +3967,7 @@ message MsgOpaqueData {
     optional string quarantineExtractedText = 48;
     optional int64 pollEndTime = 49;
     optional bool pollHideVoterNames = 50;
+    optional bool pollAllowAddOption = 52;
     message EventLocation {
         optional double degreesLatitude = 1;
         optional double degreesLongitude = 2;
