@@ -609,7 +609,10 @@ export const generateWAMessageContent = async (
 		m = { viewOnceMessage: { message: m } }
 	}
 
-	if ((hasOptionalProperty(message, 'mentions') && message.mentions?.length) || (hasOptionalProperty(message, 'mentionAll') && message.mentionAll)) {
+	if (
+		(hasOptionalProperty(message, 'mentions') && message.mentions?.length) ||
+		(hasOptionalProperty(message, 'mentionAll') && message.mentionAll)
+	) {
 		const messageType = Object.keys(m)[0]! as Extract<keyof proto.IMessage, MessageWithContextInfo>
 		const key = m[messageType]
 		if (key && 'contextInfo' in key) {
