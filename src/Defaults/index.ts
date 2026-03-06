@@ -4,7 +4,7 @@ import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
-const version = [2, 3000, 1032141294]
+const version = [2, 3000, 1033846690]
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -24,6 +24,9 @@ export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
 /** Status messages older than 24 hours are considered expired */
 export const STATUS_EXPIRY_SECONDS = 24 * 60 * 60
+
+/** WA Web enforces a 14-day maximum age for placeholder resend requests */
+export const PLACEHOLDER_MAX_AGE_SECONDS = 14 * 24 * 60 * 60
 
 export const NOISE_MODE = 'Noise_XX_25519_AESGCM_SHA256\0\0\0\0'
 export const DICT_VERSION = 3
@@ -136,4 +139,11 @@ export const DEFAULT_CACHE_TTLS = {
 	MSG_RETRY: 60 * 60, // 1 hour
 	CALL_OFFER: 5 * 60, // 5 minutes
 	USER_DEVICES: 5 * 60 // 5 minutes
+}
+
+export const TimeMs = {
+	Minute: 60 * 1000,
+	Hour: 60 * 60 * 1000,
+	Day: 24 * 60 * 60 * 1000,
+	Week: 7 * 24 * 60 * 60 * 1000
 }
