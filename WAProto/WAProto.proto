@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1034530777
+/// WhatsApp Version: 2.3000.1034621774
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -74,6 +74,7 @@ message AIMediaCollectionMessage {
 
 message AIMediaCollectionMetadata {
     optional string collectionId = 1;
+    optional uint32 uploadOrderIndex = 2;
 }
 
 message AIQueryFanout {
@@ -251,10 +252,12 @@ message AIThreadInfo {
     optional AIThreadClientInfo clientInfo = 2;
     message AIThreadClientInfo {
         optional AIThreadType type = 1;
+        optional string sourceChatJid = 2;
         enum AIThreadType {
             UNKNOWN = 0;
             DEFAULT = 1;
             INCOGNITO = 2;
+            SIDE_CHAT = 3;
         }
     }
     
@@ -403,6 +406,7 @@ message BotCapabilityMetadata {
         RICH_RESPONSE_UR_BLOKS_ENABLED = 55;
         RICH_RESPONSE_INLINE_LINKS_ENABLED = 56;
         RICH_RESPONSE_UR_IMAGINE_VIDEO = 57;
+        JSON_PATCH_STREAMING = 58;
     }
 }
 
@@ -687,6 +691,7 @@ enum BotMetricsEntryPoint {
     WEB_INTRO_PANEL = 46;
     WEB_NAVIGATION_BAR = 47;
     GROUP_MEMBER = 54;
+    CHATLIST_SEARCH = 55;
 }
 message BotMetricsMetadata {
     optional string destinationId = 1;
@@ -1106,6 +1111,7 @@ message ClientPayload {
     optional bool paaLink = 44;
     optional int32 preacksCount = 45;
     optional int32 processingQueueSize = 46;
+    repeated string pairedPeripherals = 47;
     enum AccountType {
         DEFAULT = 0;
         GUEST = 1;
@@ -1628,6 +1634,7 @@ message DeviceCapabilities {
     
     message BusinessBroadcast {
         optional bool importListEnabled = 1;
+        optional bool companionSupportEnabled = 2;
     }
     
     enum ChatLockSupportLevel {
@@ -1702,6 +1709,7 @@ message DeviceProps {
         optional uint32 thumbnailSyncDaysLimit = 19;
         optional uint32 initialSyncMaxMessagesPerChat = 20;
         optional bool supportManusHistory = 21;
+        optional bool supportHatchHistory = 22;
     }
     
     enum PlatformType {
@@ -2798,6 +2806,13 @@ message Message {
         optional bool securityNotificationEnabled = 1;
     }
     
+    enum InsightDeliveryState {
+        SENT = 0;
+        DELIVERED = 1;
+        READ = 2;
+        REPLIED = 3;
+        QUICK_REPLIED = 4;
+    }
     message InteractiveMessage {
         optional Header header = 1;
         optional Body body = 2;
@@ -3170,6 +3185,16 @@ message Message {
         optional HistorySyncChunkRetryRequest historySyncChunkRetryRequest = 8;
         optional GalaxyFlowAction galaxyFlowAction = 9;
         optional CompanionCanonicalUserNonceFetchRequest companionCanonicalUserNonceFetchRequest = 10;
+        optional BizBroadcastInsightsContactListRequest bizBroadcastInsightsContactListRequest = 11;
+        optional BizBroadcastInsightsRefreshRequest bizBroadcastInsightsRefreshRequest = 12;
+        message BizBroadcastInsightsContactListRequest {
+            optional string campaignId = 1;
+        }
+        
+        message BizBroadcastInsightsRefreshRequest {
+            optional string campaignId = 1;
+        }
+        
         message CompanionCanonicalUserNonceFetchRequest {
             optional string registrationTraceId = 1;
         }
@@ -3244,6 +3269,18 @@ message Message {
             optional CompanionCanonicalUserNonceFetchResponse companionCanonicalUserNonceFetchRequestResponse = 9;
             optional HistorySyncChunkRetryResponse historySyncChunkRetryResponse = 10;
             optional FlowResponsesCsvBundle flowResponsesCsvBundle = 11;
+            optional BizBroadcastInsightsContactListResponse bizBroadcastInsightsContactListResponse = 12;
+            message BizBroadcastInsightsContactListResponse {
+                optional string campaignId = 1;
+                optional int64 timestampMs = 2;
+                repeated Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.BizBroadcastInsightsContactState contacts = 3;
+            }
+            
+            message BizBroadcastInsightsContactState {
+                optional string contactJid = 1;
+                optional Message.InsightDeliveryState state = 2;
+            }
+            
             message CompanionCanonicalUserNonceFetchResponse {
                 optional string nonce = 1;
                 optional string waFbid = 2;
@@ -3357,6 +3394,8 @@ message Message {
         COMPANION_CANONICAL_USER_NONCE_FETCH = 9;
         HISTORY_SYNC_CHUNK_RETRY = 10;
         GALAXY_FLOW_ACTION = 11;
+        BUSINESS_BROADCAST_INSIGHTS_DELIVERED_TO = 12;
+        BUSINESS_BROADCAST_INSIGHTS_REFRESH = 13;
     }
     message PinInChatMessage {
         optional MessageKey key = 1;
@@ -4084,6 +4123,7 @@ enum MutationProps {
     NCT_SALT_SYNC_ACTION = 80;
     BUSINESS_BROADCAST_CAMPAIGN_ACTION = 81;
     BUSINESS_BROADCAST_INSIGHTS_ACTION = 82;
+    CUSTOMER_DATA_ACTION = 83;
     SHARE_OWN_PN = 10001;
     BUSINESS_BROADCAST_ACTION = 10002;
     AI_THREAD_DELETE_ACTION = 10003;
@@ -4719,6 +4759,7 @@ message SyncActionValue {
     optional NctSaltSyncAction nctSaltSyncAction = 80;
     optional BusinessBroadcastCampaignAction businessBroadcastCampaignAction = 81;
     optional BusinessBroadcastInsightsAction businessBroadcastInsightsAction = 82;
+    optional CustomerDataAction customerDataAction = 83;
     message AgentAction {
         optional string name = 1;
         optional int32 deviceID = 2;
@@ -4838,6 +4879,20 @@ message SyncActionValue {
     
     message CustomPaymentMethodsAction {
         repeated SyncActionValue.CustomPaymentMethod customPaymentMethods = 1;
+    }
+    
+    message CustomerDataAction {
+        optional string chatJid = 1;
+        optional int32 contactType = 2;
+        optional string email = 3;
+        optional string altPhoneNumbers = 4;
+        optional int64 birthday = 5;
+        optional string address = 6;
+        optional int32 acquisitionSource = 7;
+        optional int32 leadStage = 8;
+        optional int64 lastOrder = 9;
+        optional int64 createdAt = 10;
+        optional int64 modifiedAt = 11;
     }
     
     message DeleteChatAction {
@@ -5352,7 +5407,6 @@ message TemplateButton {
 message ThreadID {
     optional ThreadType threadType = 1;
     optional MessageKey threadKey = 2;
-    optional string sourceChatJid = 3;
     enum ThreadType {
         UNKNOWN = 0;
         VIEW_REPLIES = 1;
