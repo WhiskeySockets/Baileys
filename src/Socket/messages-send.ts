@@ -1068,6 +1068,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'media'
 		}
 
+		// Carousel with images → media type for Web real-time rendering
+		if (normalizedMessage.interactiveMessage?.carouselMessage) {
+			return 'media'
+		}
+
 		return 'text'
 	}
 
