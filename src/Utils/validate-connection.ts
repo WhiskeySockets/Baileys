@@ -14,24 +14,19 @@ import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
-	// Always use MACOS/Desktop identity for UserAgent — we connect via web
-	// protocol (WA\x06\x03) so the server expects a web-like UserAgent.
-	// Using SMB_ANDROID here causes pair code registration to fail with
-	// "não é possível conectar" even though the phone shows the confirmation.
-	// Android identity is only set in DeviceProps (registration node) which
-	// determines the display name in "Linked Devices".
 	return {
 		appVersion: {
 			primary: config.version[0],
 			secondary: config.version[1],
 			tertiary: config.version[2]
 		},
-		platform: proto.ClientPayload.UserAgent.Platform.MACOS,
+		platform: proto.ClientPayload.UserAgent.Platform.WEB,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
 		osVersion: '0.1',
 		device: 'Desktop',
 		osBuildNumber: '0.1',
 		localeLanguageIso6391: 'en',
+
 		mnc: '000',
 		mcc: '000',
 		localeCountryIso31661Alpha2: config.countryCode
@@ -60,20 +55,16 @@ const getClientPayload = (config: SocketConfig) => {
 	const payload: proto.IClientPayload = {
 		connectType: proto.ClientPayload.ConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ConnectReason.USER_ACTIVATED,
-		userAgent: getUserAgent(config),
-		webInfo: getWebInfo(config)
+		userAgent: getUserAgent(config)
 	}
+
+	payload.webInfo = getWebInfo(config)
 
 	return payload
 }
 
 export const generateLoginNode = (userJid: string, config: SocketConfig): proto.IClientPayload => {
-	const decoded = jidDecode(userJid)
-	if (!decoded) {
-		throw new Boom('Invalid user JID', { statusCode: 400 })
-	}
-
-	const { user, device } = decoded
+	const { user, device } = jidDecode(userJid)!
 	const payload: proto.IClientPayload = {
 		...getClientPayload(config),
 		passive: true,
@@ -88,10 +79,6 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): proto.
 
 const getPlatformType = (platform: string): proto.DeviceProps.PlatformType => {
 	const platformType = platform.toUpperCase()
-	if (platformType === 'ANDROID') {
-		return proto.DeviceProps.PlatformType.ANDROID_PHONE
-	}
-
 	return (
 		proto.DeviceProps.PlatformType[platformType as keyof typeof proto.DeviceProps.PlatformType] ||
 		proto.DeviceProps.PlatformType.CHROME
@@ -166,9 +153,6 @@ export const configureSuccessfulPairing = (
 	}: Pick<AuthenticationCreds, 'advSecretKey' | 'signedIdentityKey' | 'signalIdentities'>
 ) => {
 	const msgId = stanza.attrs.id
-	if (!msgId) {
-		throw new Boom('Missing message ID', { statusCode: 400 })
-	}
 
 	const pairSuccessNode = getBinaryNodeChild(stanza, 'pair-success')
 
@@ -184,51 +168,42 @@ export const configureSuccessfulPairing = (
 	const bizName = businessNode?.attrs.name
 	const jid = deviceNode.attrs.jid
 	const lid = deviceNode.attrs.lid
-	if (!jid || !lid) {
-		throw new Boom('Missing JID or LID in device node', { statusCode: 400 })
-	}
 
 	const { details, hmac, accountType } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentityNode.content as Buffer)
-	if (!details || !hmac) {
-		throw new Boom('Missing ADV signature fields', { statusCode: 400 })
-	}
 
 	let hmacPrefix = Buffer.from([])
 	if (accountType !== undefined && accountType === proto.ADVEncryptionType.HOSTED) {
 		hmacPrefix = WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX
 	}
 
-	const advSign = hmacSign(Buffer.concat([hmacPrefix, details]), Buffer.from(advSecretKey, 'base64'))
-	if (Buffer.compare(hmac, advSign) !== 0) {
+	const advSign = hmacSign(Buffer.concat([hmacPrefix, details!]), Buffer.from(advSecretKey, 'base64'))
+	if (Buffer.compare(hmac!, advSign) !== 0) {
 		throw new Boom('Invalid account signature')
 	}
 
-	const account = proto.ADVSignedDeviceIdentity.decode(details)
+	const account = proto.ADVSignedDeviceIdentity.decode(details!)
 	const { accountSignatureKey, accountSignature, details: deviceDetails } = account
-	if (!accountSignatureKey || !accountSignature || !deviceDetails) {
-		throw new Boom('Missing ADV account fields', { statusCode: 400 })
-	}
 
-	const deviceIdentity = proto.ADVDeviceIdentity.decode(deviceDetails)
+	const deviceIdentity = proto.ADVDeviceIdentity.decode(deviceDetails!)
 
 	const accountSignaturePrefix =
 		deviceIdentity.deviceType === proto.ADVEncryptionType.HOSTED
 			? WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX
 			: WA_ADV_ACCOUNT_SIG_PREFIX
-	const accountMsg = Buffer.concat([accountSignaturePrefix, deviceDetails, signedIdentityKey.public])
-	if (!Curve.verify(accountSignatureKey, accountMsg, accountSignature)) {
+	const accountMsg = Buffer.concat([accountSignaturePrefix, deviceDetails!, signedIdentityKey.public])
+	if (!Curve.verify(accountSignatureKey!, accountMsg, accountSignature!)) {
 		throw new Boom('Failed to verify account signature')
 	}
 
 	const deviceMsg = Buffer.concat([
 		WA_ADV_DEVICE_SIG_PREFIX,
-		deviceDetails,
+		deviceDetails!,
 		signedIdentityKey.public,
-		accountSignatureKey
+		accountSignatureKey!
 	])
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 
-	const identity = createSignalIdentity(lid, accountSignatureKey)
+	const identity = createSignalIdentity(lid!, accountSignatureKey!)
 	const accountEnc = encodeSignedDeviceIdentity(account, false)
 
 	const reply: BinaryNode = {
@@ -236,7 +211,7 @@ export const configureSuccessfulPairing = (
 		attrs: {
 			to: S_WHATSAPP_NET,
 			type: 'result',
-			id: msgId
+			id: msgId!
 		},
 		content: [
 			{
@@ -255,7 +230,7 @@ export const configureSuccessfulPairing = (
 
 	const authUpdate: Partial<AuthenticationCreds> = {
 		account,
-		me: { id: jid, name: bizName, lid },
+		me: { id: jid!, name: bizName, lid },
 		signalIdentities: [...(signalIdentities || []), identity],
 		platform: platformNode?.attrs.name
 	}
