@@ -1253,12 +1253,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const isCarousel = isCarouselMessage(message)
 
 			// Collect biz/bot nodes to append AFTER device-identity and tctoken
-			// Stanza order: participants → device-identity → tctoken → biz
-			// The biz node MUST be last for WhatsApp Web carousel rendering
+			// Stanza order: participants → device-identity → tctoken → biz (when applicable)
+			// Carousel messages must NOT have biz node (breaks WhatsApp Web rendering)
 			const deferredNodes: BinaryNode[] = []
 
-			// Inject biz node for interactive messages (including carousel)
-			if (buttonType && enableInteractiveMessages) {
+			// Inject biz node for interactive messages (skip carousel — biz node breaks Web rendering)
+			if (buttonType && enableInteractiveMessages && !isCarousel) {
 				const startTime = Date.now()
 
 				// Debug: Log message structure to diagnose list detection
