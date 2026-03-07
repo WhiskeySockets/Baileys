@@ -1228,19 +1228,57 @@ export const generateWAMessageContent = async (
 			options.logger?.info('Sending CTA buttons as nativeFlowMessage with viewOnceMessage wrapper')
 		}
 	}
-	// Check for nativeCarousel
+	// Check for nativeCarousel — inline handler (validated on Android, iOS, Web)
+	// Direct interactiveMessage at root (field 45), NO viewOnceMessage wrapper,
+	// NO messageContextInfo, NO biz/bot stanza nodes needed
 	else if (hasNonNullishProperty(message, 'nativeCarousel')) {
 		const carouselMsg = message as any
-		const carouselOptions: CarouselMessageOptions = {
-			cards: carouselMsg.nativeCarousel.cards,
-			title: carouselMsg.nativeCarousel.title || carouselMsg.title,
-			text: carouselMsg.text,
-			footer: carouselMsg.footer
+		const cards = carouselMsg.nativeCarousel.cards || []
+		const title = carouselMsg.nativeCarousel.title || carouselMsg.title
+		const text = carouselMsg.text
+		const footer = carouselMsg.footer
+
+		const carouselCards = await Promise.all(
+			cards.map(async (card: any) => {
+				const hasMedia = !!(card.image || card.video)
+				const header: any = {
+					title: card.title || '',
+					subtitle: card.footer || '',
+					hasMediaAttachment: hasMedia
+				}
+				if (hasMedia && card.image) {
+					const { imageMessage } = await prepareWAMessageMedia({ image: card.image }, options)
+					if (imageMessage && !imageMessage.height) imageMessage.height = 500
+					if (imageMessage && !imageMessage.width) imageMessage.width = 500
+					header.imageMessage = imageMessage
+				}
+				return {
+					header,
+					body: { text: card.body || '' },
+					footer: card.footer ? { text: card.footer } : undefined,
+					nativeFlowMessage: {
+						buttons: (card.buttons || []).map((btn: any) => {
+							switch (btn.type) {
+								case 'url': return { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: btn.text, url: btn.url, merchant_url: btn.url }) }
+								case 'copy': return { name: 'cta_copy', buttonParamsJson: JSON.stringify({ display_text: btn.text, copy_code: btn.copyText }) }
+								case 'call': return { name: 'cta_call', buttonParamsJson: JSON.stringify({ display_text: btn.text, phone_number: btn.phoneNumber }) }
+								default: return { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: btn.text, id: btn.id }) }
+							}
+						})
+					}
+				}
+			})
+		)
+
+		m.interactiveMessage = {
+			header: { title: title || ' ', hasMediaAttachment: false },
+			body: { text: text || '' },
+			footer: footer ? { text: footer } : undefined,
+			carouselMessage: {
+				cards: carouselCards,
+				messageVersion: 1
+			}
 		}
-		// Pass options for media processing if cards have images/videos
-		const generated = await generateCarouselMessage(carouselOptions, options)
-		// Direct interactiveMessage — no viewOnceMessage wrapper, no root header/body/footer
-		m.interactiveMessage = generated.interactiveMessage
 		return m
 	}
 	// Check for nativeList

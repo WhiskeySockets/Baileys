@@ -3,10 +3,6 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
-	AlbumMediaItem,
-	AlbumMediaResult,
-	AlbumMessageOptions,
-	AlbumSendResult,
 	AnyMessageContent,
 	MediaConnInfo,
 	MessageReceiptType,
@@ -32,23 +28,14 @@ import {
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
-	hasNonNullishProperty,
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
 	unixTimestampSeconds
 } from '../Utils'
-import { logMessageSent, logTcToken } from '../Utils/baileys-logger'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
-import { metrics, recordMessageFailure, recordMessageSent } from '../Utils/prometheus-metrics'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
-import {
-	isTcTokenExpired,
-	resolveTcTokenJid,
-	shouldSendNewTcToken,
-	storeTcTokensFromIqResult
-} from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -56,11 +43,8 @@ import {
 	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
-	isAnyLidUser,
-	isAnyPnUser,
 	isHostedLidUser,
 	isHostedPnUser,
-	isJidBot,
 	isJidGroup,
 	isLidUser,
 	isPnUser,
@@ -82,8 +66,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
 		enableRecentMessageCache,
-		maxMsgRetryCount,
-		enableInteractiveMessages
+		maxMsgRetryCount
 	} = config
 	const sock = makeNewsletterSocket(config)
 	const {
@@ -91,7 +74,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		authState,
 		messageMutex,
 		signalRepository,
-		sessionActivityTracker,
 		upsertMessage,
 		query,
 		fetchPrivacySettings,
@@ -99,8 +81,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		groupMetadata,
 		groupToggleEphemeral
 	} = sock
-
-	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
 	const userDevicesCache =
 		config.userDevicesCache ||
@@ -120,9 +100,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
-	// Tracks JIDs with an in-flight getPrivacyTokens IQ to avoid duplicate concurrent fetches
-	const tcTokenFetchingJids = new Set<string>()
-
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async (forceGet = false) => {
 		const media = await mediaConn
@@ -137,8 +114,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					},
 					content: [{ tag: 'media_conn', attrs: {} }]
 				})
-				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')
-				if (!mediaConnNode) throw new Boom('Missing media_conn node')
+				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
 				// TODO: explore full length of data that whatsapp provides
 				const node: MediaConnInfo = {
 					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
@@ -183,9 +159,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid))) {
-			if (!participant) throw new Boom('Missing participant for sender receipt')
 			node.attrs.recipient = jid
-			node.attrs.to = participant
+			node.attrs.to = participant!
 		} else {
 			node.attrs.to = jid
 			if (participant) {
@@ -305,7 +280,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const requestedLidUsers = new Set<string>()
 		for (const jid of toFetch) {
-			if (isAnyLidUser(jid)) {
+			if (isLidUser(jid) || isHostedLidUser(jid)) {
 				const user = jidDecode(jid)?.user
 				if (user) requestedLidUsers.add(user)
 			}
@@ -337,11 +312,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			const meId = authState.creds.me?.id
-			if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
-			const meLid = authState.creds.me?.lid || ''
-
-			const extracted = extractDeviceJids(result?.list, meId, meLid, ignoreZeroDevices)
+			const extracted = extractDeviceJids(
+				result?.list,
+				authState.creds.me!.id,
+				authState.creds.me!.lid!,
+				ignoreZeroDevices
+			)
 			const deviceMap: { [_: string]: FullJid[] } = {}
 
 			for (const item of extracted) {
@@ -468,9 +444,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
 			const wireJids = [
-				...jidsRequiringFetch.filter(jid => isAnyLidUser(jid)),
+				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
 				...(
-					(await signalRepository.lidMapping.getLIDsForPNs(jidsRequiringFetch.filter(jid => isAnyPnUser(jid)))) || []
+					(await signalRepository.lidMapping.getLIDsForPNs(
+						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
+					)) || []
 				).map(a => a.lid)
 			]
 
@@ -557,13 +535,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			: recipientJids.map(jid => ({ recipientJid: jid, message: patched }))
 
 		let shouldIncludeDeviceIdentity = false
-		const meId = authState.creds.me?.id
-		if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
+		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
-		const encryptionPromises = (patchedMessages as { recipientJid: string; message: proto.IMessage }[]).map(
-			async ({ recipientJid: jid, message: patchedMessage }: { recipientJid: string; message: proto.IMessage }) => {
+		const encryptionPromises = (patchedMessages as any).map(
+			async ({ recipientJid: jid, message: patchedMessage }: any) => {
 				try {
 					if (!jid) return null
 
@@ -617,206 +594,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 
 		if (recipientJids.length > 0 && nodes.length === 0) {
-			recordMessageFailure('send', 'encryption_failed')
 			throw new Boom('All encryptions failed', { statusCode: 500 })
 		}
 
 		return { nodes, shouldIncludeDeviceIdentity }
-	}
-
-	// Interactive message detection and binary node injection
-
-	/**
-	 * Detects the type of interactive message and returns the appropriate binary node tag
-	 * Returns 'native_flow' for modern nativeFlowMessage format (recommended)
-	 * Returns legacy types for older button formats
-	 */
-	const getButtonType = (message: proto.IMessage): string | undefined => {
-		// Check direct message types (legacy formats)
-		if (message.buttonsMessage) {
-			return 'buttons'
-		} else if (message.templateMessage) {
-			return 'template'
-		} else if (message.listMessage) {
-			// All listMessages (SINGLE_SELECT and PRODUCT_LIST) need biz > list node
-			return 'list'
-		} else if (message.buttonsResponseMessage) {
-			return 'buttons_response'
-		} else if (message.listResponseMessage) {
-			return 'list_response'
-		} else if (message.templateButtonReplyMessage) {
-			return 'template_reply'
-		} else if (message.interactiveMessage) {
-			// Check if it has nativeFlowMessage (modern format)
-			if (message.interactiveMessage.nativeFlowMessage) {
-				return 'native_flow'
-			}
-
-			// Check if it's a carousel with nativeFlowMessage buttons in cards
-			if (message.interactiveMessage.carouselMessage?.cards?.length) {
-				const hasNativeFlowButtons = message.interactiveMessage.carouselMessage.cards.some(
-					(card: proto.Message.IInteractiveMessage) => card?.nativeFlowMessage?.buttons?.length
-				)
-				if (hasNativeFlowButtons) {
-					return 'native_flow'
-				}
-			}
-
-			// Check if it's a collection/product carousel
-			if (message.interactiveMessage.carouselMessage?.cards?.length) {
-				const hasCollectionCards = message.interactiveMessage.carouselMessage.cards.some(
-					(card: any) => card?.collectionMessage
-				)
-				if (hasCollectionCards) {
-					return 'native_flow'
-				}
-			}
-
-			return 'interactive'
-		}
-
-		// Check inside viewOnceMessage/viewOnceMessageV2 wrapper (modern nativeFlowMessage format)
-		// V2 is the recommended format for interactive messages (carousel, buttons)
-		const innerMessage = message.viewOnceMessage?.message || message.viewOnceMessageV2?.message
-		if (innerMessage) {
-			if (innerMessage.buttonsMessage) {
-				return 'buttons'
-			} else if (innerMessage.templateMessage) {
-				return 'template'
-			} else if (innerMessage.listMessage) {
-				// All listMessages (SINGLE_SELECT and PRODUCT_LIST) need biz > list node
-				return 'list'
-			} else if (innerMessage.buttonsResponseMessage) {
-				return 'buttons_response'
-			} else if (innerMessage.listResponseMessage) {
-				return 'list_response'
-			} else if (innerMessage.templateButtonReplyMessage) {
-				return 'template_reply'
-			} else if (innerMessage.interactiveMessage) {
-				// Check if it has nativeFlowMessage (modern format)
-				if (innerMessage.interactiveMessage.nativeFlowMessage) {
-					return 'native_flow'
-				}
-
-				// Check if it's a carousel with nativeFlowMessage buttons in cards
-				if (innerMessage.interactiveMessage.carouselMessage?.cards?.length) {
-					const hasNativeFlowButtons = innerMessage.interactiveMessage.carouselMessage.cards.some(
-						(card: any) => card?.nativeFlowMessage?.buttons?.length
-					)
-					if (hasNativeFlowButtons) {
-						return 'native_flow'
-					}
-				}
-
-				// Check if it's a collection/product carousel
-				if (innerMessage.interactiveMessage.carouselMessage?.cards?.length) {
-					const hasCollectionCards = innerMessage.interactiveMessage.carouselMessage.cards.some(
-						(card: any) => card?.collectionMessage
-					)
-					if (hasCollectionCards) {
-						return 'native_flow'
-					}
-				}
-
-				return 'interactive'
-			}
-		}
-
-		return undefined
-	}
-
-	/**
-	 * Returns the attributes for the interactive binary node based on message type
-	 * For native_flow: returns { v: '4', name: '' } or special attributes for payment flows
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const _getButtonArgs = (message: proto.IMessage): BinaryNodeAttributes => {
-		const buttonType = getButtonType(message)
-
-		// For native_flow messages, check for special button types that need specific attributes
-		if (buttonType === 'native_flow') {
-			const interactiveMsg =
-				message.interactiveMessage ||
-				message.viewOnceMessage?.message?.interactiveMessage ||
-				message.viewOnceMessageV2?.message?.interactiveMessage
-
-			if (interactiveMsg?.nativeFlowMessage?.buttons?.[0]) {
-				const firstButtonName = interactiveMsg.nativeFlowMessage.buttons[0].name
-
-				// Special button types that require specific attributes
-				// Based on official WhatsApp client traffic
-				if (firstButtonName === 'review_and_pay' || firstButtonName === 'payment_info') {
-					return { v: '4', name: 'payment_info' }
-				} else if (firstButtonName === 'mpm') {
-					return { v: '4', name: 'mpm' }
-				} else if (firstButtonName === 'review_order') {
-					return { v: '4', name: 'order_details' }
-				}
-			}
-
-			// Default native_flow attributes
-			return { v: '4', name: '' }
-		}
-
-		// For other button types, return empty attributes
-		return {}
-	}
-
-	/**
-	 * Checks if the message is a carousel (media carousel or product carousel)
-	 * Carousels should NOT have the bot node injected as they are not bot messages
-	 */
-	const isCarouselMessage = (message: proto.IMessage): boolean => {
-		const interactiveMsg =
-			message.interactiveMessage ||
-			message.viewOnceMessage?.message?.interactiveMessage ||
-			message.viewOnceMessageV2?.message?.interactiveMessage
-
-		if (interactiveMsg?.carouselMessage?.cards?.length) {
-			return true
-		}
-
-		return false
-	}
-
-	/**
-	 * Checks if the message is a catalog/product message (catalog_message, single_product)
-	 * These messages may need different biz node handling or no biz node at all
-	 */
-	const isCatalogMessage = (message: proto.IMessage): boolean => {
-		const interactiveMsg =
-			message.interactiveMessage ||
-			message.viewOnceMessage?.message?.interactiveMessage ||
-			message.viewOnceMessageV2?.message?.interactiveMessage
-
-		const nativeFlow = interactiveMsg?.nativeFlowMessage
-		if (nativeFlow?.buttons?.length) {
-			// Check if any button is a catalog-type button
-			return nativeFlow.buttons.some(
-				(btn: any) => btn?.name === 'catalog_message' || btn?.name === 'single_product' || btn?.name === 'product_list'
-			)
-		}
-
-		return false
-	}
-
-	/**
-	 * Checks if the nativeFlowMessage is a list (single_select button)
-	 * Lists need type='list' in the biz node instead of type='native_flow'
-	 */
-	const isListNativeFlow = (message: proto.IMessage): boolean => {
-		const interactiveMsg =
-			message.interactiveMessage ||
-			message.viewOnceMessage?.message?.interactiveMessage ||
-			message.viewOnceMessageV2?.message?.interactiveMessage
-
-		const nativeFlow = interactiveMsg?.nativeFlowMessage
-		if (nativeFlow?.buttons?.length) {
-			// Check if any button is a list-type button (single_select or multi_select)
-			return nativeFlow.buttons.some((btn: any) => btn?.name === 'single_select' || btn?.name === 'multi_select')
-		}
-
-		return false
 	}
 
 	const relayMessage = async (
@@ -832,16 +613,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			statusJidList
 		}: MessageRelayOptions
 	) => {
-		const meId = authState.creds.me?.id
-		if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
+		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
 		const isRetryResend = Boolean(participant?.jid)
 		let shouldIncludeDeviceIdentity = isRetryResend
 		const statusJid = 'status@broadcast'
 
-		const jidDecoded = jidDecode(jid)
-		if (!jidDecoded) throw new Boom('Invalid JID')
-		const { user, server } = jidDecoded
+		const { user, server } = jidDecode(jid)!
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
@@ -852,60 +630,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		msgId = msgId || generateMessageIDV2(meId)
 		useUserDevicesCache = useUserDevicesCache !== false
 		useCachedGroupMetadata = useCachedGroupMetadata !== false && !isStatus
-
-		// Convert nativeFlowMessage with single_select to direct listMessage (legacy format)
-		// This is required because WhatsApp expects listMessage format with biz > list node
-		// The viewOnceMessage > interactiveMessage > nativeFlowMessage wrapper causes error 479
-		// Reference: direct listMessage works on phone + web
-		const innerMsg = message.viewOnceMessage?.message
-		const nativeFlow = innerMsg?.interactiveMessage?.nativeFlowMessage
-		if (nativeFlow?.buttons?.length) {
-			const singleSelectBtn = nativeFlow.buttons.find((btn: any) => btn?.name === 'single_select')
-			if (singleSelectBtn?.buttonParamsJson) {
-				try {
-					const params = JSON.parse(singleSelectBtn.buttonParamsJson)
-					const sections = params.sections?.map((section: any) => ({
-						title: section.title,
-						rows: section.rows?.map((row: any) => ({
-							rowId: row.id || row.rowId,
-							title: row.title,
-							description: row.description || ''
-						}))
-					}))
-
-					if (sections?.length) {
-						// Build direct listMessage (legacy format that works)
-						const listMessage = proto.Message.ListMessage.fromObject({
-							title: innerMsg?.interactiveMessage?.header?.title || '',
-							description: innerMsg?.interactiveMessage?.body?.text || '',
-							buttonText: params.title || 'Menu',
-							footerText: innerMsg?.interactiveMessage?.footer?.text || '',
-							listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
-							sections
-						})
-
-						// Mutate message in-place: remove viewOnceMessage, add listMessage
-						delete message.viewOnceMessage
-						message.listMessage = listMessage
-						// Keep messageContextInfo if it was nested
-						// eslint-disable-next-line max-depth
-						if (!message.messageContextInfo && innerMsg?.messageContextInfo) {
-							message.messageContextInfo = innerMsg.messageContextInfo
-						}
-
-						logger.info(
-							{ msgId, sectionsCount: sections.length, buttonText: params.title },
-							'[LIST CONVERT] Converted nativeFlowMessage(single_select) to direct listMessage format'
-						)
-					}
-				} catch (err) {
-					logger.warn(
-						{ msgId, error: (err as Error).message },
-						'[LIST CONVERT] Failed to convert nativeFlowMessage to listMessage, sending as-is'
-					)
-				}
-			}
-		}
 
 		const participants: BinaryNode[] = []
 		const destinationJid = !isStatus ? finalJid : statusJid
@@ -928,9 +652,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
 			}
 
-			const participantDecoded = jidDecode(participant.jid)
-			if (!participantDecoded) throw new Boom('Invalid participant JID')
-			const { user, device } = participantDecoded
+			const { user, device } = jidDecode(participant.jid)!
 			devices.push({
 				user,
 				device,
@@ -1156,8 +878,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const isMe = user === mePnUser || user === meLidUser
 
 					if (isMe) {
-						// Send DSM to ALL own companion devices including carousel
-						// Error 479 on companion devices is non-fatal
 						meRecipients.push(jid)
 					} else {
 						otherRecipients.push(jid)
@@ -1172,9 +892,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
-					// For own devices: use DSM (deviceSentMessage) wrapper
+					// For own devices: use DSM if available (1:1 chats only)
 					createParticipantNodes(meRecipients, meMsg || message, extraAttrs),
-					createParticipantNodes(otherRecipients, message, extraAttrs)
+					createParticipantNodes(otherRecipients, message, extraAttrs, meMsg)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
@@ -1187,15 +907,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isRetryResend) {
-				if (!participant) throw new Boom('Missing participant for retry resend')
-				// Only check for regular LID users, NOT hosted LID users
-				// Hosted LID users should use meId for comparison, not meLid
-				const isParticipantLid = isLidUser(participant.jid)
-				const isMe = areJidsSameUser(participant.jid, isParticipantLid ? meLid : meId)
+				const isParticipantLid = isLidUser(participant!.jid)
+				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
 
-				// Send DSM for all message types including carousel
-				const usesDSM = isMe
-				const encodedMessageToSend = usesDSM
+				const encodedMessageToSend = isMe
 					? encodeWAMessage({
 							deviceSentMessage: {
 								destinationJid,
@@ -1206,7 +921,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
 					data: encodedMessageToSend,
-					jid: participant.jid
+					jid: participant!.jid
 				})
 
 				binaryNodeContent.push({
@@ -1214,7 +929,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {
 						v: '2',
 						type,
-						count: participant.count.toString()
+						count: participant!.count.toString()
 					},
 					content: encryptedContent
 				})
@@ -1245,159 +960,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					...(additionalAttributes || {})
 				},
 				content: binaryNodeContent
-			}
-
-			// Inject 'biz' node for interactive messages
-			const buttonType = getButtonType(message)
-			const isCatalog = isCatalogMessage(message)
-			const isCarousel = isCarouselMessage(message)
-
-			// Collect biz/bot nodes to append AFTER device-identity and tctoken
-			// Stanza order: participants → device-identity → tctoken → biz (when applicable)
-			// Carousel messages must NOT have biz node (breaks WhatsApp Web rendering)
-			const deferredNodes: BinaryNode[] = []
-
-			// Inject biz node for interactive messages (skip carousel — biz node breaks Web rendering)
-			if (buttonType && enableInteractiveMessages && !isCarousel) {
-				const startTime = Date.now()
-
-				// Debug: Log message structure to diagnose list detection
-				const interactiveMsg =
-					message.interactiveMessage ||
-					message.viewOnceMessage?.message?.interactiveMessage ||
-					message.viewOnceMessageV2?.message?.interactiveMessage
-				const listMsg =
-					message.listMessage ||
-					message.viewOnceMessage?.message?.listMessage ||
-					message.viewOnceMessageV2?.message?.listMessage
-				// For carousel messages, buttons are inside each card's nativeFlowMessage
-				let nativeFlowButtons = interactiveMsg?.nativeFlowMessage?.buttons || []
-				if (nativeFlowButtons.length === 0 && interactiveMsg?.carouselMessage?.cards?.length) {
-					nativeFlowButtons = interactiveMsg.carouselMessage.cards.flatMap(
-						(card: proto.Message.IInteractiveMessage) => card?.nativeFlowMessage?.buttons || []
-					)
-				}
-
-				const isListDetected = isListNativeFlow(message)
-
-				logger.info(
-					{
-						msgId,
-						buttonType,
-						to: destinationJid,
-						hasListMessage: !!listMsg,
-						hasInteractiveMessage: !!interactiveMsg,
-						hasNativeFlow: !!interactiveMsg?.nativeFlowMessage,
-						nativeFlowButtonNames: nativeFlowButtons.map((b: any) => b?.name),
-						isListDetected,
-						isCatalog,
-						isCarousel
-					},
-					'[Interactive] Preparing biz node'
-				)
-
-				// Track that we're sending an interactive message
-				metrics.interactiveMessagesSent.inc({ type: buttonType })
-
-				try {
-					// Classify button types for native_flow name and bot node decisions
-					const CTA_BUTTON_NAMES = new Set(['cta_url', 'cta_copy', 'cta_call'])
-					const allButtonNames = nativeFlowButtons.map((b: any) => b?.name).filter(Boolean)
-					const hasCTA = allButtonNames.some((name: string) => CTA_BUTTON_NAMES.has(name))
-					const hasQuickReply = allButtonNames.some((name: string) => name === 'quick_reply')
-					const isCTAOnly = hasCTA && !hasQuickReply
-
-					// For listMessage (legacy format), use direct <list> tag
-					// This matches the known working implementation
-					if (buttonType === 'list') {
-						deferredNodes.push({
-							tag: 'biz',
-							attrs: {},
-							content: [
-								{
-									tag: 'list',
-									attrs: {
-										type: 'product_list',
-										v: '2'
-									}
-								}
-							]
-						})
-						logger.info({ msgId, to: destinationJid }, '[BIZ NODE] Injected biz > list (product_list, v=2)')
-					} else {
-						const SPECIAL_FLOW_NAMES: Record<string, string> = {
-							review_and_pay: 'payment_info',
-							payment_info: 'payment_info',
-							mpm: 'mpm',
-							review_order: 'order_details'
-						}
-						const firstButtonName = allButtonNames[0] || ''
-						const nativeFlowName = SPECIAL_FLOW_NAMES[firstButtonName] || 'mixed'
-
-						logger.info(
-							{ msgId, buttonNames: allButtonNames, hasCTA, hasQuickReply, isCTAOnly, nativeFlowName },
-							'[BIZ NODE] Injected biz > interactive(native_flow, v=1) > native_flow(v=9, name=' + nativeFlowName + ')'
-						)
-
-						const interactiveType = 'native_flow'
-						deferredNodes.push({
-							tag: 'biz',
-							attrs: {},
-							content: [
-								{
-									tag: 'interactive',
-									attrs: {
-										type: interactiveType,
-										v: '1'
-									},
-									content: [
-										{
-											tag: interactiveType,
-											attrs: {
-												v: '9',
-												name: nativeFlowName
-											}
-										}
-									]
-								}
-							]
-						})
-					}
-
-					// Bot node — skip for native_flow buttons (breaks Web rendering)
-					const isNativeFlowButtons = buttonType === 'native_flow'
-
-					const isPrivateUserChat =
-						(isPnUser(destinationJid) || isLidUser(destinationJid) || destinationJid?.endsWith('@c.us')) &&
-						!isJidBot(destinationJid)
-
-					if (isPrivateUserChat && !isCarousel && !isCatalog && buttonType !== 'list' && !isNativeFlowButtons) {
-						deferredNodes.push({
-							tag: 'bot',
-							attrs: { biz_bot: '1' }
-						})
-						logger.info({ msgId, to: destinationJid }, '[BOT NODE] Added bot node (biz_bot=1)')
-					} else if (isNativeFlowButtons) {
-						logger.debug({ msgId, to: destinationJid }, '[BOT NODE] Skipped — native_flow (Web compatibility)')
-					} else if (isCarousel) {
-						logger.debug({ msgId, to: destinationJid }, '[BOT NODE] Skipped — carousel message')
-					} else if (isCatalog) {
-						logger.debug({ msgId, to: destinationJid }, '[BOT NODE] Skipped — catalog message')
-					}
-
-					// Track success and latency after message is sent
-					metrics.interactiveMessagesSuccess.inc({ type: buttonType })
-					metrics.interactiveMessagesLatency.observe({ type: buttonType }, Date.now() - startTime)
-				} catch (error) {
-					logger.error({ error, msgId, buttonType }, '[BIZ NODE] Failed to inject biz node')
-					metrics.interactiveMessagesFailures.inc({ type: buttonType, reason: 'injection_failed' })
-				}
-			} else if (buttonType && !enableInteractiveMessages) {
-				logger.warn(
-					{ msgId, buttonType },
-					'[Interactive] Message detected but feature disabled (enableInteractiveMessages=false)'
-				)
-				metrics.interactiveMessagesFailures.inc({ type: buttonType, reason: 'feature_disabled' })
 			}
 
 			// if the participant to send to is explicitly specified (generally retry recp)
@@ -1451,227 +1013,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			// tctoken lifecycle: fetch, validate expiry, proactive re-fetch if missing/expired
-			// WA Web never attaches tctoken to peer (AppStateSync) messages — server
-			const isPeerMessage = additionalAttributes?.['category'] === 'peer'
-			const is1on1Send = !isGroup && !isRetryResend && !isStatus && !isNewsletter && !isPeerMessage
+			const contactTcTokenData =
+				!isGroup && !isRetryResend && !isStatus ? await authState.keys.get('tctoken', [destinationJid]) : {}
 
-			// Resolve destination to LID for tctoken storage — matches Signal session key pattern
-			const tcTokenJid = is1on1Send ? await resolveTcTokenJid(destinationJid, getLIDForPN) : destinationJid
-			const contactTcTokenData = is1on1Send ? await authState.keys.get('tctoken', [tcTokenJid]) : {}
-			const existingTokenEntry = contactTcTokenData[tcTokenJid]
-			let tcTokenBuffer = existingTokenEntry?.token
+			const tcTokenBuffer = contactTcTokenData[destinationJid]?.token
 
-			// Treat expired tokens the same as missing — re-fetch from server
-			if (tcTokenBuffer?.length && isTcTokenExpired(existingTokenEntry?.timestamp)) {
-				logTcToken('expired', { jid: destinationJid, timestamp: existingTokenEntry?.timestamp })
-				tcTokenBuffer = undefined
-				// Opportunistic cleanup: remove expired token from store
-				try {
-					await authState.keys.set({ tctoken: { [tcTokenJid]: null } })
-				} catch {
-					/* ignore cleanup errors */
-				}
-			}
-
-			// If tctoken is missing for a 1:1 send, fire-and-forget fetch so the
-			// retry path (error 463 → handleBadAck) can pick it up on resend
-			if (!tcTokenBuffer?.length && is1on1Send && !tcTokenFetchingJids.has(tcTokenJid)) {
-				tcTokenFetchingJids.add(tcTokenJid)
-				logTcToken('fetch', { jid: destinationJid })
-				getPrivacyTokens([destinationJid])
-					.then(async fetchResult => {
-						await storeTcTokensFromIqResult({
-							result: fetchResult,
-							fallbackJid: destinationJid,
-							keys: authState.keys,
-							getLIDForPN
-							// onNewJidStored not passed — the pruning index lives in messages-recv (higher layer)
-						})
-					})
-					.catch(err => {
-						logger.debug({ jid: destinationJid, err: err?.message }, 'fire-and-forget tctoken fetch failed')
-					})
-					.finally(() => {
-						tcTokenFetchingJids.delete(tcTokenJid)
-					})
-			}
-
-			if (tcTokenBuffer?.length) {
+			if (tcTokenBuffer) {
 				;(stanza.content as BinaryNode[]).push({
 					tag: 'tctoken',
 					attrs: {},
 					content: tcTokenBuffer
 				})
-				logTcToken('attached', { jid: destinationJid })
 			}
 
 			if (additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
 
-			// Append deferred biz/bot nodes LAST (after device-identity, tctoken)
-			// Stanza order: participants → device-identity → tctoken → biz
-			if (deferredNodes.length > 0) {
-				;(stanza.content as BinaryNode[]).push(...deferredNodes)
-			}
-
-			// Log stanza structure for interactive messages
-			if (buttonType || isCarousel) {
-				const contentTags = Array.isArray(stanza.content) ? stanza.content.map((n: BinaryNode) => n.tag) : []
-				logger.info({ msgId, to: destinationJid, contentTags }, '[STANZA] Content tags: ' + JSON.stringify(contentTags))
-			}
-
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
-
-			// ======= PROTOBUF ROUNDTRIP TEST: Verify encoding preserves carousel =======
-			// Only runs at debug level to avoid performance overhead in production
-			if (isCarousel && logger.level === 'debug') {
-				try {
-					const encoded = proto.Message.encode(message).finish()
-					const decoded = proto.Message.decode(encoded)
-					const decodedInteractive = decoded.interactiveMessage || decoded.viewOnceMessage?.message?.interactiveMessage
-					const cardsCount = decodedInteractive?.carouselMessage?.cards?.length || 0
-					const card0 = decodedInteractive?.carouselMessage?.cards?.[0]
-					const card0Header = card0?.header
-
-					logger.debug(
-						{
-							msgId,
-							encodedSize: encoded.length,
-							hasCarouselAfterDecode: !!decodedInteractive?.carouselMessage,
-							cardsCount,
-							card0Title: card0Header?.title,
-							card0HasImage: !!card0Header?.imageMessage,
-							card0Buttons: card0?.nativeFlowMessage?.buttons?.length || 0
-						},
-						'[ROUNDTRIP] Protobuf encode→decode verification'
-					)
-				} catch (err) {
-					logger.error({ msgId, err: (err as Error).message }, '[ROUNDTRIP] Failed to verify protobuf encoding')
-				}
-			}
-
-			// ======= PROTOCOL INTERCEPTOR: Dump complete stanza for debugging =======
-			// Only runs at debug level to avoid logging sensitive content in production
-			if ((buttonType || isCarousel) && logger.level === 'debug') {
-				const dumpBinaryNode = (node: BinaryNode, indent = 0): string => {
-					if (!node) return ''
-					const pad = '  '.repeat(indent)
-					const tag = node.tag || '?'
-					const filteredAttrs = ([, v]: [string, unknown]) => v !== undefined && v !== null
-					const attrEntries = node.attrs ? Object.entries(node.attrs).filter(filteredAttrs) : []
-					const attrStr = attrEntries.length > 0 ? ' ' + attrEntries.map(([k, v]) => `${k}="${v}"`).join(' ') : ''
-
-					if (!node.content) return `${pad}<${tag}${attrStr}/>`
-
-					if (Buffer.isBuffer(node.content) || node.content instanceof Uint8Array) {
-						return `${pad}<${tag}${attrStr}>[binary ${node.content.length} bytes]</${tag}>`
-					}
-
-					if (Array.isArray(node.content)) {
-						const children = node.content.map((c: BinaryNode) => dumpBinaryNode(c, indent + 1)).join('\n')
-						return `${pad}<${tag}${attrStr}>\n${children}\n${pad}</${tag}>`
-					}
-
-					return `${pad}<${tag}${attrStr}>${String(node.content).slice(0, 100)}</${tag}>`
-				}
-
-				logger.debug(
-					{
-						msgId,
-						to: destinationJid,
-						buttonType: buttonType || 'carousel',
-						stanzaXML: '\n' + dumpBinaryNode(stanza)
-					},
-					'[PROTOCOL-DUMP] Stanza structure before send'
-				)
-			}
-			// ======= END PROTOCOL INTERCEPTOR =======
 
 			await sendNode(stanza)
 
-			// Fire-and-forget: issue our token to the contact (like WA Web's sendTcToken).
-			// Gated only by shouldSendNewTcToken — removed tcTokenBuffer?.length guard so
-			// issuance fires even when we don't yet hold a token (bucket boundary crossed).
-			// IMPORTANT: must run AFTER sendNode — issuing before the message causes error 463.
-			if (is1on1Send && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
-				const issueTimestamp = unixTimestampSeconds()
-				logTcToken('reissue', { jid: destinationJid })
-				getPrivacyTokens([destinationJid], issueTimestamp)
-					.then(async result => {
-						// Store any tokens received in the IQ response.
-						// onNewJidStored not passed — pruning index lives in messages-recv (higher layer).
-						await storeTcTokensFromIqResult({
-							result,
-							fallbackJid: tcTokenJid,
-							keys: authState.keys,
-							getLIDForPN
-						})
-
-						// Persist senderTimestamp unconditionally — WA Web stores it in the chat table
-						// regardless of whether a token exists. Spread preserves token+timestamp if present.
-						// WABA Android: INSERT INTO wa_trusted_contacts_send (jid, sent_tc_token_timestamp, real_issue_timestamp)
-						// VALUES (?, ?, 0) — realIssueTimestamp=0 means issued but not yet confirmed by server
-						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
-						const currentEntry = currentData[tcTokenJid]
-						await authState.keys.set({
-							tctoken: {
-								[tcTokenJid]: {
-									...currentEntry,
-									token: currentEntry?.token ?? Buffer.alloc(0),
-									senderTimestamp: issueTimestamp,
-									realIssueTimestamp: 0
-								}
-							}
-						})
-
-						logTcToken('reissue_ok', { jid: destinationJid })
-					})
-					.catch(err => {
-						logTcToken('reissue_fail', { jid: destinationJid, error: err?.message })
-					})
-			}
-
-			// Log with [BAILEYS] prefix
-			logMessageSent(msgId, destinationJid)
-
-			// Record message sent metric
-			const msgType = message.conversation
-				? 'text'
-				: message.imageMessage
-					? 'image'
-					: message.videoMessage
-						? 'video'
-						: message.audioMessage
-							? 'audio'
-							: message.documentMessage
-								? 'document'
-								: message.stickerMessage
-									? 'sticker'
-									: message.stickerPackMessage
-										? 'sticker_pack'
-										: message.reactionMessage
-											? 'reaction'
-											: 'other'
-			recordMessageSent(msgType)
-
 			// Add message to retry cache if enabled
 			if (messageRetryManager && !participant) {
-				messageRetryManager.addRecentMessage(jidNormalizedUser(destinationJid), msgId, message)
-			}
-
-			// Track session activity for cleanup (all target JIDs)
-			if (sessionActivityTracker) {
-				// Record activity for destination JID
-				sessionActivityTracker.recordActivity(destinationJid)
-
-				// For groups, also record activity for all participants who received the message
-				if (isGroup || isStatus) {
-					for (const device of devices) {
-						sessionActivityTracker.recordActivity(device.jid)
-					}
-				}
+				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
 			}
 		}, meId)
 
@@ -1742,8 +1107,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return ''
 	}
 
-	const getPrivacyTokens = async (jids: string[], timestamp?: number) => {
-		const t = (timestamp ?? unixTimestampSeconds()).toString()
+	const getPrivacyTokens = async (jids: string[], senderTs?: number) => {
+		const t = (senderTs || unixTimestampSeconds()).toString()
 		const result = await query({
 			tag: 'iq',
 			attrs: {
@@ -1792,11 +1157,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		updateMemberLabel,
 		updateMediaMessage: async (message: WAMessage) => {
 			const content = assertMediaContent(message.message)
-			const mediaKey = content.mediaKey
-			if (!mediaKey) {
-				throw new Boom('Missing media key for update', { statusCode: 400 })
-			}
-
+			const mediaKey = content.mediaKey!
 			const meId = authState.creds.me!.id
 			const node = encryptMediaRetryRequest(message.key, mediaKey, meId)
 
@@ -1841,325 +1202,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			return message
 		},
-
-		/**
-		 * Send an album message (multiple images/videos grouped together)
-		 *
-		 * @param jid - The recipient JID
-		 * @param album - Album configuration with media items
-		 * @param options - Additional message generation options
-		 * @returns Complete result with status of each media item
-		 *
-		 * @example
-		 * ```typescript
-		 * const result = await sock.sendAlbumMessage('1234567890@s.whatsapp.net', {
-		 *   medias: [
-		 *     { image: { url: './photo1.jpg' }, caption: 'First photo' },
-		 *     { image: { url: './photo2.jpg' }, caption: 'Second photo' },
-		 *     { video: { url: './video.mp4' }, caption: 'A video' }
-		 *   ],
-		 *   delay: 'adaptive', // or fixed ms like 500
-		 *   retryCount: 3,
-		 *   continueOnFailure: true
-		 * })
-		 *
-		 * if (!result.success) {
-		 *   console.log('Failed items:', result.failedIndices)
-		 * }
-		 * ```
-		 */
-		sendAlbumMessage: async (
-			jid: string,
-			album: AlbumMessageOptions,
-			options: MiscMessageGenerationOptions = {}
-		): Promise<AlbumSendResult> => {
-			const startTime = Date.now()
-			const userJid = authState.creds.me!.id
-
-			const { medias, delay: delayConfig = 'adaptive', retryCount = 3, continueOnFailure = true } = album
-
-			// Validation (also done in generateWAMessageContent, but double-check here)
-			if (!medias || medias.length < 2) {
-				throw new Boom('Album must have at least 2 media items', { statusCode: 400 })
-			}
-
-			if (medias.length > 10) {
-				throw new Boom('Album cannot have more than 10 media items (WhatsApp limit)', { statusCode: 400 })
-			}
-
-			// Count media types for album root
-			// Use hasNonNullishProperty for consistency with generateWAMessageContent validation
-			const imageCount = medias.filter(m => hasNonNullishProperty(m as AnyMessageContent, 'image')).length
-			const videoCount = medias.filter(m => hasNonNullishProperty(m as AnyMessageContent, 'video')).length
-
-			logger.info(
-				{ jid, totalItems: medias.length, imageCount, videoCount, delayConfig, retryCount },
-				'Starting album message send'
-			)
-
-			// Generate album root message first (with counts of expected media)
-			const albumRootMsg = await generateWAMessage(
-				jid,
-				{
-					album: { medias, delay: delayConfig, retryCount, continueOnFailure }
-				},
-				{
-					logger,
-					userJid,
-					getUrlInfo: text =>
-						getUrlInfo(text, {
-							thumbnailWidth: linkPreviewImageThumbnailWidth,
-							fetchOpts: { timeout: 3_000, ...(httpRequestOptions || {}) },
-							logger,
-							uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
-						}),
-					upload: waUploadToServer,
-					mediaCache: config.mediaCache,
-					// Don't spread options here to avoid messageId collision
-					timestamp: options.timestamp,
-					quoted: options.quoted,
-					ephemeralExpiration: options.ephemeralExpiration,
-					mediaUploadTimeoutMs: options.mediaUploadTimeoutMs
-				}
-			)
-
-			const albumKey = albumRootMsg.key
-
-			// CRITICAL: Relay album root message to server first
-			// Without this, child media items reference a non-existent album key
-			await relayMessage(jid, albumRootMsg.message!, {
-				messageId: albumRootMsg.key.id!,
-				useCachedGroupMetadata: options.useCachedGroupMetadata
-			})
-
-			// Emit own event for album root if configured
-			if (config.emitOwnEvents) {
-				process.nextTick(async () => {
-					let mutexKey = albumRootMsg.key.remoteJid
-					if (!mutexKey) {
-						logger.warn(
-							{ msgId: albumRootMsg.key.id },
-							'Missing remoteJid in albumRootMsg, using msg.key.id as fallback'
-						)
-						mutexKey = albumRootMsg.key.id || 'unknown'
-					}
-
-					await messageMutex.mutex(mutexKey, () => upsertMessage(albumRootMsg, 'append'))
-				})
-			}
-
-			logger.debug({ albumKeyId: albumKey.id }, 'Album root message relayed')
-
-			const results: AlbumMediaResult[] = []
-
-			/**
-			 * Calculate adaptive delay based on media characteristics
-			 * Videos get more delay (2x), later items get slightly more delay,
-			 * plus random jitter to prevent predictable patterns
-			 */
-			const calculateAdaptiveDelay = (media: AlbumMediaItem, index: number): number => {
-				const baseDelay = 500 // Base delay in ms
-
-				// Videos get more delay
-				const isVideo = 'video' in media
-				const mediaTypeMultiplier = isVideo ? 2.0 : 1.0
-
-				// Later items in album get slightly more delay (cumulative load)
-				const positionMultiplier = 1 + index * 0.1
-
-				// Add some jitter to prevent predictable patterns
-				const jitter = Math.random() * 200
-
-				return Math.round(baseDelay * mediaTypeMultiplier * positionMultiplier + jitter)
-			}
-
-			/**
-			 * Get delay for this media item
-			 */
-			const getDelay = (media: AlbumMediaItem, index: number): number => {
-				if (delayConfig === 'adaptive') {
-					return calculateAdaptiveDelay(media, index)
-				}
-
-				return delayConfig
-			}
-
-			/**
-			 * Send a single media item with retry logic
-			 */
-			const sendMediaWithRetry = async (media: AlbumMediaItem, index: number): Promise<AlbumMediaResult> => {
-				const itemStartTime = Date.now()
-				let lastError: Error | undefined
-				let attempts = 0
-
-				for (let attempt = 0; attempt <= retryCount; attempt++) {
-					attempts = attempt + 1
-					try {
-						// Generate message for this media item
-						// NOTE: Each item needs its own unique messageId, so we don't spread options.messageId
-						const mediaMsg = await generateWAMessage(jid, media as AnyMessageContent, {
-							logger,
-							userJid,
-							getUrlInfo: text =>
-								getUrlInfo(text, {
-									thumbnailWidth: linkPreviewImageThumbnailWidth,
-									fetchOpts: { timeout: 3_000, ...(httpRequestOptions || {}) },
-									logger,
-									uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
-								}),
-							upload: waUploadToServer,
-							mediaCache: config.mediaCache,
-							// Don't spread ...options to avoid messageId collision
-							// Each item gets a fresh ID from generateWAMessage
-							timestamp: options.timestamp,
-							quoted: options.quoted,
-							ephemeralExpiration: options.ephemeralExpiration,
-							mediaUploadTimeoutMs: options.mediaUploadTimeoutMs
-						})
-
-						// Attach to parent album via messageAssociation (correct proto structure)
-						// Uses AssociationType.MEDIA_ALBUM and parentMessageKey as per WhatsApp protocol
-						if (!mediaMsg.message) {
-							throw new Boom('Missing message content for album media item')
-						}
-
-						if (!mediaMsg.message.messageContextInfo) {
-							mediaMsg.message.messageContextInfo = {}
-						}
-
-						mediaMsg.message.messageContextInfo.messageAssociation = {
-							associationType: proto.MessageAssociation.AssociationType.MEDIA_ALBUM,
-							parentMessageKey: albumKey
-						}
-
-						// Relay the message
-						await relayMessage(jid, mediaMsg.message, {
-							messageId: mediaMsg.key.id!,
-							useCachedGroupMetadata: options.useCachedGroupMetadata
-						})
-
-						// Emit own event if configured
-						if (config.emitOwnEvents) {
-							process.nextTick(async () => {
-								let mutexKey = mediaMsg.key.remoteJid
-								if (!mutexKey) {
-									logger.warn({ msgId: mediaMsg.key.id }, 'Missing remoteJid in mediaMsg, using msg.key.id as fallback')
-									mutexKey = mediaMsg.key.id || 'unknown'
-								}
-
-								await messageMutex.mutex(mutexKey, () => upsertMessage(mediaMsg, 'append'))
-							})
-						}
-
-						logger.debug({ index, msgId: mediaMsg.key.id, attempts }, 'Album media item sent successfully')
-
-						return {
-							index,
-							success: true,
-							message: mediaMsg,
-							retryAttempts: attempts,
-							latencyMs: Date.now() - itemStartTime
-						}
-					} catch (error) {
-						lastError = error as Error
-						logger.warn(
-							{ index, attempt: attempts, error: lastError.message },
-							'Album media item send failed, will retry'
-						)
-
-						// Exponential backoff for retries
-						if (attempt < retryCount) {
-							const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000)
-							await new Promise(resolve => setTimeout(resolve, backoffDelay))
-						}
-					}
-				}
-
-				// All retries exhausted
-				logger.error({ index, attempts, error: lastError?.message }, 'Album media item failed after all retries')
-
-				return {
-					index,
-					success: false,
-					error: lastError,
-					retryAttempts: attempts,
-					latencyMs: Date.now() - itemStartTime
-				}
-			}
-
-			// Send each media item sequentially
-			for (let i = 0; i < medias.length; i++) {
-				const media = medias[i]!
-
-				const result = await sendMediaWithRetry(media, i)
-				results.push(result)
-
-				// Check if we should stop on failure
-				if (!result.success && !continueOnFailure) {
-					logger.warn(
-						{ index: i, totalItems: medias.length },
-						'Album send stopped due to failure (continueOnFailure=false)'
-					)
-					break
-				}
-
-				// Apply delay before next item (except for last item)
-				if (i < medias.length - 1) {
-					const delay = getDelay(media, i)
-					logger.trace({ index: i, delayMs: delay }, 'Waiting before next album item')
-					await new Promise(resolve => setTimeout(resolve, delay))
-				}
-			}
-
-			// Calculate final results
-			const attemptedItems = results.length
-			const stoppedEarly = attemptedItems < medias.length
-			const successCount = results.filter(r => r.success).length
-			const failedCount = results.filter(r => !r.success).length
-			const failedIndices = results.filter(r => !r.success).map(r => r.index)
-			const totalLatencyMs = Date.now() - startTime
-
-			const finalResult: AlbumSendResult = {
-				albumKey,
-				results,
-				totalItems: medias.length,
-				attemptedItems,
-				successCount,
-				failedCount,
-				failedIndices,
-				success: failedCount === 0 && !stoppedEarly,
-				stoppedEarly,
-				totalLatencyMs
-			}
-
-			logger.info(
-				{
-					albumKeyId: albumKey.id,
-					totalItems: medias.length,
-					attemptedItems,
-					successCount,
-					failedCount,
-					stoppedEarly,
-					totalLatencyMs
-				},
-				'Album message send completed'
-			)
-
-			return finalResult
-		},
-
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
-			// Check for album misuse - must use sendAlbumMessage instead
-			if (typeof content === 'object' && 'album' in content) {
-				throw new Boom(
-					'Cannot send album messages with sendMessage(). Use sendAlbumMessage() instead, ' +
-						'which properly sends the album root and individual media items.',
-					{ statusCode: 400 }
-				)
-			}
-
 			const userJid = authState.creds.me!.id
-
 			if (
 				typeof content === 'object' &&
 				'disappearingMessagesInChat' in content &&
@@ -2241,13 +1285,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
-						let mutexKey = fullMsg.key.remoteJid
-						if (!mutexKey) {
-							logger.warn({ msgId: fullMsg.key.id }, 'Missing remoteJid in fullMsg, using msg.key.id as fallback')
-							mutexKey = fullMsg.key.id || 'unknown'
-						}
-
-						await messageMutex.mutex(mutexKey, () => upsertMessage(fullMsg, 'append'))
+						await messageMutex.mutex('upsert', () => upsertMessage(fullMsg, 'append'))
 					})
 				}
 
