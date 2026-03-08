@@ -235,14 +235,18 @@ export const bindWaitForConnectionUpdate = (ev: BaileysEventEmitter) => bindWait
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
+export const fetchLatestBaileysVersion = async (options: RequestInit & { timeout?: number } = {}) => {
 	const URL = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/index.ts'
 	try {
+		const controller = new AbortController()
+		const timer = setTimeout(() => controller.abort(), options.timeout ?? 5000)
 		const response = await fetch(URL, {
 			dispatcher: options.dispatcher,
 			method: 'GET',
-			headers: options.headers
+			headers: options.headers,
+			signal: controller.signal
 		})
+		clearTimeout(timer)
 		if (!response.ok) {
 			throw new Boom(`Failed to fetch latest Baileys version: ${response.statusText}`, { statusCode: response.status })
 		}
@@ -276,7 +280,7 @@ export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
  * A utility that fetches the latest web version of whatsapp.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestWaWebVersion = async (options: RequestInit = {}) => {
+export const fetchLatestWaWebVersion = async (options: RequestInit & { timeout?: number } = {}) => {
 	try {
 		// Absolute minimal headers required to bypass anti-bot detection
 		const defaultHeaders = {
@@ -287,11 +291,15 @@ export const fetchLatestWaWebVersion = async (options: RequestInit = {}) => {
 
 		const headers = { ...defaultHeaders, ...options.headers }
 
+		const controller = new AbortController()
+		const timer = setTimeout(() => controller.abort(), options.timeout ?? 5000)
 		const response = await fetch('https://web.whatsapp.com/sw.js', {
 			...options,
 			method: 'GET',
-			headers
+			headers,
+			signal: controller.signal
 		})
+		clearTimeout(timer)
 
 		if (!response.ok) {
 			throw new Boom(`Failed to fetch sw.js: ${response.statusText}`, { statusCode: response.status })
