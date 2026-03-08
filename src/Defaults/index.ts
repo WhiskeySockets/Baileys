@@ -72,6 +72,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 		return syncType !== proto.HistorySync.HistorySyncType.FULL
 	},
 	shouldIgnoreJid: () => false,
+	ignoreStatusBroadcast: false,
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
 	generateHighQualityLinkPreview: false,

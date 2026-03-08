@@ -114,6 +114,15 @@ export type SocketConfig = {
 	shouldIgnoreJid: (jid: string) => boolean | undefined
 
 	/**
+	 * Whether to ignore status@broadcast messages.
+	 * When true, status broadcast messages will be silently acknowledged
+	 * but not processed or emitted via messages.upsert.
+	 * Useful when high volumes of status messages overwhelm the handler.
+	 * @default false
+	 */
+	ignoreStatusBroadcast: boolean
+
+	/**
 	 * Optionally patch the message before sending out
 	 * */
 	patchMessageBeforeSending: (
