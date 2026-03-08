@@ -42,7 +42,14 @@ export const getUrlInfo = async (
 		const retries = 0
 		const maxRetry = 5
 
-		const { getLinkPreview } = await import('link-preview-js')
+		let getLinkPreview: any
+		try {
+			const mod = await import('link-preview-js')
+			getLinkPreview = mod.getLinkPreview
+		} catch {
+			opts.logger?.debug('link-preview-js is not installed, skipping link preview generation')
+			return undefined
+		}
 		let previewLink = text
 		if (!text.startsWith('https://') && !text.startsWith('http://')) {
 			previewLink = 'https://' + previewLink
