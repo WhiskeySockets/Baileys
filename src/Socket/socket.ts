@@ -6,7 +6,6 @@ import { proto } from '../../WAProto/index.js'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
-	INITIAL_PREKEY_COUNT,
 	MIN_PREKEY_COUNT,
 	MIN_UPLOAD_INTERVAL,
 	NOISE_WA_HEADER,
@@ -552,7 +551,7 @@ export const makeSocket = (config: SocketConfig) => {
 		try {
 			let count = 0
 			const preKeyCount = await getAvailablePreKeysOnServer()
-			if (preKeyCount === 0) count = INITIAL_PREKEY_COUNT
+			if (preKeyCount === 0) count = config.initialPrekeyCount
 			else count = MIN_PREKEY_COUNT
 			const { exists: currentPreKeyExists, currentPreKeyId } = await verifyCurrentPreKeyExists()
 

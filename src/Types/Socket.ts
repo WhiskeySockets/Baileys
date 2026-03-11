@@ -64,6 +64,8 @@ export type SocketConfig = {
 	retryRequestDelayMs: number
 	/** max retry count */
 	maxMsgRetryCount: number
+	/** number of prekeys to upload when the server has zero prekeys available */
+	initialPrekeyCount: number
 	/** time to wait for the generation of the next QR in ms */
 	qrTimeout?: number
 	/** provide an auth state object to maintain the auth state */
