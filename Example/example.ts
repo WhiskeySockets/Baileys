@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from '@cacheable/node-cache'
 import readline from 'readline'
-import makeWASocket, { CacheStore, DEFAULT_CONNECTION_CONFIG, DisconnectReason, fetchLatestBaileysVersion, generateMessageIDV2, getAggregateVotesInPollMessage, isJidNewsletter, makeCacheableSignalKeyStore, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { Browsers, CacheStore, DEFAULT_CONNECTION_CONFIG, DisconnectReason, fetchLatestBaileysVersion, generateMessageIDV2, getAggregateVotesInPollMessage, isJidNewsletter, makeCacheableSignalKeyStore, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 import P from 'pino'
 
 const logger = P({
@@ -56,6 +56,11 @@ const startSock = async() => {
 			/** caching makes the store faster to send/recv messages */
 			keys: makeCacheableSignalKeyStore(state.keys, logger),
 		},
+		// browser[0] = OS/brand shown in WhatsApp's Linked Devices list (DeviceProps.os).
+		// browser[1] = browser type; must be a web-browser name (Chrome, Firefox, Edge, Safari, Opera)
+		//              so the pairing IQ sends a valid companion_platform_id (1-6).
+		//              "Desktop" maps to platform_id=7 which the server rejects in the pairing flow.
+		browser: ['Baileys', 'Chrome', '7.0.0'],
 		msgRetryCounterCache,
 		generateHighQualityLinkPreview: true,
 		// ignore all broadcast messages -- to receive the same
@@ -83,13 +88,16 @@ const startSock = async() => {
 						logger.fatal('Connection closed. You are logged out.')
 					}
 				}
-
 				if (qr) {
 					// Pairing code for Web clients
 					if (usePairingCode && !sock.authState.creds.registered) {
 						const phoneNumber = await question('Please enter your phone number:\n')
-						const code = await sock.requestPairingCode(phoneNumber)
-						console.log(`Pairing code: ${code}`)
+						try {
+							const code = await sock.requestPairingCode(phoneNumber)
+							console.log(`Pairing code: ${code}`)
+						} catch (err) {
+							logger.error({ err }, 'pairing code request failed')
+						}
 					}
 				}
 
