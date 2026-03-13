@@ -388,6 +388,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@borewit/text-codec@npm:^0.2.2":
+  version: 0.2.2
+  resolution: "@borewit/text-codec@npm:0.2.2"
+  checksum: 10c0/2d3fb132bc6a132914a8fbf8e9ff2fa1ead210ecc395b28bb7355bd7719548a5e351ffe39f21c3bee8048f6cabd99eabd404bb5cc809cad9cba25abed19d271f
+  languageName: node
+  linkType: hard
+
 "@cacheable/node-cache@npm:^2.0.1":
   version: 2.0.1
   resolution: "@cacheable/node-cache@npm:2.0.1"
@@ -3105,7 +3112,7 @@ __metadata:
     libsignal: "github:whiskeysockets/libsignal-node"
     link-preview-js: "npm:^4.0.0"
     lru-cache: "npm:^11.2.6"
-    music-metadata: "npm:^11.12.0"
+    music-metadata: "npm:^11.12.3"
     open: "npm:^11.0.0"
     p-queue: "npm:^9.0.0"
     pino: "npm:^10.3.1"
@@ -4556,15 +4563,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"file-type@npm:^21.3.0":
-  version: 21.3.0
-  resolution: "file-type@npm:21.3.0"
+"file-type@npm:^21.3.1":
+  version: 21.3.1
+  resolution: "file-type@npm:21.3.1"
   dependencies:
     "@tokenizer/inflate": "npm:^0.4.1"
     strtok3: "npm:^10.3.4"
     token-types: "npm:^6.1.1"
     uint8array-extras: "npm:^1.4.0"
-  checksum: 10c0/1b1fa909e6063044a6da1d2ea348ee4d747ed9286382d3f0d4d6532c11fb2ea9f2e7e67b2bc7d745d1bc937e05dee1aa8cb912c64250933bcb393a3744f4e284
+  checksum: 10c0/66a8eda781c803c6fc372464abba88cee564cfe30f029716f06909da1564bc51d0a4e8d34654b881dc751cdb0513338b3c0747e06a608cee0dd5c5499b018d47
   languageName: node
   linkType: hard
 
@@ -6504,21 +6511,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"music-metadata@npm:^11.12.0":
-  version: 11.12.0
-  resolution: "music-metadata@npm:11.12.0"
+"music-metadata@npm:^11.12.3":
+  version: 11.12.3
+  resolution: "music-metadata@npm:11.12.3"
   dependencies:
-    "@borewit/text-codec": "npm:^0.2.1"
+    "@borewit/text-codec": "npm:^0.2.2"
     "@tokenizer/token": "npm:^0.3.0"
     content-type: "npm:^1.0.5"
     debug: "npm:^4.4.3"
-    file-type: "npm:^21.3.0"
+    file-type: "npm:^21.3.1"
     media-typer: "npm:^1.1.0"
     strtok3: "npm:^10.3.4"
     token-types: "npm:^6.1.2"
     uint8array-extras: "npm:^1.5.0"
     win-guid: "npm:^0.2.1"
-  checksum: 10c0/014a120b8941ab80452171def0ec3cba013041ba4b94f8061ad493a037d3423e6d316131a13fb0433404685ebd3c8e3ae2255c1bafaeb20673fcd73af2df0148
+  checksum: 10c0/57df905f51ec792e5b4c994645eab64d47d5608b9de11151f54b26fbd5f563598ec04d8aed7f244ef1479030d78ddab8af1ee84dfcee40a93b3241941b50999d
   languageName: node
   linkType: hard
 
