@@ -620,10 +620,9 @@ export const generateWAMessageContent = async (
 			if (message.mentions?.length) {
 				key.contextInfo.mentionedJid = message.mentions
 			}
+
 			if (message.mentionAll) {
 				key.contextInfo.nonJidMentions = 1
-				key.contextInfo.mentionedJid = []
-				key.contextInfo.groupMentions = []
 			}
 		}
 	}
