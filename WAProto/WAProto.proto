@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1035083696
+/// WhatsApp Version: 2.3000.1035169204
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -415,6 +415,7 @@ message BotCapabilityMetadata {
         RICH_RESPONSE_INLINE_LINKS_ENABLED = 56;
         RICH_RESPONSE_UR_IMAGINE_VIDEO = 57;
         JSON_PATCH_STREAMING = 58;
+        AI_TAB_FORCE_CLIPPY = 59;
     }
 }
 
@@ -1082,6 +1083,7 @@ message ClientPairingProps {
     optional bool isSyncdPureLidSession = 2;
     optional bool isSyncdSnapshotRecoveryEnabled = 3;
     optional bool isHsThumbnailSyncEnabled = 4;
+    optional bytes subscriptionSyncPayload = 5;
 }
 
 message ClientPayload {
@@ -1616,6 +1618,7 @@ message Conversation {
     optional bool limitSharingInitiatedByMe = 53;
     optional bool maibaAiThreadEnabled = 54;
     optional bool isMarketingMessageThread = 55;
+    optional bool isSenderNewAccount = 56;
     enum EndOfHistoryTransferType {
         COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
         COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
@@ -1914,6 +1917,8 @@ message HandshakeMessage {
         optional bytes static = 1;
         optional bytes payload = 2;
         optional bytes extendedCiphertext = 3;
+        optional bytes paddedBytes = 4;
+        optional bool simulateXxkemFs = 5;
     }
     
     message ClientHello {
@@ -1922,6 +1927,9 @@ message HandshakeMessage {
         optional bytes payload = 3;
         optional bool useExtended = 4;
         optional bytes extendedCiphertext = 5;
+        optional bytes paddedBytes = 6;
+        optional bool sendServerHelloPaddedBytes = 7;
+        optional bool simulateXxkemFs = 8;
     }
     
     message ServerHello {
@@ -1929,6 +1937,7 @@ message HandshakeMessage {
         optional bytes static = 2;
         optional bytes payload = 3;
         optional bytes extendedStatic = 4;
+        optional bytes paddingBytes = 5;
     }
     
 }
@@ -3166,6 +3175,11 @@ message Message {
         optional int64 expiryTimestamp = 2;
         optional bool incentiveEligible = 3;
         optional string referralId = 4;
+        optional InviteType inviteType = 5;
+        enum InviteType {
+            DEFAULT = 0;
+            MAPPER = 1;
+        }
         enum ServiceType {
             UNKNOWN = 0;
             FBPAY = 1;
@@ -4148,6 +4162,7 @@ enum MutationProps {
     BUSINESS_BROADCAST_INSIGHTS_ACTION = 82;
     CUSTOMER_DATA_ACTION = 83;
     SUBSCRIPTIONS_SYNC_V2_ACTION = 84;
+    THREAD_PIN_ACTION = 85;
     SHARE_OWN_PN = 10001;
     BUSINESS_BROADCAST_ACTION = 10002;
     AI_THREAD_DELETE_ACTION = 10003;
@@ -4616,6 +4631,7 @@ message StatusAttribution {
             APPLE_MUSIC = 8;
             SHARECHAT = 9;
             GOOGLE_PHOTOS = 10;
+            SOUNDCLOUD = 11;
         }
     }
     
@@ -4785,6 +4801,7 @@ message SyncActionValue {
     optional BusinessBroadcastInsightsAction businessBroadcastInsightsAction = 82;
     optional CustomerDataAction customerDataAction = 83;
     optional SubscriptionsSyncV2Action subscriptionsSyncV2Action = 84;
+    optional ThreadPinAction threadPinAction = 85;
     message AgentAction {
         optional string name = 1;
         optional int32 deviceID = 2;
@@ -5332,6 +5349,10 @@ message SyncActionValue {
         optional int64 lastMessageTimestamp = 1;
         optional int64 lastSystemMessageTimestamp = 2;
         repeated SyncActionValue.SyncActionMessage messages = 3;
+    }
+    
+    message ThreadPinAction {
+        optional bool pinned = 1;
     }
     
     message TimeFormatAction {

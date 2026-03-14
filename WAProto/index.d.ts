@@ -1090,7 +1090,8 @@ export namespace proto {
             RICH_RESPONSE_UR_BLOKS_ENABLED = 55,
             RICH_RESPONSE_INLINE_LINKS_ENABLED = 56,
             RICH_RESPONSE_UR_IMAGINE_VIDEO = 57,
-            JSON_PATCH_STREAMING = 58
+            JSON_PATCH_STREAMING = 58,
+            AI_TAB_FORCE_CLIPPY = 59
         }
     }
 
@@ -2801,6 +2802,7 @@ export namespace proto {
         isSyncdPureLidSession?: (boolean|null);
         isSyncdSnapshotRecoveryEnabled?: (boolean|null);
         isHsThumbnailSyncEnabled?: (boolean|null);
+        subscriptionSyncPayload?: (Uint8Array|null);
     }
 
     class ClientPairingProps implements IClientPairingProps {
@@ -2809,6 +2811,7 @@ export namespace proto {
         public isSyncdPureLidSession?: (boolean|null);
         public isSyncdSnapshotRecoveryEnabled?: (boolean|null);
         public isHsThumbnailSyncEnabled?: (boolean|null);
+        public subscriptionSyncPayload?: (Uint8Array|null);
         public static create(properties?: proto.IClientPairingProps): proto.ClientPairingProps;
         public static encode(m: proto.IClientPairingProps, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPairingProps;
@@ -3881,6 +3884,7 @@ export namespace proto {
         limitSharingInitiatedByMe?: (boolean|null);
         maibaAiThreadEnabled?: (boolean|null);
         isMarketingMessageThread?: (boolean|null);
+        isSenderNewAccount?: (boolean|null);
     }
 
     class Conversation implements IConversation {
@@ -3940,6 +3944,7 @@ export namespace proto {
         public limitSharingInitiatedByMe?: (boolean|null);
         public maibaAiThreadEnabled?: (boolean|null);
         public isMarketingMessageThread?: (boolean|null);
+        public isSenderNewAccount?: (boolean|null);
         public static create(properties?: proto.IConversation): proto.Conversation;
         public static encode(m: proto.IConversation, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Conversation;
@@ -4720,6 +4725,8 @@ export namespace proto {
             "static"?: (Uint8Array|null);
             payload?: (Uint8Array|null);
             extendedCiphertext?: (Uint8Array|null);
+            paddedBytes?: (Uint8Array|null);
+            simulateXxkemFs?: (boolean|null);
         }
 
         class ClientFinish implements IClientFinish {
@@ -4727,6 +4734,8 @@ export namespace proto {
             public static?: (Uint8Array|null);
             public payload?: (Uint8Array|null);
             public extendedCiphertext?: (Uint8Array|null);
+            public paddedBytes?: (Uint8Array|null);
+            public simulateXxkemFs?: (boolean|null);
             public static create(properties?: proto.HandshakeMessage.IClientFinish): proto.HandshakeMessage.ClientFinish;
             public static encode(m: proto.HandshakeMessage.IClientFinish, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage.ClientFinish;
@@ -4742,6 +4751,9 @@ export namespace proto {
             payload?: (Uint8Array|null);
             useExtended?: (boolean|null);
             extendedCiphertext?: (Uint8Array|null);
+            paddedBytes?: (Uint8Array|null);
+            sendServerHelloPaddedBytes?: (boolean|null);
+            simulateXxkemFs?: (boolean|null);
         }
 
         class ClientHello implements IClientHello {
@@ -4751,6 +4763,9 @@ export namespace proto {
             public payload?: (Uint8Array|null);
             public useExtended?: (boolean|null);
             public extendedCiphertext?: (Uint8Array|null);
+            public paddedBytes?: (Uint8Array|null);
+            public sendServerHelloPaddedBytes?: (boolean|null);
+            public simulateXxkemFs?: (boolean|null);
             public static create(properties?: proto.HandshakeMessage.IClientHello): proto.HandshakeMessage.ClientHello;
             public static encode(m: proto.HandshakeMessage.IClientHello, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage.ClientHello;
@@ -4765,6 +4780,7 @@ export namespace proto {
             "static"?: (Uint8Array|null);
             payload?: (Uint8Array|null);
             extendedStatic?: (Uint8Array|null);
+            paddingBytes?: (Uint8Array|null);
         }
 
         class ServerHello implements IServerHello {
@@ -4773,6 +4789,7 @@ export namespace proto {
             public static?: (Uint8Array|null);
             public payload?: (Uint8Array|null);
             public extendedStatic?: (Uint8Array|null);
+            public paddingBytes?: (Uint8Array|null);
             public static create(properties?: proto.HandshakeMessage.IServerHello): proto.HandshakeMessage.ServerHello;
             public static encode(m: proto.HandshakeMessage.IServerHello, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage.ServerHello;
@@ -8054,6 +8071,7 @@ export namespace proto {
             expiryTimestamp?: (number|Long|null);
             incentiveEligible?: (boolean|null);
             referralId?: (string|null);
+            inviteType?: (proto.Message.PaymentInviteMessage.InviteType|null);
         }
 
         class PaymentInviteMessage implements IPaymentInviteMessage {
@@ -8062,6 +8080,7 @@ export namespace proto {
             public expiryTimestamp?: (number|Long|null);
             public incentiveEligible?: (boolean|null);
             public referralId?: (string|null);
+            public inviteType?: (proto.Message.PaymentInviteMessage.InviteType|null);
             public static create(properties?: proto.Message.IPaymentInviteMessage): proto.Message.PaymentInviteMessage;
             public static encode(m: proto.Message.IPaymentInviteMessage, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PaymentInviteMessage;
@@ -8072,6 +8091,11 @@ export namespace proto {
         }
 
         namespace PaymentInviteMessage {
+
+            enum InviteType {
+                DEFAULT = 0,
+                MAPPER = 1
+            }
 
             enum ServiceType {
                 UNKNOWN = 0,
@@ -10533,6 +10557,7 @@ export namespace proto {
         BUSINESS_BROADCAST_INSIGHTS_ACTION = 82,
         CUSTOMER_DATA_ACTION = 83,
         SUBSCRIPTIONS_SYNC_V2_ACTION = 84,
+        THREAD_PIN_ACTION = 85,
         SHARE_OWN_PN = 10001,
         BUSINESS_BROADCAST_ACTION = 10002,
         AI_THREAD_DELETE_ACTION = 10003
@@ -11816,7 +11841,8 @@ export namespace proto {
                 THREADS = 7,
                 APPLE_MUSIC = 8,
                 SHARECHAT = 9,
-                GOOGLE_PHOTOS = 10
+                GOOGLE_PHOTOS = 10,
+                SOUNDCLOUD = 11
             }
         }
 
@@ -12128,6 +12154,7 @@ export namespace proto {
         businessBroadcastInsightsAction?: (proto.SyncActionValue.IBusinessBroadcastInsightsAction|null);
         customerDataAction?: (proto.SyncActionValue.ICustomerDataAction|null);
         subscriptionsSyncV2Action?: (proto.SyncActionValue.ISubscriptionsSyncV2Action|null);
+        threadPinAction?: (proto.SyncActionValue.IThreadPinAction|null);
     }
 
     class SyncActionValue implements ISyncActionValue {
@@ -12207,6 +12234,7 @@ export namespace proto {
         public businessBroadcastInsightsAction?: (proto.SyncActionValue.IBusinessBroadcastInsightsAction|null);
         public customerDataAction?: (proto.SyncActionValue.ICustomerDataAction|null);
         public subscriptionsSyncV2Action?: (proto.SyncActionValue.ISubscriptionsSyncV2Action|null);
+        public threadPinAction?: (proto.SyncActionValue.IThreadPinAction|null);
         public static create(properties?: proto.ISyncActionValue): proto.SyncActionValue;
         public static encode(m: proto.ISyncActionValue, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue;
@@ -13846,6 +13874,22 @@ export namespace proto {
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.SyncActionMessageRange;
             public static fromObject(d: { [k: string]: any }): proto.SyncActionValue.SyncActionMessageRange;
             public static toObject(m: proto.SyncActionValue.SyncActionMessageRange, o?: $protobuf.IConversionOptions): { [k: string]: any };
+            public toJSON(): { [k: string]: any };
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        interface IThreadPinAction {
+            pinned?: (boolean|null);
+        }
+
+        class ThreadPinAction implements IThreadPinAction {
+            constructor(p?: proto.SyncActionValue.IThreadPinAction);
+            public pinned?: (boolean|null);
+            public static create(properties?: proto.SyncActionValue.IThreadPinAction): proto.SyncActionValue.ThreadPinAction;
+            public static encode(m: proto.SyncActionValue.IThreadPinAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ThreadPinAction;
+            public static fromObject(d: { [k: string]: any }): proto.SyncActionValue.ThreadPinAction;
+            public static toObject(m: proto.SyncActionValue.ThreadPinAction, o?: $protobuf.IConversionOptions): { [k: string]: any };
             public toJSON(): { [k: string]: any };
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
