@@ -1,10 +1,10 @@
+import { lookup } from 'dns/promises'
+import { isIP } from 'net'
+import { Readable } from 'stream'
 import type { WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import type { ILogger } from './logger'
 import { prepareWAMessageMedia } from './messages'
 import { extractImageThumb } from './messages-media'
-import { Readable } from 'stream'
-import { lookup } from 'dns/promises'
-import { isIP } from 'net'
 
 const THUMBNAIL_WIDTH_PX = 192
 const MAX_LINK_PREVIEW_DOWNLOAD_BYTES = 10 * 1024 * 1024
@@ -49,7 +49,7 @@ const parseTagAttributes = (tag: string) => {
 
 const getMetaContent = (html: string, names: string[]) => {
 	const metaTagRegex = /<meta\b[^>]*>/gi
-	const normalizedNames = names.map((n) => n.toLowerCase())
+	const normalizedNames = names.map(n => n.toLowerCase())
 	const found: Record<string, string> = {}
 	let tagMatch: RegExpExecArray | null
 	while ((tagMatch = metaTagRegex.exec(html))) {
@@ -234,7 +234,7 @@ const assertHtmlContentType = async (response: Response) => {
 }
 
 const HEAD_MARKERS = ['</head>', '<body']
-const MARKER_OVERLAP = Math.max(...HEAD_MARKERS.map((m) => m.length)) - 1
+const MARKER_OVERLAP = Math.max(...HEAD_MARKERS.map(m => m.length)) - 1
 
 const readResponseBody = async (response: Response, maxBytes: number, abortController: AbortController) => {
 	if (!response.body) {
@@ -258,7 +258,7 @@ const readResponseBody = async (response: Response, maxBytes: number, abortContr
 		}
 
 		const window = tailStr + buff.toString('utf8')
-		if (HEAD_MARKERS.some((m) => window.includes(m))) {
+		if (HEAD_MARKERS.some(m => window.includes(m))) {
 			abortController.abort('head section complete')
 			stream.destroy()
 			break
@@ -283,15 +283,13 @@ const fetchWithGuards = async (
 		await assertSafeUrl(currentUrl)
 		const abortController = new AbortController()
 
-		const fetchUrl = fetchOpts.proxyUrl
-			? fetchOpts.proxyUrl.concat(currentUrl.toString())
-			: currentUrl.toString()
+		const fetchUrl = fetchOpts.proxyUrl ? fetchOpts.proxyUrl.concat(currentUrl.toString()) : currentUrl.toString()
 
 		const response = await fetch(fetchUrl, {
 			method: 'GET',
 			redirect: 'manual',
 			headers: fetchOpts.headers,
-			signal: AbortSignal.any([timeoutSignal, abortController.signal]),
+			signal: AbortSignal.any([timeoutSignal, abortController.signal])
 		})
 
 		if (response.status >= 300 && response.status < 400) {
@@ -317,7 +315,7 @@ const fetchWithGuards = async (
 		return {
 			body: await readResponseBody(response, fetchOpts.maxContentLength, abortController),
 			contentType: response.headers.get('content-type') || '',
-			finalUrl: currentUrl.toString(),
+			finalUrl: currentUrl.toString()
 		}
 	}
 
@@ -350,14 +348,14 @@ const SWALLOWED_ERROR_PATTERNS = [
 	'unsupported content-type',
 	'blocked host',
 	'blocked private ip',
-	'blocked private ip resolution',
+	'blocked private ip resolution'
 ]
 
 export const getUrlInfo = async (
 	text: string,
 	opts: URLGenerationOptions = {
 		thumbnailWidth: THUMBNAIL_WIDTH_PX,
-		fetchOpts: { timeout: 3000 },
+		fetchOpts: { timeout: 3000 }
 	}
 ): Promise<WAUrlInfo | undefined> => {
 	try {
@@ -369,7 +367,7 @@ export const getUrlInfo = async (
 		const normalizedFetchOpts: NormalizedFetchOptions = {
 			...opts.fetchOpts,
 			timeout: opts.fetchOpts.timeout > 0 ? opts.fetchOpts.timeout : 3000,
-			maxContentLength: opts.fetchOpts.maxContentLength || MAX_LINK_PREVIEW_DOWNLOAD_BYTES,
+			maxContentLength: opts.fetchOpts.maxContentLength || MAX_LINK_PREVIEW_DOWNLOAD_BYTES
 		}
 
 		const { body, finalUrl } = await fetchWithGuards(previewLink, normalizedFetchOpts, { requireHtml: true })
@@ -391,7 +389,7 @@ export const getUrlInfo = async (
 			'matched-text': text,
 			title,
 			description,
-			originalThumbnailUrl: image,
+			originalThumbnailUrl: image
 		}
 
 		if (opts.uploadImage && image) {
@@ -404,8 +402,8 @@ export const getUrlInfo = async (
 					mediaTypeOverride: 'thumbnail-link',
 					options: {
 						...opts.fetchOpts,
-						maxContentLength: normalizedFetchOpts.maxContentLength,
-					} as RequestInit & { maxContentLength: number },
+						maxContentLength: normalizedFetchOpts.maxContentLength
+					} as RequestInit & { maxContentLength: number }
 				}
 			)
 			urlInfo.jpegThumbnail = imageMessage?.jpegThumbnail ? Buffer.from(imageMessage.jpegThumbnail) : undefined
@@ -416,7 +414,7 @@ export const getUrlInfo = async (
 					? (
 							await getCompressedJpegThumbnail(image, {
 								thumbnailWidth: opts.thumbnailWidth,
-								fetchOpts: normalizedFetchOpts,
+								fetchOpts: normalizedFetchOpts
 							})
 						).buffer
 					: undefined
