@@ -41,9 +41,11 @@ import type { ILogger } from './logger'
 import {
 	downloadContentFromMessage,
 	encryptedStream,
+	extractImageThumb,
 	generateThumbnail,
 	getAudioDuration,
 	getAudioWaveform,
+	getStream,
 	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
@@ -648,6 +650,46 @@ export const generateCarouselMessage = async (
 			if (hasMedia && mediaOptions) {
 				if (card.image) {
 					const { imageMessage } = await prepareWAMessageMedia({ image: card.image }, mediaOptions)
+
+					// Mirror the working Pastorini-style result: every carousel image card should
+					// carry a jpegThumbnail and dimensions before it reaches the Web live renderer.
+					if (imageMessage && (!imageMessage.jpegThumbnail || !imageMessage.height || !imageMessage.width)) {
+						try {
+							const { stream } = await getStream(card.image, mediaOptions.options)
+							const { buffer, original } = await extractImageThumb(stream)
+
+							if (!imageMessage.jpegThumbnail) {
+								imageMessage.jpegThumbnail = buffer.toString('base64')
+							}
+
+							if (!imageMessage.width && original.width) {
+								imageMessage.width = original.width
+							}
+
+							if (!imageMessage.height && original.height) {
+								imageMessage.height = original.height
+							}
+
+							mediaOptions.logger?.info(
+								{
+									cardTitle: card.title,
+									recoveredThumbnail: !!imageMessage.jpegThumbnail,
+									width: imageMessage.width,
+									height: imageMessage.height
+								},
+								'[CAROUSEL] Recovered image metadata from source media'
+							)
+						} catch (error) {
+							mediaOptions.logger?.warn(
+								{
+									cardTitle: card.title,
+									trace: error instanceof Error ? error.stack : String(error)
+								},
+								'[CAROUSEL] Failed source-media thumbnail fallback'
+							)
+						}
+					}
+
 					// Validate image fields needed for WhatsApp rendering
 					if (imageMessage && !imageMessage.jpegThumbnail) {
 						mediaOptions.logger?.warn(
@@ -1239,7 +1281,8 @@ export const generateWAMessageContent = async (
 		}
 		// Pass options for media processing if cards have images/videos
 		const generated = await generateCarouselMessage(carouselOptions, options)
-		// Direct interactiveMessage — no viewOnceMessage wrapper, no root header/body/footer
+		// Frida capture shows interactiveMessage DIRECT (field 45) in DSM — no viewOnceMessage wrapper
+		// Testing without wrapper: biz node + quality_control already match Pastorini CDP stanza
 		m.interactiveMessage = generated.interactiveMessage
 		return m
 	}

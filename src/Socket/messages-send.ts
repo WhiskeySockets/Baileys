@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
@@ -505,6 +506,38 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		return didFetchNewSession
+	}
+
+	const canonicalizeCarouselRecipients = async (recipientJids: string[]): Promise<string[]> => {
+		if (!recipientJids.length) {
+			return recipientJids
+		}
+
+		const pnRecipients = [...new Set(recipientJids.filter(jid => isAnyPnUser(jid)))]
+		if (!pnRecipients.length) {
+			return recipientJids
+		}
+
+		const mappings = (await signalRepository.lidMapping.getLIDsForPNs(pnRecipients)) || []
+		if (!mappings.length) {
+			logger.debug({ recipientCount: recipientJids.length }, '[CAROUSEL] No PN→LID recipient mappings found')
+			return recipientJids
+		}
+
+		const pnToLid = new Map(mappings.map(item => [item.pn, item.lid]))
+		const mapped = recipientJids.map(jid => pnToLid.get(jid) || jid)
+		const changed = mapped.filter((jid, index) => jid !== recipientJids[index]).length
+
+		logger.info(
+			{
+				recipientCount: recipientJids.length,
+				pnRecipients: pnRecipients.length,
+				mappedRecipients: changed
+			},
+			'[CAROUSEL] Canonicalized recipient addressing to LID before session assert/encrypt'
+		)
+
+		return mapped
 	}
 
 	const sendPeerDataOperationMessage = async (
@@ -1166,21 +1199,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(jid)
 				}
 
-				await assertSessions(allRecipients)
+				const isCarouselFanout = isCarouselMessage(message)
+				const effectiveMeRecipients = isCarouselFanout
+					? await canonicalizeCarouselRecipients(meRecipients)
+					: meRecipients
+				const effectiveOtherRecipients = isCarouselFanout
+					? await canonicalizeCarouselRecipients(otherRecipients)
+					: otherRecipients
+				const effectiveAllRecipients = [...effectiveMeRecipients, ...effectiveOtherRecipients]
+
+				await assertSessions(effectiveAllRecipients)
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM (deviceSentMessage) wrapper
-					createParticipantNodes(meRecipients, meMsg || message, extraAttrs),
-					createParticipantNodes(otherRecipients, message, extraAttrs)
+					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs),
+					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (meRecipients.length > 0 || otherRecipients.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2([...meRecipients, ...otherRecipients])
+				if (effectiveMeRecipients.length > 0 || effectiveOtherRecipients.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2(effectiveAllRecipients)
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
@@ -1254,12 +1296,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Collect biz/bot nodes to append AFTER device-identity and tctoken
 			// Stanza order: participants → device-identity → tctoken → biz (when applicable)
-			// Carousel messages must NOT have biz node (breaks WhatsApp Web rendering)
+			// CDP capture confirms Pastorini INCLUDES biz node for carousel (native_flow v=9, name=mixed)
 			const deferredNodes: BinaryNode[] = []
 
-			// Inject biz node for interactive messages (skip carousel — biz node breaks Web rendering)
-			if (buttonType && enableInteractiveMessages && !isCarousel) {
+			// Inject biz node for interactive messages (including carousel — CDP evidence from Pastorini)
+			if ((buttonType || isCarousel) && enableInteractiveMessages) {
 				const startTime = Date.now()
+				// When entering via isCarousel, buttonType may be undefined — default to 'native_flow'
+				const effectiveButtonType = buttonType || 'native_flow'
 
 				// Debug: Log message structure to diagnose list detection
 				const interactiveMsg =
@@ -1297,7 +1341,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				)
 
 				// Track that we're sending an interactive message
-				metrics.interactiveMessagesSent.inc({ type: buttonType })
+				metrics.interactiveMessagesSent.inc({ type: effectiveButtonType })
 
 				try {
 					// Classify button types for native_flow name and bot node decisions
@@ -1340,27 +1384,49 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						)
 
 						const interactiveType = 'native_flow'
+						const bizContent: BinaryNode[] = [
+							{
+								tag: 'interactive',
+								attrs: {
+									type: interactiveType,
+									v: '1'
+								},
+								content: [
+									{
+										tag: interactiveType,
+										attrs: {
+											v: '9',
+											name: nativeFlowName
+										}
+									}
+								]
+							}
+						]
+
+						// CDP capture shows Pastorini includes quality_control inside biz for carousel
+						if (isCarousel) {
+							const decisionId = randomBytes(20).toString('hex')
+							bizContent.push({
+								tag: 'quality_control',
+								attrs: {
+									decision_id: decisionId
+								},
+								content: [
+									{
+										tag: 'decision_source',
+										attrs: {
+											value: 'df'
+										}
+									}
+								]
+							})
+							logger.info({ msgId, decisionId }, '[BIZ NODE] Added quality_control for carousel')
+						}
+
 						deferredNodes.push({
 							tag: 'biz',
 							attrs: {},
-							content: [
-								{
-									tag: 'interactive',
-									attrs: {
-										type: interactiveType,
-										v: '1'
-									},
-									content: [
-										{
-											tag: interactiveType,
-											attrs: {
-												v: '9',
-												name: nativeFlowName
-											}
-										}
-									]
-								}
-							]
+							content: bizContent
 						})
 					}
 
@@ -1386,11 +1452,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					// Track success and latency after message is sent
-					metrics.interactiveMessagesSuccess.inc({ type: buttonType })
-					metrics.interactiveMessagesLatency.observe({ type: buttonType }, Date.now() - startTime)
+					metrics.interactiveMessagesSuccess.inc({ type: effectiveButtonType })
+					metrics.interactiveMessagesLatency.observe({ type: effectiveButtonType }, Date.now() - startTime)
 				} catch (error) {
-					logger.error({ error, msgId, buttonType }, '[BIZ NODE] Failed to inject biz node')
-					metrics.interactiveMessagesFailures.inc({ type: buttonType, reason: 'injection_failed' })
+					logger.error({ error, msgId, buttonType: effectiveButtonType }, '[BIZ NODE] Failed to inject biz node')
+					metrics.interactiveMessagesFailures.inc({ type: effectiveButtonType, reason: 'injection_failed' })
 				}
 			} else if (buttonType && !enableInteractiveMessages) {
 				logger.warn(
@@ -1417,7 +1483,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				stanza.attrs.to = destinationJid
 			}
 
-			if (shouldIncludeDeviceIdentity) {
+			// Always include device-identity for carousel (Pastorini stanza always has it)
+			if (shouldIncludeDeviceIdentity || isCarousel) {
 				;(stanza.content as BinaryNode[]).push({
 					tag: 'device-identity',
 					attrs: {},
@@ -1474,27 +1541,79 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			// If tctoken is missing for a 1:1 send, fire-and-forget fetch so the
-			// retry path (error 463 → handleBadAck) can pick it up on resend
+			// If tctoken is missing for a 1:1 send, fetch it
+			// CDP capture confirms Pastorini stanza includes tctoken for carousel
 			if (!tcTokenBuffer?.length && is1on1Send && !tcTokenFetchingJids.has(tcTokenJid)) {
 				tcTokenFetchingJids.add(tcTokenJid)
 				logTcToken('fetch', { jid: destinationJid })
-				getPrivacyTokens([destinationJid])
-					.then(async fetchResult => {
+
+				if (isCarousel) {
+					// BLOCKING fetch for carousel — tctoken is required (Pastorini stanza has it)
+					try {
+						const fetchResult = await getPrivacyTokens([destinationJid])
+
+						// Direct extraction from IQ result — bypass store/read key mismatch
+						const tokensNode = getBinaryNodeChild(fetchResult, 'tokens')
+						if (tokensNode) {
+							const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
+							for (const tokenNode of tokenNodes) {
+								if (tokenNode.attrs.type === 'trusted_contact' && tokenNode.content instanceof Uint8Array) {
+									tcTokenBuffer = Buffer.from(tokenNode.content)
+									logger.info(
+										{
+											jid: destinationJid,
+											tokenLen: tcTokenBuffer.length,
+											tokenJid: tokenNode.attrs.jid,
+											timestamp: tokenNode.attrs.t
+										},
+										'[CAROUSEL] tctoken extracted directly from IQ result'
+									)
+									break
+								}
+							}
+						}
+
+						if (!tcTokenBuffer?.length) {
+							// Debug: dump the IQ result structure
+							const childTags = Array.isArray(fetchResult.content)
+								? (fetchResult.content as BinaryNode[]).map(n => `${n.tag}(${JSON.stringify(n.attrs)})`)
+								: []
+							logger.warn(
+								{ jid: destinationJid, resultTag: fetchResult.tag, resultAttrs: fetchResult.attrs, childTags },
+								'[CAROUSEL] tctoken fetch completed but NO valid token in IQ result'
+							)
+						}
+
+						// Also store for future use
 						await storeTcTokensFromIqResult({
 							result: fetchResult,
 							fallbackJid: destinationJid,
 							keys: authState.keys,
 							getLIDForPN
-							// onNewJidStored not passed — the pruning index lives in messages-recv (higher layer)
-						})
-					})
-					.catch(err => {
-						logger.debug({ jid: destinationJid, err: err?.message }, 'fire-and-forget tctoken fetch failed')
-					})
-					.finally(() => {
+						}).catch(() => {})
+					} catch (err: any) {
+						logger.warn({ jid: destinationJid, err: err?.message }, '[CAROUSEL] Blocking tctoken fetch failed')
+					} finally {
 						tcTokenFetchingJids.delete(tcTokenJid)
-					})
+					}
+				} else {
+					// Fire-and-forget for non-carousel
+					getPrivacyTokens([destinationJid])
+						.then(async fetchResult => {
+							await storeTcTokensFromIqResult({
+								result: fetchResult,
+								fallbackJid: destinationJid,
+								keys: authState.keys,
+								getLIDForPN
+							})
+						})
+						.catch(err => {
+							logger.debug({ jid: destinationJid, err: err?.message }, 'fire-and-forget tctoken fetch failed')
+						})
+						.finally(() => {
+							tcTokenFetchingJids.delete(tcTokenJid)
+						})
+				}
 			}
 
 			if (tcTokenBuffer?.length) {
@@ -1525,8 +1644,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
 			// ======= PROTOBUF ROUNDTRIP TEST: Verify encoding preserves carousel =======
-			// Only runs at debug level to avoid performance overhead in production
-			if (isCarousel && logger.level === 'debug') {
+			if (isCarousel) {
 				try {
 					const encoded = proto.Message.encode(message).finish()
 					const decoded = proto.Message.decode(encoded)
@@ -1535,15 +1653,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const card0 = decodedInteractive?.carouselMessage?.cards?.[0]
 					const card0Header = card0?.header
 
-					logger.debug(
+					logger.info(
 						{
 							msgId,
 							encodedSize: encoded.length,
+							messageKeys: Object.keys(message),
+							hasInteractive: !!message.interactiveMessage,
+							hasViewOnce: !!message.viewOnceMessage,
 							hasCarouselAfterDecode: !!decodedInteractive?.carouselMessage,
 							cardsCount,
 							card0Title: card0Header?.title,
 							card0HasImage: !!card0Header?.imageMessage,
-							card0Buttons: card0?.nativeFlowMessage?.buttons?.length || 0
+							card0Buttons: card0?.nativeFlowMessage?.buttons?.length || 0,
+							messageVersion: decodedInteractive?.carouselMessage?.messageVersion
 						},
 						'[ROUNDTRIP] Protobuf encode→decode verification'
 					)
@@ -1553,8 +1675,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			// ======= PROTOCOL INTERCEPTOR: Dump complete stanza for debugging =======
-			// Only runs at debug level to avoid logging sensitive content in production
-			if ((buttonType || isCarousel) && logger.level === 'debug') {
+			if (buttonType || isCarousel) {
 				const dumpBinaryNode = (node: BinaryNode, indent = 0): string => {
 					if (!node) return ''
 					const pad = '  '.repeat(indent)
