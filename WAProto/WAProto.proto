@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1035198198
+/// WhatsApp Version: 2.3000.1035216863
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -416,6 +416,7 @@ message BotCapabilityMetadata {
         RICH_RESPONSE_UR_IMAGINE_VIDEO = 57;
         JSON_PATCH_STREAMING = 58;
         AI_TAB_FORCE_CLIPPY = 59;
+        UNIFIED_RESPONSE_EMBEDDED_SCREENS = 60;
     }
 }
 
@@ -1464,6 +1465,7 @@ message ContextInfo {
         optional AdType adType = 25;
         optional string wtwaWebsiteUrl = 26;
         optional string adPreviewUrl = 27;
+        optional bool containsCtwaFlowsAutoReply = 28;
         enum AdType {
             CTWA = 0;
             CAWC = 1;
@@ -1619,6 +1621,7 @@ message Conversation {
     optional bool maibaAiThreadEnabled = 54;
     optional bool isMarketingMessageThread = 55;
     optional bool isSenderNewAccount = 56;
+    optional uint32 afterReadDuration = 57;
     enum EndOfHistoryTransferType {
         COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
         COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
@@ -3601,6 +3604,7 @@ message Message {
             GROUP_MEMBER_LABEL_CHANGE = 30;
             AI_MEDIA_COLLECTION_MESSAGE = 31;
             MESSAGE_UNSCHEDULE = 32;
+            BOT_UNLINK_MESSAGE = 33;
         }
     }
     

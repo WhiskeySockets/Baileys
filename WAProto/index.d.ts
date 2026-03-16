@@ -1091,7 +1091,8 @@ export namespace proto {
             RICH_RESPONSE_INLINE_LINKS_ENABLED = 56,
             RICH_RESPONSE_UR_IMAGINE_VIDEO = 57,
             JSON_PATCH_STREAMING = 58,
-            AI_TAB_FORCE_CLIPPY = 59
+            AI_TAB_FORCE_CLIPPY = 59,
+            UNIFIED_RESPONSE_EMBEDDED_SCREENS = 60
         }
     }
 
@@ -3589,6 +3590,7 @@ export namespace proto {
             adType?: (proto.ContextInfo.ExternalAdReplyInfo.AdType|null);
             wtwaWebsiteUrl?: (string|null);
             adPreviewUrl?: (string|null);
+            containsCtwaFlowsAutoReply?: (boolean|null);
         }
 
         class ExternalAdReplyInfo implements IExternalAdReplyInfo {
@@ -3620,6 +3622,7 @@ export namespace proto {
             public adType?: (proto.ContextInfo.ExternalAdReplyInfo.AdType|null);
             public wtwaWebsiteUrl?: (string|null);
             public adPreviewUrl?: (string|null);
+            public containsCtwaFlowsAutoReply?: (boolean|null);
             public static create(properties?: proto.ContextInfo.IExternalAdReplyInfo): proto.ContextInfo.ExternalAdReplyInfo;
             public static encode(m: proto.ContextInfo.IExternalAdReplyInfo, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.ExternalAdReplyInfo;
@@ -3885,6 +3888,7 @@ export namespace proto {
         maibaAiThreadEnabled?: (boolean|null);
         isMarketingMessageThread?: (boolean|null);
         isSenderNewAccount?: (boolean|null);
+        afterReadDuration?: (number|null);
     }
 
     class Conversation implements IConversation {
@@ -3945,6 +3949,7 @@ export namespace proto {
         public maibaAiThreadEnabled?: (boolean|null);
         public isMarketingMessageThread?: (boolean|null);
         public isSenderNewAccount?: (boolean|null);
+        public afterReadDuration?: (number|null);
         public static create(properties?: proto.IConversation): proto.Conversation;
         public static encode(m: proto.IConversation, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Conversation;
@@ -9262,7 +9267,8 @@ export namespace proto {
                 AI_QUERY_FANOUT = 29,
                 GROUP_MEMBER_LABEL_CHANGE = 30,
                 AI_MEDIA_COLLECTION_MESSAGE = 31,
-                MESSAGE_UNSCHEDULE = 32
+                MESSAGE_UNSCHEDULE = 32,
+                BOT_UNLINK_MESSAGE = 33
             }
         }
 
