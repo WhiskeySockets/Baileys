@@ -682,6 +682,33 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return false
 	}
 
+	const canonicalizeCarouselRecipients = async (recipientJids: string[]) => {
+		const uniqueRecipients = [...new Set(recipientJids)]
+		const pnRecipients = uniqueRecipients.filter(jid => isPnUser(jid) || isHostedPnUser(jid))
+		const lidMappings = pnRecipients.length > 0
+			? await signalRepository.lidMapping.getLIDsForPNs(pnRecipients)
+			: []
+
+		const lidByPn = new Map((lidMappings || []).map(({ pn, lid }) => [pn, lid]))
+		const canonicalRecipients: string[] = []
+
+		for (const jid of uniqueRecipients) {
+			const canonicalJid = lidByPn.get(jid) || jid
+			if (!canonicalRecipients.includes(canonicalJid)) {
+				canonicalRecipients.push(canonicalJid)
+			}
+		}
+
+		if (canonicalRecipients.length !== uniqueRecipients.length || canonicalRecipients.some((jid, index) => jid !== uniqueRecipients[index])) {
+			logger.debug(
+				{ before: uniqueRecipients, after: canonicalRecipients },
+				'[CAROUSEL] Canonicalized recipient addressing for session reuse'
+			)
+		}
+
+		return canonicalRecipients
+	}
+
 	const relayMessage = async (
 		jid: string,
 		message: proto.IMessage,
@@ -968,21 +995,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(jid)
 				}
 
-				await assertSessions(allRecipients)
+				const isCarouselFanout = isCarouselMessage(message)
+				const effectiveMeRecipients = isCarouselFanout
+					? await canonicalizeCarouselRecipients(meRecipients)
+					: meRecipients
+				const effectiveOtherRecipients = isCarouselFanout
+					? await canonicalizeCarouselRecipients(otherRecipients)
+					: otherRecipients
+				const effectiveAllRecipients = [...effectiveMeRecipients, ...effectiveOtherRecipients]
+
+				await assertSessions(effectiveAllRecipients)
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM if available (1:1 chats only)
-					createParticipantNodes(meRecipients, meMsg || message, extraAttrs),
-					createParticipantNodes(otherRecipients, message, extraAttrs, meMsg)
+					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs),
+					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs, meMsg)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (meRecipients.length > 0 || otherRecipients.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2([...meRecipients, ...otherRecipients])
+				if (effectiveMeRecipients.length > 0 || effectiveOtherRecipients.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2([...effectiveMeRecipients, ...effectiveOtherRecipients])
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2

@@ -41,10 +41,12 @@ import type { ILogger } from './logger'
 import {
 	downloadContentFromMessage,
 	encryptedStream,
+	extractImageThumb,
 	generateThumbnail,
 	getAudioDuration,
 	getAudioWaveform,
 	getRawMediaUploadData,
+	getStream,
 	type MediaDownloadOptions
 } from './messages-media'
 import { shouldIncludeReportingToken } from './reporting-utils'
@@ -473,6 +475,48 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
 	}
 }
 
+const recoverCarouselImageMetadata = async (
+	card: CarouselMessageOptions['cards'][number],
+	imageMessage: proto.Message.IImageMessage,
+	mediaOptions: MessageContentGenerationOptions
+) => {
+	if (imageMessage.jpegThumbnail && imageMessage.height && imageMessage.width) {
+		return
+	}
+
+	try {
+		const { stream } = await getStream(card.image!, mediaOptions.options)
+		const thumb = await extractImageThumb(stream)
+
+		if (!imageMessage.jpegThumbnail) {
+			imageMessage.jpegThumbnail = thumb.buffer
+		}
+
+		if (!imageMessage.width && thumb.original.width) {
+			imageMessage.width = thumb.original.width
+		}
+
+		if (!imageMessage.height && thumb.original.height) {
+			imageMessage.height = thumb.original.height
+		}
+
+		mediaOptions.logger?.info(
+			{
+				cardTitle: card.title,
+				hasJpegThumbnail: !!imageMessage.jpegThumbnail,
+				width: imageMessage.width,
+				height: imageMessage.height
+			},
+			'[CAROUSEL] Recovered image thumbnail/dimensions from source media'
+		)
+	} catch (error) {
+		mediaOptions.logger?.warn(
+			{ cardTitle: card.title, error },
+			'[CAROUSEL] Failed to recover image thumbnail/dimensions from source media'
+		)
+	}
+}
+
 /**
  * Generates a button message using Native Flow format wrapped in viewOnceMessage
  * This is the modern approach for button messages that works on iOS and Android
@@ -648,7 +692,10 @@ export const generateCarouselMessage = async (
 			if (hasMedia && mediaOptions) {
 				if (card.image) {
 					const { imageMessage } = await prepareWAMessageMedia({ image: card.image }, mediaOptions)
-					// Validate image fields needed for WhatsApp rendering
+					if (imageMessage) {
+						await recoverCarouselImageMetadata(card, imageMessage, mediaOptions)
+					}
+
 					if (imageMessage && !imageMessage.jpegThumbnail) {
 						mediaOptions.logger?.warn(
 							{ cardTitle: card.title },
