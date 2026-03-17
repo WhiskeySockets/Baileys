@@ -310,7 +310,12 @@ function append<E extends BufferableEvent>(
 
 			data.historySets.empty = false
 			data.historySets.syncType = eventData.syncType
-			data.historySets.pastParticipants = eventData.pastParticipants
+			if(eventData.pastParticipants?.length) {
+				data.historySets.pastParticipants = [
+					...(data.historySets.pastParticipants || []),
+					...eventData.pastParticipants
+				]
+			}
 			data.historySets.progress = eventData.progress
 			data.historySets.peerDataRequestSessionId = eventData.peerDataRequestSessionId
 			data.historySets.isLatest = eventData.isLatest || data.historySets.isLatest

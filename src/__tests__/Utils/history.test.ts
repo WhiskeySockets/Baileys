@@ -355,8 +355,82 @@ describe('processHistoryMessage', () => {
 
 			const result = processHistoryMessage(historySync)
 
-			// Should not create a LID->LID mapping
+ 		// Should not create a LID->LID mapping
 			expect(result.lidPnMappings).toHaveLength(0)
+		})
+	})
+
+	describe('pastParticipants extraction', () => {
+		it('should pass through pastParticipants from history sync payload', () => {
+			const pastParticipants = [
+				{
+					groupJid: '123456789012345678@g.us',
+					pastParticipants: [
+						{ userJid: '1234567890123@s.whatsapp.net', leaveReason: 1, leaveTs: 1700000000 },
+						{ userJid: '9876543210987@s.whatsapp.net', leaveReason: 2, leaveTs: 1700000001 }
+					]
+				}
+			]
+
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [],
+				pastParticipants
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.pastParticipants).toEqual(pastParticipants)
+		})
+
+		it('should return undefined pastParticipants when not present in payload', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: []
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.pastParticipants).toBeUndefined()
+		})
+
+		it('should pass through empty pastParticipants array', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [],
+				pastParticipants: []
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.pastParticipants).toEqual([])
+		})
+
+		it('should pass through pastParticipants with multiple groups', () => {
+			const pastParticipants = [
+				{
+					groupJid: '111111111111111111@g.us',
+					pastParticipants: [
+						{ userJid: '1111111111111@s.whatsapp.net', leaveReason: 1, leaveTs: 1700000000 }
+					]
+				},
+				{
+					groupJid: '222222222222222222@g.us',
+					pastParticipants: [
+						{ userJid: '2222222222222@s.whatsapp.net', leaveReason: 2, leaveTs: 1700000001 }
+					]
+				}
+			]
+
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.RECENT,
+				conversations: [],
+				pastParticipants
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.pastParticipants).toEqual(pastParticipants)
 		})
 	})
 })
