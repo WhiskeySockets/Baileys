@@ -346,21 +346,51 @@ const processMessage = async (
 			case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
 				const response = protocolMsg.peerDataOperationRequestResponseMessage!
 				if (response) {
-					await placeholderResendCache?.del(response.stanzaId!)
 					// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
-					const { peerDataOperationResult } = response
-					for (const result of peerDataOperationResult!) {
-						const { placeholderMessageResendResponse: retryResponse } = result
+					const peerDataOperationResult = response.peerDataOperationResult || []
+					for (const result of peerDataOperationResult) {
+						const retryResponse = result?.placeholderMessageResendResponse
 						//eslint-disable-next-line max-depth
-						if (retryResponse) {
-							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
-							// wait till another upsert event is available, don't want it to be part of the PDO response message
-							// TODO: parse through proper message handling utilities (to add relevant key fields)
+						if (!retryResponse?.webMessageInfoBytes) {
+							continue
+						}
+
+						//eslint-disable-next-line max-depth
+						try {
+							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes)
+							const msgId = webMessageInfo.key?.id
+							// Retrieve cached original message data (preserves LID details,
+							// timestamps, etc. that the phone may omit in its PDO response)
+							const cachedData = msgId ? await placeholderResendCache?.get<Partial<WAMessage> | true>(msgId) : undefined
+							//eslint-disable-next-line max-depth
+							if (msgId) {
+								await placeholderResendCache?.del(msgId)
+							}
+
+							let finalMsg: WAMessage
+							//eslint-disable-next-line max-depth
+							if (cachedData && typeof cachedData === 'object') {
+								// Apply decoded message content onto cached metadata (preserves LID etc.)
+								cachedData.message = webMessageInfo.message
+								//eslint-disable-next-line max-depth
+								if (webMessageInfo.messageTimestamp) {
+									cachedData.messageTimestamp = webMessageInfo.messageTimestamp
+								}
+
+								finalMsg = cachedData as WAMessage
+							} else {
+								finalMsg = webMessageInfo as WAMessage
+							}
+
+							logger?.debug({ msgId, requestId: response.stanzaId }, 'received placeholder resend')
+
 							ev.emit('messages.upsert', {
-								messages: [webMessageInfo as WAMessage],
+								messages: [finalMsg],
 								type: 'notify',
 								requestId: response.stanzaId!
 							})
+						} catch (err) {
+							logger?.warn({ err, stanzaId: response.stanzaId }, 'failed to decode placeholder resend response')
 						}
 					}
 				}

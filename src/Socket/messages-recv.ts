@@ -3,7 +3,13 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT, STATUS_EXPIRY_SECONDS } from '../Defaults'
+import {
+	DEFAULT_CACHE_TTLS,
+	KEY_BUNDLE_TYPE,
+	MIN_PREKEY_COUNT,
+	PLACEHOLDER_MAX_AGE_SECONDS,
+	STATUS_EXPIRY_SECONDS
+} from '../Defaults'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -44,6 +50,8 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
+import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
+import { buildAckStanza } from '../Utils/stanza-ack'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -141,7 +149,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
 
-	const requestPlaceholderResend = async (messageKey: WAMessageKey): Promise<string | undefined> => {
+	const requestPlaceholderResend = async (
+		messageKey: WAMessageKey,
+		msgData?: Partial<WAMessage>
+	): Promise<string | undefined> => {
 		if (!authState.creds.me?.id) {
 			throw new Boom('Not authenticated')
 		}
@@ -150,7 +161,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
-			await placeholderResendCache.set(messageKey?.id!, true)
+			// Store original message data so PDO response handler can preserve
+			// metadata (LID details, timestamps, etc.) that the phone may omit
+			await placeholderResendCache.set(messageKey?.id!, msgData || true)
 		}
 
 		await delay(2000)
@@ -331,40 +344,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const sendMessageAck = async ({ tag, attrs, content }: BinaryNode, errorCode?: number) => {
-		const stanza: BinaryNode = {
-			tag: 'ack',
-			attrs: {
-				id: attrs.id!,
-				to: attrs.from!,
-				class: tag
-			}
-		}
-
-		if (!!errorCode) {
-			stanza.attrs.error = errorCode.toString()
-		}
-
-		if (!!attrs.participant) {
-			stanza.attrs.participant = attrs.participant
-		}
-
-		if (!!attrs.recipient) {
-			stanza.attrs.recipient = attrs.recipient
-		}
-
-		if (
-			!!attrs.type &&
-			(tag !== 'message' || getBinaryNodeChild({ tag, attrs, content }, 'unavailable') || errorCode !== 0)
-		) {
-			stanza.attrs.type = attrs.type
-		}
-
-		if (tag === 'message' && getBinaryNodeChild({ tag, attrs, content }, 'unavailable')) {
-			stanza.attrs.from = authState.creds.me!.id
-		}
-
-		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
+	const sendMessageAck = async (node: BinaryNode, errorCode?: number) => {
+		const stanza = buildAckStanza(node, errorCode, authState.creds.me!.id)
+		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
 
@@ -1127,7 +1109,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			await sendMessageAck(node)
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack receipt'))
 		}
 	}
 
@@ -1164,7 +1146,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			await sendMessageAck(node)
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack notification'))
 		}
 	}
 
@@ -1183,110 +1165,169 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		const {
-			fullMessage: msg,
-			category,
-			author,
-			decrypt
-		} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
-
-		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
-		// store new mappings we didn't have before
-		if (!!alt) {
-			const altServer = jidDecode(alt)?.server
-			const primaryJid = msg.key.participant || msg.key.remoteJid!
-			if (altServer === 'lid') {
-				if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-					await signalRepository.migrateSession(primaryJid, alt)
-				}
-			} else {
-				await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-				await signalRepository.migrateSession(alt, primaryJid)
-			}
-		}
-
-		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
-			messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
-			logger.debug(
-				{
-					jid: msg.key.remoteJid,
-					id: msg.key.id
-				},
-				'Added message to recent cache for retry receipts'
-			)
-		}
+		let acked = false
 
 		try {
+			const {
+				fullMessage: msg,
+				category,
+				author,
+				decrypt
+			} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
+
+			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
+			// store new mappings we didn't have before
+			if (!!alt) {
+				const altServer = jidDecode(alt)?.server
+				const primaryJid = msg.key.participant || msg.key.remoteJid!
+				if (altServer === 'lid') {
+					if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
+						await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+						await signalRepository.migrateSession(primaryJid, alt)
+					}
+				} else {
+					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+					await signalRepository.migrateSession(alt, primaryJid)
+				}
+			}
+
 			await messageMutex.mutex(async () => {
 				await decrypt()
+
+				if (msg.key?.remoteJid && msg.key?.id && msg.message && messageRetryManager) {
+					messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message)
+				}
+
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+						acked = true
 						return sendMessageAck(node, NACK_REASONS.ParsingError)
 					}
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
-						return sendMessageAck(node)
-					}
-
-					// Skip retry for expired status messages (>24h old)
-					if (isJidStatusBroadcast(msg.key.remoteJid!)) {
-						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
-						if (messageAge > STATUS_EXPIRY_SECONDS) {
+						// Message arrived without encryption (e.g. CTWA ads messages).
+						// Check if this is eligible for placeholder resend (matching WA Web filters).
+						const unavailableNode = getBinaryNodeChild(node, 'unavailable')
+						const unavailableType = unavailableNode?.attrs?.type
+						if (
+							unavailableType === 'bot_unavailable_fanout' ||
+							unavailableType === 'hosted_unavailable_fanout' ||
+							unavailableType === 'view_once_unavailable_fanout'
+						) {
 							logger.debug(
-								{ msgId: msg.key.id, messageAge, remoteJid: msg.key.remoteJid },
-								'skipping retry for expired status message'
+								{ msgId: msg.key.id, unavailableType },
+								'skipping placeholder resend for excluded unavailable type'
 							)
+							acked = true
 							return sendMessageAck(node)
 						}
-					}
 
-					const errorMessage = msg?.messageStubParameters?.[0] || ''
-					const isPreKeyError = errorMessage.includes('PreKey')
+						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+						if (messageAge > PLACEHOLDER_MAX_AGE_SECONDS) {
+							logger.debug({ msgId: msg.key.id, messageAge }, 'skipping placeholder resend for old message')
+							acked = true
+							return sendMessageAck(node)
+						}
 
-					logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
-
-					// Handle both pre-key and normal retries in single mutex
-					await retryMutex.mutex(async () => {
-						try {
-							if (!ws.isOpen) {
-								logger.debug({ node }, 'Connection closed, skipping retry')
-								return
+						// Request the real content from the phone via placeholder resend PDO.
+						// Upsert the CIPHERTEXT stub as a placeholder (like WA Web's processPlaceholderMsg),
+						// and store the requestId in stubParameters[1] so users can correlate
+						// with the incoming PDO response event.
+						const cleanKey: proto.IMessageKey = {
+							remoteJid: msg.key.remoteJid,
+							fromMe: msg.key.fromMe,
+							id: msg.key.id,
+							participant: msg.key.participant
+						}
+						// Cache the original message metadata so the PDO response handler
+						// can preserve key fields (LID details etc.) that the phone may omit
+						const msgData: Partial<WAMessage> = {
+							key: msg.key,
+							messageTimestamp: msg.messageTimestamp,
+							pushName: msg.pushName,
+							participant: msg.participant,
+							verifiedBizName: msg.verifiedBizName
+						}
+						requestPlaceholderResend(cleanKey, msgData)
+							.then(requestId => {
+								if (requestId && requestId !== 'RESOLVED') {
+									logger.debug({ msgId: msg.key.id, requestId }, 'requested placeholder resend for unavailable message')
+									ev.emit('messages.update', [
+										{
+											key: msg.key,
+											update: { messageStubParameters: [NO_MESSAGE_FOUND_ERROR_TEXT, requestId] }
+										}
+									])
+								}
+							})
+							.catch(err => {
+								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
+							})
+						acked = true
+						await sendMessageAck(node)
+						// Don't return — fall through to upsertMessage so the stub is emitted
+					} else {
+						// Skip retry for expired status messages (>24h old)
+						if (isJidStatusBroadcast(msg.key.remoteJid!)) {
+							const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+							if (messageAge > STATUS_EXPIRY_SECONDS) {
+								logger.debug(
+									{ msgId: msg.key.id, messageAge, remoteJid: msg.key.remoteJid },
+									'skipping retry for expired status message'
+								)
+								acked = true
+								return sendMessageAck(node)
 							}
+						}
 
-							// Handle pre-key errors with upload and delay
-							if (isPreKeyError) {
-								logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
+						const errorMessage = msg?.messageStubParameters?.[0] || ''
+						const isPreKeyError = errorMessage.includes('PreKey')
 
+						logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
+
+						// Handle both pre-key and normal retries in single mutex
+						await retryMutex.mutex(async () => {
+							try {
+								if (!ws.isOpen) {
+									logger.debug({ node }, 'Connection closed, skipping retry')
+									return
+								}
+
+								// Handle pre-key errors with upload and delay
+								if (isPreKeyError) {
+									logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
+
+									try {
+										logger.debug('Uploading pre-keys for error recovery')
+										await uploadPreKeys(5)
+										logger.debug('Waiting for server to process new pre-keys')
+										await delay(1000)
+									} catch (uploadErr) {
+										logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+									}
+								}
+
+								const encNode = getBinaryNodeChild(node, 'enc')
+								await sendRetryRequest(node, !encNode)
+								if (retryRequestDelayMs) {
+									await delay(retryRequestDelayMs)
+								}
+							} catch (err) {
+								logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
+								// Still attempt retry even if pre-key upload failed
 								try {
-									logger.debug('Uploading pre-keys for error recovery')
-									await uploadPreKeys(5)
-									logger.debug('Waiting for server to process new pre-keys')
-									await delay(1000)
-								} catch (uploadErr) {
-									logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+									const encNode = getBinaryNodeChild(node, 'enc')
+									await sendRetryRequest(node, !encNode)
+								} catch (retryErr) {
+									logger.error({ retryErr }, 'Failed to send retry after error handling')
 								}
 							}
 
-							const encNode = getBinaryNodeChild(node, 'enc')
-							await sendRetryRequest(node, !encNode)
-							if (retryRequestDelayMs) {
-								await delay(retryRequestDelayMs)
-							}
-						} catch (err) {
-							logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
-							// Still attempt retry even if pre-key upload failed
-							try {
-								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode)
-							} catch (retryErr) {
-								logger.error({ retryErr }, 'Failed to send retry after error handling')
-							}
-						}
-
-						await sendMessageAck(node, NACK_REASONS.UnhandledError)
-					})
+							acked = true
+							await sendMessageAck(node, NACK_REASONS.UnhandledError)
+						})
+					}
 				} else {
 					if (messageRetryManager && msg.key.id) {
 						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
@@ -1311,6 +1352,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							type = 'inactive'
 						}
 
+						acked = true
 						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
 
 						// send ack for history message
@@ -1320,6 +1362,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync') // TODO: investigate
 						}
 					} else {
+						acked = true
 						await sendMessageAck(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
@@ -1331,53 +1374,65 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
+			if (!acked) {
+				await sendMessageAck(node, NACK_REASONS.UnhandledError).catch(ackErr =>
+					logger.error({ ackErr }, 'failed to ack message after error')
+				)
+			}
 		}
 	}
 
 	const handleCall = async (node: BinaryNode) => {
-		const { attrs } = node
-		const [infoChild] = getAllBinaryNodeChildren(node)
-		const status = getCallStatusFromNode(infoChild!)
+		try {
+			const { attrs } = node
+			const [infoChild] = getAllBinaryNodeChildren(node)
 
-		if (!infoChild) {
-			throw new Boom('Missing call info in call node')
+			if (!infoChild) {
+				throw new Boom('Missing call info in call node')
+			}
+
+			const status = getCallStatusFromNode(infoChild)
+
+			const callId = infoChild.attrs['call-id']!
+			const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
+
+			const call: WACallEvent = {
+				chatId: attrs.from!,
+				from,
+				callerPn: infoChild.attrs['caller_pn'],
+				id: callId,
+				date: new Date(+attrs.t! * 1000),
+				offline: !!attrs.offline,
+				status
+			}
+
+			if (status === 'offer') {
+				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
+				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
+				call.groupJid = infoChild.attrs['group-jid']
+				await callOfferCache.set(call.id, call)
+			}
+
+			const existingCall = await callOfferCache.get<WACallEvent>(call.id)
+
+			// use existing call info to populate this event
+			if (existingCall) {
+				call.isVideo = existingCall.isVideo
+				call.isGroup = existingCall.isGroup
+				call.callerPn = call.callerPn || existingCall.callerPn
+			}
+
+			// delete data once call has ended
+			if (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
+				await callOfferCache.del(call.id)
+			}
+
+			ev.emit('call', [call])
+		} catch (error) {
+			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling call')
+		} finally {
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack call'))
 		}
-
-		const callId = infoChild.attrs['call-id']!
-		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
-
-		const call: WACallEvent = {
-			chatId: attrs.from!,
-			from,
-			id: callId,
-			date: new Date(+attrs.t! * 1000),
-			offline: !!attrs.offline,
-			status
-		}
-
-		if (status === 'offer') {
-			call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
-			call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
-			call.groupJid = infoChild.attrs['group-jid']
-			await callOfferCache.set(call.id, call)
-		}
-
-		const existingCall = await callOfferCache.get<WACallEvent>(call.id)
-
-		// use existing call info to populate this event
-		if (existingCall) {
-			call.isVideo = existingCall.isVideo
-			call.isGroup = existingCall.isGroup
-		}
-
-		// delete data once call has ended
-		if (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
-			await callOfferCache.del(call.id)
-		}
-
-		ev.emit('call', [call])
-
-		await sendMessageAck(node)
 	}
 
 	const handleBadAck = async ({ attrs }: BinaryNode) => {
@@ -1443,74 +1498,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	type MessageType = 'message' | 'call' | 'receipt' | 'notification'
-
-	type OfflineNode = {
-		type: MessageType
-		node: BinaryNode
-	}
-
-	/** Yields control to the event loop to prevent blocking */
-	const yieldToEventLoop = (): Promise<void> => {
-		return new Promise(resolve => setImmediate(resolve))
-	}
-
-	const makeOfflineNodeProcessor = () => {
-		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
+	const offlineNodeProcessor = makeOfflineNodeProcessor(
+		new Map<MessageType, (node: BinaryNode) => Promise<void>>([
 			['message', handleMessage],
 			['call', handleCall],
 			['receipt', handleReceipt],
 			['notification', handleNotification]
-		])
-		const nodes: OfflineNode[] = []
-		let isProcessing = false
-
-		// Number of nodes to process before yielding to event loop
-		const BATCH_SIZE = 10
-
-		const enqueue = (type: MessageType, node: BinaryNode) => {
-			nodes.push({ type, node })
-
-			if (isProcessing) {
-				return
-			}
-
-			isProcessing = true
-
-			const promise = async () => {
-				let processedInBatch = 0
-
-				while (nodes.length && ws.isOpen) {
-					const { type, node } = nodes.shift()!
-
-					const nodeProcessor = nodeProcessorMap.get(type)
-
-					if (!nodeProcessor) {
-						onUnexpectedError(new Error(`unknown offline node type: ${type}`), 'processing offline node')
-						continue
-					}
-
-					await nodeProcessor(node)
-					processedInBatch++
-
-					// Yield to event loop after processing a batch
-					// This prevents blocking the event loop for too long when there are many offline nodes
-					if (processedInBatch >= BATCH_SIZE) {
-						processedInBatch = 0
-						await yieldToEventLoop()
-					}
-				}
-
-				isProcessing = false
-			}
-
-			promise().catch(error => onUnexpectedError(error, 'processing offline nodes'))
+		]),
+		{
+			isWsOpen: () => ws.isOpen,
+			onUnexpectedError,
+			yieldToEventLoop: () => new Promise(resolve => setImmediate(resolve))
 		}
-
-		return { enqueue }
-	}
-
-	const offlineNodeProcessor = makeOfflineNodeProcessor()
+	)
 
 	const processNode = async (
 		type: MessageType,
