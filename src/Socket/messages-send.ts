@@ -1011,6 +1011,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(jid)
 				}
 
+
+				await assertSessions(allRecipients)
 				const effectiveMeRecipients = await canonicalizeSessionRecipients(meRecipients)
 				const effectiveOtherRecipients = await canonicalizeSessionRecipients(otherRecipients)
 				const effectiveAllRecipients = [...effectiveMeRecipients, ...effectiveOtherRecipients]
@@ -1022,14 +1024,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM if available (1:1 chats only)
-					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs),
-					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs, meMsg)
+					createParticipantNodes(meRecipients, meMsg || message, extraAttrs),
+					createParticipantNodes(otherRecipients, message, extraAttrs, meMsg)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (effectiveMeRecipients.length > 0 || effectiveOtherRecipients.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2([...effectiveMeRecipients, ...effectiveOtherRecipients])
+				if (meRecipients.length > 0 || otherRecipients.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2([...meRecipients, ...otherRecipients])
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
