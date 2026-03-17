@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
@@ -45,6 +46,7 @@ import {
 	getBinaryNodeChildren,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBot,
 	isJidGroup,
 	isLidUser,
 	isPnUser,
@@ -66,7 +68,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
 		enableRecentMessageCache,
-		maxMsgRetryCount
+		maxMsgRetryCount,
+		enableInteractiveMessages
 	} = config
 	const sock = makeNewsletterSocket(config)
 	const {
@@ -600,6 +603,85 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
+	/** Detect interactive/button message type for biz node injection */
+	const getButtonType = (message: proto.IMessage): string | undefined => {
+		if (message.buttonsMessage) return 'buttons'
+		if (message.templateMessage) return 'template'
+		if (message.listMessage) return 'list'
+		if (message.buttonsResponseMessage) return 'buttons_response'
+		if (message.listResponseMessage) return 'list_response'
+		if (message.templateButtonReplyMessage) return 'template_reply'
+		if (message.interactiveMessage) {
+			if (message.interactiveMessage.nativeFlowMessage) return 'native_flow'
+			if (message.interactiveMessage.carouselMessage?.cards?.length) {
+				const hasNativeFlow = message.interactiveMessage.carouselMessage.cards.some(
+					(card: proto.Message.IInteractiveMessage) => card?.nativeFlowMessage?.buttons?.length
+				)
+				if (hasNativeFlow) return 'native_flow'
+			}
+			return 'interactive'
+		}
+
+		const innerMessage = message.viewOnceMessage?.message || message.viewOnceMessageV2?.message
+		if (innerMessage) {
+			if (innerMessage.buttonsMessage) return 'buttons'
+			if (innerMessage.templateMessage) return 'template'
+			if (innerMessage.listMessage) return 'list'
+			if (innerMessage.buttonsResponseMessage) return 'buttons_response'
+			if (innerMessage.listResponseMessage) return 'list_response'
+			if (innerMessage.templateButtonReplyMessage) return 'template_reply'
+			if (innerMessage.interactiveMessage) {
+				if (innerMessage.interactiveMessage.nativeFlowMessage) return 'native_flow'
+				if (innerMessage.interactiveMessage.carouselMessage?.cards?.length) {
+					const hasNativeFlow = innerMessage.interactiveMessage.carouselMessage.cards.some(
+						(card: any) => card?.nativeFlowMessage?.buttons?.length
+					)
+					if (hasNativeFlow) return 'native_flow'
+				}
+				return 'interactive'
+			}
+		}
+
+		return undefined
+	}
+
+	/** Check if message is a carousel (media or product carousel) */
+	const isCarouselMessage = (message: proto.IMessage): boolean => {
+		const interactiveMsg =
+			message.interactiveMessage ||
+			message.viewOnceMessage?.message?.interactiveMessage ||
+			message.viewOnceMessageV2?.message?.interactiveMessage
+		return !!(interactiveMsg?.carouselMessage?.cards?.length)
+	}
+
+	/** Check if message is a catalog/product message */
+	const isCatalogMessage = (message: proto.IMessage): boolean => {
+		const interactiveMsg =
+			message.interactiveMessage ||
+			message.viewOnceMessage?.message?.interactiveMessage ||
+			message.viewOnceMessageV2?.message?.interactiveMessage
+		const nativeFlow = interactiveMsg?.nativeFlowMessage
+		if (nativeFlow?.buttons?.length) {
+			return nativeFlow.buttons.some(
+				(btn: any) => btn?.name === 'catalog_message' || btn?.name === 'single_product' || btn?.name === 'product_list'
+			)
+		}
+		return false
+	}
+
+	/** Check if nativeFlowMessage is a list (single_select button) */
+	const isListNativeFlow = (message: proto.IMessage): boolean => {
+		const interactiveMsg =
+			message.interactiveMessage ||
+			message.viewOnceMessage?.message?.interactiveMessage ||
+			message.viewOnceMessageV2?.message?.interactiveMessage
+		const nativeFlow = interactiveMsg?.nativeFlowMessage
+		if (nativeFlow?.buttons?.length) {
+			return nativeFlow.buttons.some((btn: any) => btn?.name === 'single_select' || btn?.name === 'multi_select')
+		}
+		return false
+	}
+
 	const relayMessage = async (
 		jid: string,
 		message: proto.IMessage,
@@ -962,6 +1044,110 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				content: binaryNodeContent
 			}
 
+			// Detect interactive message type for biz node injection
+			const buttonType = getButtonType(message)
+			const isCatalog = isCatalogMessage(message)
+			const isCarousel = isCarouselMessage(message)
+
+			// Collect biz/bot nodes to append AFTER device-identity and tctoken
+			// Stanza order: participants → device-identity → tctoken → biz
+			// Carousel messages must NOT have biz node (breaks WhatsApp Web rendering)
+			const deferredNodes: BinaryNode[] = []
+
+			if (buttonType && enableInteractiveMessages && !isCarousel) {
+				const interactiveMsg =
+					message.interactiveMessage ||
+					message.viewOnceMessage?.message?.interactiveMessage ||
+					message.viewOnceMessageV2?.message?.interactiveMessage
+
+				let nativeFlowButtons = interactiveMsg?.nativeFlowMessage?.buttons || []
+				if (nativeFlowButtons.length === 0 && interactiveMsg?.carouselMessage?.cards?.length) {
+					nativeFlowButtons = interactiveMsg.carouselMessage.cards.flatMap(
+						(card: proto.Message.IInteractiveMessage) => card?.nativeFlowMessage?.buttons || []
+					)
+				}
+
+				const isListDetected = isListNativeFlow(message)
+
+				logger.info(
+					{ msgId, buttonType, to: destinationJid, isListDetected, isCatalog },
+					'[Interactive] Preparing biz node'
+				)
+
+				try {
+					const allButtonNames = nativeFlowButtons.map((b: any) => b?.name).filter(Boolean)
+					const isNativeFlowButtons = buttonType === 'native_flow'
+
+					if (buttonType === 'list') {
+						deferredNodes.push({
+							tag: 'biz',
+							attrs: {},
+							content: [
+								{ tag: 'list', attrs: { type: 'product_list', v: '2' } }
+							]
+						})
+					} else {
+						const SPECIAL_FLOW_NAMES: Record<string, string> = {
+							review_and_pay: 'payment_info',
+							payment_info: 'payment_info',
+							mpm: 'mpm',
+							review_order: 'order_details'
+						}
+						const firstButtonName = allButtonNames[0] || ''
+						const nativeFlowName = SPECIAL_FLOW_NAMES[firstButtonName] || 'mixed'
+
+						deferredNodes.push({
+							tag: 'biz',
+							attrs: {},
+							content: [
+								{
+									tag: 'interactive',
+									attrs: { type: 'native_flow', v: '1' },
+									content: [
+										{ tag: 'native_flow', attrs: { v: '9', name: nativeFlowName } }
+									]
+								}
+							]
+						})
+					}
+
+					// Bot node — skip for native_flow, carousel, catalog
+					const isPrivateUserChat =
+						(isPnUser(destinationJid) || isLidUser(destinationJid) || destinationJid?.endsWith('@c.us')) &&
+						!isJidBot(destinationJid)
+
+					if (isPrivateUserChat && !isCatalog && buttonType !== 'list' && !isNativeFlowButtons) {
+						deferredNodes.push({ tag: 'bot', attrs: { biz_bot: '1' } })
+					}
+				} catch (error) {
+					logger.error({ error, msgId, buttonType }, '[BIZ NODE] Failed to inject biz node')
+				}
+			} else if (isCarousel && enableInteractiveMessages) {
+				// Carousel: inject quality_control with decision_id (required by WhatsApp Web)
+				const decisionId = randomBytes(20).toString('hex')
+				deferredNodes.push({
+					tag: 'biz',
+					attrs: {},
+					content: [
+						{
+							tag: 'interactive',
+							attrs: { type: 'native_flow', v: '1' },
+							content: [
+								{ tag: 'native_flow', attrs: { v: '9', name: 'mixed' } }
+							]
+						}
+					]
+				})
+				deferredNodes.push({
+					tag: 'quality_control',
+					attrs: { decision_id: decisionId },
+					content: [
+						{ tag: 'decision_source', attrs: { value: 'df' } }
+					]
+				})
+				logger.info({ msgId, to: destinationJid, decisionId }, '[CAROUSEL] Injected biz + quality_control')
+			}
+
 			// if the participant to send to is explicitly specified (generally retry recp)
 			// ensure the message is only sent to that person
 			// if a retry receipt is sent to everyone -- it'll fail decryption for everyone else who received the msg
@@ -979,7 +1165,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				stanza.attrs.to = destinationJid
 			}
 
-			if (shouldIncludeDeviceIdentity) {
+			// Force device-identity for carousel (ensures Web can decrypt)
+			if (shouldIncludeDeviceIdentity || isCarousel) {
 				;(stanza.content as BinaryNode[]).push({
 					tag: 'device-identity',
 					attrs: {},
@@ -1028,6 +1215,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			if (additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
+			}
+
+			// Append deferred biz/bot/quality_control nodes LAST
+			// Stanza order: participants → device-identity → tctoken → biz → quality_control
+			if (deferredNodes.length > 0) {
+				;(stanza.content as BinaryNode[]).push(...deferredNodes)
 			}
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
