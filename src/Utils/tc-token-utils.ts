@@ -158,11 +158,13 @@ export async function storeTcTokensFromIqResult({
 			...existingEntry,
 			token: Buffer.from(tokenNode.content),
 			timestamp: tokenNode.attrs.t,
-			// Resets real_issue_timestamp to null when storing a new token
+			// WABA Android: resets real_issue_timestamp to null when storing a new token
+			// (UPDATE wa_trusted_contacts_send SET real_issue_timestamp=null)
 			realIssueTimestamp: null
 		}
 
 		// Store under resolved storageJid AND under fallbackJid (PN) for reliable lookup
+		// The read path may resolve to a different LID than the store path
 		const normalizedFallback = jidNormalizedUser(fallbackJid)
 		const keysToStore: Record<string, typeof tokenEntry | null> = {
 			[storageJid]: tokenEntry

@@ -45,8 +45,8 @@ import {
 	generateThumbnail,
 	getAudioDuration,
 	getAudioWaveform,
-	getRawMediaUploadData,
 	getStream,
+	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
 import { shouldIncludeReportingToken } from './reporting-utils'
@@ -475,48 +475,6 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
 	}
 }
 
-const recoverCarouselImageMetadata = async (
-	card: CarouselMessageOptions['cards'][number],
-	imageMessage: proto.Message.IImageMessage,
-	mediaOptions: MessageContentGenerationOptions
-) => {
-	if (imageMessage.jpegThumbnail && imageMessage.height && imageMessage.width) {
-		return
-	}
-
-	try {
-		const { stream } = await getStream(card.image!, mediaOptions.options)
-		const thumb = await extractImageThumb(stream)
-
-		if (!imageMessage.jpegThumbnail) {
-			imageMessage.jpegThumbnail = thumb.buffer
-		}
-
-		if (!imageMessage.width && thumb.original.width) {
-			imageMessage.width = thumb.original.width
-		}
-
-		if (!imageMessage.height && thumb.original.height) {
-			imageMessage.height = thumb.original.height
-		}
-
-		mediaOptions.logger?.info(
-			{
-				cardTitle: card.title,
-				hasJpegThumbnail: !!imageMessage.jpegThumbnail,
-				width: imageMessage.width,
-				height: imageMessage.height
-			},
-			'[CAROUSEL] Recovered image thumbnail/dimensions from source media'
-		)
-	} catch (error) {
-		mediaOptions.logger?.warn(
-			{ cardTitle: card.title, error },
-			'[CAROUSEL] Failed to recover image thumbnail/dimensions from source media'
-		)
-	}
-}
-
 /**
  * Generates a button message using Native Flow format wrapped in viewOnceMessage
  * This is the modern approach for button messages that works on iOS and Android
@@ -677,6 +635,59 @@ export const generateCarouselMessage = async (
 		)
 	}
 
+	const recoverCarouselImageMetadata = async (
+		imageMessage: proto.Message.IImageMessage | null | undefined,
+		cardImage: WAMediaUpload,
+		cardTitle: string | undefined,
+		uploadOptions: MessageContentGenerationOptions
+	) => {
+		if (!imageMessage) {
+			return
+		}
+
+		const missingThumbnail = !imageMessage.jpegThumbnail
+		const missingWidth = !imageMessage.width
+		const missingHeight = !imageMessage.height
+		if (!missingThumbnail && !missingWidth && !missingHeight) {
+			return
+		}
+
+		try {
+			const { stream } = await getStream(cardImage, uploadOptions.options)
+			const { buffer, original } = await extractImageThumb(stream)
+
+			if (missingThumbnail) {
+				imageMessage.jpegThumbnail = buffer.toString('base64')
+			}
+
+			if (missingWidth && original.width) {
+				imageMessage.width = original.width
+			}
+
+			if (missingHeight && original.height) {
+				imageMessage.height = original.height
+			}
+
+			uploadOptions.logger?.info(
+				{
+					cardTitle,
+					recoveredThumbnail: !!imageMessage.jpegThumbnail,
+					width: imageMessage.width,
+					height: imageMessage.height
+				},
+				'[CAROUSEL] Recovered image metadata from source media'
+			)
+		} catch (error) {
+			uploadOptions.logger?.warn(
+				{
+					cardTitle,
+					trace: error instanceof Error ? error.stack : String(error)
+				},
+				'[CAROUSEL] Failed source-media thumbnail fallback'
+			)
+		}
+	}
+
 	// Map cards to the carousel format (processing media)
 	const carouselCards = await Promise.all(
 		cards.map(async card => {
@@ -692,10 +703,12 @@ export const generateCarouselMessage = async (
 			if (hasMedia && mediaOptions) {
 				if (card.image) {
 					const { imageMessage } = await prepareWAMessageMedia({ image: card.image }, mediaOptions)
-					if (imageMessage) {
-						await recoverCarouselImageMetadata(card, imageMessage, mediaOptions)
-					}
 
+					// Mirror the working Pastorini-style result: every carousel image card should
+					// carry a jpegThumbnail and dimensions before it reaches the Web live renderer.
+					await recoverCarouselImageMetadata(imageMessage, card.image, card.title, mediaOptions)
+
+					// Validate image fields needed for WhatsApp rendering
 					if (imageMessage && !imageMessage.jpegThumbnail) {
 						mediaOptions.logger?.warn(
 							{ cardTitle: card.title },
@@ -1275,57 +1288,20 @@ export const generateWAMessageContent = async (
 			options.logger?.info('Sending CTA buttons as nativeFlowMessage with viewOnceMessage wrapper')
 		}
 	}
-	// Check for nativeCarousel — inline handler (validated on Android, iOS, Web)
-	// Direct interactiveMessage at root (field 45), NO viewOnceMessage wrapper,
-	// NO messageContextInfo, NO biz/bot stanza nodes needed
+	// Check for nativeCarousel
 	else if (hasNonNullishProperty(message, 'nativeCarousel')) {
 		const carouselMsg = message as any
-		const cards = carouselMsg.nativeCarousel.cards || []
-		const title = carouselMsg.nativeCarousel.title || carouselMsg.title
-		const text = carouselMsg.text
-		const footer = carouselMsg.footer
-
-		const carouselCards = await Promise.all(
-			cards.map(async (card: any) => {
-				const hasMedia = !!(card.image || card.video)
-				const header: any = {
-					title: card.title || '',
-					subtitle: card.footer || '',
-					hasMediaAttachment: hasMedia
-				}
-				if (hasMedia && card.image) {
-					const { imageMessage } = await prepareWAMessageMedia({ image: card.image }, options)
-					if (imageMessage && !imageMessage.height) imageMessage.height = 500
-					if (imageMessage && !imageMessage.width) imageMessage.width = 500
-					header.imageMessage = imageMessage
-				}
-				return {
-					header,
-					body: { text: card.body || '' },
-					footer: card.footer ? { text: card.footer } : undefined,
-					nativeFlowMessage: {
-						buttons: (card.buttons || []).map((btn: any) => {
-							switch (btn.type) {
-								case 'url': return { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: btn.text, url: btn.url, merchant_url: btn.url }) }
-								case 'copy': return { name: 'cta_copy', buttonParamsJson: JSON.stringify({ display_text: btn.text, copy_code: btn.copyText }) }
-								case 'call': return { name: 'cta_call', buttonParamsJson: JSON.stringify({ display_text: btn.text, phone_number: btn.phoneNumber }) }
-								default: return { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: btn.text, id: btn.id }) }
-							}
-						})
-					}
-				}
-			})
-		)
-
-		m.interactiveMessage = {
-			header: { title: title || ' ', hasMediaAttachment: false },
-			body: { text: text || '' },
-			footer: footer ? { text: footer } : undefined,
-			carouselMessage: {
-				cards: carouselCards,
-				messageVersion: 1
-			}
+		const carouselOptions: CarouselMessageOptions = {
+			cards: carouselMsg.nativeCarousel.cards,
+			title: carouselMsg.nativeCarousel.title || carouselMsg.title,
+			text: carouselMsg.text,
+			footer: carouselMsg.footer
 		}
+		// Pass options for media processing if cards have images/videos
+		const generated = await generateCarouselMessage(carouselOptions, options)
+		// Frida capture shows interactiveMessage DIRECT (field 45) in DSM — no viewOnceMessage wrapper
+		// Testing without wrapper: biz node + quality_control already match Pastorini CDP stanza
+		m.interactiveMessage = generated.interactiveMessage
 		return m
 	}
 	// Check for nativeList
