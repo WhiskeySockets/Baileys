@@ -303,6 +303,18 @@ sock.ev.on('creds.update', saveCreds)
 > [!IMPORTANT]
 > `useMultiFileAuthState` is a utility function to help save the auth state in a single folder, this function serves as a good guide to help write auth & key states for SQL/no-SQL databases, which I would recommend in any production grade system.
 
+### Writing Your Own Auth State
+
+If you replace `useMultiFileAuthState()` with your own SQL or NoSQL storage, a few details are easy to miss:
+
+- persist both `creds` and `keys`
+- always save updates triggered by `creds.update`
+- use `BufferJSON` when serializing/deserializing auth state as JSON
+- restore `app-state-sync-key` values with `proto.Message.AppStateSyncKeyData.fromObject(...)`
+- namespace stored records per WhatsApp session if you may have more than one login
+
+The implementation in [`use-multi-file-auth-state.ts`](src/Utils/use-multi-file-auth-state.ts) is a good reference for the auth-state contract and the read/write flow.
+
 > [!NOTE]
 > When a message is received/sent, due to signal sessions needing updating, the auth keys (`authState.keys`) will update. Whenever that happens, you must save the updated keys (`authState.keys.set()` is called). Not doing so will prevent your messages from reaching the recipient & cause other unexpected consequences. The `useMultiFileAuthState` function automatically takes care of that, but for any other serious implementation -- you will need to be very careful with the key state management.
 
