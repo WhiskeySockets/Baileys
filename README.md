@@ -473,6 +473,51 @@ The store also provides some simple functions such as `loadMessages` that utiliz
     sock.sendMessage(jid, content, options)
     ```
 
+### Verifying Post-Send Delivery Evidence
+
+- `sendMessage()` returning successfully means the message was accepted locally for sending.
+- If your app needs extra operational confidence for critical messages, you can correlate the returned `messageId` with later `messages.update` and `message-receipt.update` events.
+- This is useful as delivery evidence, but it should not be treated as a perfect delivery guarantee.
+
+```ts
+const sent = await sock.sendMessage(jid, { text: 'critical update' })
+const messageId = sent?.key?.id
+
+if(messageId) {
+    const cleanup = () => {
+        sock.ev.off('messages.update', onMessagesUpdate)
+        sock.ev.off('message-receipt.update', onReceiptUpdate)
+    }
+
+    const onMessagesUpdate = updates => {
+        for(const { key, update } of updates) {
+            if(key.id !== messageId || key.remoteJid !== jid) {
+                continue
+            }
+
+            if(typeof update.status !== 'undefined') {
+                console.log('observed status update for sent message')
+                cleanup()
+            }
+        }
+    }
+
+    const onReceiptUpdate = updates => {
+        for(const update of updates) {
+            if(update.key?.id !== messageId || update.key?.remoteJid !== jid) {
+                continue
+            }
+
+            console.log('observed receipt update for sent message')
+            cleanup()
+        }
+    }
+
+    sock.ev.on('messages.update', onMessagesUpdate)
+    sock.ev.on('message-receipt.update', onReceiptUpdate)
+}
+```
+
 ### Non-Media Messages
 
 #### Text Message
