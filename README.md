@@ -667,6 +667,23 @@ await sock.sendMessage(
 )
 ```
 
+#### Voice Note (PTT)
+- To send a WhatsApp voice note instead of a regular audio message, set `ptt: true`
+- Using an `ogg/opus` file is the most reliable format across devices
+
+```ts
+await sock.sendMessage(
+    jid,
+    {
+        audio: {
+            url: './Media/reply.ogg'
+        },
+        mimetype: 'audio/ogg; codecs=opus',
+        ptt: true
+    }
+)
+```
+
 #### Image Message
 ```ts
 await sock.sendMessage(
