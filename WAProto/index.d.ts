@@ -4759,6 +4759,7 @@ export namespace proto {
             paddedBytes?: (Uint8Array|null);
             sendServerHelloPaddedBytes?: (boolean|null);
             simulateXxkemFs?: (boolean|null);
+            pqMode?: (proto.HandshakeMessage.HandshakePqMode|null);
         }
 
         class ClientHello implements IClientHello {
@@ -4771,6 +4772,7 @@ export namespace proto {
             public paddedBytes?: (Uint8Array|null);
             public sendServerHelloPaddedBytes?: (boolean|null);
             public simulateXxkemFs?: (boolean|null);
+            public pqMode?: (proto.HandshakeMessage.HandshakePqMode|null);
             public static create(properties?: proto.HandshakeMessage.IClientHello): proto.HandshakeMessage.ClientHello;
             public static encode(m: proto.HandshakeMessage.IClientHello, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage.ClientHello;
@@ -4778,6 +4780,18 @@ export namespace proto {
             public static toObject(m: proto.HandshakeMessage.ClientHello, o?: $protobuf.IConversionOptions): { [k: string]: any };
             public toJSON(): { [k: string]: any };
             public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        enum HandshakePqMode {
+            HANDSHAKE_PQ_MODE_UNKNOWN = 0,
+            XXKEM = 1,
+            XXKEM_FS = 2,
+            WA_CLASSICAL = 3,
+            WA_PQ = 4,
+            IKKEM = 5,
+            IKKEM_FS = 6,
+            XXKEM_2 = 7,
+            IKKEM_2 = 8
         }
 
         interface IServerHello {
