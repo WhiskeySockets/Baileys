@@ -317,10 +317,17 @@ They're all nicely typed up, so you shouldn't have any issues with an Intellisen
 You can listen to these events like this:
 ```ts
 const sock = makeWASocket()
-sock.ev.on('messages.upsert', ({ messages }) => {
+sock.ev.on('messages.upsert', ({ messages, type }) => {
+    if(type !== 'notify' && type !== 'append') {
+        return
+    }
+
     console.log('got messages', messages)
 })
 ```
+
+> [!NOTE]
+> If your app needs to process follow-up message batches as well as fresh notifications, handle both `notify` and `append` upsert types.
 
 ### Example to Start
 
@@ -355,6 +362,10 @@ async function connectToWhatsApp () {
         }
     })
     sock.ev.on('messages.upsert', event => {
+        if(event.type !== 'notify' && event.type !== 'append') {
+            return
+        }
+
         for (const m of event.messages) {
             console.log(JSON.stringify(m, undefined, 2))
 

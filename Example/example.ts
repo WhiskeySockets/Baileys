@@ -135,7 +135,7 @@ const startSock = async() => {
 
 
 
-        if (upsert.type === 'notify') {
+        if (upsert.type === 'notify' || upsert.type === 'append') {
           for (const msg of upsert.messages) {
             if (msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
               const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
