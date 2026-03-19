@@ -1092,7 +1092,8 @@ export namespace proto {
             RICH_RESPONSE_UR_IMAGINE_VIDEO = 57,
             JSON_PATCH_STREAMING = 58,
             AI_TAB_FORCE_CLIPPY = 59,
-            UNIFIED_RESPONSE_EMBEDDED_SCREENS = 60
+            UNIFIED_RESPONSE_EMBEDDED_SCREENS = 60,
+            AI_SUBSCRIPTION_ENABLED = 61
         }
     }
 
