@@ -7,6 +7,7 @@ import { proto } from '../../WAProto/index.js'
 import {
 	DEFAULT_CACHE_TTLS,
 	DEFAULT_SESSION_CLEANUP_CONFIG,
+	INITIAL_PREKEY_COUNT,
 	KEY_BUNDLE_TYPE,
 	MIN_PREKEY_COUNT,
 	PLACEHOLDER_MAX_AGE_SECONDS,
@@ -1440,7 +1441,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			logger.debug({ count, shouldUploadMorePreKeys }, 'recv pre-key count')
 			if (shouldUploadMorePreKeys) {
-				await uploadPreKeys()
+				// Top-up back to INITIAL_PREKEY_COUNT so the pool is always restored to full size
+				await uploadPreKeys(Math.max(1, INITIAL_PREKEY_COUNT - count))
 			}
 		} else {
 			const result = await handleIdentityChange(node, {

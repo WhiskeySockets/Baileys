@@ -188,10 +188,12 @@ export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 /** 120s timeout for history sync stall detection, same as WA Web's handleChunkProgress / restartPausedTimer (g = 120) */
 export const HISTORY_SYNC_PAUSED_TIMEOUT_MS = 120_000
 
-export const MIN_PREKEY_COUNT = 5
+// Replenishment threshold: when server count drops below this, top-up back to INITIAL_PREKEY_COUNT
+export const MIN_PREKEY_COUNT = 200
 
-// Moderate prekey count (upstream uses 812, reduced to balance rate limiting and availability)
-export const INITIAL_PREKEY_COUNT = 200
+// Initial pool size matching WA Business (CDP IDB capture: prekey-store = 812 on registration)
+// Rounded to 800 for cleanliness; replenishment always tops up to this value
+export const INITIAL_PREKEY_COUNT = 800
 
 export const UPLOAD_TIMEOUT = 30000 // 30 seconds
 // Moderate upload interval to balance rate limiting and responsiveness (was 5000)

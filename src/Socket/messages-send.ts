@@ -9,6 +9,7 @@ import type {
 	AlbumMessageOptions,
 	AlbumSendResult,
 	AnyMessageContent,
+	LIDMapping,
 	MediaConnInfo,
 	MessageReceiptType,
 	MessageRelayOptions,
@@ -336,6 +337,33 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				} catch (e) {
 					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
 				}
+			}
+
+			// 4th LID→PN source: device-list entries sharing the same raw_id
+			// WA Business uses this for accounts where HistorySync sends zero phoneNumberToLidMappings
+			const allEntries = [...result.list, ...result.sideList]
+			const rawIdMap = new Map<number, { pn?: string; lid?: string }>()
+			for (const item of allEntries) {
+				if (typeof item.rawId !== 'number' || isNaN(item.rawId)) continue
+				const decoded = jidDecode(item.id)
+				if (!decoded) continue
+				const entry = rawIdMap.get(item.rawId) || {}
+				if (decoded.server === 'lid' || decoded.server === 'hosted.lid') {
+					entry.lid = item.id
+				} else if (decoded.server === 's.whatsapp.net' || decoded.server === 'c.us') {
+					entry.pn = item.id
+				}
+				rawIdMap.set(item.rawId, entry)
+			}
+			const rawIdMappings: LIDMapping[] = []
+			for (const { pn, lid } of rawIdMap.values()) {
+				if (pn && lid) {
+					rawIdMappings.push({ lid: jidNormalizedUser(lid), pn: jidNormalizedUser(pn) })
+				}
+			}
+			if (rawIdMappings.length > 0) {
+				await signalRepository.lidMapping.storeLIDPNMappings(rawIdMappings)
+				logger.debug({ count: rawIdMappings.length }, 'stored LID-PN mappings from raw_id pairing')
 			}
 
 			const meId = authState.creds.me?.id

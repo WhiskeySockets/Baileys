@@ -15,7 +15,7 @@ import {
 import { toNumber } from './generics'
 import type { ILogger } from './logger.js'
 import { normalizeMessageContent } from './messages'
-import { downloadContentFromMessage } from './messages-media'
+import { downloadContentFromMessage, getUrlFromDirectPath } from './messages-media'
 
 const inflatePromise = promisify(inflate)
 
@@ -423,7 +423,19 @@ export const downloadAndProcessHistorySyncNotification = async (
 		historyMsg = await downloadHistory(msg, options)
 	}
 
-	return processHistoryMessage(historyMsg, logger)
+	const result = processHistoryMessage(historyMsg, logger)
+
+	// Mirror WA Desktop behaviour: DELETE the CDN blob only after processing succeeds.
+	// Doing this earlier (e.g. inside downloadHistory) risks permanent history loss if
+	// processing throws — the server copy would be gone and retry after reconnect would fail.
+	if (msg.directPath) {
+		const cdnUrl = getUrlFromDirectPath(msg.directPath)
+		fetch(cdnUrl, { ...options, method: 'DELETE' }).catch(() => {
+			// non-fatal — server will expire it anyway
+		})
+	}
+
+	return result
 }
 
 /**

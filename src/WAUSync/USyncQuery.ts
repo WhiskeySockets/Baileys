@@ -10,7 +10,7 @@ import {
 } from './Protocols'
 import { USyncUser } from './USyncUser'
 
-export type USyncQueryResultList = { [protocol: string]: unknown; id: string }
+export type USyncQueryResultList = { [protocol: string]: unknown; id: string; rawId?: number }
 
 export type USyncQueryResult = {
 	list: USyncQueryResultList[]
@@ -68,10 +68,8 @@ export class USyncQuery {
 		//TODO: see if there are any errors in the result node
 		//const resultNode = getBinaryNodeChild(usyncNode, 'result')
 
-		const listNode = usyncNode ? getBinaryNodeChild(usyncNode, 'list') : undefined
-
-		if (listNode?.content && Array.isArray(listNode.content)) {
-			queryResult.list = listNode.content.reduce((acc: USyncQueryResultList[], node) => {
+		const parseNodeList = (content: BinaryNode[]): USyncQueryResultList[] =>
+			content.reduce((acc: USyncQueryResultList[], node) => {
 				const id = node?.attrs.jid
 				if (id) {
 					const data = Array.isArray(node?.content)
@@ -89,15 +87,24 @@ export class USyncQuery {
 									.filter(([, b]) => b !== null) as [string, unknown][]
 							)
 						: {}
-					acc.push({ ...data, id })
+					const rawIdAttr = node?.attrs?.['raw_id']
+					const rawId = rawIdAttr !== undefined ? Number(rawIdAttr) : undefined
+					acc.push({ ...data, id, ...(rawId !== undefined && !isNaN(rawId) ? { rawId } : {}) })
 				}
 
 				return acc
 			}, [])
+
+		const listNode = usyncNode ? getBinaryNodeChild(usyncNode, 'list') : undefined
+		if (listNode?.content && Array.isArray(listNode.content)) {
+			queryResult.list = parseNodeList(listNode.content)
 		}
 
-		//TODO: implement side list
-		//const sideListNode = getBinaryNodeChild(usyncNode, 'side_list')
+		const sideListNode = usyncNode ? getBinaryNodeChild(usyncNode, 'side_list') : undefined
+		if (sideListNode?.content && Array.isArray(sideListNode.content)) {
+			queryResult.sideList = parseNodeList(sideListNode.content)
+		}
+
 		return queryResult
 	}
 
