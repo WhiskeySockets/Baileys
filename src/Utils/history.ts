@@ -15,6 +15,7 @@ import {
 import { toNumber } from './generics'
 import type { ILogger } from './logger.js'
 import { normalizeMessageContent } from './messages'
+import { DEFAULT_ORIGIN } from '../Defaults'
 import { downloadContentFromMessage, getUrlFromDirectPath } from './messages-media'
 
 const inflatePromise = promisify(inflate)
@@ -430,7 +431,11 @@ export const downloadAndProcessHistorySyncNotification = async (
 	// processing throws — the server copy would be gone and retry after reconnect would fail.
 	if (msg.directPath) {
 		const cdnUrl = getUrlFromDirectPath(msg.directPath)
-		fetch(cdnUrl, { ...options, method: 'DELETE' }).catch(() => {
+		fetch(cdnUrl, {
+			...options,
+			method: 'DELETE',
+			headers: { ...((options as RequestInit).headers ?? {}), Origin: DEFAULT_ORIGIN }
+		}).catch(() => {
 			// non-fatal — server will expire it anyway
 		})
 	}
