@@ -39,16 +39,6 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	buffer = await inflatePromise(buffer)
 
 	const syncData = proto.HistorySync.decode(buffer)
-
-	// Mirror WA Desktop behaviour: DELETE the CDN blob after successful download
-	// so the server cleans up the one-time history sync file (fire-and-forget)
-	if (msg.directPath) {
-		const cdnUrl = getUrlFromDirectPath(msg.directPath)
-		fetch(cdnUrl, { method: 'DELETE', ...options }).catch(() => {
-			// non-fatal — server will expire it anyway
-		})
-	}
-
 	return syncData
 }
 
