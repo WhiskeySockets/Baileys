@@ -786,14 +786,15 @@ export const makeSocket = (config: SocketConfig) => {
 		try {
 			let count = 0
 			const preKeyCount = await getAvailablePreKeysOnServer()
-			if (preKeyCount === 0) count = INITIAL_PREKEY_COUNT
-			else count = Math.max(0, INITIAL_PREKEY_COUNT - preKeyCount)
+			// How many to upload: top-up to INITIAL_PREKEY_COUNT from whatever remains on server
+			count = Math.max(0, INITIAL_PREKEY_COUNT - preKeyCount)
 			const { exists: currentPreKeyExists, currentPreKeyId } = await verifyCurrentPreKeyExists()
 
 			logger.info(`${preKeyCount} pre-keys found on server`)
 			logger.info(`Current prekey ID: ${currentPreKeyId}, exists in storage: ${currentPreKeyExists}`)
 
-			const lowServerCount = preKeyCount <= count
+			// Trigger upload when below the replenishment threshold, not when count < topUp amount
+			const lowServerCount = preKeyCount < MIN_PREKEY_COUNT
 			const missingCurrentPreKey = !currentPreKeyExists && currentPreKeyId > 0
 
 			const shouldUpload = lowServerCount || missingCurrentPreKey
@@ -1309,7 +1310,10 @@ export const makeSocket = (config: SocketConfig) => {
 				logger.warn('keep alive called when WS not open')
 			}
 
-			scheduleNextKeepAlive()
+			// Do not reschedule once shutdown has started (closed set by end() on any concurrent path)
+			if (!closed) {
+				scheduleNextKeepAlive()
+			}
 		}
 
 		scheduleNextKeepAlive()
