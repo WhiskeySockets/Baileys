@@ -123,11 +123,11 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 		},
 
 		newsletterMute: (jid: string) => {
-			return executeWMexQuery({ newsletter_id: jid }, QueryIds.MUTE, XWAPaths.xwa2_newsletter_mute_v2)
+			return executeWMexQuery({ input: { newsletter_id: jid, type: 'MUTE_ADMIN_ACTIVITY', value: 'OFF' } }, QueryIds.MUTE, XWAPaths.xwa2_newsletter_mute_v2)
 		},
 
 		newsletterUnmute: (jid: string) => {
-			return executeWMexQuery({ newsletter_id: jid }, QueryIds.UNMUTE, XWAPaths.xwa2_newsletter_unmute_v2)
+			return executeWMexQuery({ input: { newsletter_id: jid, type: 'MUTE_ADMIN_ACTIVITY', value: 'ON' } }, QueryIds.UNMUTE, XWAPaths.xwa2_newsletter_unmute_v2)
 		},
 
 		newsletterUpdateName: async (jid: string, name: string) => {
