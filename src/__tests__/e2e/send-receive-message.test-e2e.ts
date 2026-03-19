@@ -1,12 +1,14 @@
 import { Boom } from '@hapi/boom'
 import { jest } from '@jest/globals'
 import { readFileSync } from 'node:fs'
+import { Agent } from 'node:https'
 import P from 'pino'
 import makeWASocket, {
 	DisconnectReason,
 	downloadContentFromMessage,
 	downloadMediaMessage,
 	jidNormalizedUser,
+	makeCacheableSignalKeyStore,
 	proto,
 	toBuffer,
 	useMultiFileAuthState,
@@ -22,47 +24,64 @@ describe('E2E Tests', () => {
 	let groupJid: string | undefined
 
 	beforeAll(async () => {
-		const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
-		const logger = P({ level: 'silent' })
+		const logger = P({ level: 'debug' })
+		const agent = new Agent({ rejectUnauthorized: false })
 
-		sock = makeWASocket({
-			auth: state,
-			logger
-		})
+		const connectSocket = async (): Promise<void> => {
+			const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
 
-		sock.ev.on('creds.update', saveCreds)
+			if (process.env.ADV_SECRET_KEY) {
+				state.creds.advSecretKey = process.env.ADV_SECRET_KEY ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+			}
 
-		await new Promise<void>((resolve, reject) => {
-			sock.ev.on('connection.update', update => {
-				const { connection, lastDisconnect } = update
-				if (connection === 'open') {
-					meJid = jidNormalizedUser(sock.user?.id)
-					meLid = sock.user?.lid
-
-					sock
-						.groupFetchAllParticipating()
-						.then(groups => {
-							const group = Object.values(groups).find(g => g.subject === 'Baileys Group Test')
-							if (group) {
-								groupJid = group.id
-								console.log(`Found test group "${group.subject}" with JID: ${groupJid}`)
-							}
-
-							resolve()
-						})
-						.catch(reject)
-				} else if (connection === 'close') {
-					const reason = (lastDisconnect?.error as Boom)?.output?.statusCode
-					if (reason === DisconnectReason.loggedOut) {
-						console.error('Logged out, please delete the baileys_auth_info_e2e folder and re-run the test')
-					}
-
-					if (lastDisconnect?.error) {
-						reject(new Error(`Connection closed: ${DisconnectReason[reason] || 'unknown'}`))
-					}
-				}
+			sock = makeWASocket({
+				auth: {
+					creds: state.creds,
+					keys: makeCacheableSignalKeyStore(state.keys, logger)
+				},
+				waWebSocketUrl: process.env.SOCKET_URL ?? 'wss://127.0.0.1:8080/ws/chat',
+				logger,
+				agent,
+				fetchAgent: agent
 			})
-		})
+
+			sock.ev.on('creds.update', saveCreds)
+
+			await new Promise<void>((resolve, reject) => {
+				sock.ev.on('connection.update', update => {
+					const { connection, lastDisconnect } = update
+					if (connection === 'open') {
+						meJid = jidNormalizedUser(sock.user?.id)
+						meLid = sock.user?.lid
+
+						sock
+							.groupFetchAllParticipating()
+							.then(groups => {
+								const group = Object.values(groups).find(g => g.subject === 'Baileys Group Test')
+								if (group) {
+									groupJid = group.id
+									console.log(`Found test group "${group.subject}" with JID: ${groupJid}`)
+								}
+
+								resolve()
+							})
+							.catch(reject)
+					} else if (connection === 'close') {
+						const reason = (lastDisconnect?.error as Boom)?.output?.statusCode
+						if (reason === DisconnectReason.loggedOut) {
+							reject(new Error('Logged out, please delete the baileys_auth_info folder and re-run the test'))
+							return
+						}
+
+						// Reconnect on non-logout disconnects (e.g. after pairing)
+						console.log(`Connection closed (${DisconnectReason[reason] || reason}), reconnecting...`)
+						connectSocket().then(resolve, reject)
+					}
+				})
+			})
+		}
+
+		await connectSocket()
 	})
 
 	afterAll(async () => {

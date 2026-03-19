@@ -25,12 +25,14 @@ import {
 	generateMessageIDV2,
 	generateParticipantHashV2,
 	generateWAMessage,
+	getMediaHost,
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
+	setMediaHost,
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
@@ -126,6 +128,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					fetchDate: new Date()
 				}
 				logger.debug('fetched media conn')
+				if (node.hosts[0]) {
+					setMediaHost(node.hosts[0].hostname)
+				}
+
 				return node
 			})()
 		}
@@ -1148,6 +1154,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendReceipts,
 		readMessages,
 		refreshMediaConn,
+		get mediaHost() {
+			return getMediaHost()
+		},
 		waUploadToServer,
 		fetchPrivacySettings,
 		sendPeerDataOperationMessage,

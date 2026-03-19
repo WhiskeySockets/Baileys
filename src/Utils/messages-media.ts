@@ -500,7 +500,18 @@ export const encryptedStream = async (
 	}
 }
 
-const DEF_HOST = 'mmg.whatsapp.net'
+export const DEF_MEDIA_HOST = 'mmg.whatsapp.net'
+
+let _mediaHost = DEF_MEDIA_HOST
+
+/** Set the media host used for downloading media. Called internally by the socket when media_conn is fetched. */
+export const setMediaHost = (host: string) => {
+	_mediaHost = host
+}
+
+/** Get the current media host used for downloading media. */
+export const getMediaHost = () => _mediaHost
+
 const AES_CHUNK_SIZE = 16
 
 const toSmallestChunkSize = (num: number) => {
@@ -513,15 +524,14 @@ export type MediaDownloadOptions = {
 	options?: RequestInit
 }
 
-export const getUrlFromDirectPath = (directPath: string) => `https://${DEF_HOST}${directPath}`
+export const getUrlFromDirectPath = (directPath: string, host: string = _mediaHost) => `https://${host}${directPath}`
 
 export const downloadContentFromMessage = async (
 	{ mediaKey, directPath, url }: DownloadableMessage,
 	type: MediaType,
 	opts: MediaDownloadOptions = {}
 ) => {
-	const isValidMediaUrl = url?.startsWith('https://mmg.whatsapp.net/')
-	const downloadUrl = isValidMediaUrl ? url : getUrlFromDirectPath(directPath!)
+	const downloadUrl = directPath ? getUrlFromDirectPath(directPath) : url
 	if (!downloadUrl) {
 		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
 	}

@@ -1,0 +1,74 @@
+name: E2E Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request_target:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mock-server:
+        image: ghcr.io/whiskeysockets-devtools/bartender:latest
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.BARTENDER_GHCR_TOKEN }}
+        ports:
+          - 8080:8080
+        env:
+          CHATSTATE_TTL_SECS: "3"
+          ADV_SECRET_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        options: --log-driver none
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node.js and Corepack
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Enable Corepack and Set Yarn Version
+        run: |
+          corepack enable
+          corepack prepare yarn@4.x --activate
+
+      - name: Restore Yarn Cache
+        uses: actions/cache@v4
+        with:
+          path: .yarn/cache
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Wait for mock server
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sk https://localhost:8080/ > /dev/null 2>&1; then
+              echo "Mock server is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Mock server failed to become ready"
+          exit 1
+
+      - name: Run E2E tests
+        env:
+          SOCKET_URL: "wss://127.0.0.1:8080/ws/chat"
+          ADV_SECRET_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        run: yarn test:e2e
