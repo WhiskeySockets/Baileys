@@ -374,10 +374,25 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 	// Convert Map back to array for return
 	const lidPnMappings = Array.from(lidPnMap.values())
 
+	// Normalize pastParticipants: resolve LID userJids → PN so the consumer always
+	// receives a phone number, never an opaque LID identifier.
+	// Uses the lidPnMap built above (populated from phoneNumberToLidMappings + conversations).
+	// If a LID cannot be resolved, the original value is kept rather than dropping the participant.
+	const pastParticipants: proto.IPastParticipants[] = (item.pastParticipants ?? []).map(group => ({
+		groupJid: group.groupJid,
+		pastParticipants: (group.pastParticipants ?? []).map(participant => {
+			const userJid = participant.userJid
+			if (!userJid || !isAnyLidUser(userJid)) return participant
+			const mapping = lidPnMap.get(jidNormalizedUser(userJid))
+			return mapping?.pn ? { ...participant, userJid: mapping.pn } : participant
+		})
+	}))
+
 	return {
 		chats,
 		contacts,
 		messages,
+		pastParticipants,
 		lidPnMappings,
 		syncType: item.syncType,
 		progress: item.progress

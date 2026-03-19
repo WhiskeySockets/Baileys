@@ -27,6 +27,8 @@ export type BaileysEventMap = {
 		chats: Chat[]
 		contacts: Contact[]
 		messages: WAMessage[]
+		/** Past participants for group chats (people who left/were removed). userJid is always a phone number (PN), never a LID. */
+		pastParticipants?: proto.IPastParticipants[] | null
 		isLatest?: boolean
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType | null
@@ -185,6 +187,8 @@ export type BufferedEventData = {
 		chats: { [jid: string]: Chat }
 		contacts: { [jid: string]: Contact }
 		messages: { [uqId: string]: WAMessage }
+		/** Keyed by groupJid for O(1) deduplication across chunks */
+		pastParticipants: { [groupJid: string]: proto.IPastParticipant[] }
 		empty: boolean
 		isLatest: boolean
 		progress?: number | null
