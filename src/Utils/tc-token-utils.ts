@@ -154,18 +154,26 @@ export async function storeTcTokensFromIqResult({
 			continue
 		}
 
-		await keys.set({
-			tctoken: {
-				[storageJid]: {
-					...existingEntry,
-					token: Buffer.from(tokenNode.content),
-					timestamp: tokenNode.attrs.t,
-					// WABA Android: resets real_issue_timestamp to null when storing a new token
-					// (UPDATE wa_trusted_contacts_send SET real_issue_timestamp=null)
-					realIssueTimestamp: null
-				}
-			}
-		})
+		const tokenEntry = {
+			...existingEntry,
+			token: Buffer.from(tokenNode.content),
+			timestamp: tokenNode.attrs.t,
+			// WABA Android: resets real_issue_timestamp to null when storing a new token
+			// (UPDATE wa_trusted_contacts_send SET real_issue_timestamp=null)
+			realIssueTimestamp: null
+		}
+
+		// Store under resolved storageJid AND under fallbackJid (PN) for reliable lookup
+		// The read path may resolve to a different LID than the store path
+		const normalizedFallback = jidNormalizedUser(fallbackJid)
+		const keysToStore: Record<string, typeof tokenEntry | null> = {
+			[storageJid]: tokenEntry
+		}
+		if (normalizedFallback !== storageJid) {
+			keysToStore[normalizedFallback] = tokenEntry
+		}
+
+		await keys.set({ tctoken: keysToStore })
 		onNewJidStored?.(storageJid)
 	}
 }

@@ -47,7 +47,7 @@
     "fflate": "^0.8.2",
     "libsignal": "github:whiskeysockets/libsignal-node",
     "lru-cache": "^11.2.6",
-    "music-metadata": "^11.12.0",
+    "music-metadata": "^11.12.3",
     "p-queue": "^9.0.0",
     "pino": "^10.3.1",
     "prom-client": "^15.1.3",
