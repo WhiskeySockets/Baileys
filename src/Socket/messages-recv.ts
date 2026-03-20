@@ -54,6 +54,7 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	RetryReason,
 	normalizeKeyLidToPn,
 	normalizeMessageJids,
 	resolveLidToPn,
@@ -1331,20 +1332,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// corrupted session. Deleting prematurely creates a race window where no session
 		// exists, which can cause "No Session" errors on concurrent messages.
 		const retryErrorCode = (() => {
-			if (!decryptionError) return 0
+			if (!decryptionError) return RetryReason.UnknownError
 			// Bad MAC must be checked first — it is also in corruptedSessionErrors
 			// but warrants the more specific code 7 over the generic code 4.
-			if (decryptionError.includes(BAD_MAC_ERROR_TEXT)) return 7 // SignalErrorBadMac
-			// MessageCounterError and other corrupted-session variants (code 4)
-			if (DECRYPTION_RETRY_CONFIG.corruptedSessionErrors.some(e => decryptionError.includes(e))) return 4 // SignalErrorInvalidMessage
-			// Missing / invalid session record (code 1)
+			if (decryptionError.includes(BAD_MAC_ERROR_TEXT)) return RetryReason.SignalErrorBadMac
+			// MessageCounterError and other corrupted-session variants
+			if (DECRYPTION_RETRY_CONFIG.corruptedSessionErrors.some(e => decryptionError.includes(e))) return RetryReason.SignalErrorInvalidMessage
+			// Missing / invalid session record
 			if (DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(e => decryptionError.includes(e)) ||
-				/no\s+(open\s+)?sessions?/i.test(decryptionError)) return 1 // SignalErrorNoSession
-			// PreKey / key-id errors (code 3)
-			if (/pre\s*key/i.test(decryptionError)) return 3 // SignalErrorInvalidKeyId
-			// Identity / key errors (code 2)
-			if (/invalid\s*key|untrusted\s*identity/i.test(decryptionError)) return 2 // SignalErrorInvalidKey
-			return 0
+				/no\s+(open\s+)?sessions?/i.test(decryptionError)) return RetryReason.SignalErrorNoSession
+			// PreKey / key-id errors
+			if (/pre\s*key/i.test(decryptionError)) return RetryReason.SignalErrorInvalidKeyId
+			// Identity / key errors
+			if (/invalid\s*key|untrusted\s*identity/i.test(decryptionError)) return RetryReason.SignalErrorInvalidKey
+			return RetryReason.UnknownError
 		})()
 
 		if (retryCount <= 2) {
