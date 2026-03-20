@@ -1213,7 +1213,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return await query(stanza)
 	}
 
-	const sendRetryRequest = async (node: BinaryNode, forceIncludeKeys = false) => {
+	const sendRetryRequest = async (node: BinaryNode, forceIncludeKeys = false, decryptionError?: string) => {
 		const { fullMessage } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '')
 		const { key: msgKey } = fullMessage
 		const msgId = msgKey.id!
@@ -1311,39 +1311,27 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
 
-		// Check if we should recreate the session
-		let shouldRecreateSession = false
-		let recreateReason = ''
-
-		if (enableAutoSessionRecreation && messageRetryManager && retryCount >= 1) {
-			try {
-				// Check if we have a session with this JID
-				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
-				const hasSession = await signalRepository.validateSession(fromJid)
-
-				// Extract error code from retry node if present (for MAC error detection)
-				const retryNode = getBinaryNodeChild(node, 'retry')
-				const errorAttr = retryNode?.attrs?.error
-				const errorCode = messageRetryManager.parseRetryErrorCode(errorAttr)
-
-				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists, errorCode)
-				shouldRecreateSession = result.recreate
-				recreateReason = result.reason
-
-				if (shouldRecreateSession) {
-					logger.debug({ fromJid, retryCount, reason: recreateReason, errorCode }, 'recreating session for retry')
-					// Delete existing session to force recreation
-					// CRITICAL: Use same transaction key as encrypt/decrypt operations to prevent race
-					// Using meId ensures this delete serializes with sendMessage() and other session operations
-					await authState.keys.transaction(async () => {
-						await authState.keys.set({ session: { [sessionId]: null } })
-					}, authState.creds.me?.id || 'session-operation')
-					forceIncludeKeys = true
-				}
-			} catch (error) {
-				logger.warn({ error, fromJid }, 'failed to check session recreation')
-			}
-		}
+		// Derive the Signal error code from the actual decryption failure message.
+		// This is sent in the retry receipt so the peer (even another InfiniteAPI instance)
+		// knows the exact reason and can recreate the session immediately instead of waiting
+		// for the 1-hour timeout fallback.
+		//
+		// Codes mirror RetryReason enum in message-retry-manager.ts:
+		//   0 = UnknownError | 1 = NoSession | 2 = InvalidKey
+		//   3 = InvalidKeyId | 7 = BadMac (= SignalErrorInvalidMessage/InvalidCipherKey)
+		//
+		// NOTE: We do NOT delete the session here (receiver side). The Signal Protocol
+		// recovers automatically when the sender's pkmsg arrives — it overwrites the
+		// corrupted session. Deleting prematurely creates a race window where no session
+		// exists, which can cause "No Session" errors on concurrent messages.
+		const retryErrorCode = (() => {
+			if (!decryptionError) return 0
+			if (/bad\s*mac/i.test(decryptionError)) return 7 // SignalErrorBadMac
+			if (/no\s*session/i.test(decryptionError)) return 1 // SignalErrorNoSession
+			if (/pre\s*key/i.test(decryptionError)) return 3 // SignalErrorInvalidKeyId
+			if (/invalid\s*key/i.test(decryptionError)) return 2 // SignalErrorInvalidKey
+			return 0
+		})()
 
 		if (retryCount <= 2) {
 			// Use new retry manager for phone requests if available
@@ -1384,8 +1372,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							id: node.attrs.id!,
 							t: node.attrs.t!,
 							v: '1',
-							// ADD ERROR FIELD
-							error: '0'
+							error: retryErrorCode.toString()
 						}
 					},
 					{
@@ -1404,7 +1391,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				receipt.attrs.participant = node.attrs.participant
 			}
 
-			if (retryCount > 1 || forceIncludeKeys || shouldRecreateSession) {
+			if (retryCount > 1 || forceIncludeKeys) {
 				const { update, preKeys } = await getNextPreKeys(authState, 1)
 
 				const [keyId] = Object.keys(preKeys)
@@ -2507,7 +2494,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							}
 
 							const encNode = getBinaryNodeChild(node, 'enc')
-							await sendRetryRequest(node, !encNode)
+							await sendRetryRequest(node, !encNode, errorMessage)
 							if (retryRequestDelayMs) {
 								await delay(retryRequestDelayMs)
 							}
@@ -2516,7 +2503,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							// Still attempt retry even if pre-key upload failed
 							try {
 								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode)
+								await sendRetryRequest(node, !encNode, errorMessage)
 							} catch (retryErr) {
 								logger.error({ retryErr }, 'Failed to send retry after error handling')
 							}
