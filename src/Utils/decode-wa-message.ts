@@ -392,6 +392,23 @@ export const decryptMessageNode = (
 						} else {
 							fullMessage.message = msg
 						}
+
+						// Detect view-once media on stanza 1 received by linked device.
+						// viewOnceMessage wrapper is also used for interactive messages
+						// (interactiveMessage, listMessage, nativeFlowMessage) -- those do NOT have
+						// imageMessage.viewOnce / videoMessage.viewOnce / audioMessage.viewOnce = true.
+						// Only real view-once media carries viewOnce: true on the inner media message.
+						const viewOnceInner =
+							msg.viewOnceMessage?.message ||
+							msg.viewOnceMessageV2?.message ||
+							msg.viewOnceMessageV2Extension?.message
+						if (
+							viewOnceInner?.imageMessage?.viewOnce ||
+							viewOnceInner?.videoMessage?.viewOnce ||
+							viewOnceInner?.audioMessage?.viewOnce
+						) {
+							fullMessage.key.isViewOnce = true
+						}
 					} catch (err: any) {
 						// Check if this is a final failure after all retries exhausted
 						const isRetryExhausted = err instanceof RetryExhaustedError
