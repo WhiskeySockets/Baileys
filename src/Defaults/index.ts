@@ -1,8 +1,10 @@
+import NodeCache from '@cacheable/node-cache'
 import { proto } from '../../WAProto/index.js'
 import { makeLibSignalRepository } from '../Signal/libsignal'
-import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
+import type { AuthenticationState, PossiblyExtendedCacheStore, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
+import type { JidWithDevice } from '../WABinary/jid-utils'
 
 const version = [2, 3000, 1033846690]
 
@@ -51,6 +53,14 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3
 ]
 
+
+export const DEFAULT_CACHE_TTLS = {
+	SIGNAL_STORE: 5 * 60, // 5 minutes
+	MSG_RETRY: 60 * 60, // 1 hour
+	CALL_OFFER: 5 * 60, // 5 minutes
+	USER_DEVICES: 5 * 60 // 5 minutes
+}
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
 	browser: Browsers.macOS('Chrome'),
@@ -82,6 +92,12 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 		patch: false,
 		snapshot: false
 	},
+
+	userDevicesCache: new NodeCache<JidWithDevice[]>({
+		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
+		useClones: false
+	}) as unknown as PossiblyExtendedCacheStore,
+	
 	countryCode: 'US',
 	getMessage: async () => undefined,
 	cachedGroupMetadata: async () => undefined,
@@ -133,13 +149,6 @@ export const INITIAL_PREKEY_COUNT = 812
 
 export const UPLOAD_TIMEOUT = 30000 // 30 seconds
 export const MIN_UPLOAD_INTERVAL = 5000 // 5 seconds minimum between uploads
-
-export const DEFAULT_CACHE_TTLS = {
-	SIGNAL_STORE: 5 * 60, // 5 minutes
-	MSG_RETRY: 60 * 60, // 1 hour
-	CALL_OFFER: 5 * 60, // 5 minutes
-	USER_DEVICES: 5 * 60 // 5 minutes
-}
 
 export const TimeMs = {
 	Minute: 60 * 1000,
