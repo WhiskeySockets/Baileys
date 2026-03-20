@@ -1072,6 +1072,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const getMediaType = (message: proto.IMessage) => {
+		// For view-once media, unwrap the viewOnceMessage wrapper before checking media type
+		const inner =
+			message.viewOnceMessage?.message ||
+			message.viewOnceMessageV2?.message ||
+			message.viewOnceMessageV2Extension?.message
+		if (inner) {
+			return getMediaType(inner)
+		}
+
 		if (message.imageMessage) {
 			return 'image'
 		} else if (message.videoMessage) {
