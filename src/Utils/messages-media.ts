@@ -672,6 +672,10 @@ type MediaUploadResult = {
 	meta_hmac?: string
 	ts?: number
 	fbid?: number
+	thumbnail_info?: {
+		thumbnail_sha256?: string
+		thumbnail_direct_path?: string
+	}
 }
 
 export type UploadParams = {
@@ -820,7 +824,17 @@ export const getWAUploadToServer = (
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
-		let urls: { mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number } | undefined
+		let urls:
+			| {
+					mediaUrl: string
+					directPath: string
+					meta_hmac?: string
+					ts?: number
+					fbid?: number
+					thumbnailDirectPath?: string
+					thumbnailSha256?: string
+			  }
+			| undefined
 		const hosts = [...customUploadHosts, ...uploadInfo.hosts]
 
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
@@ -867,7 +881,9 @@ export const getWAUploadToServer = (
 						directPath: result.direct_path!,
 						meta_hmac: result.meta_hmac,
 						fbid: result.fbid,
-						ts: result.ts
+						ts: result.ts,
+						thumbnailDirectPath: result.thumbnail_info?.thumbnail_direct_path,
+						thumbnailSha256: result.thumbnail_info?.thumbnail_sha256
 					}
 					break
 				} else {

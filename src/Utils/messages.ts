@@ -183,7 +183,7 @@ export const prepareWAMessageMedia = async (
 		)
 
 		const fileSha256B64 = fileSha256.toString('base64')
-		const { mediaUrl, directPath } = await options.upload(filePath, {
+		const { mediaUrl, directPath, thumbnailDirectPath, thumbnailSha256 } = await options.upload(filePath, {
 			fileEncSha256B64: fileSha256B64,
 			mediaType: mediaType,
 			timeoutMs: options.mediaUploadTimeoutMs,
@@ -198,7 +198,10 @@ export const prepareWAMessageMedia = async (
 				url: mediaUrl,
 				directPath,
 				fileSha256,
+				fileEncSha256: fileSha256,
 				fileLength,
+				thumbnailDirectPath,
+				thumbnailSha256: thumbnailSha256 ? Buffer.from(thumbnailSha256, 'base64') : undefined,
 				...uploadData,
 				media: undefined
 			})
