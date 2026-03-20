@@ -49,6 +49,8 @@ import {
 	getStatusFromReceiptType,
 	handleIdentityChange,
 	hkdf,
+	BAD_MAC_ERROR_TEXT,
+	DECRYPTION_RETRY_CONFIG,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
@@ -1312,13 +1314,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const fromJid = node.attrs.from!
 
 		// Derive the Signal error code from the actual decryption failure message.
-		// This is sent in the retry receipt so the peer (even another InfiniteAPI instance)
-		// knows the exact reason and can recreate the session immediately instead of waiting
-		// for the 1-hour timeout fallback.
+		// Sent in the retry receipt so the peer (even another InfiniteAPI instance)
+		// knows the exact failure type and can recreate the session immediately
+		// instead of falling back to the 1-hour timeout.
 		//
 		// Codes mirror RetryReason enum in message-retry-manager.ts:
-		//   0 = UnknownError | 1 = NoSession | 2 = InvalidKey
-		//   3 = InvalidKeyId | 7 = BadMac (= SignalErrorInvalidMessage/InvalidCipherKey)
+		//   0 = UnknownError | 1 = NoSession  | 2 = InvalidKey
+		//   3 = InvalidKeyId | 4 = InvalidMessage | 7 = BadMac
+		//
+		// Uses DECRYPTION_RETRY_CONFIG error lists (single source of truth in
+		// decode-wa-message.ts) so additions to those lists are picked up here
+		// automatically.
 		//
 		// NOTE: We do NOT delete the session here (receiver side). The Signal Protocol
 		// recovers automatically when the sender's pkmsg arrives — it overwrites the
@@ -1326,10 +1332,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// exists, which can cause "No Session" errors on concurrent messages.
 		const retryErrorCode = (() => {
 			if (!decryptionError) return 0
-			if (/bad\s*mac/i.test(decryptionError)) return 7 // SignalErrorBadMac
-			if (/no\s*session/i.test(decryptionError)) return 1 // SignalErrorNoSession
+			// Bad MAC must be checked first — it is also in corruptedSessionErrors
+			// but warrants the more specific code 7 over the generic code 4.
+			if (decryptionError.includes(BAD_MAC_ERROR_TEXT)) return 7 // SignalErrorBadMac
+			// MessageCounterError and other corrupted-session variants (code 4)
+			if (DECRYPTION_RETRY_CONFIG.corruptedSessionErrors.some(e => decryptionError.includes(e))) return 4 // SignalErrorInvalidMessage
+			// Missing / invalid session record (code 1)
+			if (DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(e => decryptionError.includes(e)) ||
+				/no\s+(open\s+)?sessions?/i.test(decryptionError)) return 1 // SignalErrorNoSession
+			// PreKey / key-id errors (code 3)
 			if (/pre\s*key/i.test(decryptionError)) return 3 // SignalErrorInvalidKeyId
-			if (/invalid\s*key/i.test(decryptionError)) return 2 // SignalErrorInvalidKey
+			// Identity / key errors (code 2)
+			if (/invalid\s*key|untrusted\s*identity/i.test(decryptionError)) return 2 // SignalErrorInvalidKey
 			return 0
 		})()
 
