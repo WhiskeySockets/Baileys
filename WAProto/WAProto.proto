@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1035484955
+/// WhatsApp Version: 2.3000.1035577069
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -2149,7 +2149,6 @@ message LimitSharing {
         CHAT_SETTING = 1;
         BIZ_SUPPORTS_FB_HOSTING = 2;
         UNKNOWN_GROUP = 3;
-        DEPRECATION = 4;
     }
 }
 
@@ -4893,6 +4892,7 @@ message SyncActionValue {
         repeated SyncActionValue.BroadcastListParticipant participants = 2;
         optional string listName = 3;
         repeated string labelIds = 4;
+        optional string audienceExpression = 5;
     }
     
     message CallLogAction {

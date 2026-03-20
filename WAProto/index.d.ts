@@ -5356,8 +5356,7 @@ export namespace proto {
             UNKNOWN = 0,
             CHAT_SETTING = 1,
             BIZ_SUPPORTS_FB_HOSTING = 2,
-            UNKNOWN_GROUP = 3,
-            DEPRECATION = 4
+            UNKNOWN_GROUP = 3
         }
     }
 
@@ -12483,6 +12482,7 @@ export namespace proto {
             participants?: (proto.SyncActionValue.IBroadcastListParticipant[]|null);
             listName?: (string|null);
             labelIds?: (string[]|null);
+            audienceExpression?: (string|null);
         }
 
         class BusinessBroadcastListAction implements IBusinessBroadcastListAction {
@@ -12491,6 +12491,7 @@ export namespace proto {
             public participants: proto.SyncActionValue.IBroadcastListParticipant[];
             public listName?: (string|null);
             public labelIds: string[];
+            public audienceExpression?: (string|null);
             public static create(properties?: proto.SyncActionValue.IBusinessBroadcastListAction): proto.SyncActionValue.BusinessBroadcastListAction;
             public static encode(m: proto.SyncActionValue.IBusinessBroadcastListAction, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.BusinessBroadcastListAction;
