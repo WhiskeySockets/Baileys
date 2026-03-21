@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1035577069
+/// WhatsApp Version: 2.3000.1035661795
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -5304,11 +5304,21 @@ message SyncActionValue {
         repeated string userJid = 2;
         optional bool shareToFB = 3;
         optional bool shareToIG = 4;
+        repeated CustomList customLists = 5;
+        message CustomList {
+            optional int64 id = 1;
+            optional string name = 2;
+            optional string emoji = 3;
+            optional bool isSelected = 4;
+            repeated string userJid = 5;
+        }
+        
         enum StatusDistributionMode {
             ALLOW_LIST = 0;
             DENY_LIST = 1;
             CONTACTS = 2;
             CLOSE_FRIENDS = 3;
+            CUSTOM_LIST = 4;
         }
     }
     
