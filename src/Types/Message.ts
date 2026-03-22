@@ -334,7 +334,7 @@ export type WAMediaUploadFunction = (
 	encFilePath: string,
 	opts: { fileEncSha256B64: string; mediaType: MediaType; timeoutMs?: number; newsletter?: boolean }
 ) => Promise<{
-	mediaUrl: string
+	mediaUrl: string | undefined
 	directPath: string
 	meta_hmac?: string
 	ts?: number

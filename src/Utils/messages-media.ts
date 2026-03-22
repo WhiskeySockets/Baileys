@@ -877,7 +877,7 @@ export const getWAUploadToServer = (
 
 				if (result?.url || result?.direct_path) {
 					urls = {
-						mediaUrl: result.url!,
+						mediaUrl: result.url || result.direct_path!,
 						directPath: result.direct_path!,
 						meta_hmac: result.meta_hmac,
 						fbid: result.fbid,
