@@ -1306,22 +1306,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// and could block the send if a companion session is corrupted.
 				await assertSessions([...viewOnceMeRecipients, ...effectiveOtherRecipients])
 
-				// Para view-once: separar dispositivos próprios por tipo.
-				// - device=0 (celular principal): recebe DSM normalmente — mostra "você enviou" na conversa.
-				// - device>0 (WA Web, outros companions): omitir — servidor WA gera <unavailable type="view_once"/>
-				//   automaticamente para eles (apenas o celular principal pode enviar <unavailable> explícito).
-				const isViewOnceMsg = !!(
-					message.viewOnceMessageV2 ||
-					message.viewOnceMessage ||
-					message.viewOnceMessageV2Extension
-				)
-
-				// Para view-once, enviar DSM apenas para o celular principal (device=0/undefined).
-				// Companions (device>0) são omitidos — servidor WA envia <unavailable> para eles.
-				const viewOnceMeRecipients = isViewOnceMsg
-					? effectiveMeRecipients.filter(jid => !jidDecode(jid)?.device)
-					: effectiveMeRecipients
-
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
