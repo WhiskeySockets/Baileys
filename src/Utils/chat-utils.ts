@@ -945,6 +945,13 @@ export const processSyncAction = (
 			setting: 'channelsPersonalisedRecommendation',
 			value: action.privacySettingChannelsPersonalisedRecommendationAction
 		})
+	} else if (action?.nctSaltSyncAction) {
+		const salt = action.nctSaltSyncAction.salt
+		if (salt?.length) {
+			ev.emit('creds.update', { nctSalt: new Uint8Array(salt) })
+		} else {
+			ev.emit('creds.update', { nctSalt: undefined })
+		}
 	} else {
 		logger?.debug({ syncAction, id }, 'unprocessable update')
 	}

@@ -294,6 +294,10 @@ const processMessage = async (
 							.catch(err => logger?.warn({ err }, 'failed to store LID-PN mappings from history sync'))
 					}
 
+					if (data.nctSalt?.length) {
+						ev.emit('creds.update', { nctSalt: data.nctSalt })
+					}
+
 					ev.emit('messaging-history.set', {
 						...data,
 						isLatest: histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND ? isLatest : undefined,
