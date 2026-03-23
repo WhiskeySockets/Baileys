@@ -1013,7 +1013,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		await authState.keys.transaction(async () => {
-			const mediaType = getMediaType(message)
+			// normalizeMessageContent unwraps viewOnceMessage/viewOnceMessageV2 so getMediaType works correctly
+			const mediaType = getMediaType(normalizeMessageContent(message) || message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
 			}
@@ -1044,6 +1045,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (normalizeMessageContent(message)?.pinInChatMessage || normalizeMessageContent(message)?.reactionMessage) {
 				extraAttrs['decrypt-fail'] = 'hide' // todo: expand for reactions and other types
 			}
+
+			// view_once_write disabled — causes server to drop message (validation fails for linked device sessions)
 
 			if (isGroupOrStatus && !isRetryResend) {
 				const [groupData, senderKeyMap] = await Promise.all([
@@ -1251,19 +1254,38 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				await assertSessions(effectiveAllRecipients)
 
+				// Para view-once: separar dispositivos próprios por tipo.
+				// - device=0 (celular principal): recebe DSM normalmente — mostra "você enviou" na conversa.
+				// - device>0 (WA Web, outros companions): omitir — servidor WA gera <unavailable type="view_once"/>
+				//   automaticamente para eles (apenas o celular principal pode enviar <unavailable> explícito).
+				const isViewOnceMsg = !!(
+					message.viewOnceMessageV2 ||
+					message.viewOnceMessage ||
+					message.viewOnceMessageV2Extension
+				)
+
+				// Para view-once, enviar DSM apenas para o celular principal (device=0/undefined).
+				// Companions (device>0) são omitidos — servidor WA envia <unavailable> para eles.
+				const viewOnceMeRecipients = isViewOnceMsg
+					? effectiveMeRecipients.filter(jid => !jidDecode(jid)?.device)
+					: effectiveMeRecipients
+
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
-					// For own devices: use DSM (deviceSentMessage) wrapper
-					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs),
+					createParticipantNodes(viewOnceMeRecipients, meMsg || message, extraAttrs),
 					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (effectiveMeRecipients.length > 0 || effectiveOtherRecipients.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2(effectiveAllRecipients)
+				// phash: para view-once inclui só celular principal + destinatários
+				const phashRecipients = isViewOnceMsg
+					? [...viewOnceMeRecipients, ...effectiveOtherRecipients]
+					: effectiveAllRecipients
+				if (phashRecipients.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2(phashRecipients)
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2

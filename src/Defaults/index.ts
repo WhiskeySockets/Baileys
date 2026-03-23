@@ -154,7 +154,11 @@ export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	'md-msg-hist': '/mms/md-app-state',
 	'biz-cover-photo': '/pps/biz-cover-photo',
 	'sticker-pack': '/mms/sticker-pack',
-	'thumbnail-sticker-pack': '/mms/thumbnail-sticker-pack'
+	'thumbnail-sticker-pack': '/mms/thumbnail-sticker-pack',
+	// View-once types — same upload path as regular media (server CDN routing TBD)
+	'viewonce-image': '/mms/image',
+	'viewonce-video': '/mms/video',
+	'viewonce-audio': '/mms/audio'
 }
 
 export const MEDIA_HKDF_KEY_MAPPING = {
@@ -178,7 +182,11 @@ export const MEDIA_HKDF_KEY_MAPPING = {
 	ptv: 'Video',
 	'biz-cover-photo': 'Image',
 	'sticker-pack': 'Sticker Pack',
-	'thumbnail-sticker-pack': 'Sticker Pack Thumbnail'
+	'thumbnail-sticker-pack': 'Sticker Pack Thumbnail',
+	// View-once types — same HKDF keys as regular types (recipients decrypt with normal keys)
+	'viewonce-image': 'Image',
+	'viewonce-video': 'Video',
+	'viewonce-audio': 'Audio'
 }
 
 export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING

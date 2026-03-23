@@ -2254,6 +2254,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
+		// Handle view-once unavailable sync from primary device.
+		// When the primary device sends a view-once, linked companions receive
+		// <unavailable type="view_once"/> — no enc content, just a sync signal.
+		// Acknowledge and skip decryption (nothing to decrypt).
+		const unavailableNode = getBinaryNodeChild(node, 'unavailable')
+		if (unavailableNode?.attrs?.type === 'view_once') {
+			logger.debug({ id: node.attrs.id, from: node.attrs.from }, 'received view_once unavailable sync from primary device')
+			await sendMessageAck(node)
+			return
+		}
+
 		const {
 			fullMessage: msg,
 			category,
@@ -2547,6 +2558,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 
 						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+
+						// NOTE: do NOT send view_once_read from a linked device (API).
+						// WA shows view-once as view_once_unavailable_fanout on linked devices — only the
+						// primary phone sends view_once_read when the user actually opens it.
+						// Sending it from a linked device causes WA to flag the account and disables view-once.
 
 						// send ack for history message
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
