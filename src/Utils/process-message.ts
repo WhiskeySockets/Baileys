@@ -618,19 +618,8 @@ const processMessage = async (
 		const pollMsg = await getMessage(creationMsgKey)
 		if(pollMsg) {
 			const meIdNormalised = jidNormalizedUser(meId)
-			let pollCreatorJid = getKeyAuthor(creationMsgKey, meIdNormalised)
-			let voterJid = getKeyAuthor(message.key, meIdNormalised)
-			
-			// Handle LID vs JID mismatch issues - use participant key for groups when available
-			if (message.key.participant) {
-				voterJid = message.key.participant
-			}
-			
-			// For groups, if poll was created by another participant, use their participant key
-			if (creationMsgKey.participant) {
-				pollCreatorJid = creationMsgKey.participant
-			}
-			
+			const meLidNormalised = creds.me?.lid ? jidNormalizedUser(creds.me.lid) : undefined
+
 			const pollEncKey = pollMsg.messageContextInfo?.messageSecret!
 
 			if (!pollEncKey) {
@@ -641,27 +630,70 @@ const processMessage = async (
 				return
 			}
 
-			try {
-				logger?.debug(
-					{ 
-						pollCreatorJid, 
-						voterJid, 
-						pollMsgId: creationMsgKey.id,
-						hasEncKey: !!pollEncKey 
-					},
-					'attempting to decrypt poll vote'
-				)
-				
-				const voteMsg = decryptPollVote(
-					content.pollUpdateMessage.vote!,
-					{
-						pollEncKey,
-						pollCreatorJid,
-						pollMsgId: creationMsgKey.id!,
-						voterJid,
+			// Build JID candidates for poll creator (both PN and LID formats)
+			const creatorPnJid = getKeyAuthor(creationMsgKey, meIdNormalised)
+			const creatorLidJid = creationMsgKey.fromMe && meLidNormalised
+				? meLidNormalised
+				: (creationMsgKey.participant && isLidUser(creationMsgKey.participant)
+					? jidNormalizedUser(creationMsgKey.participant)
+					: ((creationMsgKey as any).participantAlt && isLidUser((creationMsgKey as any).participantAlt)
+						? jidNormalizedUser((creationMsgKey as any).participantAlt)
+						: undefined))
+			const creatorCandidates = [creatorPnJid]
+			if (creatorLidJid && creatorLidJid !== creatorPnJid) {
+				creatorCandidates.push(creatorLidJid)
+			}
+
+			// Build JID candidates for voter (both PN and LID formats)
+			const voterPnJid = getKeyAuthor(message.key, meIdNormalised)
+			const voterLidJid = message.key.fromMe && meLidNormalised
+				? meLidNormalised
+				: (message.key.participant && isLidUser(message.key.participant)
+					? jidNormalizedUser(message.key.participant)
+					: ((message.key as any).participantAlt && isLidUser((message.key as any).participantAlt)
+						? jidNormalizedUser((message.key as any).participantAlt)
+						: undefined))
+			const voterCandidates = [voterPnJid]
+			if (voterLidJid && voterLidJid !== voterPnJid) {
+				voterCandidates.push(voterLidJid)
+			}
+
+			// Try all combinations of creator and voter JIDs until decryption succeeds
+			let voteMsg = undefined
+			let lastErr = undefined
+			for (const pollCreatorJid of creatorCandidates) {
+				for (const voterJid of voterCandidates) {
+					try {
+						logger?.debug(
+							{
+								pollCreatorJid,
+								voterJid,
+								pollMsgId: creationMsgKey.id,
+								hasEncKey: !!pollEncKey
+							},
+							'attempting to decrypt poll vote'
+						)
+
+						voteMsg = decryptPollVote(
+							content.pollUpdateMessage.vote!,
+							{
+								pollEncKey,
+								pollCreatorJid,
+								pollMsgId: creationMsgKey.id!,
+								voterJid,
+							}
+						)
+						break
+					} catch(err) {
+						lastErr = err
 					}
-				)
-				
+				}
+				if (voteMsg) {
+					break
+				}
+			}
+
+			if (voteMsg) {
 				ev.emit('messages.update', [
 					{
 						key: creationMsgKey,
@@ -676,20 +708,20 @@ const processMessage = async (
 						}
 					}
 				])
-				
+
 				logger?.debug(
 					{ selectedOptions: voteMsg.selectedOptions?.length },
 					'successfully decrypted poll vote'
 				)
-			} catch(err) {
+			} else {
 				logger?.warn(
-					{ 
-						err: err instanceof Error ? err.message : err, 
+					{
+						err: lastErr instanceof Error ? lastErr.message : lastErr,
 						creationMsgKey,
-						pollCreatorJid,
-						voterJid,
+						creatorCandidates,
+						voterCandidates,
 					},
-					'failed to decrypt poll vote'
+					'failed to decrypt poll vote with all JID combinations'
 				)
 			}
 		} else {
