@@ -631,6 +631,8 @@ const processMessage = async (
 			}
 
 			// Build JID candidates for poll creator (both PN and LID formats)
+			// WhatsApp's migration from Phone Number (PN) JIDs to Local Identifier (LID) JIDs
+			// means both formats can appear in messages. We try all combinations until decryption succeeds.
 			const creatorPnJid = getKeyAuthor(creationMsgKey, meIdNormalised)
 			const creatorLidJid = creationMsgKey.fromMe && meLidNormalised
 				? meLidNormalised
@@ -645,6 +647,7 @@ const processMessage = async (
 			}
 
 			// Build JID candidates for voter (both PN and LID formats)
+			// Same candidate approach as poll creator - handles mixed PN/LID group scenarios
 			const voterPnJid = getKeyAuthor(message.key, meIdNormalised)
 			const voterLidJid = message.key.fromMe && meLidNormalised
 				? meLidNormalised
@@ -659,8 +662,10 @@ const processMessage = async (
 			}
 
 			// Try all combinations of creator and voter JIDs until decryption succeeds
+			// This handles cases where poll creator and voter may have different JID formats (PN vs LID)
 			let voteMsg = undefined
 			let lastErr = undefined
+			let usedLidFallback = false
 			for (const pollCreatorJid of creatorCandidates) {
 				for (const voterJid of voterCandidates) {
 					try {
@@ -683,6 +688,11 @@ const processMessage = async (
 								voterJid,
 							}
 						)
+
+						// Track if we succeeded with a LID candidate (not the first PN attempt)
+						if (creatorCandidates.indexOf(pollCreatorJid) > 0 || voterCandidates.indexOf(voterJid) > 0) {
+							usedLidFallback = true
+						}
 						break
 					} catch(err) {
 						lastErr = err
@@ -710,8 +720,13 @@ const processMessage = async (
 				])
 
 				logger?.debug(
-					{ selectedOptions: voteMsg.selectedOptions?.length },
-					'successfully decrypted poll vote'
+					{
+						selectedOptions: voteMsg.selectedOptions?.length,
+						usedLidFallback
+					},
+					usedLidFallback
+						? 'successfully decrypted poll vote using LID candidate fallback'
+						: 'successfully decrypted poll vote'
 				)
 			} else {
 				logger?.warn(
