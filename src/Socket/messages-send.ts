@@ -1277,21 +1277,48 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					: otherRecipients
 				const effectiveAllRecipients = [...effectiveMeRecipients, ...effectiveOtherRecipients]
 
-				await assertSessions(effectiveAllRecipients)
+				// P2: detect actual view-once media by checking inner message's viewOnce flag.
+				// viewOnceMessage wrapper is also used for interactive messages (buttons, lists, etc)
+				// which do NOT carry viewOnce=true on the media — those must NOT be filtered.
+				const viewOnceInner =
+					message.viewOnceMessageV2?.message ||
+					message.viewOnceMessage?.message ||
+					message.viewOnceMessageV2Extension?.message
+				const isViewOnceMsg = !!(
+					viewOnceInner?.imageMessage?.viewOnce ||
+					viewOnceInner?.videoMessage?.viewOnce ||
+					viewOnceInner?.audioMessage?.viewOnce
+				)
+
+				// For view-once: only send DSM to primary phone (device=0).
+				// Companion devices (device>0) are omitted — WA server generates
+				// <unavailable type="view_once"/> for them automatically.
+				// Sending explicit <unavailable> from a companion is rejected by the server.
+				const viewOnceMeRecipients = isViewOnceMsg
+					? effectiveMeRecipients.filter(jid => !jidDecode(jid)?.device)
+					: effectiveMeRecipients
+
+				// P3: assert sessions only for recipients we actually encrypt for.
+				// For view-once, companions are omitted — asserting their sessions is wasteful
+				// and could block the send if a companion session is corrupted.
+				await assertSessions([...viewOnceMeRecipients, ...effectiveOtherRecipients])
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM (deviceSentMessage) wrapper
-					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs),
+					createParticipantNodes(viewOnceMeRecipients, meMsg || message, extraAttrs),
 					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (effectiveMeRecipients.length > 0 || effectiveOtherRecipients.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2(effectiveAllRecipients)
+				const phashRecipients = isViewOnceMsg
+					? [...viewOnceMeRecipients, ...effectiveOtherRecipients]
+					: effectiveAllRecipients
+				if (phashRecipients.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2(phashRecipients)
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
