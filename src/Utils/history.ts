@@ -15,7 +15,8 @@ import {
 import { toNumber } from './generics'
 import type { ILogger } from './logger.js'
 import { normalizeMessageContent } from './messages'
-import { downloadContentFromMessage } from './messages-media'
+import { DEFAULT_ORIGIN } from '../Defaults'
+import { downloadContentFromMessage, getUrlFromDirectPath } from './messages-media'
 
 const inflatePromise = promisify(inflate)
 
@@ -374,10 +375,25 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 	// Convert Map back to array for return
 	const lidPnMappings = Array.from(lidPnMap.values())
 
+	// Normalize pastParticipants: resolve LID userJids → PN so the consumer always
+	// receives a phone number, never an opaque LID identifier.
+	// Uses the lidPnMap built above (populated from phoneNumberToLidMappings + conversations).
+	// If a LID cannot be resolved, the original value is kept rather than dropping the participant.
+	const pastParticipants: proto.IPastParticipants[] = (item.pastParticipants ?? []).map(group => ({
+		groupJid: group.groupJid,
+		pastParticipants: (group.pastParticipants ?? []).map(participant => {
+			const userJid = participant.userJid
+			if (!userJid || !isAnyLidUser(userJid)) return participant
+			const mapping = lidPnMap.get(jidNormalizedUser(userJid))
+			return mapping?.pn ? { ...participant, userJid: mapping.pn } : participant
+		})
+	}))
+
 	return {
 		chats,
 		contacts,
 		messages,
+		pastParticipants,
 		lidPnMappings,
 		syncType: item.syncType,
 		progress: item.progress
@@ -408,7 +424,23 @@ export const downloadAndProcessHistorySyncNotification = async (
 		historyMsg = await downloadHistory(msg, options)
 	}
 
-	return processHistoryMessage(historyMsg, logger)
+	const result = processHistoryMessage(historyMsg, logger)
+
+	// Mirror WA Desktop behaviour: DELETE the CDN blob only after processing succeeds.
+	// Doing this earlier (e.g. inside downloadHistory) risks permanent history loss if
+	// processing throws — the server copy would be gone and retry after reconnect would fail.
+	if (msg.directPath) {
+		const cdnUrl = getUrlFromDirectPath(msg.directPath)
+		fetch(cdnUrl, {
+			...options,
+			method: 'DELETE',
+			headers: { ...((options as RequestInit).headers ?? {}), Origin: DEFAULT_ORIGIN }
+		}).catch(() => {
+			// non-fatal — server will expire it anyway
+		})
+	}
+
+	return result
 }
 
 /**

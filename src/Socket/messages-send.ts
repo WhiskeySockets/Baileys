@@ -9,6 +9,7 @@ import type {
 	AlbumMessageOptions,
 	AlbumSendResult,
 	AnyMessageContent,
+	LIDMapping,
 	MediaConnInfo,
 	MessageReceiptType,
 	MessageRelayOptions,
@@ -336,6 +337,33 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				} catch (e) {
 					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
 				}
+			}
+
+			// 4th LID→PN source: device-list entries sharing the same raw_id
+			// WA Business uses this for accounts where HistorySync sends zero phoneNumberToLidMappings
+			const allEntries = [...result.list, ...result.sideList]
+			const rawIdMap = new Map<number, { pn?: string; lid?: string }>()
+			for (const item of allEntries) {
+				if (typeof item.rawId !== 'number' || isNaN(item.rawId)) continue
+				const decoded = jidDecode(item.id)
+				if (!decoded) continue
+				const entry = rawIdMap.get(item.rawId) || {}
+				if (decoded.server === 'lid' || decoded.server === 'hosted.lid') {
+					entry.lid = item.id
+				} else if (decoded.server === 's.whatsapp.net' || decoded.server === 'c.us') {
+					entry.pn = item.id
+				}
+				rawIdMap.set(item.rawId, entry)
+			}
+			const rawIdMappings: LIDMapping[] = []
+			for (const { pn, lid } of rawIdMap.values()) {
+				if (pn && lid) {
+					rawIdMappings.push({ lid: jidNormalizedUser(lid), pn: jidNormalizedUser(pn) })
+				}
+			}
+			if (rawIdMappings.length > 0) {
+				await signalRepository.lidMapping.storeLIDPNMappings(rawIdMappings)
+				logger.debug({ count: rawIdMappings.length }, 'stored LID-PN mappings from raw_id pairing')
 			}
 
 			const meId = authState.creds.me?.id
@@ -1024,7 +1052,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
 				binaryNodeContent.push({
 					tag: 'plaintext',
-					attrs: {},
+					attrs: mediaType ? { mediatype: mediaType } : {},
 					content: bytes
 				})
 				const stanza: BinaryNode = {
@@ -1252,7 +1280,31 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					: otherRecipients
 				const effectiveAllRecipients = [...effectiveMeRecipients, ...effectiveOtherRecipients]
 
-				await assertSessions(effectiveAllRecipients)
+				// P2: detect actual view-once media by checking inner message's viewOnce flag.
+				// viewOnceMessage wrapper is also used for interactive messages (buttons, lists, etc)
+				// which do NOT carry viewOnce=true on the media — those must NOT be filtered.
+				const viewOnceInner =
+					message.viewOnceMessageV2?.message ||
+					message.viewOnceMessage?.message ||
+					message.viewOnceMessageV2Extension?.message
+				const isViewOnceMsg = !!(
+					viewOnceInner?.imageMessage?.viewOnce ||
+					viewOnceInner?.videoMessage?.viewOnce ||
+					viewOnceInner?.audioMessage?.viewOnce
+				)
+
+				// For view-once: only send DSM to primary phone (device=0).
+				// Companion devices (device>0) are omitted — WA server generates
+				// <unavailable type="view_once"/> for them automatically.
+				// Sending explicit <unavailable> from a companion is rejected by the server.
+				const viewOnceMeRecipients = isViewOnceMsg
+					? effectiveMeRecipients.filter(jid => !jidDecode(jid)?.device)
+					: effectiveMeRecipients
+
+				// P3: assert sessions only for recipients we actually encrypt for.
+				// For view-once, companions are omitted — asserting their sessions is wasteful
+				// and could block the send if a companion session is corrupted.
+				await assertSessions([...viewOnceMeRecipients, ...effectiveOtherRecipients])
 
 				// Para view-once: separar dispositivos próprios por tipo.
 				// - device=0 (celular principal): recebe DSM normalmente — mostra "você enviou" na conversa.
@@ -1891,6 +1943,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const getMediaType = (message: proto.IMessage) => {
+		// For view-once media, unwrap the viewOnceMessage wrapper before checking media type
+		const inner =
+			message.viewOnceMessage?.message ||
+			message.viewOnceMessageV2?.message ||
+			message.viewOnceMessageV2Extension?.message
+		if (inner) {
+			return getMediaType(inner)
+		}
+
 		if (message.imageMessage) {
 			return 'image'
 		} else if (message.videoMessage) {

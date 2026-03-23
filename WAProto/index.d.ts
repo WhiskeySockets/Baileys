@@ -5356,8 +5356,7 @@ export namespace proto {
             UNKNOWN = 0,
             CHAT_SETTING = 1,
             BIZ_SUPPORTS_FB_HOSTING = 2,
-            UNKNOWN_GROUP = 3,
-            DEPRECATION = 4
+            UNKNOWN_GROUP = 3
         }
     }
 
@@ -12483,6 +12482,7 @@ export namespace proto {
             participants?: (proto.SyncActionValue.IBroadcastListParticipant[]|null);
             listName?: (string|null);
             labelIds?: (string[]|null);
+            audienceExpression?: (string|null);
         }
 
         class BusinessBroadcastListAction implements IBusinessBroadcastListAction {
@@ -12491,6 +12491,7 @@ export namespace proto {
             public participants: proto.SyncActionValue.IBroadcastListParticipant[];
             public listName?: (string|null);
             public labelIds: string[];
+            public audienceExpression?: (string|null);
             public static create(properties?: proto.SyncActionValue.IBusinessBroadcastListAction): proto.SyncActionValue.BusinessBroadcastListAction;
             public static encode(m: proto.SyncActionValue.IBusinessBroadcastListAction, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.BusinessBroadcastListAction;
@@ -13701,6 +13702,7 @@ export namespace proto {
             userJid?: (string[]|null);
             shareToFB?: (boolean|null);
             shareToIG?: (boolean|null);
+            customLists?: (proto.SyncActionValue.StatusPrivacyAction.ICustomList[]|null);
         }
 
         class StatusPrivacyAction implements IStatusPrivacyAction {
@@ -13709,6 +13711,7 @@ export namespace proto {
             public userJid: string[];
             public shareToFB?: (boolean|null);
             public shareToIG?: (boolean|null);
+            public customLists: proto.SyncActionValue.StatusPrivacyAction.ICustomList[];
             public static create(properties?: proto.SyncActionValue.IStatusPrivacyAction): proto.SyncActionValue.StatusPrivacyAction;
             public static encode(m: proto.SyncActionValue.IStatusPrivacyAction, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.StatusPrivacyAction;
@@ -13720,11 +13723,36 @@ export namespace proto {
 
         namespace StatusPrivacyAction {
 
+            interface ICustomList {
+                id?: (number|Long|null);
+                name?: (string|null);
+                emoji?: (string|null);
+                isSelected?: (boolean|null);
+                userJid?: (string[]|null);
+            }
+
+            class CustomList implements ICustomList {
+                constructor(p?: proto.SyncActionValue.StatusPrivacyAction.ICustomList);
+                public id?: (number|Long|null);
+                public name?: (string|null);
+                public emoji?: (string|null);
+                public isSelected?: (boolean|null);
+                public userJid: string[];
+                public static create(properties?: proto.SyncActionValue.StatusPrivacyAction.ICustomList): proto.SyncActionValue.StatusPrivacyAction.CustomList;
+                public static encode(m: proto.SyncActionValue.StatusPrivacyAction.ICustomList, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.StatusPrivacyAction.CustomList;
+                public static fromObject(d: { [k: string]: any }): proto.SyncActionValue.StatusPrivacyAction.CustomList;
+                public static toObject(m: proto.SyncActionValue.StatusPrivacyAction.CustomList, o?: $protobuf.IConversionOptions): { [k: string]: any };
+                public toJSON(): { [k: string]: any };
+                public static getTypeUrl(typeUrlPrefix?: string): string;
+            }
+
             enum StatusDistributionMode {
                 ALLOW_LIST = 0,
                 DENY_LIST = 1,
                 CONTACTS = 2,
-                CLOSE_FRIENDS = 3
+                CLOSE_FRIENDS = 3,
+                CUSTOM_LIST = 4
             }
         }
 

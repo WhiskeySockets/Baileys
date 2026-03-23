@@ -1,506 +1,822 @@
-# ⚠️ EXPERIMENTAL: Interactive Messages Guide
+# Mensagens Interativas — Guia Completo
 
-## 🚨 **CRITICAL WARNING**
-
-**These features MAY NOT WORK and can cause ACCOUNT BANS.**
-
-- ❌ WhatsApp actively blocks non-business accounts from sending interactive messages
-- ❌ Can result in temporary or permanent account bans
-- ❌ Messages may not be delivered
-- ✅ **Use ONLY for testing with DISPOSABLE accounts in DEV environment**
-
-## 📋 Table of Contents
-
-1. [Configuration](#configuration)
-2. [Simple Text Buttons](#1-simple-text-buttons)
-3. [Buttons with Image](#2-buttons-with-image)
-4. [Buttons with Video](#3-buttons-with-video)
-5. [List Messages](#4-list-messages)
-6. [Template Buttons (Action Buttons)](#5-template-buttons-action-buttons)
-7. [Carousel Messages](#6-carousel-messages)
-8. [Metrics and Monitoring](#metrics-and-monitoring)
+Guia de referência para envio e consumo de todos os tipos de mensagens interativas suportados pela API.
 
 ---
 
-## Configuration
+## Compatibilidade por Plataforma
 
-### Enable Interactive Messages
+| Tipo | Android | iOS | WA Web |
+|---|---|---|---|
+| Menu Texto | ✅ | ✅ | ✅ |
+| Botões Quick Reply | ✅ | ✅ | ✅ |
+| Botões CTA (URL / Copy / Call) | ✅ | ✅ | ✅ |
+| Lista Dropdown | ✅ | ✅ | ✅ |
+| Enquete/Poll | ✅ | ✅ | ✅ |
+| Carrossel com Imagens | ✅ | ✅ | ✅ |
 
-```typescript
-import makeWASocket from '@whiskeysockets/baileys'
-
-const sock = makeWASocket({
-  auth: state,
-  // ⚠️ Enable experimental interactive messages
-  // WARNING: Can cause account bans!
-  enableInteractiveMessages: true, // default: true
-  logger: pino({ level: 'warn' })
-})
-```
-
-### Disable in Production
-
-```typescript
-const sock = makeWASocket({
-  auth: state,
-  // ✅ Disable for production safety
-  enableInteractiveMessages: false,
-  logger: pino({ level: 'info' })
-})
-```
+> **Nota:** Todos os tipos exigem conta **WhatsApp Business** ativa e **não-hosted** (registrada via QR/pair code). Contas hosted (Meta Business Cloud API) podem ter restrições de entrega de mensagens interativas impostas pelo servidor WA.
 
 ---
 
-## 1. Simple Text Buttons
+## Índice
 
-Send a message with up to 3 clickable buttons.
-
-### Example
-
-```typescript
-await sock.sendMessage(jid, {
-  text: 'Choose an option:',
-  buttons: [
-    {
-      buttonId: 'btn1',
-      buttonText: { displayText: 'Option 1' }
-    },
-    {
-      buttonId: 'btn2',
-      buttonText: { displayText: 'Option 2' }
-    },
-    {
-      buttonId: 'btn3',
-      buttonText: { displayText: 'Option 3' }
-    }
-  ],
-  footerText: 'Optional footer text'
-})
-```
-
-### Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `text` | string | ✅ | Main message text |
-| `buttons` | ButtonInfo[] | ✅ | Array of buttons (max 3) |
-| `footerText` | string | ❌ | Footer text below buttons |
+1. [Menu Texto](#1-menu-texto)
+2. [Botões Quick Reply](#2-botões-quick-reply)
+3. [Botões CTA — URL, Copy, Call](#3-botões-cta--url-copy-call)
+4. [Lista Dropdown](#4-lista-dropdown)
+5. [Enquete / Poll](#5-enquete--poll)
+6. [Apenas Botões Reply sem CTA](#6-apenas-botões-reply-sem-cta)
+7. [Apenas CTAs sem Quick Reply](#7-apenas-ctas-sem-quick-reply)
+8. [Carrossel com Imagens](#8-carrossel-com-imagens)
+9. [Como Consumir Respostas via Webhook](#9-como-consumir-respostas-via-webhook)
+10. [Limites e Restrições](#10-limites-e-restrições)
 
 ---
 
-## 2. Buttons with Image
+## 1. Menu Texto
 
-Send an image with interactive buttons.
+Envia uma mensagem de texto simples com uma lista numerada de opções. Funciona em todas as plataformas sem binary nodes.
 
-### Example
+### Curl
 
-```typescript
-await sock.sendMessage(jid, {
-  image: { url: 'https://example.com/image.jpg' },
-  caption: 'Image description',
-  buttons: [
-    {
-      buttonId: 'view_more',
-      buttonText: { displayText: 'View More' }
-    },
-    {
-      buttonId: 'buy_now',
-      buttonText: { displayText: 'Buy Now' }
-    }
-  ],
-  footerText: 'Available now'
-})
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_menu \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "title": "Menu de Opções",
+    "text": "Escolha uma opção:",
+    "options": ["Opção 1", "Opção 2", "Opção 3"],
+    "footer": "Responda com o número"
+  }'
 ```
 
-### Parameters
+### Parâmetros
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `image` | WAMediaUpload | ✅ | Image URL or Buffer |
-| `caption` | string | ❌ | Image caption |
-| `buttons` | ButtonInfo[] | ✅ | Array of buttons (max 3) |
-| `footerText` | string | ❌ | Footer text |
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `instance` | string | ✅ | Nome da instância conectada |
+| `to` | string | ✅ | Número do destinatário (DDI+DDD+número) |
+| `title` | string | ❌ | Título do menu |
+| `text` | string | ✅ | Texto da mensagem |
+| `options` | string[] | ✅ | Lista de opções (sem limite fixo) |
+| `footer` | string | ❌ | Texto de rodapé |
+
+### Resposta da API
+
+```json
+{ "ok": true }
+```
+
+### Como o destinatário vê
+
+O usuário recebe uma mensagem de texto com as opções numeradas e responde digitando o número correspondente. Não há interatividade nativa — a resposta chega como mensagem de texto comum.
 
 ---
 
-## 3. Buttons with Video
+## 2. Botões Quick Reply
 
-Send a video with interactive buttons.
+Botões de resposta rápida que o usuário toca para selecionar. Testado com até **16 botões**. Renderiza nativamente em Android, iOS e WA Web.
 
-### Example
+### Curl
 
-```typescript
-await sock.sendMessage(jid, {
-  video: { url: 'https://example.com/video.mp4' },
-  caption: 'Watch this!',
-  buttons: [
-    {
-      buttonId: 'watch',
-      buttonText: { displayText: 'Watch Now' }
-    }
-  ],
-  footerText: 'New release'
-})
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_buttons_helpers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "text": "👋 Olá! Como posso ajudar?",
+    "footer": "Atendimento 24h",
+    "buttons": [
+      {"id": "vendas",      "text": "🛒 Fazer Pedido"},
+      {"id": "suporte",     "text": "🔧 Suporte Técnico"},
+      {"id": "financeiro",  "text": "💰 Financeiro"},
+      {"id": "comercial",   "text": "📊 Comercial"},
+      {"id": "contabil",    "text": "📋 Contábil"},
+      {"id": "rh",          "text": "👥 Recursos Humanos"},
+      {"id": "secretaria",  "text": "📞 Secretaria"},
+      {"id": "diplomas",    "text": "🎓 Diplomas"},
+      {"id": "diretoria",   "text": "🏛️ Diretoria"},
+      {"id": "compliance",  "text": "✅ Compliance"},
+      {"id": "juridico",    "text": "⚖️ Jurídico"},
+      {"id": "social",      "text": "🤝 Ass. Social"},
+      {"id": "contratos",   "text": "📄 Contratos"},
+      {"id": "ti",          "text": "💻 Tecnologia da Informação"},
+      {"id": "assessoria",  "text": "📣 Assessoria"},
+      {"id": "voip",        "text": "📡 VOIP"}
+    ]
+  }'
 ```
 
----
+### Parâmetros
 
-## 4. List Messages
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `instance` | string | ✅ | Nome da instância |
+| `to` | string | ✅ | Número do destinatário |
+| `text` | string | ✅ | Texto principal |
+| `footer` | string | ❌ | Rodapé |
+| `buttons` | array | ✅ | Lista de botões (ver abaixo) |
+| `buttons[].id` | string | ✅ | ID do botão (retornado no webhook) |
+| `buttons[].text` | string | ✅ | Texto exibido no botão |
 
-Send a message with a menu of up to 10 options organized in sections.
+### Webhook recebido ao clicar
 
-### Example
-
-```typescript
-await sock.sendMessage(jid, {
-  text: 'Choose a product:',
-  title: 'Product Catalog',
-  buttonText: 'View Options',
-  sections: [
-    {
-      title: 'Electronics',
-      rows: [
-        {
-          rowId: 'laptop_1',
-          title: 'Laptop Pro',
-          description: '$999 - High performance'
-        },
-        {
-          rowId: 'phone_1',
-          title: 'Smartphone X',
-          description: '$699 - Latest model'
+```json
+{
+  "event": "messages.upsert",
+  "data": {
+    "messages": [{
+      "key": { "remoteJid": "5511900000001@s.whatsapp.net", "fromMe": false },
+      "message": {
+        "interactiveResponseMessage": {
+          "body": { "text": "🛒 Fazer Pedido" },
+          "nativeFlowResponseMessage": {
+            "name": "quick_reply",
+            "paramsJson": "{\"id\":\"vendas\"}"
+          }
         }
-      ]
-    },
-    {
-      title: 'Accessories',
-      rows: [
-        {
-          rowId: 'case_1',
-          title: 'Phone Case',
-          description: '$29 - Protective'
-        }
-      ]
-    }
-  ],
-  footerText: 'Free shipping'
-})
+      }
+    }]
+  }
+}
 ```
 
-### Parameters
+### Como ler a resposta
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `text` | string | ✅ | Message description |
-| `title` | string | ❌ | List title |
-| `buttonText` | string | ✅ | Text on button that opens list |
-| `sections` | ListSection[] | ✅ | Array of sections (max 10 items total) |
-| `footerText` | string | ❌ | Footer text |
+```javascript
+function parseButtonReply(msg) {
+  const interactive = msg.message?.interactiveResponseMessage
+  if (!interactive) return null
 
-### Limits
+  const params = JSON.parse(
+    interactive.nativeFlowResponseMessage?.paramsJson || '{}'
+  )
+  return {
+    buttonId: params.id,
+    buttonText: interactive.body?.text
+  }
+}
 
-- Maximum 10 sections
-- Maximum 10 rows total across all sections
-- Row title: 24 characters max
-- Row description: 72 characters max
+// Exemplo:
+// { buttonId: 'vendas', buttonText: '🛒 Fazer Pedido' }
+```
 
 ---
 
-## 5. Template Buttons (Action Buttons)
+## 3. Botões CTA — URL, Copy, Call
 
-Send buttons with actions: Quick Reply, URL, or Call.
+Botões de ação especiais: abrir URL, copiar código (PIX, cupom, etc.) e ligar. Podem ser combinados na mesma mensagem.
 
-### Example
+### Curl — Combinação URL + Copy + Call
 
-```typescript
-await sock.sendMessage(jid, {
-  text: 'Contact us or visit our website',
-  templateButtons: [
-    // Quick Reply Button
-    {
-      index: 1,
-      quickReplyButton: {
-        displayText: 'Quick Reply',
-        id: 'reply_1'
-      }
-    },
-    // URL Button
-    {
-      index: 2,
-      urlButton: {
-        displayText: 'Visit Website',
-        url: 'https://example.com'
-      }
-    },
-    // Call Button
-    {
-      index: 3,
-      callButton: {
-        displayText: 'Call Us',
-        phoneNumber: '+551199999999'
-      }
-    }
-  ],
-  footer: 'We are here to help'
-})
-```
-
-### Button Types
-
-| Type | Description | Parameters |
-|------|-------------|------------|
-| `quickReplyButton` | Quick response button | `displayText`, `id` |
-| `urlButton` | Opens URL in browser | `displayText`, `url` |
-| `callButton` | Initiates phone call | `displayText`, `phoneNumber` |
-
----
-
-## 6. Carousel Messages
-
-Send up to 10 scrollable cards with images/videos and buttons.
-
-### Example
-
-```typescript
-await sock.sendMessage(jid, {
-  text: 'Check out our products',
-  carousel: {
-    cards: [
-      // Card 1
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_interactive_helpers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "text": "💳 Pagamento via PIX\nValor: R$ 150,00\nPedido: #12345",
+    "footer": "Obrigado pela preferência!",
+    "buttons": [
       {
-        header: {
-          title: 'Product 1',
-          imageMessage: {
-            url: 'https://example.com/product1.jpg',
-            mimetype: 'image/jpeg'
-          },
-          hasMediaAttachment: true
-        },
-        body: { text: 'Amazing product - $99.90' },
-        footer: { text: 'Limited stock' },
-        nativeFlowMessage: {
-          buttons: [
-            {
-              name: 'quick_reply',
-              buttonParamsJson: JSON.stringify({
-                display_text: 'Buy Now',
-                id: 'buy_1'
-              })
-            },
-            {
-              name: 'cta_url',
-              buttonParamsJson: JSON.stringify({
-                display_text: 'More Info',
-                url: 'https://example.com/product1'
-              })
-            }
-          ]
-        }
+        "type": "call",
+        "text": "📞 Ligar Suporte",
+        "phoneNumber": "+5511900000002"
       },
-      // Card 2
       {
-        header: {
-          title: 'Product 2',
-          imageMessage: {
-            url: 'https://example.com/product2.jpg',
-            mimetype: 'image/jpeg'
+        "type": "copy",
+        "text": "📋 Copiar Chave PIX",
+        "copyCode": "00020126580014br.gov.bcb.pix0136123e4567-e89b-12d3-a456-426614174000"
+      },
+      {
+        "type": "url",
+        "text": "🔗 Ver Pedido",
+        "url": "https://sualoja.com.br/pedido/12345"
+      }
+    ]
+  }'
+```
+
+### Parâmetros de cada tipo de botão
+
+**Tipo `url`:**
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `type` | `"url"` | Tipo do botão |
+| `text` | string | Texto do botão |
+| `url` | string | URL a abrir (http/https) |
+
+**Tipo `copy`:**
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `type` | `"copy"` | Tipo do botão |
+| `text` | string | Texto do botão |
+| `copyCode` | string | Texto copiado ao clicar |
+
+**Tipo `call`:**
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `type` | `"call"` | Tipo do botão |
+| `text` | string | Texto do botão |
+| `phoneNumber` | string | Número a ligar (com +DDI) |
+
+### Webhook recebido ao clicar em URL
+
+```json
+{
+  "message": {
+    "interactiveResponseMessage": {
+      "body": { "text": "🔗 Ver Pedido" },
+      "nativeFlowResponseMessage": {
+        "name": "cta_open_url",
+        "paramsJson": "{\"url\":\"https://sualoja.com.br/pedido/12345\",\"from_notification\":false}"
+      }
+    }
+  }
+}
+```
+
+### Webhook recebido ao clicar em Copy
+
+```json
+{
+  "message": {
+    "interactiveResponseMessage": {
+      "nativeFlowResponseMessage": {
+        "name": "cta_copy",
+        "paramsJson": "{\"copy_code\":\"00020126580014br.gov.bcb.pix...\"}"
+      }
+    }
+  }
+}
+```
+
+### Como ler a resposta CTA
+
+```javascript
+function parseCTAReply(msg) {
+  const flow = msg.message?.interactiveResponseMessage?.nativeFlowResponseMessage
+  if (!flow) return null
+
+  const params = JSON.parse(flow.paramsJson || '{}')
+  switch (flow.name) {
+    case 'cta_open_url': return { action: 'url',  url: params.url }
+    case 'cta_copy':     return { action: 'copy', code: params.copy_code }
+    case 'cta_call':     return { action: 'call', phone: params.phone_number }
+    default:             return { action: flow.name, params }
+  }
+}
+```
+
+---
+
+## 4. Lista Dropdown
+
+Menu suspenso com seções e itens selecionáveis. Suporta até **10 seções × 3 linhas = 30 itens** no total.
+
+### Curl — Cardápio completo (10 seções, 30 itens)
+
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_list_helpers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "text": "Cardápio completo do restaurante.\nEscolha uma categoria abaixo:",
+    "footer": "Delivery grátis acima de R$ 50",
+    "buttonText": "Ver Cardápio",
+    "sections": [
+      {
+        "title": "Hambúrgueres",
+        "rows": [
+          {"id": "burger_1", "title": "Clássico",       "description": "Pão, carne 180g, queijo, alface, tomate - R$ 28,90"},
+          {"id": "burger_2", "title": "Bacon Lovers",   "description": "Pão, carne 180g, bacon crocante, cheddar - R$ 34,90"},
+          {"id": "burger_3", "title": "Veggie Burger",  "description": "Pão, hambúrguer de grão de bico, rúcula - R$ 32,90"}
+        ]
+      },
+      {
+        "title": "Pizzas",
+        "rows": [
+          {"id": "pizza_1", "title": "Margherita",   "description": "Molho de tomate, mussarela, manjericão - R$ 49,90"},
+          {"id": "pizza_2", "title": "Pepperoni",    "description": "Molho, mussarela, pepperoni fatiado - R$ 54,90"},
+          {"id": "pizza_3", "title": "Quatro Queijos","description": "Mussarela, gorgonzola, parmesão, brie - R$ 52,90"}
+        ]
+      },
+      {
+        "title": "Massas",
+        "rows": [
+          {"id": "massa_1", "title": "Espaguete Bolonhesa", "description": "Massa al dente com molho bolonhesa caseiro - R$ 38,90"},
+          {"id": "massa_2", "title": "Fettuccine Alfredo",  "description": "Fettuccine com molho branco cremoso - R$ 42,90"},
+          {"id": "massa_3", "title": "Lasanha Especial",    "description": "Camadas de massa, carne, presunto, queijo - R$ 45,90"}
+        ]
+      },
+      {
+        "title": "Saladas",
+        "rows": [
+          {"id": "salada_1", "title": "Caesar",   "description": "Alface romana, croutons, parmesão, molho - R$ 32,90"},
+          {"id": "salada_2", "title": "Tropical", "description": "Mix de folhas, manga, palmito, molho - R$ 29,90"},
+          {"id": "salada_3", "title": "Caprese",  "description": "Tomate, mussarela búfala, manjericão - R$ 34,90"}
+        ]
+      },
+      {
+        "title": "Frutos do Mar",
+        "rows": [
+          {"id": "mar_1", "title": "Camarão Grelhado", "description": "Camarões grelhados com manteiga e alho - R$ 62,90"},
+          {"id": "mar_2", "title": "Filé de Salmão",   "description": "Salmão grelhado com legumes no vapor - R$ 58,90"},
+          {"id": "mar_3", "title": "Moqueca de Peixe", "description": "Peixe, leite de coco, dendê, pimentão - R$ 55,90"}
+        ]
+      },
+      {
+        "title": "Sobremesas",
+        "rows": [
+          {"id": "doce_1", "title": "Petit Gâteau", "description": "Bolo de chocolate com sorvete de creme - R$ 28,90"},
+          {"id": "doce_2", "title": "Pudim",        "description": "Pudim de leite condensado tradicional - R$ 18,90"},
+          {"id": "doce_3", "title": "Açaí 500ml",   "description": "Açaí com granola, banana e leite ninho - R$ 24,90"}
+        ]
+      },
+      {
+        "title": "Bebidas",
+        "rows": [
+          {"id": "bebida_1", "title": "Refrigerante 350ml", "description": "Coca-Cola, Guaraná, Sprite, Fanta - R$ 6,90"},
+          {"id": "bebida_2", "title": "Suco Natural 500ml", "description": "Laranja, limão, maracujá, abacaxi - R$ 12,90"},
+          {"id": "bebida_3", "title": "Água Mineral",       "description": "Com ou sem gás 500ml - R$ 4,90"}
+        ]
+      },
+      {
+        "title": "Cervejas",
+        "rows": [
+          {"id": "cerveja_1", "title": "Pilsen 600ml",  "description": "Brahma, Skol, Antarctica - R$ 12,90"},
+          {"id": "cerveja_2", "title": "IPA 473ml",     "description": "Colorado, Lagunitas, Goose Island - R$ 18,90"},
+          {"id": "cerveja_3", "title": "Weiss 500ml",   "description": "Erdinger, Paulaner, Blue Moon - R$ 22,90"}
+        ]
+      },
+      {
+        "title": "Vinhos",
+        "rows": [
+          {"id": "vinho_1", "title": "Tinto Seco",   "description": "Cabernet Sauvignon, taça 150ml - R$ 25,90"},
+          {"id": "vinho_2", "title": "Branco Suave", "description": "Chardonnay, taça 150ml - R$ 23,90"},
+          {"id": "vinho_3", "title": "Rosé",         "description": "Rosé Provence, taça 150ml - R$ 27,90"}
+        ]
+      },
+      {
+        "title": "Combos",
+        "rows": [
+          {"id": "combo_1", "title": "Combo Single",  "description": "1 hambúrguer + batata + refri - R$ 39,90"},
+          {"id": "combo_2", "title": "Combo Casal",   "description": "2 hambúrgueres + batata grande + 2 refri - R$ 69,90"},
+          {"id": "combo_3", "title": "Combo Família", "description": "4 hambúrgueres + 2 batatas + jarra - R$ 119,90"}
+        ]
+      }
+    ]
+  }'
+```
+
+### Parâmetros
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `text` | string | ✅ | Texto da mensagem |
+| `footer` | string | ❌ | Rodapé |
+| `buttonText` | string | ✅ | Texto do botão que abre a lista (max 20 chars) |
+| `sections` | array | ✅ | Seções da lista (max 10) |
+| `sections[].title` | string | ✅ | Título da seção (max 24 chars) |
+| `sections[].rows` | array | ✅ | Itens da seção (max 3 por seção) |
+| `rows[].id` | string | ✅ | ID do item (retornado no webhook) |
+| `rows[].title` | string | ✅ | Título do item (max 24 chars) |
+| `rows[].description` | string | ❌ | Descrição do item (max 72 chars) |
+
+### Webhook recebido ao selecionar item
+
+```json
+{
+  "message": {
+    "interactiveResponseMessage": {
+      "body": { "text": "Clássico" },
+      "nativeFlowResponseMessage": {
+        "name": "single_select",
+        "paramsJson": "{\"id\":\"burger_1\",\"title\":\"Clássico\"}"
+      }
+    }
+  }
+}
+```
+
+### Como ler a resposta
+
+```javascript
+function parseListReply(msg) {
+  const flow = msg.message?.interactiveResponseMessage?.nativeFlowResponseMessage
+  if (flow?.name !== 'single_select') return null
+
+  const params = JSON.parse(flow.paramsJson || '{}')
+  return {
+    id:    params.id,
+    title: params.title
+  }
+}
+
+// Exemplo: { id: 'burger_1', title: 'Clássico' }
+```
+
+---
+
+## 5. Enquete / Poll
+
+Enquete nativa do WhatsApp. Funciona em todas as plataformas sem restrições. O usuário seleciona uma ou mais opções e o resultado é atualizado em tempo real.
+
+### Curl
+
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_poll \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "name": "Qual sua linguagem favorita?",
+    "options": ["JavaScript", "Python", "TypeScript", "Go"],
+    "selectableCount": 1
+  }'
+```
+
+### Parâmetros
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `name` | string | ✅ | Pergunta da enquete |
+| `options` | string[] | ✅ | Opções (min 2, max 12) |
+| `selectableCount` | number | ✅ | Quantas opções o usuário pode marcar (0 = ilimitado) |
+
+### Webhook recebido ao votar
+
+```json
+{
+  "event": "messages.upsert",
+  "data": {
+    "messages": [{
+      "key": { "remoteJid": "5511900000001@s.whatsapp.net" },
+      "message": {
+        "pollUpdateMessage": {
+          "pollCreationMessageKey": {
+            "id": "ID_DA_ENQUETE_ORIGINAL"
           },
-          hasMediaAttachment: true
-        },
-        body: { text: 'Great deal - $149.90' },
-        footer: { text: 'Best seller' },
-        nativeFlowMessage: {
-          buttons: [
-            {
-              name: 'quick_reply',
-              buttonParamsJson: JSON.stringify({
-                display_text: 'Buy Now',
-                id: 'buy_2'
-              })
-            }
-          ]
+          "vote": {
+            "selectedOptions": ["TypeScript"]
+          }
         }
       }
-    ],
-    messageVersion: 1
+    }]
   }
-})
-```
-
-### Limits
-
-- Maximum 10 cards per carousel
-- Each card requires an image or video
-- Up to 3 buttons per card
-- All cards must have same media type (all images or all videos)
-
----
-
-## Metrics and Monitoring
-
-All interactive messages are tracked with Prometheus metrics:
-
-### Available Metrics
-
-```typescript
-// Messages sent by type
-metrics.interactiveMessagesSent.inc({ type: 'buttons' })
-
-// Successful sends
-metrics.interactiveMessagesSuccess.inc({ type: 'list' })
-
-// Failures with reason
-metrics.interactiveMessagesFailures.inc({
-  type: 'template',
-  reason: 'feature_disabled'
-})
-
-// Send latency
-metrics.interactiveMessagesLatency.observe({ type: 'carousel' }, 1234)
-```
-
-### Monitoring Dashboard
-
-Query these metrics in Prometheus/Grafana:
-
-```promql
-# Total interactive messages sent
-sum(interactive_messages_sent_total) by (type)
-
-# Success rate
-sum(interactive_messages_success_total) / sum(interactive_messages_sent_total)
-
-# Failure breakdown
-sum(interactive_messages_failures_total) by (type, reason)
-
-# P95 latency
-histogram_quantile(0.95, interactive_messages_latency_ms)
-```
-
----
-
-## Handling Responses
-
-### Button Response
-
-```typescript
-sock.ev.on('messages.upsert', async ({ messages }) => {
-  const msg = messages[0]
-
-  // Button response
-  if (msg.message?.buttonsResponseMessage) {
-    const buttonId = msg.message.buttonsResponseMessage.selectedButtonId
-    const displayText = msg.message.buttonsResponseMessage.selectedDisplayText
-
-    console.log(`User clicked: ${buttonId} - "${displayText}"`)
-  }
-
-  // Template button response
-  if (msg.message?.templateButtonReplyMessage) {
-    const selectedId = msg.message.templateButtonReplyMessage.selectedId
-    const selectedText = msg.message.templateButtonReplyMessage.selectedDisplayText
-
-    console.log(`User clicked template: ${selectedId} - "${selectedText}"`)
-  }
-
-  // List response
-  if (msg.message?.listResponseMessage) {
-    const rowId = msg.message.listResponseMessage.singleSelectReply.selectedRowId
-    const title = msg.message.listResponseMessage.title
-
-    console.log(`User selected from list: ${rowId} - "${title}"`)
-  }
-})
-```
-
----
-
-## Troubleshooting
-
-### Message Not Showing
-
-- ✅ Verify `enableInteractiveMessages` is `true`
-- ✅ Check logs for `[EXPERIMENTAL]` warnings
-- ✅ Ensure you're using a test/disposable account
-- ❌ Interactive messages don't work on production accounts
-
-### Account Banned/Restricted
-
-- ⚠️ This is expected behavior
-- ⚠️ WhatsApp blocks non-business accounts
-- ✅ Create a new test account
-- ✅ Use official WhatsApp Business API for production
-
-### Metrics Not Showing
-
-Check feature flag:
-```typescript
-if (buttonType && !enableInteractiveMessages) {
-  // Metrics will show reason: 'feature_disabled'
 }
 ```
 
----
+### Como ler a resposta
 
-## Migration to WhatsApp Business API
+```javascript
+function parsePollVote(msg) {
+  const poll = msg.message?.pollUpdateMessage
+  if (!poll) return null
 
-For production use, migrate to official API:
-
-### Evolution API (Cloud Mode)
-
-```typescript
-// config.ts
-export const evolutionConfig = {
-  apiUrl: 'https://your-evolution-api.com',
-  apiKey: 'your-api-key',
-  instance: 'your-instance'
+  return {
+    pollId:          poll.pollCreationMessageKey?.id,
+    selectedOptions: poll.vote?.selectedOptions || []
+  }
 }
 
-// Send button via Evolution API
-await fetch(`${evolutionConfig.apiUrl}/message/sendButton`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'apikey': evolutionConfig.apiKey
-  },
-  body: JSON.stringify({
-    number: '5511999999999',
-    options: {
-      delay: 1200,
-      presence: 'composing'
-    },
-    buttonMessage: {
-      text: 'Choose an option',
-      buttons: [
-        { id: '1', text: 'Option 1' },
-        { id: '2', text: 'Option 2' }
-      ],
-      footer: 'Footer text'
+// Exemplo: { pollId: '3EB0...', selectedOptions: ['TypeScript'] }
+```
+
+---
+
+## 6. Apenas Botões Reply sem CTA
+
+Botões simples de confirmação/seleção sem nenhum botão de ação externa.
+
+### Curl
+
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_buttons_helpers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "text": "Confirma o pedido #12345?",
+    "footer": "Pedido no valor de R$ 150,00",
+    "buttons": [
+      {"id": "confirmar", "text": "✅ Confirmar"},
+      {"id": "cancelar",  "text": "❌ Cancelar"},
+      {"id": "adiar",     "text": "⏰ Adiar"}
+    ]
+  }'
+```
+
+O webhook e a leitura da resposta seguem o mesmo padrão da [Seção 2](#2-botões-quick-reply).
+
+---
+
+## 7. Apenas CTAs sem Quick Reply
+
+Mensagem com somente botões de ação (URL / Call) sem botões de resposta rápida.
+
+### Curl
+
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_interactive_helpers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "text": "🏪 Loja Virtual\nConfira nossos canais de atendimento:",
+    "footer": "Atendimento 24h",
+    "buttons": [
+      {"type": "url",  "text": "🌐 Site Oficial",     "url": "https://www.sualoja.com.br"},
+      {"type": "url",  "text": "📸 Instagram",         "url": "https://instagram.com/sualoja"},
+      {"type": "call", "text": "📞 WhatsApp Vendas",   "phoneNumber": "+5511900000002"}
+    ]
+  }'
+```
+
+O webhook e a leitura da resposta seguem o mesmo padrão da [Seção 3](#3-botões-cta--url-copy-call).
+
+---
+
+## 8. Carrossel com Imagens
+
+Cards deslizáveis com imagem, texto e botões. Suporta até **10 cards**, cada um com até **2 botões**. Renderiza nativamente em Android, iOS e WA Web.
+
+### Curl — 10 cards (limite máximo)
+
+```bash
+curl -X POST https://sua-api.com/v1/messages/send_carousel_helpers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: SEU_API_KEY" \
+  -d '{
+    "instance": "minha-instancia",
+    "to": "5511900000001",
+    "text": "🛍️ Ofertas Especiais",
+    "footer": "Loja Virtual — Entrega Grátis",
+    "cards": [
+      {
+        "body": "iPhone 15 Pro Max 256GB\nR$ 8.999,00 à vista\n12x R$ 833,25",
+        "footer": "Frete Grátis",
+        "imageUrl": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400",
+        "buttons": [{"id": "buy_1", "text": "Comprar"}, {"id": "info_1", "text": "Detalhes"}]
+      },
+      {
+        "body": "MacBook Air M3 8GB 256GB\nR$ 12.499,00 à vista\n12x R$ 1.166,58",
+        "footer": "Garantia 1 ano",
+        "imageUrl": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400",
+        "buttons": [{"id": "buy_2", "text": "Comprar"}, {"id": "info_2", "text": "Detalhes"}]
+      },
+      {
+        "body": "Apple Watch Series 9 45mm\nR$ 5.299,00 à vista\n12x R$ 491,58",
+        "footer": "Pronta Entrega",
+        "imageUrl": "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400",
+        "buttons": [{"id": "buy_3", "text": "Comprar"}, {"id": "info_3", "text": "Detalhes"}]
+      },
+      {
+        "body": "AirPods Pro 2ª Geração\nR$ 2.499,00 à vista\n12x R$ 233,25",
+        "footer": "Cancelamento de Ruído",
+        "imageUrl": "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=400",
+        "buttons": [{"id": "buy_4", "text": "Comprar"}, {"id": "info_4", "text": "Detalhes"}]
+      },
+      {
+        "body": "iPad Pro M2 11pol 128GB\nR$ 9.999,00 à vista\n12x R$ 916,58",
+        "footer": "Chip M2",
+        "imageUrl": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400",
+        "buttons": [{"id": "buy_5", "text": "Comprar"}, {"id": "info_5", "text": "Detalhes"}]
+      },
+      {
+        "body": "Samsung Galaxy S24 Ultra\nR$ 7.499,00 à vista\n12x R$ 691,58",
+        "footer": "Câmera 200MP",
+        "imageUrl": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400",
+        "buttons": [{"id": "buy_6", "text": "Comprar"}, {"id": "info_6", "text": "Detalhes"}]
+      },
+      {
+        "body": "Sony WH-1000XM5\nR$ 2.299,00 à vista\n12x R$ 208,25",
+        "footer": "Melhor ANC do mercado",
+        "imageUrl": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400",
+        "buttons": [{"id": "buy_7", "text": "Comprar"}, {"id": "info_7", "text": "Detalhes"}]
+      },
+      {
+        "body": "Nintendo Switch OLED\nR$ 2.699,00 à vista\n12x R$ 249,92",
+        "footer": "Com Joy-Con",
+        "imageUrl": "https://images.unsplash.com/photo-1578303512597-81e6cc155b3e?w=400",
+        "buttons": [{"id": "buy_8", "text": "Comprar"}, {"id": "info_8", "text": "Detalhes"}]
+      },
+      {
+        "body": "PlayStation 5 Slim\nR$ 4.499,00 à vista\n12x R$ 416,58",
+        "footer": "1TB SSD",
+        "imageUrl": "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=400",
+        "buttons": [{"id": "buy_9", "text": "Comprar"}, {"id": "info_9", "text": "Detalhes"}]
+      },
+      {
+        "body": "DJI Mini 4 Pro Drone\nR$ 6.999,00 à vista\n12x R$ 641,58",
+        "footer": "4K 60fps",
+        "imageUrl": "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=400",
+        "buttons": [{"id": "buy_10", "text": "Comprar"}, {"id": "info_10", "text": "Detalhes"}]
+      }
+    ]
+  }'
+```
+
+### Parâmetros
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `text` | string | ✅ | Texto acima do carrossel |
+| `footer` | string | ❌ | Rodapé |
+| `cards` | array | ✅ | Cards (min 2, max 10) |
+| `cards[].body` | string | ✅ | Texto do card |
+| `cards[].footer` | string | ❌ | Rodapé do card |
+| `cards[].imageUrl` | string | ✅ | URL da imagem do card |
+| `cards[].buttons` | array | ✅ | Botões do card (max 2) |
+| `buttons[].id` | string | ✅ | ID do botão |
+| `buttons[].text` | string | ✅ | Texto do botão |
+
+### Webhook recebido ao clicar em botão do carrossel
+
+```json
+{
+  "message": {
+    "interactiveResponseMessage": {
+      "body": { "text": "Comprar" },
+      "nativeFlowResponseMessage": {
+        "name": "quick_reply",
+        "paramsJson": "{\"id\":\"buy_3\"}"
+      }
     }
-  })
-})
+  }
+}
+```
+
+### Como ler a resposta
+
+```javascript
+function parseCarouselReply(msg) {
+  const flow = msg.message?.interactiveResponseMessage?.nativeFlowResponseMessage
+  if (flow?.name !== 'quick_reply') return null
+
+  const params = JSON.parse(flow.paramsJson || '{}')
+  return {
+    buttonId:   params.id,
+    buttonText: msg.message.interactiveResponseMessage.body?.text
+  }
+}
+
+// Exemplo: { buttonId: 'buy_3', buttonText: 'Comprar' }
 ```
 
 ---
 
-## References
+## 9. Como Consumir Respostas via Webhook
 
-- [WhatsApp Official Business API](https://business.whatsapp.com/products/business-platform)
-- [Evolution API Documentation](https://doc.evolution-api.com/)
-- [Baileys GitHub Issues #56](https://github.com/WhiskeySockets/Baileys/issues/56)
-- [Baileys GitHub Issues #25](https://github.com/WhiskeySockets/Baileys/issues/25)
+### 9.1 Estrutura geral do evento
+
+```json
+{
+  "event": "messages.upsert",
+  "instance": "minha-instancia",
+  "data": {
+    "messages": [{ ...mensagem... }],
+    "type": "notify"
+  }
+}
+```
+
+### 9.2 Roteador universal de respostas interativas
+
+```javascript
+function parseInteractiveReply(msg) {
+  const interactive = msg.message?.interactiveResponseMessage
+  if (!interactive) return null
+
+  const flow = interactive.nativeFlowResponseMessage
+  const body = interactive.body?.text
+  const params = JSON.parse(flow?.paramsJson || '{}')
+
+  switch (flow?.name) {
+    // Botão quick_reply ou carrossel
+    case 'quick_reply':
+      return { type: 'button', id: params.id, text: body }
+
+    // Lista dropdown
+    case 'single_select':
+      return { type: 'list', id: params.id, title: params.title }
+
+    // CTA — abrir URL
+    case 'cta_open_url':
+      return { type: 'url', url: params.url }
+
+    // CTA — copiar código
+    case 'cta_copy':
+      return { type: 'copy', code: params.copy_code }
+
+    // CTA — ligar
+    case 'cta_call':
+      return { type: 'call', phone: params.phone_number }
+
+    default:
+      return { type: 'unknown', name: flow?.name, params }
+  }
+}
+```
+
+### 9.3 Enquete — roteador
+
+```javascript
+function parsePollUpdate(msg) {
+  const poll = msg.message?.pollUpdateMessage
+  if (!poll) return null
+
+  return {
+    type:            'poll_vote',
+    pollId:          poll.pollCreationMessageKey?.id,
+    selectedOptions: poll.vote?.selectedOptions || []
+  }
+}
+```
+
+### 9.4 Handler completo de webhook
+
+```javascript
+app.post('/webhook', (req, res) => {
+  const { event, instance, data } = req.body
+
+  if (event !== 'messages.upsert') return res.sendStatus(200)
+
+  for (const msg of data.messages) {
+    const from = msg.key.remoteJid.replace('@s.whatsapp.net', '')
+    const fromMe = msg.key.fromMe
+
+    if (fromMe) continue // ignora mensagens enviadas pela própria instância
+
+    // Verificar tipo de resposta interativa
+    const reply = parseInteractiveReply(msg) || parsePollUpdate(msg)
+
+    if (reply) {
+      console.log(`[${instance}] Resposta de ${from}:`, reply)
+      handleInteractiveReply(instance, from, reply)
+    }
+  }
+
+  res.sendStatus(200)
+})
+
+function handleInteractiveReply(instance, from, reply) {
+  switch (reply.type) {
+    case 'button':
+      console.log(`Botão clicado: ${reply.id} — "${reply.text}"`)
+      break
+    case 'list':
+      console.log(`Item selecionado: ${reply.id} — "${reply.title}"`)
+      break
+    case 'url':
+      console.log(`URL aberta: ${reply.url}`)
+      break
+    case 'copy':
+      console.log(`Código copiado: ${reply.code}`)
+      break
+    case 'poll_vote':
+      console.log(`Voto em enquete ${reply.pollId}:`, reply.selectedOptions)
+      break
+  }
+}
+```
 
 ---
 
-## ⚠️ Final Reminder
+## 10. Limites e Restrições
 
-**THESE FEATURES ARE EXPERIMENTAL AND UNRELIABLE**
+### Limites por tipo
 
-- Use only for testing
-- Expect failures and bans
-- Not suitable for production
-- Official WhatsApp Business API is the only supported way
+| Tipo | Limite |
+|---|---|
+| Botões Quick Reply | Testado com até 16 botões |
+| Lista — seções | Máximo 10 seções |
+| Lista — itens por seção | Máximo 3 itens |
+| Lista — total de itens | Máximo 30 itens |
+| Lista — título de seção | Máximo 24 caracteres |
+| Lista — título de item | Máximo 24 caracteres |
+| Lista — descrição de item | Máximo 72 caracteres |
+| Lista — texto do botão | Máximo 20 caracteres |
+| Carrossel — cards | Mínimo 2, máximo 10 |
+| Carrossel — botões por card | Máximo 2 botões |
+| Poll — opções | Mínimo 2, máximo 12 |
 
----
+### Restrições de conta
 
-**Generated by rsalcara/InfiniteAPI**
+| Restrição | Detalhe |
+|---|---|
+| Conta hosted (Meta Business Cloud API) | Mensagens interativas podem ser bloqueadas pelo servidor WA — política do servidor, sem workaround |
+| Conta pessoal (não-Business) | Servidor WA pode rejeitar o envio de mensagens interativas |
+| Conta Business não verificada | Funciona, mas pode ter limitações de alcance |

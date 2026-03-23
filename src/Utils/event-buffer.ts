@@ -1,4 +1,5 @@
 import EventEmitter from 'events'
+import { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEvent,
 	BaileysEventEmitter,
@@ -890,6 +891,7 @@ const makeBufferData = (): BufferedEventData => {
 			chats: {},
 			messages: {},
 			contacts: {},
+			pastParticipants: {},
 			isLatest: false,
 			empty: true
 		},
@@ -964,6 +966,28 @@ function append<E extends BufferableEvent>(
 					historyCache.add(key)
 				} else {
 					historyCache.touch(key)
+				}
+			}
+
+			// Merge pastParticipants with deduplication by groupJid and by userJid within each group.
+			// Multiple HistorySync chunks can carry the same group -- we merge rather than concatenate
+			// to avoid duplicate entries in the final event delivered to the consumer.
+			for (const group of (eventData.pastParticipants ?? []) as proto.IPastParticipants[]) {
+				const groupJid = group.groupJid
+				if (!groupJid) continue
+
+				if (!data.historySets.pastParticipants[groupJid]) {
+					data.historySets.pastParticipants[groupJid] = []
+				}
+
+				const existing = data.historySets.pastParticipants[groupJid]
+				const seenJids = new Set(existing.map(p => p.userJid).filter(Boolean))
+
+				for (const participant of (group.pastParticipants ?? []) as proto.IPastParticipant[]) {
+					if (participant.userJid && !seenJids.has(participant.userJid)) {
+						existing.push(participant)
+						seenJids.add(participant.userJid)
+					}
 				}
 			}
 
@@ -1292,6 +1316,10 @@ function consolidateEvents(data: BufferedEventData) {
 			chats: Object.values(data.historySets.chats),
 			messages: Object.values(data.historySets.messages),
 			contacts: Object.values(data.historySets.contacts),
+			// Convert dedup map back to array. Each entry has groupJid + participants (all unique userJids).
+			pastParticipants: Object.entries(data.historySets.pastParticipants).map(
+				([groupJid, participants]) => ({ groupJid, pastParticipants: participants })
+			),
 			syncType: data.historySets.syncType,
 			progress: data.historySets.progress,
 			isLatest: data.historySets.isLatest,

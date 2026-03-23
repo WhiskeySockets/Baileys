@@ -701,10 +701,12 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		}
 
-		// Prevent multiple concurrent uploads
+		// Prevent multiple concurrent uploads — if one is already running, wait for it and return:
+		// the concurrent upload already replenished the pool, so there is nothing left to do.
 		if (uploadPreKeysPromise) {
 			logger.debug('Pre-key upload already in progress, waiting for completion')
 			await uploadPreKeysPromise
+			return
 		}
 
 		const uploadLogic = async () => {
@@ -784,14 +786,15 @@ export const makeSocket = (config: SocketConfig) => {
 		try {
 			let count = 0
 			const preKeyCount = await getAvailablePreKeysOnServer()
-			if (preKeyCount === 0) count = INITIAL_PREKEY_COUNT
-			else count = MIN_PREKEY_COUNT
+			// How many to upload: top-up to INITIAL_PREKEY_COUNT from whatever remains on server
+			count = Math.max(0, INITIAL_PREKEY_COUNT - preKeyCount)
 			const { exists: currentPreKeyExists, currentPreKeyId } = await verifyCurrentPreKeyExists()
 
 			logger.info(`${preKeyCount} pre-keys found on server`)
 			logger.info(`Current prekey ID: ${currentPreKeyId}, exists in storage: ${currentPreKeyExists}`)
 
-			const lowServerCount = preKeyCount <= count
+			// Trigger upload when below the replenishment threshold, not when count < topUp amount
+			const lowServerCount = preKeyCount < MIN_PREKEY_COUNT
 			const missingCurrentPreKey = !currentPreKeyExists && currentPreKeyId > 0
 
 			const shouldUpload = lowServerCount || missingCurrentPreKey
@@ -1151,7 +1154,7 @@ export const makeSocket = (config: SocketConfig) => {
 		// Decrement active connections
 		decrementActiveConnections()
 
-		clearInterval(keepAliveReq)
+		clearTimeout(keepAliveReq)
 		clearTimeout(qrTimer)
 
 		// Clear offline-buffer safety timer so its callback cannot call ev.flush()
@@ -1262,8 +1265,16 @@ export const makeSocket = (config: SocketConfig) => {
 		})
 	}
 
-	const startKeepAliveRequest = () =>
-		(keepAliveReq = setInterval(() => {
+	const startKeepAliveRequest = () => {
+		// Use recursive setTimeout with ±15% jitter to match WA Desktop behaviour
+		// (WA Business Desktop: ~25-30s intervals with natural variance)
+		const scheduleNextKeepAlive = () => {
+			const jitter = keepAliveIntervalMs * 0.15
+			const delay = keepAliveIntervalMs + Math.floor((Math.random() * 2 - 1) * jitter)
+			keepAliveReq = setTimeout(onKeepAliveTick, delay)
+		}
+
+		const onKeepAliveTick = () => {
 			if (!lastDateRecv) {
 				lastDateRecv = new Date()
 			}
@@ -1275,6 +1286,7 @@ export const makeSocket = (config: SocketConfig) => {
 			*/
 			if (diff > keepAliveIntervalMs + 5000) {
 				void end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
+				return // connection closing — do not reschedule
 			} else if (ws.isOpen) {
 				// Send keep-alive ping via sendNode() (fire-and-forget) instead of query().
 				// query() wraps the ping in the query circuit breaker — when that breaker is
@@ -1297,7 +1309,15 @@ export const makeSocket = (config: SocketConfig) => {
 			} else {
 				logger.warn('keep alive called when WS not open')
 			}
-		}, keepAliveIntervalMs))
+
+			// Do not reschedule once shutdown has started (closed set by end() on any concurrent path)
+			if (!closed) {
+				scheduleNextKeepAlive()
+			}
+		}
+
+		scheduleNextKeepAlive()
+	}
 	/** i have no idea why this exists. pls enlighten me */
 	const sendPassiveIq = (tag: 'passive' | 'active') =>
 		query({
