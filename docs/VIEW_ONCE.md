@@ -9,7 +9,23 @@
 
 Mensagem de visualização única é um tipo especial de mídia (imagem, vídeo ou áudio) que o destinatário pode abrir apenas uma vez. Após abrir, o conteúdo some permanentemente.
 
-**Comportamento em cada dispositivo após envio via API:**
+---
+
+> ## ⚠️ RESTRIÇÃO CRÍTICA — Contas Hosted (Meta Business Cloud API)
+>
+> **Contas registradas como "hosted" na Meta Business Cloud API têm view-once bloqueado pelo servidor do WhatsApp.**
+>
+> Essa restrição se aplica a **todos os clientes** (Android, iOS, WA Web) e **não há como contornar por código** — é uma política imposta diretamente pelo servidor WA para contas hosted.
+>
+> **Como identificar se sua conta é hosted:**
+> - A conta foi criada via Meta Business Cloud API (WABA)
+> - Aparece como "Meta" ou "Business Cloud" nas configurações do WhatsApp Business Manager
+>
+> **Contas não-hosted** (registradas diretamente via QR code ou pair code) **funcionam normalmente** com view-once.
+
+---
+
+**Comportamento em cada dispositivo após envio via API (contas não-hosted):**
 
 | Dispositivo | O que aparece |
 |---|---|
@@ -489,6 +505,7 @@ Destinatário envia view-once de volta para a API
 
 | Situação | Comportamento | Motivo |
 |---|---|---|
+| **Conta hosted (Meta Business Cloud API)** | **View-once bloqueado para todos os clientes** | **Política do servidor WA para contas hosted — sem workaround** |
 | WA Web do remetente | "Aguardando mensagem. Abra no celular." | Servidor WA só aceita `<unavailable>` vindo do celular principal, não de companions |
 | View-once de documento/sticker | Não suportado | Limitação do protocolo WA — só imagem, vídeo e áudio |
 | `error_479` nos logs | Normal, não é erro | TcToken é atualizado após o envio de view-once |
