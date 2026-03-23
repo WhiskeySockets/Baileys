@@ -254,7 +254,9 @@ export const prepareWAMessageMedia = async (
 		(async () => {
 			const result = await options.upload(encFilePath, {
 				fileEncSha256B64,
-				mediaType,
+				// Use mediaTypeOverride for upload path (e.g. 'viewonce-image' → /o1/mms/image)
+				// Encryption already used the override via encryptedStream above
+				mediaType: options.mediaTypeOverride || mediaType,
 				timeoutMs: options.mediaUploadTimeoutMs
 			})
 			logger?.debug({ mediaType, cacheableKey }, 'uploaded media')
@@ -1747,22 +1749,49 @@ export const generateWAMessageContent = async (
 			}
 		}
 	} else {
-		m = await prepareWAMessageMedia(message, options)
+		// For view-once media, upload to the one-time CDN (/o1/mms/*) instead of regular CDN
+		// WA Web view-once messages always have directPath: /o1/v/t24/... (not /v/t62.7118-24/...)
+		// Using the wrong CDN causes WA server to flag the account and breaks view-once capability
+		const isViewOnce = hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce
+		const viewOnceTypeMap: Record<string, string> = {
+			image: 'viewonce-image',
+			video: 'viewonce-video',
+			audio: 'viewonce-audio'
+		}
+		const viewOnceOverride = isViewOnce
+			? viewOnceTypeMap[Object.keys(message).find(k => k in viewOnceTypeMap) || '']
+			: undefined
+		m = await prepareWAMessageMedia(message, {
+			...options,
+			mediaTypeOverride: (viewOnceOverride as any) || options.mediaTypeOverride
+		})
 	}
 
 	if (hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) {
-		m = { viewOnceMessage: { message: m } }
+		// Also set viewOnce=true on the inner media message (required by WA app to render as view-once)
+		if (m.imageMessage) m.imageMessage.viewOnce = true
+		else if (m.videoMessage) m.videoMessage.viewOnce = true
+		else if (m.audioMessage) m.audioMessage.viewOnce = true
+		// Use viewOnceMessageV2 (field 55) — modern WA clients use this wrapper
+		// viewOnceMessage (field 37) is the old format which WA server no longer accepts with view_once_write
+		m = { viewOnceMessageV2: { message: m } }
 	}
 
-	if (hasOptionalProperty(message, 'mentions') && message.mentions?.length) {
+	if (
+		(hasOptionalProperty(message, 'mentions') && message.mentions?.length) ||
+		(hasOptionalProperty(message, 'mentionAll') && message.mentionAll)
+	) {
 		const messageType = Object.keys(m)[0] as Extract<keyof proto.IMessage, MessageWithContextInfo>
 		if (messageType) {
 			const key = m[messageType]
-			if (key && 'contextInfo' in key && !!key.contextInfo) {
-				key.contextInfo.mentionedJid = message.mentions
-			} else if (key) {
-				key.contextInfo = {
-					mentionedJid: message.mentions
+			if (key && 'contextInfo' in key) {
+				key.contextInfo = key.contextInfo || {}
+				if (message.mentions?.length) {
+					key.contextInfo.mentionedJid = message.mentions
+				}
+
+				if (message.mentionAll) {
+					key.contextInfo.nonJidMentions = 1
 				}
 			}
 		}

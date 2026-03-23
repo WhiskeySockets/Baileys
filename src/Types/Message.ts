@@ -155,6 +155,7 @@ export type MessageReceiptType =
 	| 'sender'
 	| 'inactive'
 	| 'played'
+	| 'view_once_read'
 	| undefined
 
 export type MediaConnInfo = {
@@ -178,6 +179,8 @@ export interface WAUrlInfo {
 type Mentionable = {
 	/** list of jids that are mentioned in the accompanying text */
 	mentions?: string[]
+	/** mention all participants in the group */
+	mentionAll?: boolean
 }
 type Contextable = {
 	/** add contextInfo to the message */
