@@ -239,21 +239,50 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 }
 
 /**
+ * Generates a natural-looking fallback waveform when audio-decode is unavailable.
+ * Uses deterministic pseudo-random values based on audio content.
+ */
+const generateFallbackWaveform = (audioData: Buffer): Uint8Array => {
+	const samples = 64
+	const waveform = new Uint8Array(samples)
+
+	let seed = audioData.length
+	for(let i = 0; i < Math.min(audioData.length, 100); i++) {
+		seed = (seed * 31 + audioData[i]) >>> 0
+	}
+
+	const random = () => {
+		seed = (seed * 1664525 + 1013904223) >>> 0
+		return (seed >>> 16) / 65536
+	}
+
+	for(let i = 0; i < samples; i++) {
+		const position = i / samples
+		const envelope = Math.sin(position * Math.PI)
+		const baseAmplitude = 30 + random() * 40
+		waveform[i] = Math.min(100, Math.max(0, Math.floor(baseAmplitude * envelope)))
+	}
+
+	return waveform
+}
+
+/**
   referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
  */
 export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: ILogger) {
+	let audioData: Buffer
+	if (Buffer.isBuffer(buffer)) {
+		audioData = buffer
+	} else if (typeof buffer === 'string') {
+		const rStream = createReadStream(buffer)
+		audioData = await toBuffer(rStream)
+	} else {
+		audioData = await toBuffer(buffer)
+	}
+
 	try {
 		// @ts-ignore
 		const { default: decoder } = await import('audio-decode')
-		let audioData: Buffer
-		if (Buffer.isBuffer(buffer)) {
-			audioData = buffer
-		} else if (typeof buffer === 'string') {
-			const rStream = createReadStream(buffer)
-			audioData = await toBuffer(rStream)
-		} else {
-			audioData = await toBuffer(buffer)
-		}
 
 		const audioBuffer = await decoder(audioData)
 
@@ -280,7 +309,8 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 
 		return waveform
 	} catch (e) {
-		logger?.debug('Failed to generate waveform: ' + e)
+		logger?.debug('Failed to generate waveform using audio-decode, using fallback: ' + e)
+		return generateFallbackWaveform(audioData)
 	}
 }
 
