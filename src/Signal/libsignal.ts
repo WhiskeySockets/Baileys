@@ -431,35 +431,6 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
  */
 const PREKEY_GRACE_PERIOD_MS = 5 * 60 * 1000 // 5 minutes
 const PREKEY_CLEANUP_INTERVAL_MS = 60_000 // 1 minute
-const pendingPreKeyDeletions = new Map<string, { id: number; expiry: number; keys: SignalAuthState['keys'] }>()
-
-let preKeyCleanupTimer: ReturnType<typeof setInterval> | undefined
-
-function ensurePreKeyCleanup() {
-	if (preKeyCleanupTimer) {
-		return
-	}
-
-	preKeyCleanupTimer = setInterval(() => {
-		const now = Date.now()
-		for (const [key, entry] of pendingPreKeyDeletions) {
-			if (now >= entry.expiry) {
-				void entry.keys.set({ 'pre-key': { [entry.id]: null } })
-				pendingPreKeyDeletions.delete(key)
-			}
-		}
-
-		if (pendingPreKeyDeletions.size === 0 && preKeyCleanupTimer) {
-			clearInterval(preKeyCleanupTimer)
-			preKeyCleanupTimer = undefined
-		}
-	}, PREKEY_CLEANUP_INTERVAL_MS)
-
-	// Don't block process exit
-	if (preKeyCleanupTimer && typeof preKeyCleanupTimer === 'object' && 'unref' in preKeyCleanupTimer) {
-		preKeyCleanupTimer.unref()
-	}
-}
 
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
@@ -469,6 +440,35 @@ function signalStorage(
 		loadIdentityKey(id: string): Promise<Uint8Array | undefined>
 		saveIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
 	} {
+	// Scoped per-instance to prevent multi-account collisions
+	const pendingPreKeyDeletions = new Map<number, number>() // preKeyId → expiry timestamp
+	let preKeyCleanupTimer: ReturnType<typeof setInterval> | undefined
+
+	function ensurePreKeyCleanup() {
+		if (preKeyCleanupTimer) {
+			return
+		}
+
+		preKeyCleanupTimer = setInterval(() => {
+			const now = Date.now()
+			for (const [id, expiry] of pendingPreKeyDeletions) {
+				if (now >= expiry) {
+					void keys.set({ 'pre-key': { [id]: null } })
+					pendingPreKeyDeletions.delete(id)
+				}
+			}
+
+			if (pendingPreKeyDeletions.size === 0 && preKeyCleanupTimer) {
+				clearInterval(preKeyCleanupTimer)
+				preKeyCleanupTimer = undefined
+			}
+		}, PREKEY_CLEANUP_INTERVAL_MS)
+
+		// Don't block process exit
+		if (preKeyCleanupTimer && typeof preKeyCleanupTimer === 'object' && 'unref' in preKeyCleanupTimer) {
+			preKeyCleanupTimer.unref()
+		}
+	}
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
@@ -556,8 +556,7 @@ function signalStorage(
 		removePreKey: (id: number) => {
 			// Delay pre-key deletion so retransmissions using the same
 			// pre-key ID can still decrypt during the grace period.
-			const key = `${id}`
-			pendingPreKeyDeletions.set(key, { id, expiry: Date.now() + PREKEY_GRACE_PERIOD_MS, keys })
+			pendingPreKeyDeletions.set(id, Date.now() + PREKEY_GRACE_PERIOD_MS)
 			ensurePreKeyCleanup()
 		},
 		loadSignedPreKey: () => {
