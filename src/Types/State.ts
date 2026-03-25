@@ -76,31 +76,32 @@ export enum ReachoutTimelockEnforcementType {
 }
 
 export enum NewChatMessageCappingStatusType {
-	NONE,
-	FIRST_WARNING,
-	SECOND_WARNING,
-	CAPPED
+	NONE = 'NONE',
+	FIRST_WARNING = 'FIRST_WARNING',
+	SECOND_WARNING = 'SECOND_WARNING',
+	CAPPED = 'CAPPED'
 }
 
 export enum NewChatMessageCappingMVStatusType {
-	NOT_ELIGIBLE,
-	NOT_ACTIVE,
-	ACTIVE,
-	ACTIVE_UPGRADE_AVAILABLE
+	NOT_ELIGIBLE = 'NOT_ELIGIBLE',
+	NOT_ACTIVE = 'NOT_ACTIVE',
+	ACTIVE = 'ACTIVE',
+	ACTIVE_UPGRADE_AVAILABLE = 'ACTIVE_UPGRADE_AVAILABLE'
 }
+
 export enum NewChatMessageCappingOTEStatusType {
-	NOT_ELIGIBLE,
-	ELIGIBLE,
-	ACTIVE_IN_CURRENT_CYCLE,
-	EXHAUSTED
+	NOT_ELIGIBLE = 'NOT_ELIGIBLE',
+	ELIGIBLE = 'ELIGIBLE',
+	ACTIVE_IN_CURRENT_CYCLE = 'ACTIVE_IN_CURRENT_CYCLE',
+	EXHAUSTED = 'EXHAUSTED'
 }
 
 export type NewChatMessageCapInfo = {
 	total_quota?: number
 	used_quota?: number
-	cycle_start_timestamp?: number
-	cycle_end_timestamp?: number
-	server_sent_timestamp?: number
+	cycle_start_timestamp?: string
+	cycle_end_timestamp?: string
+	server_sent_timestamp?: string
 	ote_status?: NewChatMessageCappingOTEStatusType
 	mv_status?: NewChatMessageCappingMVStatusType
 	capping_status?: NewChatMessageCappingStatusType

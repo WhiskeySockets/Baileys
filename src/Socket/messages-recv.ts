@@ -1583,6 +1583,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
+			const isReachoutTimelocked = attrs.error === String(NACK_REASONS.SenderReachoutTimelocked)
+
 			if (attrs.error === SERVER_ERROR_CODES.MissingTcToken) {
 				// 463 = account restricted + no tctoken for this contact.
 				// WA Web prevents this client-side (disables compose bar).
@@ -1597,7 +1599,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					{ msgId: attrs.id, from: attrs.from },
 					'smax-invalid (479): stanza rejected by server — likely stale device session or malformed addressing'
 				)
-			} else if (typeof attrs.error === 'number' && attrs.error === NACK_REASONS.SenderReachoutTimelocked) {
+			} else if (isReachoutTimelocked) {
 				// user is temporarily restricted, fetch current restriction details
 				await fetchAccountReachoutTimelock()
 				logger.warn({ attrs }, 'received error in ack')
@@ -1611,7 +1613,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					key,
 					update: {
 						status: WAMessageStatus.ERROR,
-						messageStubParameters: [attrs.error, ACCOUNT_RESTRICTED_TEXT]
+						messageStubParameters: isReachoutTimelocked ? [attrs.error, ACCOUNT_RESTRICTED_TEXT] : [attrs.error]
 					}
 				}
 			])
