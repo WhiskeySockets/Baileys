@@ -14,8 +14,14 @@ import {
 	TimeMs,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
-import type { LIDMapping, SocketConfig } from '../Types'
-import { DisconnectReason } from '../Types'
+import {
+	type LIDMapping,
+	type NewChatMessageCapInfo,
+	ReachoutTimelockEnforcementType,
+	type ReachoutTimelockState,
+	type SocketConfig
+} from '../Types'
+import { DisconnectReason, XWAPaths } from '../Types'
 import {
 	addTransactionCapability,
 	aesEncryptCTR,
@@ -53,6 +59,7 @@ import {
 import { BinaryInfo } from '../WAM/BinaryInfo.js'
 import { USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
+import { executeWMexQuery } from './mex.js'
 
 /**
  * Connects to WA servers and performs:
@@ -1096,6 +1103,41 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
+	/**
+	 * Fetches your account's standing when it comes to restrictions.
+	 * @returns Returns the state of the restrictions.
+	 */
+	const fetchAccountReachoutTimelock = async () => {
+		const queryResult = await executeWMexQuery<{
+			is_active?: boolean
+			time_enforcement_ends?: string
+			enforcement_type: ReachoutTimelockEnforcementType
+		}>({}, '23983697327930364', XWAPaths.xwa2_fetch_account_reachout_timelock, query, generateMessageTag)
+		const result: ReachoutTimelockState = {
+			isActive: !!queryResult?.is_active,
+			timeEnforcementEnds: queryResult?.time_enforcement_ends
+				? new Date(parseInt(queryResult.time_enforcement_ends, 10))
+				: new Date(Date.now() + 60_000), // default 60 seconds
+			enforcementType: queryResult?.enforcement_type ?? ReachoutTimelockEnforcementType.DEFAULT // default means no restriction
+		}
+		ev.emit('connection.update', { reachoutTimeLock: result }) // emit a connection update to let the user know
+		return result
+	}
+
+	/**
+	 * Fetches your account's new chat limits.
+	 * @returns Returns the quota and the usage.
+	 */
+	const fetchNewChatMessageCap = async () => {
+		return executeWMexQuery<NewChatMessageCapInfo>(
+			{ type: 'INDIVIDUAL_NEW_CHAT_MSG' },
+			'24503548349331633',
+			XWAPaths.xwa2_message_capping_info,
+			query,
+			generateMessageTag
+		)
+	}
+
 	return {
 		type: 'md' as 'md',
 		ws,
@@ -1126,7 +1168,9 @@ export const makeSocket = (config: SocketConfig) => {
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
 		sendWAMBuffer,
 		executeUSyncQuery,
-		onWhatsApp
+		onWhatsApp,
+		fetchAccountReachoutTimelock,
+		fetchNewChatMessageCap
 	}
 }
 

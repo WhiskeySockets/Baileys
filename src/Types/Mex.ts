@@ -10,8 +10,11 @@ export enum XWAPaths {
 	xwa2_newsletter_unfollow = 'xwa2_newsletter_unfollow',
 	xwa2_newsletter_change_owner = 'xwa2_newsletter_change_owner',
 	xwa2_newsletter_demote = 'xwa2_newsletter_demote',
-	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2'
+	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2',
+	xwa2_fetch_account_reachout_timelock = 'xwa2_fetch_account_reachout_timelock',
+	xwa2_message_capping_info = 'xwa2_message_capping_info'
 }
+
 export enum QueryIds {
 	CREATE = '8823471724422422',
 	UPDATE_METADATA = '24250201037901610',
