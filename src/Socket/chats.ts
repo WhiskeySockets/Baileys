@@ -86,6 +86,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	let privacySettings: { [_: string]: string } | undefined
 
+	/** Server-assigned AB props for protocol behavior. Defaults true (safe fallback). */
+	const serverProps = {
+		/** AB prop 10518: gate tctoken on 1:1 messages */
+		privacyTokenOn1to1: true
+	}
+
 	let syncState: SyncState = SyncState.Connecting
 
 	/** this mutex ensures that messages are processed in order */
@@ -912,7 +918,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
 		}
 
-		logger.debug('fetched props')
+		// Extract protocol-relevant AB props (only the ones we need)
+		const privacyTokenProp = props['10518'] ?? props['privacy_token_sending_on_all_1_on_1_messages']
+		if (privacyTokenProp !== undefined) {
+			serverProps.privacyTokenOn1to1 = privacyTokenProp === 'true' || privacyTokenProp === '1'
+		}
+
+		logger.debug({ serverProps }, 'fetched props')
 
 		return props
 	}
@@ -1250,6 +1262,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		serverProps,
 		createCallLink,
 		getBotListV2,
 		messageMutex,

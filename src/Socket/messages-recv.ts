@@ -901,9 +901,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	/** tracks message IDs that have already been retried for error 463 — prevents retry loops */
-	const tcTokenRetriedMsgIds = new Set<string>()
-
 	/** tracks JIDs for which we have stored tctokens — used for periodic pruning */
 	const tcTokenKnownJids = new Set<string>()
 
@@ -1567,41 +1564,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// device could not display the message
 		if (attrs.error) {
 			if (attrs.error === SERVER_ERROR_CODES.MissingTcToken) {
-				// Single retry: the original getPrivacyTokens IQ triggered token issuance.
-				// After a brief delay the server should have pushed a privacy_token
-				// notification, making the re-send succeed.
-				const msgId = attrs.id
-				const jid = jidNormalizedUser(attrs.from)
-				if (msgId && jid && !tcTokenRetriedMsgIds.has(msgId)) {
-					// Each entry auto-expires via setTimeout(60s), so the set
-					// is naturally bounded under normal conditions.
-					tcTokenRetriedMsgIds.add(msgId)
-					setTimeout(() => tcTokenRetriedMsgIds.delete(msgId), 60_000)
-
-					const msg =
-						(await getMessage(key)) ??
-						// Fallback to retry manager cache — the user's getMessage store
-						// may not have persisted the message yet (ack arrives <30ms after send)
-						messageRetryManager?.getRecentMessage(jid, msgId)?.message
-					if (msg) {
-						//eslint-disable-next-line max-depth
-						try {
-							await delay(1500)
-							await relayMessage(jid, msg, {
-								messageId: msgId,
-								useUserDevicesCache: true
-							})
-							logger.info({ msgId, from: jid }, 'error 463 retry succeeded')
-							return
-						} catch (retryErr: any) {
-							logger.warn({ msgId, err: retryErr?.message }, 'error 463 retry failed')
-						}
-					} else {
-						logger.warn({ msgId, from: jid }, 'error 463: no message found for retry')
-					}
-				} else if (msgId && tcTokenRetriedMsgIds.has(msgId)) {
-					logger.warn({ msgId, from: jid }, 'error 463: already retried, giving up')
-				}
+				// 463 = account restricted + no tctoken for this contact.
+				// WA Web prevents this client-side (disables compose bar).
+				// No retry — retrying worsens the restriction by counting
+				// as another "reach out" to an unknown contact.
+				logger.warn(
+					{ msgId: attrs.id, from: attrs.from },
+					'error 463: account restricted or missing tctoken for contact'
+				)
 			} else if (attrs.error === SERVER_ERROR_CODES.SmaxInvalid) {
 				logger.warn(
 					{ msgId: attrs.id, from: attrs.from },

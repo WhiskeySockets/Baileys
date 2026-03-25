@@ -1043,7 +1043,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			if (tcTokenBuffer?.length) {
+			if (tcTokenBuffer?.length && sock.serverProps.privacyTokenOn1to1) {
 				;(stanza.content as BinaryNode[]).push({
 					tag: 'tctoken',
 					attrs: {},
@@ -1060,12 +1060,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			await sendNode(stanza)
 
 			// Fire-and-forget: issue our token to the contact AFTER message send.
-			// Matches WA Web's WAWebSendTcTokenChatAction.sendTcToken which runs
-			// after encryptAndSendUserMsg, gated only by shouldSendNewToken.
-			// IMPORTANT: must happen AFTER sendNode — issuing BEFORE the message
-			// causes the server to register a privacy-token relationship and then
-			// reject the message (error 463) because the token isn't attached.
-			if (is1on1Send && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
+			// WA Web skips this for protocol messages (MsgJob.js: type !== "protocol")
+			const isProtocolMsg = !!normalizeMessageContent(message)?.protocolMessage
+			if (is1on1Send && !isProtocolMsg && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
 				const issueTimestamp = unixTimestampSeconds()
 				getPrivacyTokens([destinationJid], issueTimestamp)
 					.then(async result => {
