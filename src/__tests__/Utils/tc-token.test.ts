@@ -1,7 +1,12 @@
 import { jest } from '@jest/globals'
 import { DisconnectReason, type SignalKeyStoreWithTransaction } from '../../Types'
 import { getErrorCodeFromStreamError, SERVER_ERROR_CODES } from '../../Utils'
-import { buildTcTokenFromJid, isTcTokenExpired, shouldSendNewTcToken } from '../../Utils/tc-token-utils'
+import {
+	buildTcTokenFromJid,
+	isTcTokenExpired,
+	shouldSendNewTcToken,
+	storeTcTokensFromIqResult
+} from '../../Utils/tc-token-utils'
 import type { BinaryNode } from '../../WABinary'
 
 /** 7 days in seconds — matches WA Web tctoken_duration */
@@ -27,6 +32,220 @@ const createMockKeys = (): jest.Mocked<SignalKeyStoreWithTransaction> => ({
 	set: jest.fn<SignalKeyStoreWithTransaction['set']>(),
 	transaction: jest.fn<SignalKeyStoreWithTransaction['transaction']>(async (work: () => any) => await work()) as any,
 	isInTransaction: jest.fn<SignalKeyStoreWithTransaction['isInTransaction']>()
+})
+
+// ─── storeTcTokensFromIqResult (JID resolution) ─────────────────────────
+
+describe('storeTcTokensFromIqResult', () => {
+	const CONTACT_JID = 'contact@s.whatsapp.net'
+	const MY_DEVICE_JID = 'me@s.whatsapp.net'
+	const CONTACT_LID = 'contact@lid'
+	const TOKEN_BYTES = new Uint8Array([4, 1, 33, 254, 110])
+	const RECENT_TS = String(nowSeconds() - 86400)
+
+	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
+	const noopGetLID = async () => null
+
+	beforeEach(() => {
+		mockKeys = createMockKeys()
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({})
+	})
+
+	const makeNotificationNode = (
+		tokenJid: string | undefined,
+		tokenContent: Uint8Array,
+		timestamp?: string
+	): BinaryNode => ({
+		tag: 'notification',
+		attrs: { from: CONTACT_JID, type: 'privacy_token' },
+		content: [
+			{
+				tag: 'tokens',
+				attrs: {},
+				content: [
+					{
+						tag: 'token',
+						attrs: {
+							type: 'trusted_contact',
+							...(tokenJid ? { jid: tokenJid } : {}),
+							...(timestamp ? { t: timestamp } : {})
+						},
+						content: tokenContent
+					}
+				]
+			}
+		]
+	})
+
+	it('stores token under fallbackJid even when token node has a different jid attr', async () => {
+		const node = makeNotificationNode(MY_DEVICE_JID, TOKEN_BYTES, RECENT_TS)
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid: CONTACT_JID,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		expect(mockKeys.set).toHaveBeenCalledTimes(1)
+		const setCall = mockKeys.set.mock.calls[0]![0] as any
+		expect(setCall.tctoken[CONTACT_JID]).toBeDefined()
+		expect(setCall.tctoken[MY_DEVICE_JID]).toBeUndefined()
+		expect(Buffer.from(setCall.tctoken[CONTACT_JID].token)).toEqual(Buffer.from(TOKEN_BYTES))
+	})
+
+	it('multiple notifications from different contacts do NOT overwrite each other', async () => {
+		const contactA = 'alice@s.whatsapp.net'
+		const contactB = 'bob@s.whatsapp.net'
+		const tokenA = new Uint8Array([1, 2, 3])
+		const tokenB = new Uint8Array([4, 5, 6])
+
+		const nodeA = makeNotificationNode(MY_DEVICE_JID, tokenA, RECENT_TS)
+		const nodeB = makeNotificationNode(MY_DEVICE_JID, tokenB, RECENT_TS)
+
+		await storeTcTokensFromIqResult({
+			result: nodeA,
+			fallbackJid: contactA,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		await storeTcTokensFromIqResult({
+			result: nodeB,
+			fallbackJid: contactB,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		expect(mockKeys.set).toHaveBeenCalledTimes(2)
+		const call1 = mockKeys.set.mock.calls[0]![0] as any
+		const call2 = mockKeys.set.mock.calls[1]![0] as any
+
+		expect(call1.tctoken[contactA]).toBeDefined()
+		expect(call2.tctoken[contactB]).toBeDefined()
+		expect(call1.tctoken[MY_DEVICE_JID]).toBeUndefined()
+		expect(call2.tctoken[MY_DEVICE_JID]).toBeUndefined()
+	})
+
+	it('uses fallbackJid when token node has no jid attr', async () => {
+		const node = makeNotificationNode(undefined, TOKEN_BYTES, RECENT_TS)
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid: CONTACT_JID,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		expect(mockKeys.set).toHaveBeenCalledTimes(1)
+		const setCall = mockKeys.set.mock.calls[0]![0] as any
+		expect(setCall.tctoken[CONTACT_JID]).toBeDefined()
+	})
+
+	it('resolves fallbackJid to LID via getLIDForPN', async () => {
+		const node = makeNotificationNode(MY_DEVICE_JID, TOKEN_BYTES, RECENT_TS)
+		const getLIDForPN = jest.fn<(pn: string) => Promise<string | null>>().mockResolvedValue(CONTACT_LID)
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid: CONTACT_JID,
+			keys: mockKeys,
+			getLIDForPN
+		})
+
+		expect(mockKeys.set).toHaveBeenCalledTimes(1)
+		const setCall = mockKeys.set.mock.calls[0]![0] as any
+		expect(setCall.tctoken[CONTACT_LID]).toBeDefined()
+		expect(setCall.tctoken[CONTACT_JID]).toBeUndefined()
+		expect(setCall.tctoken[MY_DEVICE_JID]).toBeUndefined()
+	})
+
+	it('calls onNewJidStored with the resolved storage JID', async () => {
+		const node = makeNotificationNode(MY_DEVICE_JID, TOKEN_BYTES, RECENT_TS)
+		const onNewJidStored = jest.fn()
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid: CONTACT_JID,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID,
+			onNewJidStored
+		})
+
+		expect(onNewJidStored).toHaveBeenCalledWith(CONTACT_JID)
+	})
+
+	it('skips token nodes with non-trusted_contact type', async () => {
+		const node: BinaryNode = {
+			tag: 'notification',
+			attrs: { from: CONTACT_JID },
+			content: [
+				{
+					tag: 'tokens',
+					attrs: {},
+					content: [
+						{
+							tag: 'token',
+							attrs: { type: 'some_other_type', jid: MY_DEVICE_JID },
+							content: TOKEN_BYTES
+						}
+					]
+				}
+			]
+		}
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid: CONTACT_JID,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		expect(mockKeys.set).not.toHaveBeenCalled()
+	})
+
+	it('respects timestamp monotonicity guard', async () => {
+		const olderTs = String(nowSeconds() - 2 * 86400)
+		const newerTs = String(nowSeconds() - 86400)
+
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({
+			[CONTACT_JID]: { token: Buffer.from([9, 9, 9]), timestamp: newerTs }
+		})
+
+		const node = makeNotificationNode(MY_DEVICE_JID, TOKEN_BYTES, olderTs)
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid: CONTACT_JID,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		expect(mockKeys.set).not.toHaveBeenCalled()
+	})
+
+	it('does not overwrite timestamped entry with timestamp-less token', async () => {
+		const existingTs = String(nowSeconds() - 86400)
+
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({
+			[CONTACT_JID]: { token: Buffer.from([9, 9, 9]), timestamp: existingTs }
+		})
+
+		// Incoming token has no timestamp
+		const node = makeNotificationNode(MY_DEVICE_JID, TOKEN_BYTES)
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid: CONTACT_JID,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		expect(mockKeys.set).not.toHaveBeenCalled()
+	})
 })
 
 // ─── Phase 2: isTcTokenExpired (rolling bucket algorithm) ───────────────

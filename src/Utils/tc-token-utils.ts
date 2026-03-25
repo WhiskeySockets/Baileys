@@ -134,7 +134,8 @@ export async function storeTcTokensFromIqResult({
 			continue
 		}
 
-		const rawJid = jidNormalizedUser(tokenNode.attrs.jid || fallbackJid)
+		// In privacy_token notifications, tokenNode.attrs.jid is your own device JID
+		const rawJid = jidNormalizedUser(fallbackJid || tokenNode.attrs.jid)
 		const storageJid = await resolveTcTokenJid(rawJid, getLIDForPN)
 		const existingTcData = await keys.get('tctoken', [storageJid])
 		const existingEntry = existingTcData[storageJid]
