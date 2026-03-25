@@ -4,10 +4,12 @@ import { getErrorCodeFromStreamError, SERVER_ERROR_CODES } from '../../Utils'
 import {
 	buildTcTokenFromJid,
 	isTcTokenExpired,
+	resolveIssuanceJid,
 	shouldSendNewTcToken,
 	storeTcTokensFromIqResult
 } from '../../Utils/tc-token-utils'
 import type { BinaryNode } from '../../WABinary'
+import { isJidBot, isJidMetaAI, PSA_WID } from '../../WABinary'
 
 /** 7 days in seconds — matches WA Web tctoken_duration */
 const BUCKET_DURATION = 604800
@@ -1068,5 +1070,77 @@ describe('tctoken integration scenarios', () => {
 
 			expect(saveCount).toBe(2)
 		})
+	})
+})
+
+// ─── resolveIssuanceJid (AB prop 14303) ──────────────────────────────────
+
+describe('resolveIssuanceJid', () => {
+	const PN_JID = 'user@s.whatsapp.net'
+	const LID_JID = 'user@lid'
+
+	it('resolves PN to LID when issueToLid=true', async () => {
+		const getLIDForPN = jest.fn<(pn: string) => Promise<string | null>>().mockResolvedValue(LID_JID)
+		const result = await resolveIssuanceJid(PN_JID, true, getLIDForPN)
+		expect(result).toBe(LID_JID)
+	})
+
+	it('returns original JID when issueToLid=true but no LID mapping', async () => {
+		const getLIDForPN = jest.fn<(pn: string) => Promise<string | null>>().mockResolvedValue(null)
+		const result = await resolveIssuanceJid(PN_JID, true, getLIDForPN)
+		expect(result).toBe(PN_JID)
+	})
+
+	it('returns LID as-is when issueToLid=true and already a LID', async () => {
+		const getLIDForPN = jest.fn<(pn: string) => Promise<string | null>>()
+		const result = await resolveIssuanceJid(LID_JID, true, getLIDForPN)
+		expect(result).toBe(LID_JID)
+		expect(getLIDForPN).not.toHaveBeenCalled()
+	})
+
+	it('returns PN as-is when issueToLid=false and already a PN', async () => {
+		const getLIDForPN = jest.fn<(pn: string) => Promise<string | null>>()
+		const result = await resolveIssuanceJid(PN_JID, false, getLIDForPN)
+		expect(result).toBe(PN_JID)
+	})
+
+	it('resolves LID to PN when issueToLid=false', async () => {
+		const getLIDForPN = jest.fn<(pn: string) => Promise<string | null>>()
+		const getPNForLID = jest.fn<(lid: string) => Promise<string | null>>().mockResolvedValue(PN_JID)
+		const result = await resolveIssuanceJid(LID_JID, false, getLIDForPN, getPNForLID)
+		expect(result).toBe(PN_JID)
+	})
+
+	it('returns LID when issueToLid=false but no PN mapping', async () => {
+		const getLIDForPN = jest.fn<(pn: string) => Promise<string | null>>()
+		const getPNForLID = jest.fn<(lid: string) => Promise<string | null>>().mockResolvedValue(null)
+		const result = await resolveIssuanceJid(LID_JID, false, getLIDForPN, getPNForLID)
+		expect(result).toBe(LID_JID)
+	})
+})
+
+// ─── PSA/bot filter (WA Web: isRegularUser gate on fire-and-forget) ─────
+
+describe('PSA and bot JID detection', () => {
+	it('PSA_WID is 0@c.us', () => {
+		expect(PSA_WID).toBe('0@c.us')
+	})
+
+	it('isJidBot detects PN bot patterns', () => {
+		expect(isJidBot('13135550001@c.us')).toBeTruthy()
+		expect(isJidBot('13165550012@c.us')).toBeTruthy()
+		expect(isJidBot('1234567890@c.us')).toBeFalsy()
+		expect(isJidBot('alice@s.whatsapp.net')).toBeFalsy()
+	})
+
+	it('isJidMetaAI detects @bot suffix', () => {
+		expect(isJidMetaAI('13135550002@bot')).toBeTruthy()
+		expect(isJidMetaAI('alice@s.whatsapp.net')).toBeFalsy()
+	})
+
+	it('regular user JIDs are not bot', () => {
+		const jid = 'alice@s.whatsapp.net'
+		expect(isJidBot(jid)).toBeFalsy()
+		expect(isJidMetaAI(jid)).toBeFalsy()
 	})
 })

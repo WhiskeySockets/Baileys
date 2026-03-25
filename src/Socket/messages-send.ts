@@ -52,13 +52,16 @@ import {
 	getBinaryNodeChildren,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBot,
 	isJidGroup,
+	isJidMetaAI,
 	isLidUser,
 	isPnUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
 	type JidWithDevice,
+	PSA_WID,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
@@ -1061,9 +1064,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			await sendNode(stanza)
 
 			// Fire-and-forget: issue our token to the contact AFTER message send.
-			// WA Web skips this for protocol messages (MsgJob.js: type !== "protocol")
+			// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)
 			const isProtocolMsg = !!normalizeMessageContent(message)?.protocolMessage
-			if (is1on1Send && !isProtocolMsg && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
+			const isBotOrPSA = destinationJid === PSA_WID || isJidBot(destinationJid) || isJidMetaAI(destinationJid)
+			if (is1on1Send && !isProtocolMsg && !isBotOrPSA && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
 				const issueTimestamp = unixTimestampSeconds()
 				const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 				resolveIssuanceJid(destinationJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
