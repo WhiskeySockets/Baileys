@@ -1457,7 +1457,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
-			if (typeof attrs.error === 'number' && attrs.error === NACK_REASONS.SenderReachoutTimelocked) {
+			const isReachoutTimelocked = attrs.error === String(NACK_REASONS.SenderReachoutTimelocked)
+
+			if (isReachoutTimelocked) {
 				// user is temporarily restricted, fetch current restriction details
 				await fetchAccountReachoutTimelock()
 			}
@@ -1468,7 +1470,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					key,
 					update: {
 						status: WAMessageStatus.ERROR,
-						messageStubParameters: [attrs.error, ACCOUNT_RESTRICTED_TEXT]
+						messageStubParameters: isReachoutTimelocked ? [attrs.error, ACCOUNT_RESTRICTED_TEXT] : [attrs.error]
 					}
 				}
 			])

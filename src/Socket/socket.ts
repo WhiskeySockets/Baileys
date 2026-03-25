@@ -17,6 +17,7 @@ import {
 import {
 	type LIDMapping,
 	type NewChatMessageCapInfo,
+	QueryIds,
 	ReachoutTimelockEnforcementType,
 	type ReachoutTimelockState,
 	type SocketConfig
@@ -1112,15 +1113,16 @@ export const makeSocket = (config: SocketConfig) => {
 			is_active?: boolean
 			time_enforcement_ends?: string
 			enforcement_type: ReachoutTimelockEnforcementType
-		}>({}, '23983697327930364', XWAPaths.xwa2_fetch_account_reachout_timelock, query, generateMessageTag)
+		}>({}, QueryIds.REACHOUT_TIMELOCK, XWAPaths.xwa2_fetch_account_reachout_timelock, query, generateMessageTag)
 		const result: ReachoutTimelockState = {
 			isActive: !!queryResult?.is_active,
-			timeEnforcementEnds: queryResult?.time_enforcement_ends && queryResult?.time_enforcement_ends !== '0'
-				? new Date(parseInt(queryResult.time_enforcement_ends, 10))
-				: undefined, //new Date(Date.now() + 60_000), // default 60 seconds (disabled)
-			enforcementType: queryResult?.enforcement_type ?? ReachoutTimelockEnforcementType.DEFAULT // default means no restriction
+			timeEnforcementEnds:
+				queryResult?.time_enforcement_ends && queryResult?.time_enforcement_ends !== '0'
+					? new Date(parseInt(queryResult.time_enforcement_ends, 10) * 1000)
+					: undefined,
+			enforcementType: queryResult?.enforcement_type ?? ReachoutTimelockEnforcementType.DEFAULT
 		}
-		ev.emit('connection.update', { reachoutTimeLock: result }) // emit a connection update to let the user know
+		ev.emit('connection.update', { reachoutTimeLock: result })
 		return result
 	}
 
@@ -1130,8 +1132,8 @@ export const makeSocket = (config: SocketConfig) => {
 	 */
 	const fetchNewChatMessageCap = async () => {
 		return executeWMexQuery<NewChatMessageCapInfo>(
-			{ type: 'INDIVIDUAL_NEW_CHAT_MSG' },
-			'24503548349331633',
+			{ input: { type: 'INDIVIDUAL_NEW_CHAT_MSG' } },
+			QueryIds.MESSAGE_CAPPING_INFO,
 			XWAPaths.xwa2_message_capping_info,
 			query,
 			generateMessageTag
