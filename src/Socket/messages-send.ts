@@ -38,6 +38,7 @@ import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	isTcTokenExpired,
+	resolveIssuanceJid,
 	resolveTcTokenJid,
 	shouldSendNewTcToken,
 	storeTcTokensFromIqResult
@@ -1064,7 +1065,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const isProtocolMsg = !!normalizeMessageContent(message)?.protocolMessage
 			if (is1on1Send && !isProtocolMsg && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
 				const issueTimestamp = unixTimestampSeconds()
-				getPrivacyTokens([destinationJid], issueTimestamp)
+				const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
+				resolveIssuanceJid(destinationJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
+					.then(issueJid => getPrivacyTokens([issueJid], issueTimestamp))
 					.then(async result => {
 						// Store any tokens the server returned in the IQ response.
 						// Note: onNewJidStored not passed — the pruning index lives in messages-recv

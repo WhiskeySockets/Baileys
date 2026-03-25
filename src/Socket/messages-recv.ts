@@ -53,7 +53,12 @@ import {
 import { makeMutex } from '../Utils/make-mutex'
 import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
-import { isTcTokenExpired, resolveTcTokenJid, storeTcTokensFromIqResult } from '../Utils/tc-token-utils'
+import {
+	isTcTokenExpired,
+	resolveIssuanceJid,
+	resolveTcTokenJid,
+	storeTcTokensFromIqResult
+} from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -559,8 +564,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					// Only re-issue if we previously sent a token AND it's still valid
 					if (senderTs !== null && senderTs !== undefined && !isTcTokenExpired(senderTs)) {
 						logger.debug({ jid: normalizedJid, senderTimestamp: senderTs }, 'identity changed, re-issuing tctoken')
-						// Pass original senderTimestamp to match WA Web
-						getPrivacyTokens([normalizedJid], senderTs)
+						const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
+						resolveIssuanceJid(normalizedJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
+							.then(issueJid => getPrivacyTokens([issueJid], senderTs))
 							.then(result =>
 								storeTcTokensFromIqResult({
 									result,
