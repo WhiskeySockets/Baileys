@@ -1,7 +1,8 @@
 import { jest } from '@jest/globals'
+import { createHmac } from 'crypto'
 import { DisconnectReason, type SignalKeyStoreWithTransaction } from '../../Types'
 import { getErrorCodeFromStreamError, SERVER_ERROR_CODES } from '../../Utils'
-import { buildTcTokenFromJid, isTcTokenExpired, shouldSendNewTcToken } from '../../Utils/tc-token-utils'
+import { buildTcTokenFromJid, computeCsToken, isTcTokenExpired, shouldSendNewTcToken } from '../../Utils/tc-token-utils'
 import type { BinaryNode } from '../../WABinary'
 
 /** 7 days in seconds — matches WA Web tctoken_duration */
@@ -849,5 +850,142 @@ describe('tctoken integration scenarios', () => {
 
 			expect(saveCount).toBe(2)
 		})
+	})
+})
+
+// ─── cstoken (NCT — Client-Side Token) ────────────────────────────────
+
+describe('computeCsToken', () => {
+	const SALT = new Uint8Array([
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
+		0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20
+	])
+
+	it('produces correct HMAC-SHA256 output', () => {
+		const lid = '12345:67@lid'
+		const result = computeCsToken(SALT, lid)
+
+		// Verify against Node.js crypto directly
+		const expected = createHmac('sha256', SALT).update(lid, 'utf8').digest()
+		expect(Buffer.from(result)).toEqual(expected)
+	})
+
+	it('returns 32 bytes (SHA-256 output size)', () => {
+		const result = computeCsToken(SALT, 'test@lid')
+		expect(result.length).toBe(32)
+	})
+
+	it('returns Uint8Array', () => {
+		const result = computeCsToken(SALT, 'test@lid')
+		expect(result).toBeInstanceOf(Uint8Array)
+	})
+
+	it('is deterministic — same inputs produce same output', () => {
+		const lid = '98765:12@lid'
+		const result1 = computeCsToken(SALT, lid)
+		const result2 = computeCsToken(SALT, lid)
+		expect(Buffer.from(result1)).toEqual(Buffer.from(result2))
+	})
+
+	it('different LIDs produce different tokens', () => {
+		const token1 = computeCsToken(SALT, 'alice:1@lid')
+		const token2 = computeCsToken(SALT, 'bob:2@lid')
+		expect(Buffer.from(token1)).not.toEqual(Buffer.from(token2))
+	})
+
+	it('different salts produce different tokens', () => {
+		const salt2 = new Uint8Array(32).fill(0xff)
+		const lid = 'same@lid'
+		const token1 = computeCsToken(SALT, lid)
+		const token2 = computeCsToken(salt2, lid)
+		expect(Buffer.from(token1)).not.toEqual(Buffer.from(token2))
+	})
+
+	it('handles long LID strings', () => {
+		const longLid = '1234567890'.repeat(10) + '@lid'
+		const result = computeCsToken(SALT, longLid)
+		expect(result.length).toBe(32)
+	})
+
+	it('handles empty string LID (edge case)', () => {
+		const result = computeCsToken(SALT, '')
+		expect(result.length).toBe(32)
+		// Should still be valid HMAC output
+		const expected = createHmac('sha256', SALT).update('', 'utf8').digest()
+		expect(Buffer.from(result)).toEqual(expected)
+	})
+})
+
+// ─── cstoken fallback integration ──────────────────────────────────────
+
+describe('cstoken fallback logic', () => {
+	const SALT = new Uint8Array(32).fill(0xab)
+	const RECIPIENT_LID = '12345:67@lid'
+	const VALID_TOKEN = Buffer.from([4, 1, 33, 254, 110, 59])
+
+	it('tctoken takes priority over cstoken when both available', () => {
+		// Simulate the fallback logic from messages-send.ts
+		const tcTokenBuffer = VALID_TOKEN
+		const nctSalt = SALT
+
+		// tctoken exists → should use it, not cstoken
+		let usedToken: { tag: string; content: Uint8Array } | null = null
+
+		if (tcTokenBuffer?.length) {
+			usedToken = { tag: 'tctoken', content: tcTokenBuffer }
+		} else if (nctSalt?.length) {
+			usedToken = { tag: 'cstoken', content: computeCsToken(nctSalt, RECIPIENT_LID) }
+		}
+
+		expect(usedToken).not.toBeNull()
+		expect(usedToken!.tag).toBe('tctoken')
+		expect(usedToken!.content).toBe(VALID_TOKEN)
+	})
+
+	it('cstoken used when tctoken is missing', () => {
+		const tcTokenBuffer = undefined as Buffer | undefined
+		const nctSalt: Uint8Array | undefined = SALT
+
+		let usedToken: { tag: string; content: Uint8Array } | null = null
+
+		if (tcTokenBuffer?.length) {
+			usedToken = { tag: 'tctoken', content: tcTokenBuffer }
+		} else if (nctSalt?.length) {
+			usedToken = { tag: 'cstoken', content: computeCsToken(nctSalt, RECIPIENT_LID) }
+		}
+
+		expect(usedToken).not.toBeNull()
+		expect(usedToken!.tag).toBe('cstoken')
+		expect(usedToken!.content.length).toBe(32)
+	})
+
+	it('no token when both tctoken and nctSalt are missing', () => {
+		const tcTokenBuffer = undefined as Buffer | undefined
+		const nctSalt = undefined as Uint8Array | undefined
+
+		let usedToken: { tag: string; content: Uint8Array } | null = null
+
+		if (tcTokenBuffer?.length) {
+			usedToken = { tag: 'tctoken', content: tcTokenBuffer }
+		} else if (nctSalt?.length) {
+			usedToken = { tag: 'cstoken', content: computeCsToken(nctSalt, RECIPIENT_LID) }
+		}
+
+		expect(usedToken).toBeNull()
+	})
+
+	it('cstoken used when tctoken is empty buffer', () => {
+		const tcTokenBuffer = Buffer.alloc(0)
+		const nctSalt = SALT
+
+		let usedToken: { tag: string; content: Uint8Array } | null = null
+
+		if (tcTokenBuffer?.length) {
+			usedToken = { tag: 'tctoken', content: tcTokenBuffer }
+		} else if (nctSalt?.length) {
+			usedToken = { tag: 'cstoken', content: computeCsToken(nctSalt, RECIPIENT_LID) }
+		}
+
+		expect(usedToken!.tag).toBe('cstoken')
 	})
 })
