@@ -23,6 +23,7 @@ import type {
 } from '../Types'
 import { WAMessageStatus, WAMessageStubType } from '../Types'
 import {
+	ACCOUNT_RESTRICTED_TEXT,
 	aesDecryptCTR,
 	aesEncryptGCM,
 	cleanMessage,
@@ -106,7 +107,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager,
-		issuePrivacyTokens
+		issuePrivacyTokens,
+		fetchAccountReachoutTimelock
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -1595,16 +1597,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					{ msgId: attrs.id, from: attrs.from },
 					'smax-invalid (479): stanza rejected by server — likely stale device session or malformed addressing'
 				)
+			} else if (typeof attrs.error === 'number' && attrs.error === NACK_REASONS.SenderReachoutTimelocked) {
+				// user is temporarily restricted, fetch current restriction details
+				await fetchAccountReachoutTimelock()
+				logger.warn({ attrs }, 'received error in ack')
 			} else {
 				logger.warn({ attrs }, 'received error in ack')
 			}
+
 
 			ev.emit('messages.update', [
 				{
 					key,
 					update: {
 						status: WAMessageStatus.ERROR,
-						messageStubParameters: [attrs.error]
+						messageStubParameters: [attrs.error, ACCOUNT_RESTRICTED_TEXT]
 					}
 				}
 			])

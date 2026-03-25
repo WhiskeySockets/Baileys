@@ -51,6 +51,7 @@ const storeMappingFromEnvelope = async (
 
 export const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
+export const ACCOUNT_RESTRICTED_TEXT = 'Your account has been restricted'
 
 // Retry configuration for failed decryption
 export const DECRYPTION_RETRY_CONFIG = {
@@ -61,6 +62,7 @@ export const DECRYPTION_RETRY_CONFIG = {
 
 /** NACK reason codes we send to the server (client → server) */
 export const NACK_REASONS = {
+	SenderReachoutTimelocked: 463,
 	ParsingError: 487,
 	UnrecognizedStanza: 488,
 	UnrecognizedStanzaClass: 489,
