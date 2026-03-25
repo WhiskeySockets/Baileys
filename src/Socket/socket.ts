@@ -1115,9 +1115,9 @@ export const makeSocket = (config: SocketConfig) => {
 		}>({}, '23983697327930364', XWAPaths.xwa2_fetch_account_reachout_timelock, query, generateMessageTag)
 		const result: ReachoutTimelockState = {
 			isActive: !!queryResult?.is_active,
-			timeEnforcementEnds: queryResult?.time_enforcement_ends
+			timeEnforcementEnds: queryResult?.time_enforcement_ends && queryResult?.time_enforcement_ends !== '0'
 				? new Date(parseInt(queryResult.time_enforcement_ends, 10))
-				: new Date(Date.now() + 60_000), // default 60 seconds
+				: undefined, //new Date(Date.now() + 60_000), // default 60 seconds (disabled)
 			enforcementType: queryResult?.enforcement_type ?? ReachoutTimelockEnforcementType.DEFAULT // default means no restriction
 		}
 		ev.emit('connection.update', { reachoutTimeLock: result }) // emit a connection update to let the user know
