@@ -1071,7 +1071,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const issueTimestamp = unixTimestampSeconds()
 				const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 				resolveIssuanceJid(destinationJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
-					.then(issueJid => getPrivacyTokens([issueJid], issueTimestamp))
+					.then(issueJid => issuePrivacyTokens([issueJid], issueTimestamp))
 					.then(async result => {
 						// Store any tokens the server returned in the IQ response.
 						// Note: onNewJidStored not passed — the pruning index lives in messages-recv
@@ -1178,7 +1178,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return ''
 	}
 
-	const getPrivacyTokens = async (jids: string[], timestamp?: number) => {
+	const issuePrivacyTokens = async (jids: string[], timestamp?: number) => {
 		const t = (timestamp ?? unixTimestampSeconds()).toString()
 		const result = await query({
 			tag: 'iq',
@@ -1212,7 +1212,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
-		getPrivacyTokens,
+		issuePrivacyTokens,
 		assertSessions,
 		relayMessage,
 		sendReceipt,

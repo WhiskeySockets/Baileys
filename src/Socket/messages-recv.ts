@@ -103,7 +103,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager,
-		getPrivacyTokens
+		issuePrivacyTokens
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -566,7 +566,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						logger.debug({ jid: normalizedJid, senderTimestamp: senderTs }, 'identity changed, re-issuing tctoken')
 						const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 						resolveIssuanceJid(normalizedJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
-							.then(issueJid => getPrivacyTokens([issueJid], senderTs))
+							.then(issueJid => issuePrivacyTokens([issueJid], senderTs))
 							.then(result =>
 								storeTcTokensFromIqResult({
 									result,
