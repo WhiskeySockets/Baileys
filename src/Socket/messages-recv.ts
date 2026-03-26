@@ -52,6 +52,7 @@ import {
 import { makeMutex } from '../Utils/make-mutex'
 import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
+import { isTcTokenExpired, pruneExpiredTcTokens, storeTcTokensFromNotification } from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -545,6 +546,67 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (result.action === 'no_identity_node') {
 				logger.info({ node }, 'unknown encrypt notification')
 			}
+
+			// WA Web: sendTcTokenWhenDeviceIdentityChange
+			// After session refresh, re-issue privacy token if sender timestamp is still valid
+			if (result.action === 'session_refreshed') {
+				const identityFrom = jidNormalizedUser(from)
+				;(async () => {
+					try {
+						// Read sender timestamp to check if we should re-issue
+						const senderTsData = await authState.keys.get('tctoken-sender-ts', [identityFrom])
+						const senderTs = senderTsData?.[identityFrom]
+
+						// Only re-issue if we have a sender timestamp and it's not expired
+						if (senderTs && !isTcTokenExpired(senderTs, 'sender')) {
+							const t = unixTimestampSeconds().toString()
+
+							// Resolve to LID if possible
+							let tokenJid = identityFrom
+							if (!isLidUser(tokenJid) && signalRepository.lidMapping) {
+								const lid = await signalRepository.lidMapping.getLIDForPN(tokenJid)
+								if (lid) {
+									tokenJid = lid
+								}
+							}
+
+							await query({
+								tag: 'iq',
+								attrs: {
+									to: S_WHATSAPP_NET,
+									type: 'set',
+									xmlns: 'privacy'
+								},
+								content: [
+									{
+										tag: 'tokens',
+										attrs: {},
+										content: [
+											{
+												tag: 'token',
+												attrs: {
+													jid: tokenJid,
+													t,
+													type: 'trusted_contact'
+												}
+											}
+										]
+									}
+								]
+							})
+
+							// Persist updated sender timestamp
+							await authState.keys.set({
+								'tctoken-sender-ts': { [identityFrom]: t }
+							})
+
+							logger.debug({ jid: identityFrom }, 'reissued privacy token after identity change')
+						}
+					} catch (err: any) {
+						logger.debug({ jid: identityFrom, err: err?.message }, 'failed to reissue token after identity change')
+					}
+				})().catch(() => {}) // fire-and-forget
+			}
 		}
 	}
 
@@ -864,32 +926,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handlePrivacyTokenNotification = async (node: BinaryNode) => {
-		const tokensNode = getBinaryNodeChild(node, 'tokens')
-		const from = jidNormalizedUser(node.attrs.from)
+		const storedCount = await storeTcTokensFromNotification({
+			node,
+			keys: authState.keys,
+			onNewJidStored: jid => tcTokenKnownJids.add(jid)
+		})
 
-		if (!tokensNode) return
-
-		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
-
-		for (const tokenNode of tokenNodes) {
-			const { attrs, content } = tokenNode
-			const type = attrs.type
-			const timestamp = attrs.t
-
-			if (type === 'trusted_contact' && content instanceof Buffer) {
-				logger.debug(
-					{
-						from,
-						timestamp,
-						tcToken: content
-					},
-					'received trusted contact token'
-				)
-
-				await authState.keys.set({
-					tctoken: { [from]: { token: content, timestamp } }
-				})
-			}
+		if (storedCount > 0) {
+			logger.debug({ from: node.attrs.from, storedCount }, 'stored privacy tokens from notification')
 		}
 	}
 
@@ -1435,51 +1479,133 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	/**
+	 * Set of message IDs that have already been retried after error 421.
+	 * Prevents infinite retry loops — each message gets at most ONE retry.
+	 */
+	const retriedMsgIds = new Set<string>()
+
+	/** Track JIDs with known TC tokens for periodic pruning */
+	const tcTokenKnownJids = new Set<string>()
+
+	/** Periodic TC token pruning (every 24 hours — matches WA Web CLEAN_TC_TOKENS task) */
+	const tcTokenPruneInterval = setInterval(
+		async () => {
+			try {
+				const pruned = await pruneExpiredTcTokens(authState.keys, tcTokenKnownJids)
+				if (pruned > 0) {
+					logger.debug({ pruned }, 'pruned expired TC tokens')
+				}
+			} catch {
+				// ignore pruning errors
+			}
+		},
+		24 * 60 * 60 * 1000
+	)
+	// Prevent interval from keeping Node alive
+	if (tcTokenPruneInterval?.unref) {
+		tcTokenPruneInterval.unref()
+	}
+
+	/**
+	 * Handle bad ack (error responses to sent messages).
+	 *
+	 * Error codes from WA server:
+	 * - 421 = StaleGroupAddressingMode — group metadata stale, refetch & retry
+	 * - 429 = RateOverlimit — server rate limiting, emit error (do NOT retry)
+	 * - 475 = NewChatMessagesCapped — new chat restriction, emit error
+	 * - 479 = SmaxInvalid — warn only, message may not be delivered
+	 */
 	const handleBadAck = async ({ attrs }: BinaryNode) => {
-		const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
+		const errorCode = attrs.error
+		const from = attrs.from!
+		const msgId = attrs.id!
+		const key: WAMessageKey = { remoteJid: from, fromMe: true, id: msgId }
 
-		// WARNING: REFRAIN FROM ENABLING THIS FOR NOW. IT WILL CAUSE A LOOP
-		// // current hypothesis is that if pash is sent in the ack
-		// // it means -- the message hasn't reached all devices yet
-		// // we'll retry sending the message here
-		// if(attrs.phash) {
-		// 	logger.info({ attrs }, 'received phash in ack, resending message...')
-		// 	const msg = await getMessage(key)
-		// 	if(msg) {
-		// 		await relayMessage(key.remoteJid!, msg, { messageId: key.id!, useUserDevicesCache: false })
-		// 	} else {
-		// 		logger.warn({ attrs }, 'could not send message again, as it was not found')
-		// 	}
-		// }
+		if (!errorCode) return
 
-		// error in acknowledgement,
-		// device could not display the message
-		if (attrs.error) {
-			logger.warn({ attrs }, 'received error in ack')
+		// ── Error 429: Rate limit — never retry, just emit error ──
+		if (errorCode === '429') {
+			logger.warn({ msgId, from }, 'rate limited by server (429)')
 			ev.emit('messages.update', [
 				{
 					key,
-					update: {
-						status: WAMessageStatus.ERROR,
-						messageStubParameters: [attrs.error]
-					}
+					update: { status: WAMessageStatus.ERROR, messageStubParameters: [errorCode] }
 				}
 			])
-
-			// resend the message with device_fanout=false, use at your own risk
-			// if (attrs.error === '475') {
-			// 	const msg = await getMessage(key)
-			// 	if (msg) {
-			// 		await relayMessage(key.remoteJid!, msg, {
-			// 			messageId: key.id!,
-			// 			useUserDevicesCache: false,
-			// 			additionalAttributes: {
-			// 				device_fanout: 'false'
-			// 			}
-			// 		})
-			// 	}
-			// }
+			return
 		}
+
+		// ── Error 421: Stale group addressing mode — refetch group & retry ──
+		if (errorCode === '421' && isJidGroup(from)) {
+			if (retriedMsgIds.has(msgId)) {
+				logger.debug({ msgId, from }, 'already retried 421, ignoring')
+				return
+			}
+
+			retriedMsgIds.add(msgId)
+			logger.info({ msgId, from }, 'stale group addressing (421), invalidating cache & retrying')
+
+			try {
+				const cachedMsg = messageRetryManager
+					? messageRetryManager.getRecentMessage(from, msgId)?.message
+					: await getMessage(key)
+
+				if (cachedMsg) {
+					await relayMessage(from, cachedMsg, {
+						messageId: msgId,
+						useUserDevicesCache: false,
+						useCachedGroupMetadata: false
+					})
+					logger.info({ msgId, from }, '421 retry successful')
+				} else {
+					logger.warn({ msgId, from }, '421 retry failed: message not found in cache')
+				}
+			} catch (err: any) {
+				logger.warn({ msgId, from, err: err.message }, '421 retry failed')
+			}
+
+			return
+		}
+
+		// ── Remaining errors: only handle for 1:1 chats (not groups) ──
+		if (isJidGroup(from) || isJidNewsletter(from) || isJidStatusBroadcast(from)) {
+			// For non-1:1, just emit error status
+			ev.emit('messages.update', [
+				{
+					key,
+					update: { status: WAMessageStatus.ERROR, messageStubParameters: [errorCode] }
+				}
+			])
+			return
+		}
+
+		// ── Error 475: NewChatMessagesCapped — do NOT retry (ban risk) ──
+		if (errorCode === '475') {
+			logger.warn({ msgId, from }, 'NewChatMessagesCapped (475) — do NOT retry')
+			ev.emit('messages.update', [
+				{
+					key,
+					update: { status: WAMessageStatus.ERROR, messageStubParameters: [errorCode] }
+				}
+			])
+			return
+		}
+
+		// ── Error 479: SmaxInvalid — warn only, do not retry ──
+		if (errorCode === '479') {
+			logger.warn({ msgId, from }, 'SmaxInvalid (479) — message may not be delivered')
+			return
+		}
+
+		// ── All other errors: emit error status ──
+		logger.warn({ attrs }, 'received error in ack')
+		ev.emit('messages.update', [
+			{
+				key,
+				update: { status: WAMessageStatus.ERROR, messageStubParameters: [errorCode] }
+			}
+		])
 	}
 
 	/// processes a node with the given function
@@ -1579,10 +1705,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ isOnline }) => {
+	ev.on('connection.update', ({ connection, isOnline }) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
+		}
+
+		// Cleanup transient state on disconnect
+		if (connection === 'close') {
+			retriedMsgIds.clear()
+			if (tcTokenPruneInterval) {
+				clearInterval(tcTokenPruneInterval)
+			}
 		}
 	})
 

@@ -69,6 +69,8 @@ export type AuthenticationCreds = SignalCreds & {
 	lastPropHash: string | undefined
 	routingInfo: Buffer | undefined
 	additionalData?: any | undefined
+	/** NCT salt for computing CS tokens (received via NctSaltSyncAction or history sync) */
+	nctSalt?: Uint8Array | undefined
 }
 
 export type SignalDataTypeMap = {
@@ -81,6 +83,7 @@ export type SignalDataTypeMap = {
 	'lid-mapping': string
 	'device-list': string[]
 	tctoken: { token: Buffer; timestamp?: string }
+	'tctoken-sender-ts': string
 	'identity-key': Uint8Array
 }
 

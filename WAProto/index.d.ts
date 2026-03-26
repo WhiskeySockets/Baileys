@@ -4532,6 +4532,7 @@ export namespace proto {
         companionMetaNonce?: (string|null);
         shareableChatIdentifierEncryptionKey?: (Uint8Array|null);
         accounts?: (proto.IAccount[]|null);
+        nctSalt?: (Uint8Array|null);
     }
 
     class HistorySync implements IHistorySync {
@@ -4553,6 +4554,7 @@ export namespace proto {
         public companionMetaNonce?: (string|null);
         public shareableChatIdentifierEncryptionKey?: (Uint8Array|null);
         public accounts: proto.IAccount[];
+        public nctSalt?: (Uint8Array|null);
         public static create(properties?: proto.IHistorySync): proto.HistorySync;
         public static encode(m: proto.IHistorySync, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HistorySync;
@@ -11494,6 +11496,7 @@ export namespace proto {
         newsletterSavedInterestsAction?: (proto.SyncActionValue.INewsletterSavedInterestsAction|null);
         aiThreadRenameAction?: (proto.SyncActionValue.IAiThreadRenameAction|null);
         interactiveMessageAction?: (proto.SyncActionValue.IInteractiveMessageAction|null);
+        nctSaltSyncAction?: (proto.SyncActionValue.INctSaltSyncAction|null);
     }
 
     class SyncActionValue implements ISyncActionValue {
@@ -11567,6 +11570,7 @@ export namespace proto {
         public newsletterSavedInterestsAction?: (proto.SyncActionValue.INewsletterSavedInterestsAction|null);
         public aiThreadRenameAction?: (proto.SyncActionValue.IAiThreadRenameAction|null);
         public interactiveMessageAction?: (proto.SyncActionValue.IInteractiveMessageAction|null);
+        public nctSaltSyncAction?: (proto.SyncActionValue.INctSaltSyncAction|null);
         public static create(properties?: proto.ISyncActionValue): proto.SyncActionValue;
         public static encode(m: proto.ISyncActionValue, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue;
@@ -12355,6 +12359,22 @@ export namespace proto {
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.MuteAction;
             public static fromObject(d: { [k: string]: any }): proto.SyncActionValue.MuteAction;
             public static toObject(m: proto.SyncActionValue.MuteAction, o?: $protobuf.IConversionOptions): { [k: string]: any };
+            public toJSON(): { [k: string]: any };
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        interface INctSaltSyncAction {
+            salt?: (Uint8Array|null);
+        }
+
+        class NctSaltSyncAction implements INctSaltSyncAction {
+            constructor(p?: proto.SyncActionValue.INctSaltSyncAction);
+            public salt?: (Uint8Array|null);
+            public static create(properties?: proto.SyncActionValue.INctSaltSyncAction): proto.SyncActionValue.NctSaltSyncAction;
+            public static encode(m: proto.SyncActionValue.INctSaltSyncAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.NctSaltSyncAction;
+            public static fromObject(d: { [k: string]: any }): proto.SyncActionValue.NctSaltSyncAction;
+            public static toObject(m: proto.SyncActionValue.NctSaltSyncAction, o?: $protobuf.IConversionOptions): { [k: string]: any };
             public toJSON(): { [k: string]: any };
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }

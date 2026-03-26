@@ -19,3 +19,4 @@ test.ts
 TestData
 wa-logs*
 coverage
+package-lock.json

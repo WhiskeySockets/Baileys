@@ -1844,6 +1844,7 @@ message HistorySync {
     optional string companionMetaNonce = 16;
     optional bytes shareableChatIdentifierEncryptionKey = 17;
     repeated Account accounts = 18;
+    optional bytes nctSalt = 19;
     enum BotAIWaitListState {
         IN_WAITLIST = 0;
         AI_AVAILABLE = 1;
@@ -4527,6 +4528,7 @@ message SyncActionValue {
     optional NewsletterSavedInterestsAction newsletterSavedInterestsAction = 75;
     optional AiThreadRenameAction aiThreadRenameAction = 76;
     optional InteractiveMessageAction interactiveMessageAction = 77;
+    optional NctSaltSyncAction nctSaltSyncAction = 80;
     message AgentAction {
         optional string name = 1;
         optional int32 deviceID = 2;
@@ -4758,6 +4760,10 @@ message SyncActionValue {
         optional bool muted = 1;
         optional int64 muteEndTimestamp = 2;
         optional bool autoMuted = 3;
+    }
+
+    message NctSaltSyncAction {
+        optional bytes salt = 1;
     }
 
     message NewsletterSavedInterestsAction {
