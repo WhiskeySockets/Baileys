@@ -33,6 +33,51 @@ import { aesDecryptGCM, hmacSign } from './crypto'
 import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
+import { clearCsTokenCache } from './tc-token-utils'
+
+type TcTokenHistoryEntry = {
+	jid: string
+	token: Uint8Array | Buffer
+	timestamp?: number
+	senderTimestamp?: number
+}
+
+async function storeTcTokensFromHistorySync(
+	entries: TcTokenHistoryEntry[],
+	keyStore: SignalKeyStoreWithTransaction,
+	logger?: ILogger
+): Promise<void> {
+	for (const tcEntry of entries) {
+		try {
+			const incomingTs = tcEntry.timestamp ?? 0
+			const existing = await keyStore.get('tctoken', [tcEntry.jid])
+			const existingData = existing?.[tcEntry.jid]
+			const existingTs = existingData?.timestamp ? parseInt(existingData.timestamp, 10) : 0
+
+			if (existingTs > 0 && (incomingTs <= 0 || incomingTs < existingTs)) {
+				continue
+			}
+
+			await keyStore.set({
+				tctoken: {
+					[tcEntry.jid]: {
+						token: Buffer.from(tcEntry.token),
+						timestamp: incomingTs ? String(incomingTs) : undefined
+					}
+				}
+			})
+			if (tcEntry.senderTimestamp) {
+				await keyStore.set({
+					'tctoken-sender-ts': {
+						[tcEntry.jid]: String(tcEntry.senderTimestamp)
+					}
+				})
+			}
+		} catch (err: any) {
+			logger?.debug({ jid: tcEntry.jid, err: err?.message }, 'failed to store history sync tctoken')
+		}
+	}
+}
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -292,6 +337,18 @@ const processMessage = async (
 						await signalRepository.lidMapping
 							.storeLIDPNMappings(data.lidPnMappings)
 							.catch(err => logger?.warn({ err }, 'failed to store LID-PN mappings from history sync'))
+					}
+
+					// Store NCT salt for cstoken computation (received via history sync)
+					if (data.nctSalt?.length) {
+						clearCsTokenCache()
+						ev.emit('creds.update', { nctSalt: data.nctSalt })
+					}
+
+					// Store TC tokens from history sync into key store
+					if (data.tcTokens?.length) {
+						logger?.debug({ count: data.tcTokens.length }, 'storing TC tokens from history sync')
+						await storeTcTokensFromHistorySync(data.tcTokens, keyStore, logger)
 					}
 
 					ev.emit('messaging-history.set', {

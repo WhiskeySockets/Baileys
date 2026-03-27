@@ -637,9 +637,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		const baseContent: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
+		const content: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
 
-		const tcTokenContent = await buildTcTokenFromJid({ authState, jid, baseContent })
+		const tcResult = await buildTcTokenFromJid({ authState, jid })
+		if (tcResult.tokenNode) {
+			content.push(tcResult.tokenNode)
+		}
 
 		jid = jidNormalizedUser(jid)
 		const result = await query(
@@ -651,7 +654,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type: 'get',
 					xmlns: 'w:profile:picture'
 				},
-				content: tcTokenContent
+				content
 			},
 			timeoutMs
 		)
@@ -728,7 +731,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * @param tcToken token for subscription, use if present
 	 */
 	const presenceSubscribe = async (toJid: string) => {
-		const tcTokenContent = await buildTcTokenFromJid({ authState, jid: toJid })
+		const tcResult = await buildTcTokenFromJid({ authState, jid: toJid })
 
 		return sendNode({
 			tag: 'presence',
@@ -737,7 +740,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				id: generateMessageTag(),
 				type: 'subscribe'
 			},
-			content: tcTokenContent
+			content: tcResult.tokenNode ? [tcResult.tokenNode] : undefined
 		})
 	}
 

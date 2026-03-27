@@ -36,6 +36,7 @@ import {
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
+import { buildTcTokenFromJid, computeCsToken, shouldSendNewTcToken } from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -1013,17 +1014,48 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			const contactTcTokenData =
-				!isGroup && !isRetryResend && !isStatus ? await authState.keys.get('tctoken', [destinationJid]) : {}
+			// ── TC Token: attach to 1:1 messages (not groups, retries, or status) ──
+			const is1on1Send = !isGroup && !isRetryResend && !isStatus && !areJidsSameUser(destinationJid, meId)
+			let tcSenderTimestamp: number | string | null = null
 
-			const tcTokenBuffer = contactTcTokenData[destinationJid]?.token
+			if (is1on1Send) {
+				let hasTcToken = false
+				try {
+					const tcResult = await buildTcTokenFromJid({ authState, jid: destinationJid })
+					tcSenderTimestamp = tcResult.senderTimestamp
+					if (tcResult.tokenNode) {
+						;(stanza.content as BinaryNode[]).push(tcResult.tokenNode)
+						hasTcToken = true
+						logger.debug({ msgId, jid: destinationJid }, 'tctoken attached to message')
+					}
+				} catch (tcErr: any) {
+					logger.debug({ jid: destinationJid, err: tcErr?.message }, 'failed to attach tctoken')
+				}
 
-			if (tcTokenBuffer) {
-				;(stanza.content as BinaryNode[]).push({
-					tag: 'tctoken',
-					attrs: {},
-					content: tcTokenBuffer
-				})
+				// Fallback: cstoken (NCT) when no tctoken is available
+				// Requires LID — resolve PN→LID if needed (matches WA Web genCsTokenBody)
+				if (!hasTcToken && authState.creds.nctSalt?.length) {
+					try {
+						let recipientLid: string | null = isLidUser(destinationJid) ? destinationJid : null
+
+						// Resolve PN→LID for @s.whatsapp.net recipients
+						if (!recipientLid && signalRepository.lidMapping) {
+							recipientLid = await signalRepository.lidMapping.getLIDForPN(jidNormalizedUser(destinationJid))
+						}
+
+						if (recipientLid) {
+							const csToken = computeCsToken(authState.creds.nctSalt, recipientLid)
+							;(stanza.content as BinaryNode[]).push({
+								tag: 'cstoken',
+								attrs: {},
+								content: Buffer.from(csToken)
+							})
+							logger.debug({ jid: destinationJid }, 'cstoken fallback attached')
+						}
+					} catch (csErr: any) {
+						logger.debug({ err: csErr?.message }, 'cstoken computation failed')
+					}
+				}
 			}
 
 			if (additionalNodes && additionalNodes.length > 0) {
@@ -1037,6 +1069,58 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// Add message to retry cache if enabled
 			if (messageRetryManager && !participant) {
 				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
+			}
+
+			// Fire-and-forget: re-issue privacy token after 1:1 sends
+			// WA Web calls WAWebSendTcTokenChatAction.sendTcToken() after every send.
+			// We check shouldSendNewTcToken (bucket boundary) to avoid spamming the server.
+			// Guard: skip for protocol messages (history sync, app state sync, etc.)
+			const isProtocolMsg = !!normalizeMessageContent(message)?.protocolMessage
+			if (is1on1Send && !isProtocolMsg && shouldSendNewTcToken(tcSenderTimestamp)) {
+				;(async () => {
+					const t = unixTimestampSeconds().toString()
+
+					// Resolve the JID to send the token to — WA Web uses LID
+					let tokenJid = jidNormalizedUser(destinationJid)
+					if (!isLidUser(tokenJid) && signalRepository.lidMapping) {
+						const lid = await signalRepository.lidMapping.getLIDForPN(tokenJid)
+						if (lid) {
+							tokenJid = lid
+						}
+					}
+
+					await query({
+						tag: 'iq',
+						attrs: {
+							to: S_WHATSAPP_NET,
+							type: 'set',
+							xmlns: 'privacy'
+						},
+						content: [
+							{
+								tag: 'tokens',
+								attrs: {},
+								content: [
+									{
+										tag: 'token',
+										attrs: {
+											jid: tokenJid,
+											t,
+											type: 'trusted_contact'
+										}
+									}
+								]
+							}
+						]
+					})
+
+					// Persist sender timestamp to avoid re-issuing before next bucket boundary
+					await authState.keys.set({
+						'tctoken-sender-ts': { [jidNormalizedUser(destinationJid)]: t }
+					})
+
+					logger.debug({ jid: destinationJid }, 'issued privacy token after send')
+				})().catch(() => {}) // fire-and-forget
 			}
 		}, meId)
 

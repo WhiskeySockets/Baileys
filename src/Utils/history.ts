@@ -45,11 +45,19 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	return syncData
 }
 
+export type HistorySyncTcToken = {
+	jid: string
+	token: Uint8Array
+	timestamp?: number
+	senderTimestamp?: number
+}
+
 export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger) => {
 	const messages: WAMessage[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
 	const lidPnMappings: LIDMapping[] = []
+	const tcTokens: HistorySyncTcToken[] = []
 
 	logger?.trace({ progress: item.progress }, 'processing history of type ' + item.syncType?.toString())
 
@@ -86,6 +94,23 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 					if (pnFromReceipt) {
 						lidPnMappings.push({ lid: chatId, pn: pnFromReceipt })
 					}
+				}
+
+				// Extract TC tokens from Conversation proto (fields 21, 22, 28)
+				if (chat.tcToken?.length) {
+					const tcEntry: HistorySyncTcToken = {
+						jid: chatId,
+						token: new Uint8Array(chat.tcToken)
+					}
+					if (chat.tcTokenTimestamp) {
+						tcEntry.timestamp = toNumber(chat.tcTokenTimestamp)
+					}
+
+					if (chat.tcTokenSenderTimestamp) {
+						tcEntry.senderTimestamp = toNumber(chat.tcTokenSenderTimestamp)
+					}
+
+					tcTokens.push(tcEntry)
 				}
 
 				const msgs = chat.messages || []
@@ -133,6 +158,8 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 		contacts,
 		messages,
 		lidPnMappings,
+		tcTokens,
+		nctSalt: item.nctSalt ? new Uint8Array(item.nctSalt) : undefined,
 		syncType: item.syncType,
 		progress: item.progress
 	}

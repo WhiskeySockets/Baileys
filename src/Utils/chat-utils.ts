@@ -26,6 +26,7 @@ import type { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage } from './messages-media'
 import { emitSyncActionResults, processContactAction } from './sync-action-utils'
+import { clearCsTokenCache } from './tc-token-utils'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
@@ -872,6 +873,15 @@ export const processSyncAction = (
 	} else if (action?.deleteChatAction || type === 'deleteChat') {
 		if (!isInitialSync) {
 			ev.emit('chats.delete', [id!])
+		}
+	} else if (action?.nctSaltSyncAction) {
+		const salt = action.nctSaltSyncAction.salt
+		// Invalidate cstoken cache — old tokens were computed with the previous salt
+		clearCsTokenCache()
+		if (salt?.length) {
+			ev.emit('creds.update', { nctSalt: new Uint8Array(salt) })
+		} else {
+			ev.emit('creds.update', { nctSalt: undefined })
 		}
 	} else if (action?.labelEditAction) {
 		const { name, color, deleted, predefinedId } = action.labelEditAction
