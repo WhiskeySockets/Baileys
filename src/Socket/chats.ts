@@ -371,7 +371,44 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const updateBlockStatus = async (jid: string, action: 'block' | 'unblock') => {
-		await query({
+		jid = jidNormalizedUser(jid)
+		
+		let lidJid: string | null = null
+		let pnJid: string | null = null
+
+		// If PN → try resolve LID
+	  if (jid.endsWith('@whatsapp.net')) {
+			pnJid = jid
+      try {
+        const lid = await signalRepository?.lidMapping?.getLIDForPN?.(jid).catch(() => null)
+        if (lid) lidJid = jidNormalizedUser(lid)
+			} catch {}
+	  }
+		// If LID → resolve PN
+		if (jid.endsWith('@lid')) {
+			lidJid = jid
+      try {
+        const pn = await signalRepository?.lidMapping?.getPNForLID?.(jid).catch(() => null)
+        if (pn) pnJid = jidNormalizedUser(pn)
+      } catch {}
+    }
+
+		// jid MUST be LID
+    if (!lidJid) throw new Error('Failed to resolve LID')
+		
+    const dhash = String(Date.now())
+    const itemAttrs: any = {
+      dhash,
+      action,
+      jid: lidJid // only LID
+    }		
+		// pn_jid MUST be PN (only for block)
+    if (action === 'block') {
+		  if (!pnJid) throw new Error('Failed to resolve PN')
+		  itemAttrs.pn_jid = pnJid
+    }
+		
+    await query({
 			tag: 'iq',
 			attrs: {
 				xmlns: 'blocklist',
@@ -381,10 +418,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			content: [
 				{
 					tag: 'item',
-					attrs: {
-						action,
-						jid
-					}
+					attrs: itemAttrs
 				}
 			]
 		})
