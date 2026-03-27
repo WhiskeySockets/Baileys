@@ -23,6 +23,7 @@ import type {
 } from '../Types'
 import { WAMessageStatus, WAMessageStubType } from '../Types'
 import {
+	ACCOUNT_RESTRICTED_TEXT,
 	aesDecryptCTR,
 	aesEncryptGCM,
 	cleanMessage,
@@ -95,7 +96,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
-		messageRetryManager
+		messageRetryManager,
+		fetchAccountReachoutTimelock
 	} = sock
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
@@ -1455,13 +1457,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
+			const isReachoutTimelocked = attrs.error === String(NACK_REASONS.SenderReachoutTimelocked)
+
+			if (isReachoutTimelocked) {
+				// user is temporarily restricted, fetch current restriction details
+				await fetchAccountReachoutTimelock()
+			}
+
 			logger.warn({ attrs }, 'received error in ack')
 			ev.emit('messages.update', [
 				{
 					key,
 					update: {
 						status: WAMessageStatus.ERROR,
-						messageStubParameters: [attrs.error]
+						messageStubParameters: isReachoutTimelocked ? [attrs.error, ACCOUNT_RESTRICTED_TEXT] : [attrs.error]
 					}
 				}
 			])
