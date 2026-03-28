@@ -22,6 +22,12 @@ export const WA_ADV_HOSTED_DEVICE_SIG_PREFIX = Buffer.from([6, 6])
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
+/** Status messages older than 24 hours are considered expired */
+export const STATUS_EXPIRY_SECONDS = 24 * 60 * 60
+
+/** WA Web enforces a 14-day maximum age for placeholder resend requests */
+export const PLACEHOLDER_MAX_AGE_SECONDS = 14 * 24 * 60 * 60
+
 export const NOISE_MODE = 'Noise_XX_25519_AESGCM_SHA256\0\0\0\0'
 export const DICT_VERSION = 3
 export const KEY_BUNDLE_TYPE = Buffer.from([5])
