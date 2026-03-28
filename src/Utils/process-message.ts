@@ -285,7 +285,14 @@ const processMessage = async (
 						})
 					}
 
-					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
+					const data = await downloadAndProcessHistorySyncNotification(histNotification, options, logger)
+
+					if (data.lidPnMappings?.length) {
+						logger?.debug({ count: data.lidPnMappings.length }, 'processing LID-PN mappings from history sync')
+						await signalRepository.lidMapping
+							.storeLIDPNMappings(data.lidPnMappings)
+							.catch(err => logger?.warn({ err }, 'failed to store LID-PN mappings from history sync'))
+					}
 
 					ev.emit('messaging-history.set', {
 						...data,
@@ -339,23 +346,51 @@ const processMessage = async (
 			case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
 				const response = protocolMsg.peerDataOperationRequestResponseMessage!
 				if (response) {
-					await placeholderResendCache?.del(response.stanzaId!)
 					// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
-					const { peerDataOperationResult } = response
-					for (const result of peerDataOperationResult!) {
-						const { placeholderMessageResendResponse: retryResponse } = result
+					const peerDataOperationResult = response.peerDataOperationResult || []
+					for (const result of peerDataOperationResult) {
+						const retryResponse = result?.placeholderMessageResendResponse
 						//eslint-disable-next-line max-depth
-						if (retryResponse) {
-							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
-							// wait till another upsert event is available, don't want it to be part of the PDO response message
-							// TODO: parse through proper message handling utilities (to add relevant key fields)
-							setTimeout(() => {
-								ev.emit('messages.upsert', {
-									messages: [webMessageInfo as WAMessage],
-									type: 'notify',
-									requestId: response.stanzaId!
-								})
-							}, 500)
+						if (!retryResponse?.webMessageInfoBytes) {
+							continue
+						}
+
+						//eslint-disable-next-line max-depth
+						try {
+							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes)
+							const msgId = webMessageInfo.key?.id
+							// Retrieve cached original message data (preserves LID details,
+							// timestamps, etc. that the phone may omit in its PDO response)
+							const cachedData = msgId ? await placeholderResendCache?.get<Partial<WAMessage> | true>(msgId) : undefined
+							//eslint-disable-next-line max-depth
+							if (msgId) {
+								await placeholderResendCache?.del(msgId)
+							}
+
+							let finalMsg: WAMessage
+							//eslint-disable-next-line max-depth
+							if (cachedData && typeof cachedData === 'object') {
+								// Apply decoded message content onto cached metadata (preserves LID etc.)
+								cachedData.message = webMessageInfo.message
+								//eslint-disable-next-line max-depth
+								if (webMessageInfo.messageTimestamp) {
+									cachedData.messageTimestamp = webMessageInfo.messageTimestamp
+								}
+
+								finalMsg = cachedData as WAMessage
+							} else {
+								finalMsg = webMessageInfo as WAMessage
+							}
+
+							logger?.debug({ msgId, requestId: response.stanzaId }, 'received placeholder resend')
+
+							ev.emit('messages.upsert', {
+								messages: [finalMsg],
+								type: 'notify',
+								requestId: response.stanzaId!
+							})
+						} catch (err) {
+							logger?.warn({ err, stanzaId: response.stanzaId }, 'failed to decode placeholder resend response')
 						}
 					}
 				}
@@ -378,6 +413,19 @@ const processMessage = async (
 						}
 					}
 				])
+				break
+			case proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE:
+				const labelAssociationMsg = protocolMsg.memberLabel
+				if (labelAssociationMsg?.label) {
+					ev.emit('group.member-tag.update', {
+						groupId: chat.id!,
+						label: labelAssociationMsg.label,
+						participant: message.key.participant!,
+						participantAlt: message.key.participantAlt!,
+						messageTimestamp: Number(message.messageTimestamp)
+					})
+				}
+
 				break
 			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
 				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
