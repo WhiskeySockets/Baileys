@@ -3,7 +3,13 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import {
+	DEFAULT_CACHE_TTLS,
+	KEY_BUNDLE_TYPE,
+	MIN_PREKEY_COUNT,
+	PLACEHOLDER_MAX_AGE_SECONDS,
+	STATUS_EXPIRY_SECONDS
+} from '../Defaults'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -33,10 +39,12 @@ import {
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
+	handleIdentityChange,
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	toNumber,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -71,7 +79,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
-		processingMutex,
+		messageMutex,
+		notificationMutex,
+		receiptMutex,
 		signalRepository,
 		query,
 		upsertMessage,
@@ -137,21 +147,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
 
-	const requestPlaceholderResend = async (messageKey: WAMessageKey): Promise<string | undefined> => {
+	const requestPlaceholderResend = async (
+		messageKey: WAMessageKey,
+		msgData?: Partial<WAMessage>
+	): Promise<string | undefined> => {
 		if (!authState.creds.me?.id) {
 			throw new Boom('Not authenticated')
 		}
 
-		if (placeholderResendCache.get(messageKey?.id!)) {
+		if (await placeholderResendCache.get(messageKey?.id!)) {
 			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
-			await placeholderResendCache.set(messageKey?.id!, true)
+			// Store original message data so PDO response handler can preserve
+			// metadata (LID details, timestamps, etc.) that the phone may omit
+			await placeholderResendCache.set(messageKey?.id!, msgData || true)
 		}
 
-		await delay(5000)
+		await delay(2000)
 
-		if (!placeholderResendCache.get(messageKey?.id!)) {
+		if (!(await placeholderResendCache.get(messageKey?.id!))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -166,11 +181,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		setTimeout(async () => {
-			if (placeholderResendCache.get(messageKey?.id!)) {
-				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
+			if (await placeholderResendCache.get(messageKey?.id!)) {
+				logger.debug({ messageKey }, 'PDO message without response after 8 seconds. Phone possibly offline')
 				await placeholderResendCache.del(messageKey?.id!)
 			}
-		}, 15_000)
+		}, 8_000)
 
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
@@ -429,12 +444,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				// Check if we have a session with this JID
 				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
 				const hasSession = await signalRepository.validateSession(fromJid)
-				const result = messageRetryManager.shouldRecreateSession(fromJid, retryCount, hasSession.exists)
+				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
@@ -547,21 +562,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await uploadPreKeys()
 			}
 		} else {
-			const identityNode = getBinaryNodeChild(node, 'identity')
-			if (identityNode) {
-				logger.info({ jid: from }, 'identity changed')
-				if (identityAssertDebounce.get(from!)) {
-					logger.debug({ jid: from }, 'skipping identity assert (debounced)')
-					return
-				}
+			const result = await handleIdentityChange(node, {
+				meId: authState.creds.me?.id,
+				meLid: authState.creds.me?.lid,
+				validateSession: signalRepository.validateSession,
+				assertSessions,
+				debounceCache: identityAssertDebounce,
+				logger
+			})
 
-				identityAssertDebounce.set(from!, true)
-				try {
-					await assertSessions([from!], true)
-				} catch (error) {
-					logger.warn({ error, jid: from }, 'failed to assert sessions after identity change')
-				}
-			} else {
+			if (result.action === 'no_identity_node') {
 				logger.info({ node }, 'unknown encrypt notification')
 			}
 		}
@@ -752,6 +762,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const setPicture = getBinaryNodeChild(node, 'set')
 				const delPicture = getBinaryNodeChild(node, 'delete')
 
+				// TODO: WAJIDHASH stuff proper support inhouse
 				ev.emit('contacts.update', [
 					{
 						id: jidNormalizedUser(node?.attrs?.from) || (setPicture || delPicture)?.attrs?.hash || '',
@@ -818,7 +829,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				)
 				const random = randomBytes(32)
 				const linkCodeSalt = randomBytes(32)
-				const linkCodePairingExpanded = await hkdf(companionSharedKey, 32, {
+				const linkCodePairingExpanded = hkdf(companionSharedKey, 32, {
 					salt: linkCodeSalt,
 					info: 'link_code_pairing_key_bundle_encryption_key'
 				})
@@ -832,7 +843,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
 				const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 				const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
-				authState.creds.advSecretKey = (await hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
+				authState.creds.advSecretKey = Buffer.from(hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
 				await query({
 					tag: 'iq',
 					attrs: {
@@ -987,12 +998,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
 
 				const hasSession = await signalRepository.validateSession(participant)
-				const result = messageRetryManager.shouldRecreateSession(participant, retryCount, hasSession.exists)
+				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
@@ -1067,7 +1078,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				receiptMutex.mutex(async () => {
 					const status = getStatusFromReceiptType(attrs.type)
 					if (
 						typeof status !== 'undefined' &&
@@ -1095,7 +1106,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								'messages.update',
 								ids.map(id => ({
 									key: { ...key, id },
-									update: { status }
+									update: { status, messageTimestamp: toNumber(+(attrs.t ?? 0)) }
 								}))
 							)
 						}
@@ -1141,7 +1152,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				notificationMutex.mutex(async () => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
@@ -1177,7 +1188,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const encNode = getBinaryNodeChild(node, 'enc')
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
-		if (encNode && encNode.attrs.type === 'msmsg') {
+		if (encNode?.attrs.type === 'msmsg') {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
 			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
 			return
@@ -1218,63 +1229,137 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
-			await processingMutex.mutex(async () => {
+			await messageMutex.mutex(async () => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (
-						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
-						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
-					) {
-						return sendMessageAck(node)
+					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+						return sendMessageAck(node, NACK_REASONS.ParsingError)
 					}
 
-					const errorMessage = msg?.messageStubParameters?.[0] || ''
-					const isPreKeyError = errorMessage.includes('PreKey')
+					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+						// Message arrived without encryption (e.g. CTWA ads messages).
+						// Check if this is eligible for placeholder resend (matching WA Web filters).
+						const unavailableNode = getBinaryNodeChild(node, 'unavailable')
+						const unavailableType = unavailableNode?.attrs?.type
+						if (
+							unavailableType === 'bot_unavailable_fanout' ||
+							unavailableType === 'hosted_unavailable_fanout' ||
+							unavailableType === 'view_once_unavailable_fanout'
+						) {
+							logger.debug(
+								{ msgId: msg.key.id, unavailableType },
+								'skipping placeholder resend for excluded unavailable type'
+							)
+							return sendMessageAck(node)
+						}
 
-					logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
+						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+						if (messageAge > PLACEHOLDER_MAX_AGE_SECONDS) {
+							logger.debug({ msgId: msg.key.id, messageAge }, 'skipping placeholder resend for old message')
+							return sendMessageAck(node)
+						}
 
-					// Handle both pre-key and normal retries in single mutex
-					await retryMutex.mutex(async () => {
-						try {
-							if (!ws.isOpen) {
-								logger.debug({ node }, 'Connection closed, skipping retry')
-								return
-							}
-
-							// Handle pre-key errors with upload and delay
-							if (isPreKeyError) {
-								logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
-
-								try {
-									logger.debug('Uploading pre-keys for error recovery')
-									await uploadPreKeys(5)
-									logger.debug('Waiting for server to process new pre-keys')
-									await delay(1000)
-								} catch (uploadErr) {
-									logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+						// Request the real content from the phone via placeholder resend PDO.
+						// Upsert the CIPHERTEXT stub as a placeholder (like WA Web's processPlaceholderMsg),
+						// and store the requestId in stubParameters[1] so users can correlate
+						// with the incoming PDO response event.
+						const cleanKey: proto.IMessageKey = {
+							remoteJid: msg.key.remoteJid,
+							fromMe: msg.key.fromMe,
+							id: msg.key.id,
+							participant: msg.key.participant
+						}
+						// Cache the original message metadata so the PDO response handler
+						// can preserve key fields (LID details etc.) that the phone may omit
+						const msgData: Partial<WAMessage> = {
+							key: msg.key,
+							messageTimestamp: msg.messageTimestamp,
+							pushName: msg.pushName,
+							participant: msg.participant,
+							verifiedBizName: msg.verifiedBizName
+						}
+						requestPlaceholderResend(cleanKey, msgData)
+							.then(requestId => {
+								if (requestId && requestId !== 'RESOLVED') {
+									logger.debug({ msgId: msg.key.id, requestId }, 'requested placeholder resend for unavailable message')
+									ev.emit('messages.update', [
+										{
+											key: msg.key,
+											update: { messageStubParameters: [NO_MESSAGE_FOUND_ERROR_TEXT, requestId] }
+										}
+									])
 								}
-							}
-
-							const encNode = getBinaryNodeChild(node, 'enc')
-							await sendRetryRequest(node, !encNode)
-							if (retryRequestDelayMs) {
-								await delay(retryRequestDelayMs)
-							}
-						} catch (err) {
-							logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
-							// Still attempt retry even if pre-key upload failed
-							try {
-								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode)
-							} catch (retryErr) {
-								logger.error({ retryErr }, 'Failed to send retry after error handling')
+							})
+							.catch(err => {
+								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
+							})
+						await sendMessageAck(node)
+						// Don't return — fall through to upsertMessage so the stub is emitted
+					} else {
+						// Skip retry for expired status messages (>24h old)
+						if (isJidStatusBroadcast(msg.key.remoteJid!)) {
+							const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+							if (messageAge > STATUS_EXPIRY_SECONDS) {
+								logger.debug(
+									{ msgId: msg.key.id, messageAge, remoteJid: msg.key.remoteJid },
+									'skipping retry for expired status message'
+								)
+								return sendMessageAck(node)
 							}
 						}
 
-						await sendMessageAck(node, NACK_REASONS.UnhandledError)
-					})
+						const errorMessage = msg?.messageStubParameters?.[0] || ''
+						const isPreKeyError = errorMessage.includes('PreKey')
+
+						logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
+
+						// Handle both pre-key and normal retries in single mutex
+						await retryMutex.mutex(async () => {
+							try {
+								if (!ws.isOpen) {
+									logger.debug({ node }, 'Connection closed, skipping retry')
+									return
+								}
+
+								// Handle pre-key errors with upload and delay
+								if (isPreKeyError) {
+									logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
+
+									try {
+										logger.debug('Uploading pre-keys for error recovery')
+										await uploadPreKeys(5)
+										logger.debug('Waiting for server to process new pre-keys')
+										await delay(1000)
+									} catch (uploadErr) {
+										logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+									}
+								}
+
+								const encNode = getBinaryNodeChild(node, 'enc')
+								await sendRetryRequest(node, !encNode)
+								if (retryRequestDelayMs) {
+									await delay(retryRequestDelayMs)
+								}
+							} catch (err) {
+								logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
+								// Still attempt retry even if pre-key upload failed
+								try {
+									const encNode = getBinaryNodeChild(node, 'enc')
+									await sendRetryRequest(node, !encNode)
+								} catch (retryErr) {
+									logger.error({ retryErr }, 'Failed to send retry after error handling')
+								}
+							}
+
+							await sendMessageAck(node, NACK_REASONS.UnhandledError)
+						})
+					}
 				} else {
+					if (messageRetryManager && msg.key.id) {
+						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
+					}
+
 					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
 					if (!isNewsletter) {
 						// no type in the receipt => message delivered
@@ -1433,6 +1518,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		node: BinaryNode
 	}
 
+	/** Yields control to the event loop to prevent blocking */
+	const yieldToEventLoop = (): Promise<void> => {
+		return new Promise(resolve => setImmediate(resolve))
+	}
+
 	const makeOfflineNodeProcessor = () => {
 		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
 			['message', handleMessage],
@@ -1442,6 +1532,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		])
 		const nodes: OfflineNode[] = []
 		let isProcessing = false
+
+		// Number of nodes to process before yielding to event loop
+		const BATCH_SIZE = 10
 
 		const enqueue = (type: MessageType, node: BinaryNode) => {
 			nodes.push({ type, node })
@@ -1453,6 +1546,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			isProcessing = true
 
 			const promise = async () => {
+				let processedInBatch = 0
+
 				while (nodes.length && ws.isOpen) {
 					const { type, node } = nodes.shift()!
 
@@ -1464,6 +1559,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					await nodeProcessor(node)
+					processedInBatch++
+
+					// Yield to event loop after processing a batch
+					// This prevents blocking the event loop for too long when there are many offline nodes
+					if (processedInBatch >= BATCH_SIZE) {
+						processedInBatch = 0
+						await yieldToEventLoop()
+					}
 				}
 
 				isProcessing = false
