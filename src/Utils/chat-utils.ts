@@ -245,18 +245,33 @@ export const decodeSyncdMutations = async (
 		const record =
 			'record' in msgMutation && !!msgMutation.record ? msgMutation.record : (msgMutation as proto.ISyncdRecord)
 
-		const key = await getKey(record.keyId!.id!)
+		let key: ReturnType<typeof mutationKeys>
+		try {
+			key = await getKey(record.keyId!.id!)
+		} catch {
+			// key not found — skip this record instead of aborting the entire snapshot
+			continue
+		}
+
 		const content = record.value!.blob!
 		const encContent = content.subarray(0, -32)
 		const ogValueMac = content.subarray(-32)
 		if (validateMacs) {
 			const contentHmac = generateMac(operation!, encContent, record.keyId!.id!, key.valueMacKey)
 			if (Buffer.compare(contentHmac, ogValueMac) !== 0) {
-				throw new Boom('HMAC content verification failed')
+				// HMAC verification failed — skip this record
+				continue
 			}
 		}
 
-		const result = aesDecrypt(encContent, key.valueEncryptionKey)
+		let result: Uint8Array
+		try {
+			result = aesDecrypt(encContent, key.valueEncryptionKey)
+		} catch {
+			// decrypt failed — skip this record instead of aborting
+			continue
+		}
+
 		const syncAction = proto.SyncActionData.decode(result)
 
 		if (validateMacs) {
@@ -480,19 +495,25 @@ export const decodePatches = async (
 		newState.version = patchVersion
 		const shouldMutate = typeof minimumVersionNumber === 'undefined' || patchVersion > minimumVersionNumber
 
-		const decodeResult = await decodeSyncdPatch(
-			syncd,
-			name,
-			newState,
-			getAppStateSyncKey,
-			shouldMutate
-				? mutation => {
-						const index = mutation.syncAction.index?.toString()
-						mutationMap[index!] = mutation
-					}
-				: () => {},
-			true
-		)
+		let decodeResult: { hash: Buffer; indexValueMap: LTHashState['indexValueMap'] }
+		try {
+			decodeResult = await decodeSyncdPatch(
+				syncd,
+				name,
+				newState,
+				getAppStateSyncKey,
+				shouldMutate
+					? mutation => {
+							const index = mutation.syncAction.index?.toString()
+							mutationMap[index!] = mutation
+						}
+					: () => {},
+				validateMacs
+			)
+		} catch (err) {
+			logger?.warn({ name, version: patchVersion, error: (err as Error).message }, 'failed to decode patch, skipping')
+			continue
+		}
 
 		newState.hash = decodeResult.hash
 		newState.indexValueMap = decodeResult.indexValueMap
@@ -507,7 +528,8 @@ export const decodePatches = async (
 			const result = mutationKeys(keyEnc.keyData!)
 			const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 			if (Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
-				throw new Boom(`failed to verify LTHash at ${newState.version} of ${name}`)
+				logger?.warn({ name, version: newState.version }, 'LTHash verification failed, skipping remaining patches')
+				break
 			}
 		}
 
