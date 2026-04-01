@@ -21,12 +21,14 @@ import {
 	aesEncryptCTR,
 	bindWaitForConnectionUpdate,
 	bytesToCrockford,
+	buildPairingQRData,
 	configureSuccessfulPairing,
 	Curve,
 	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
 	generateRegistrationNode,
+	getCompanionPlatformId,
 	getCodeFromWSError,
 	getErrorCodeFromStreamError,
 	getNextPreKeysNode,
@@ -36,7 +38,6 @@ import {
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
-import { getPlatformId } from '../Utils/browser-utils'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -790,7 +791,7 @@ export const makeSocket = (config: SocketConfig) => {
 						{
 							tag: 'companion_platform_id',
 							attrs: {},
-							content: getPlatformId(browser[1])
+							content: getCompanionPlatformId(browser)
 						},
 						{
 							tag: 'companion_platform_display',
@@ -883,7 +884,7 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 
 			const ref = (refNode.content as Buffer).toString('utf-8')
-			const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
+			const qr = buildPairingQRData(ref, noiseKeyB64, identityKeyB64, advB64, browser)
 
 			ev.emit('connection.update', { qr })
 
