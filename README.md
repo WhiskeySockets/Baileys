@@ -361,7 +361,7 @@ async function connectToWhatsApp () {
             console.log('opened connection')
         }
     })
-    sock.ev.on('messages.upsert', event => {
+    sock.ev.on('messages.upsert', async event => {
         if(event.type !== 'notify' && event.type !== 'append') {
             return
         }
