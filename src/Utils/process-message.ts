@@ -64,8 +64,6 @@ async function storeTcTokensFromHistorySync(
 ) {
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
-	// Collect candidates: only chats with token AND a timestamp (tokens without
-	// timestamps are immediately expired by isTcTokenExpired, so skip them)
 	const candidates: { storageJid: string; token: Buffer; ts: number; senderTs?: number }[] = []
 	for (const chat of chats) {
 		const ts = chat.tcTokenTimestamp ? toNumber(chat.tcTokenTimestamp) : 0
@@ -85,7 +83,6 @@ async function storeTcTokensFromHistorySync(
 		return
 	}
 
-	// Monotonicity guard: don't overwrite fresher tokens from notifications
 	const jids = candidates.map(c => c.storageJid)
 	const existing = await keyStore.get('tctoken', jids)
 	const entries: Record<string, { token: Buffer; timestamp?: string; senderTimestamp?: number }> = {}

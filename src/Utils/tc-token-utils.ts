@@ -2,21 +2,10 @@ import type { SignalKeyStoreWithTransaction } from '../Types'
 import type { BinaryNode } from '../WABinary'
 import { getBinaryNodeChild, getBinaryNodeChildren, isLidUser, jidNormalizedUser } from '../WABinary'
 
-/** 7 days in seconds — matches WA Web AB prop tctoken_duration */
-const TC_TOKEN_BUCKET_DURATION = 604800
-/** 4 buckets → ~28-day rolling window — matches WA Web AB prop tctoken_num_buckets */
-const TC_TOKEN_NUM_BUCKETS = 4
+const TC_TOKEN_BUCKET_DURATION = 604800 // 7 days
+const TC_TOKEN_NUM_BUCKETS = 4 // ~28-day rolling window
 
-/**
- * Check if a received token is expired using WA Web's rolling bucket algorithm.
- * Reference: WAWebTrustedContactsUtils.isTokenExpired
- *
- * Uses Receiver mode constants (tctoken_duration, tctoken_num_buckets).
- * NOTE: WA Web distinguishes Sender vs Receiver mode via AB props
- * (tctoken_duration_sender / tctoken_num_buckets_sender). Currently both
- * use identical values (604800 / 4), so we use a single function for both.
- * If WA ever diverges these, add a `mode` parameter here.
- */
+// WA Web has separate sender/receiver AB props for these but they're identical today
 export function isTcTokenExpired(timestamp: number | string | null | undefined): boolean {
 	if (timestamp === null || timestamp === undefined) return true
 	const ts = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp
@@ -28,12 +17,6 @@ export function isTcTokenExpired(timestamp: number | string | null | undefined):
 	return ts < cutoffTimestamp
 }
 
-/**
- * Check if we should issue a new token to this contact (bucket boundary crossed).
- * Reference: WAWebTrustedContactsUtils.shouldSendNewToken
- *
- * Returns true if senderTimestamp is null/undefined or in a previous bucket.
- */
 export function shouldSendNewTcToken(senderTimestamp: number | undefined): boolean {
 	if (senderTimestamp === undefined) return true
 	const now = Math.floor(Date.now() / 1000)
@@ -42,17 +25,7 @@ export function shouldSendNewTcToken(senderTimestamp: number | undefined): boole
 	return currentBucket > senderBucket
 }
 
-/**
- * Resolve a JID to its LID for tctoken storage, mirroring how Signal sessions
- * use LID keys via resolveLIDSignalAddress.
- *
- * WA Web always resolves to LID before storing/looking up tctokens:
- * `senderLid ?? toLid(from)` (WAWebSetTcTokenChatAction.handleIncomingTcToken)
- *
- * @param jid - The JID to resolve (can be PN or LID)
- * @param getLIDForPN - Resolver function (from lidMapping)
- * @returns The LID if mapping exists, otherwise the original JID
- */
+/** Resolve JID to LID for tctoken storage (WA Web stores under LID) */
 export async function resolveTcTokenJid(
 	jid: string,
 	getLIDForPN: (pn: string) => Promise<string | null>
@@ -62,12 +35,7 @@ export async function resolveTcTokenJid(
 	return lid ?? jid
 }
 
-/**
- * Resolve the target JID for issuing a privacy token, gated by AB prop
- * `lid_trusted_token_issue_to_lid` (14303).
- *
- * WA Web: when true → toLid(jid) ?? jid; when false → toPn(jid) ?? jid
- */
+/** Resolve target JID for issuing privacy token based on AB prop 14303 */
 export async function resolveIssuanceJid(
 	jid: string,
 	issueToLid: boolean,
@@ -80,7 +48,6 @@ export async function resolveIssuanceJid(
 		return lid ?? jid
 	}
 
-	// Default: issue to PN
 	if (!isLidUser(jid)) return jid
 	if (getPNForLID) {
 		const pn = await getPNForLID(jid)
@@ -112,7 +79,6 @@ export async function buildTcTokenFromJid({
 		const tcTokenBuffer = entry?.token
 
 		if (!tcTokenBuffer?.length || isTcTokenExpired(entry?.timestamp)) {
-			// Opportunistic cleanup: remove expired token from store
 			if (tcTokenBuffer) {
 				await authState.keys.set({ tctoken: { [storageJid]: null } })
 			}
@@ -137,15 +103,9 @@ type StoreTcTokensParams = {
 	fallbackJid: string
 	keys: SignalKeyStoreWithTransaction
 	getLIDForPN: (pn: string) => Promise<string | null>
-	/** Optional callback when a new JID is stored (for index tracking) */
 	onNewJidStored?: (jid: string) => void
 }
 
-/**
- * Parse and store tctoken(s) from an IQ result node.
- * Includes timestamp monotonicity guard matching WA Web's handleIncomingTcToken.
- * Used by both the blocking fetch (messages-send) and IQ response (messages-recv) paths.
- */
 export async function storeTcTokensFromIqResult({
 	result,
 	fallbackJid,
@@ -162,22 +122,19 @@ export async function storeTcTokensFromIqResult({
 			continue
 		}
 
-		// In privacy_token notifications, tokenNode.attrs.jid is your own device JID
+		// In notifications tokenNode.attrs.jid is your own device JID, not the sender's
 		const rawJid = jidNormalizedUser(fallbackJid || tokenNode.attrs.jid)
 		const storageJid = await resolveTcTokenJid(rawJid, getLIDForPN)
 		const existingTcData = await keys.get('tctoken', [storageJid])
 		const existingEntry = existingTcData[storageJid]
 
-		// Timestamp monotonicity guard — only store if incoming timestamp >= existing
-		// Matches WA Web handleIncomingTcToken
 		const existingTs = existingEntry?.timestamp ? Number(existingEntry.timestamp) : 0
 		const incomingTs = tokenNode.attrs.t ? Number(tokenNode.attrs.t) : 0
 		if (existingTs > 0 && incomingTs > 0 && existingTs > incomingTs) {
 			continue
 		}
 
-		// Don't overwrite a valid timestamped token with a timestamp-less one —
-		// it would be treated as immediately expired by isTcTokenExpired
+		// timestamp-less tokens would be immediately expired
 		if (existingTs > 0 && !incomingTs) {
 			continue
 		}

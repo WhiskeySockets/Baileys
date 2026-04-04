@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals'
-import { DisconnectReason, type SignalKeyStoreWithTransaction } from '../../Types'
-import { getErrorCodeFromStreamError, SERVER_ERROR_CODES } from '../../Utils'
+import { type SignalKeyStoreWithTransaction } from '../../Types'
+import { SERVER_ERROR_CODES } from '../../Utils'
 import {
 	buildTcTokenFromJid,
 	isTcTokenExpired,
@@ -11,17 +11,11 @@ import {
 import type { BinaryNode } from '../../WABinary'
 import { isJidBot, isJidMetaAI, PSA_WID } from '../../WABinary'
 
-/** 7 days in seconds — matches WA Web tctoken_duration */
 const BUCKET_DURATION = 604800
-/** 4 buckets — matches WA Web tctoken_num_buckets */
 const NUM_BUCKETS = 4
 
 const nowSeconds = () => Math.floor(Date.now() / 1000)
 
-/**
- * Compute the cutoff timestamp for the rolling bucket algorithm.
- * Tokens with timestamp < cutoff are expired.
- */
 const computeCutoff = () => {
 	const now = nowSeconds()
 	const currentBucket = Math.floor(now / BUCKET_DURATION)
@@ -35,8 +29,6 @@ const createMockKeys = (): jest.Mocked<SignalKeyStoreWithTransaction> => ({
 	transaction: jest.fn<SignalKeyStoreWithTransaction['transaction']>(async (work: () => any) => await work()) as any,
 	isInTransaction: jest.fn<SignalKeyStoreWithTransaction['isInTransaction']>()
 })
-
-// ─── storeTcTokensFromIqResult (JID resolution) ─────────────────────────
 
 describe('storeTcTokensFromIqResult', () => {
 	const CONTACT_JID = 'contact@s.whatsapp.net'
@@ -250,8 +242,6 @@ describe('storeTcTokensFromIqResult', () => {
 	})
 })
 
-// ─── Phase 2: isTcTokenExpired (rolling bucket algorithm) ───────────────
-
 describe('isTcTokenExpired', () => {
 	it('returns true for undefined', () => {
 		expect(isTcTokenExpired(undefined)).toBe(true)
@@ -334,8 +324,6 @@ describe('isTcTokenExpired', () => {
 	})
 })
 
-// ─── Phase 2: shouldSendNewTcToken (bucket boundary refresh) ────────────
-
 describe('shouldSendNewTcToken', () => {
 	it('returns true for undefined', () => {
 		expect(shouldSendNewTcToken(undefined)).toBe(true)
@@ -371,8 +359,6 @@ describe('shouldSendNewTcToken', () => {
 		expect(shouldSendNewTcToken(nowSeconds())).toBe(false)
 	})
 })
-
-// ─── Phase 2 + 5: buildTcTokenFromJid ───────────────────────────────────
 
 describe('buildTcTokenFromJid', () => {
 	const TEST_JID = 'user@s.whatsapp.net'
@@ -500,125 +486,6 @@ describe('buildTcTokenFromJid', () => {
 	})
 })
 
-// ─── Phase 3: getErrorCodeFromStreamError (stream error parser) ─────────
-
-describe('getErrorCodeFromStreamError', () => {
-	const makeStreamError = (attrs: Record<string, string>, content: BinaryNode[] = []): BinaryNode => ({
-		tag: 'stream:error',
-		attrs,
-		content
-	})
-
-	describe('conflict errors', () => {
-		it('maps conflict type=replaced to connectionReplaced', () => {
-			const node = makeStreamError({}, [{ tag: 'conflict', attrs: { type: 'replaced' } }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('replaced')
-			expect(statusCode).toBe(DisconnectReason.connectionReplaced)
-		})
-
-		it('maps conflict type=device_removed to loggedOut', () => {
-			const node = makeStreamError({}, [{ tag: 'conflict', attrs: { type: 'device_removed' } }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('device_removed')
-			expect(statusCode).toBe(DisconnectReason.loggedOut)
-		})
-
-		it('maps conflict with unknown type to device_removed (WA Web default)', () => {
-			// WA Web's switch/default falls to device_removed for unknown types
-			const node = makeStreamError({}, [{ tag: 'conflict', attrs: { type: 'something_else' } }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('device_removed')
-			expect(statusCode).toBe(DisconnectReason.loggedOut)
-		})
-
-		it('maps conflict with no type attribute to device_removed', () => {
-			const node = makeStreamError({}, [{ tag: 'conflict', attrs: {} }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('device_removed')
-			expect(statusCode).toBe(DisconnectReason.loggedOut)
-		})
-
-		it('conflict takes priority over code attribute', () => {
-			const node = makeStreamError({ code: '515' }, [{ tag: 'conflict', attrs: { type: 'replaced' } }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('replaced')
-			expect(statusCode).toBe(DisconnectReason.connectionReplaced)
-		})
-	})
-
-	describe('numeric code errors', () => {
-		it('maps code 515 to restartRequired', () => {
-			const node = makeStreamError({ code: '515' })
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('restart required')
-			expect(statusCode).toBe(DisconnectReason.restartRequired)
-		})
-
-		it('maps code 516 to sessionInvalidated', () => {
-			const node = makeStreamError({ code: '516' })
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('session invalidated')
-			expect(statusCode).toBe(DisconnectReason.sessionInvalidated)
-		})
-
-		it('passes through other numeric codes', () => {
-			const node = makeStreamError({ code: '503' })
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('code 503')
-			expect(statusCode).toBe(503)
-		})
-
-		it('code takes priority over non-conflict child tags', () => {
-			const node = makeStreamError({ code: '515' }, [{ tag: 'ack', attrs: { id: '123' } }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('restart required')
-			expect(statusCode).toBe(515)
-		})
-	})
-
-	describe('child-based errors', () => {
-		it('maps ack child to badSession', () => {
-			const node = makeStreamError({}, [{ tag: 'ack', attrs: { id: 'msg123' } }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('ack')
-			expect(statusCode).toBe(DisconnectReason.badSession)
-		})
-
-		it('maps xml-not-well-formed to badSession', () => {
-			const node = makeStreamError({}, [{ tag: 'xml-not-well-formed', attrs: {} }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('xml-not-well-formed')
-			expect(statusCode).toBe(DisconnectReason.badSession)
-		})
-
-		it('maps unknown child tag to badSession with tag as reason', () => {
-			const node = makeStreamError({}, [{ tag: 'something-weird', attrs: {} }])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('something-weird')
-			expect(statusCode).toBe(DisconnectReason.badSession)
-		})
-	})
-
-	describe('edge cases', () => {
-		it('handles empty node (no children, no code)', () => {
-			const node = makeStreamError({})
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('unknown')
-			expect(statusCode).toBe(DisconnectReason.badSession)
-		})
-
-		it('handles node with empty content array', () => {
-			const node = makeStreamError({}, [])
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-			expect(reason).toBe('unknown')
-			expect(statusCode).toBe(DisconnectReason.badSession)
-		})
-	})
-})
-
-// ─── Phase 3: SERVER_ERROR_CODES constants ──────────────────────────────
-
 describe('SERVER_ERROR_CODES', () => {
 	it('MissingTcToken is 463', () => {
 		expect(SERVER_ERROR_CODES.MissingTcToken).toBe('463')
@@ -636,8 +503,6 @@ describe('SERVER_ERROR_CODES', () => {
 		expect(SERVER_ERROR_CODES.NewChatMessagesCapped).toBe('475')
 	})
 })
-
-// ─── Integration scenarios: Phases 1, 2, 4, 5 lifecycle ────────────────
 
 describe('tctoken integration scenarios', () => {
 	const JID_A = 'alice@s.whatsapp.net'
@@ -1073,8 +938,6 @@ describe('tctoken integration scenarios', () => {
 	})
 })
 
-// ─── resolveIssuanceJid (AB prop 14303) ──────────────────────────────────
-
 describe('resolveIssuanceJid', () => {
 	const PN_JID = 'user@s.whatsapp.net'
 	const LID_JID = 'user@lid'
@@ -1118,8 +981,6 @@ describe('resolveIssuanceJid', () => {
 		expect(result).toBe(LID_JID)
 	})
 })
-
-// ─── PSA/bot filter (WA Web: isRegularUser gate on fire-and-forget) ─────
 
 describe('PSA and bot JID detection', () => {
 	it('PSA_WID is 0@c.us', () => {

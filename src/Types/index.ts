@@ -32,8 +32,6 @@ export enum DisconnectReason {
 	loggedOut = 401,
 	badSession = 500,
 	restartRequired = 515,
-	/** server invalidated our session — full logout required */
-	sessionInvalidated = 516,
 	multideviceMismatch = 411,
 	forbidden = 403,
 	unavailableService = 503
