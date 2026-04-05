@@ -189,6 +189,132 @@ export function decryptPollVote(
 }
 
 /**
+ * Decrypt a poll vote with automatic LID/PN JID fallback handling.
+ *
+ * WhatsApp's migration from Phone Number (PN) JIDs to Local Identifier (LID) JIDs
+ * means both formats can appear in messages. This utility tries all combinations
+ * of creator and voter JIDs until decryption succeeds, handling mixed PN/LID scenarios.
+ *
+ * @param encryptedVote - The encrypted poll vote from pollUpdateMessage.vote
+ * @param opts - Decryption options
+ * @param opts.pollEncKey - Poll encryption key from pollCreationMessage.messageContextInfo.messageSecret
+ * @param opts.pollCreationMsgKey - Message key of the poll creation message
+ * @param opts.voteMsgKey - Message key of the vote message
+ * @param opts.meId - Normalized user ID (phone number format)
+ * @param opts.meLid - Optional normalized LID for the current user
+ * @returns Decrypted poll vote message, or undefined if decryption fails with all JID combinations
+ *
+ * @example
+ * ```ts
+ * // Decrypt poll votes from messages.upsert event
+ * sock.ev.on('messages.upsert', async ({ messages }) => {
+ *   for (const msg of messages) {
+ *     const pollUpdate = msg.message?.pollUpdateMessage
+ *     if (pollUpdate) {
+ *       const pollCreationMsg = await getMessage(pollUpdate.pollCreationMessageKey)
+ *       if (pollCreationMsg) {
+ *         const pollEncKey = pollCreationMsg.messageContextInfo?.messageSecret
+ *         if (pollEncKey) {
+ *           const decrypted = decryptPollVoteWithLidFallback(
+ *             pollUpdate.vote,
+ *             {
+ *               pollEncKey,
+ *               pollCreationMsgKey: pollUpdate.pollCreationMessageKey,
+ *               voteMsgKey: msg.key,
+ *               meId: sock.user.id,
+ *               meLid: sock.user.lid
+ *             }
+ *           )
+ *           if (decrypted) {
+ *             console.log('Poll vote options:', decrypted.selectedOptions)
+ *             // Emit messages.update with the decrypted vote
+ *             sock.ev.emit('messages.update', [{
+ *               key: pollUpdate.pollCreationMessageKey,
+ *               update: {
+ *                 pollUpdates: [{
+ *                   pollUpdateMessageKey: msg.key,
+ *                   vote: decrypted,
+ *                   senderTimestampMs: pollUpdate.senderTimestampMs
+ *                 }]
+ *               }
+ *             }])
+ *           }
+ *         }
+ *       }
+ *     }
+ *   }
+ * })
+ * ```
+ *
+ * @author Based on contributions by @smoojs16 (candidate JID approach)
+ */
+export function decryptPollVoteWithLidFallback(
+	encryptedVote: proto.Message.IPollEncValue,
+	opts: {
+		pollEncKey: Uint8Array
+		pollCreationMsgKey: WAMessageKey
+		voteMsgKey: WAMessageKey
+		meId: string
+		meLid?: string
+	}
+): proto.Message.PollVoteMessage | undefined {
+	const { pollEncKey, pollCreationMsgKey, voteMsgKey, meId, meLid } = opts
+
+	const meIdNormalised = jidNormalizedUser(meId)
+	const meLidNormalised = meLid ? jidNormalizedUser(meLid) : undefined
+
+	// Build JID candidates for poll creator (both PN and LID formats)
+	const creatorPnJid = getKeyAuthor(pollCreationMsgKey, meIdNormalised)
+	const creatorLidJid = pollCreationMsgKey.fromMe && meLidNormalised
+		? meLidNormalised
+		: (pollCreationMsgKey.participant && isLidUser(pollCreationMsgKey.participant)
+			? jidNormalizedUser(pollCreationMsgKey.participant)
+			: ((pollCreationMsgKey as any).participantAlt && isLidUser((pollCreationMsgKey as any).participantAlt)
+				? jidNormalizedUser((pollCreationMsgKey as any).participantAlt)
+				: undefined))
+	const creatorCandidates = [creatorPnJid]
+	if (creatorLidJid && creatorLidJid !== creatorPnJid) {
+		creatorCandidates.push(creatorLidJid)
+	}
+
+	// Build JID candidates for voter (both PN and LID formats)
+	const voterPnJid = getKeyAuthor(voteMsgKey, meIdNormalised)
+	const voterLidJid = voteMsgKey.fromMe && meLidNormalised
+		? meLidNormalised
+		: (voteMsgKey.participant && isLidUser(voteMsgKey.participant)
+			? jidNormalizedUser(voteMsgKey.participant)
+			: ((voteMsgKey as any).participantAlt && isLidUser((voteMsgKey as any).participantAlt)
+				? jidNormalizedUser((voteMsgKey as any).participantAlt)
+				: undefined))
+	const voterCandidates = [voterPnJid]
+	if (voterLidJid && voterLidJid !== voterPnJid) {
+		voterCandidates.push(voterLidJid)
+	}
+
+	// Try all combinations of creator and voter JIDs until decryption succeeds
+	for (const pollCreatorJid of creatorCandidates) {
+		for (const voterJid of voterCandidates) {
+			try {
+				return decryptPollVote(
+					encryptedVote,
+					{
+						pollEncKey,
+						pollCreatorJid,
+						pollMsgId: pollCreationMsgKey.id!,
+						voterJid,
+					}
+				)
+			} catch(err) {
+				// Try next combination
+			}
+		}
+	}
+
+	// All combinations failed
+	return undefined
+}
+
+/**
  * Decrypt an event response
  * @param response encrypted event response
  * @param ctx additional info about the event required for decryption
@@ -612,98 +738,28 @@ const processMessage = async (
 				emitGroupRequestJoin(participant, action, method)
 				break
 		}
-	} else if(content?.pollUpdateMessage) {
+	} /*  else if(content?.pollUpdateMessage) {
 		const creationMsgKey = content.pollUpdateMessage.pollCreationMessageKey!
 		// we need to fetch the poll creation message to get the poll enc key
+		// TODO: make standalone, remove getMessage reference
+		// TODO: Remove entirely
 		const pollMsg = await getMessage(creationMsgKey)
 		if(pollMsg) {
 			const meIdNormalised = jidNormalizedUser(meId)
-			const meLidNormalised = creds.me?.lid ? jidNormalizedUser(creds.me.lid) : undefined
-
+			const pollCreatorJid = getKeyAuthor(creationMsgKey, meIdNormalised)
+			const voterJid = getKeyAuthor(message.key, meIdNormalised)
 			const pollEncKey = pollMsg.messageContextInfo?.messageSecret!
 
-			if (!pollEncKey) {
-				logger?.warn(
-					{ creationMsgKey },
-					'poll creation message missing messageSecret, cannot decrypt vote'
-				)
-				return
-			}
-
-			// Build JID candidates for poll creator (both PN and LID formats)
-			// WhatsApp's migration from Phone Number (PN) JIDs to Local Identifier (LID) JIDs
-			// means both formats can appear in messages. We try all combinations until decryption succeeds.
-			const creatorPnJid = getKeyAuthor(creationMsgKey, meIdNormalised)
-			const creatorLidJid = creationMsgKey.fromMe && meLidNormalised
-				? meLidNormalised
-				: (creationMsgKey.participant && isLidUser(creationMsgKey.participant)
-					? jidNormalizedUser(creationMsgKey.participant)
-					: ((creationMsgKey as any).participantAlt && isLidUser((creationMsgKey as any).participantAlt)
-						? jidNormalizedUser((creationMsgKey as any).participantAlt)
-						: undefined))
-			const creatorCandidates = [creatorPnJid]
-			if (creatorLidJid && creatorLidJid !== creatorPnJid) {
-				creatorCandidates.push(creatorLidJid)
-			}
-
-			// Build JID candidates for voter (both PN and LID formats)
-			// Same candidate approach as poll creator - handles mixed PN/LID group scenarios
-			const voterPnJid = getKeyAuthor(message.key, meIdNormalised)
-			const voterLidJid = message.key.fromMe && meLidNormalised
-				? meLidNormalised
-				: (message.key.participant && isLidUser(message.key.participant)
-					? jidNormalizedUser(message.key.participant)
-					: ((message.key as any).participantAlt && isLidUser((message.key as any).participantAlt)
-						? jidNormalizedUser((message.key as any).participantAlt)
-						: undefined))
-			const voterCandidates = [voterPnJid]
-			if (voterLidJid && voterLidJid !== voterPnJid) {
-				voterCandidates.push(voterLidJid)
-			}
-
-			// Try all combinations of creator and voter JIDs until decryption succeeds
-			// This handles cases where poll creator and voter may have different JID formats (PN vs LID)
-			let voteMsg = undefined
-			let lastErr = undefined
-			let usedLidFallback = false
-			for (const pollCreatorJid of creatorCandidates) {
-				for (const voterJid of voterCandidates) {
-					try {
-						logger?.debug(
-							{
-								pollCreatorJid,
-								voterJid,
-								pollMsgId: creationMsgKey.id,
-								hasEncKey: !!pollEncKey
-							},
-							'attempting to decrypt poll vote'
-						)
-
-						voteMsg = decryptPollVote(
-							content.pollUpdateMessage.vote!,
-							{
-								pollEncKey,
-								pollCreatorJid,
-								pollMsgId: creationMsgKey.id!,
-								voterJid,
-							}
-						)
-
-						// Track if we succeeded with a LID candidate (not the first PN attempt)
-						if (creatorCandidates.indexOf(pollCreatorJid) > 0 || voterCandidates.indexOf(voterJid) > 0) {
-							usedLidFallback = true
-						}
-						break
-					} catch(err) {
-						lastErr = err
+			try {
+				const voteMsg = decryptPollVote(
+					content.pollUpdateMessage.vote!,
+					{
+						pollEncKey,
+						pollCreatorJid,
+						pollMsgId: creationMsgKey.id!,
+						voterJid,
 					}
-				}
-				if (voteMsg) {
-					break
-				}
-			}
-
-			if (voteMsg) {
+				)
 				ev.emit('messages.update', [
 					{
 						key: creationMsgKey,
@@ -712,31 +768,16 @@ const processMessage = async (
 								{
 									pollUpdateMessageKey: message.key,
 									vote: voteMsg,
-									senderTimestampMs: toNumber(content.pollUpdateMessage.senderTimestampMs!),
+									senderTimestampMs: (content.pollUpdateMessage.senderTimestampMs! as Long).toNumber(),
 								}
 							]
 						}
 					}
 				])
-
-				logger?.debug(
-					{
-						selectedOptions: voteMsg.selectedOptions?.length,
-						usedLidFallback
-					},
-					usedLidFallback
-						? 'successfully decrypted poll vote using LID candidate fallback'
-						: 'successfully decrypted poll vote'
-				)
-			} else {
+			} catch(err) {
 				logger?.warn(
-					{
-						err: lastErr instanceof Error ? lastErr.message : lastErr,
-						creationMsgKey,
-						creatorCandidates,
-						voterCandidates,
-					},
-					'failed to decrypt poll vote with all JID combinations'
+					{ err, creationMsgKey },
+					'failed to decrypt poll vote'
 				)
 			}
 		} else {
@@ -745,7 +786,7 @@ const processMessage = async (
 				'poll creation message not found, cannot decrypt update'
 			)
 		}
-	}
+		} */
 
 	if (Object.keys(chat).length > 1) {
 		ev.emit('chats.update', [chat])

@@ -43,8 +43,7 @@ export function makeCacheableSignalKeyStore(
 		new NodeCache<SignalDataTypeMap[keyof SignalDataTypeMap]>({
 			stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
 			useClones: false,
-			deleteOnExpire: true,
-			max: 10000 // Limit to 10k signal store entries to prevent memory leak
+			deleteOnExpire: true
 		})
 
 	// Mutex for protecting cache operations

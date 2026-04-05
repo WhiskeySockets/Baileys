@@ -103,31 +103,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		config.msgRetryCounterCache ||
 		new NodeCache<number>({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
-			useClones: false,
-			max: 10000 // Limit to 10k retry entries to prevent memory leak
+			useClones: false
 		})
 	const callOfferCache =
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
 			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
-			useClones: false,
-			max: 1000 // Limit to 1k call offers to prevent memory leak
+			useClones: false
 		})
 
 	const placeholderResendCache =
 		config.placeholderResendCache ||
 		new NodeCache({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
-			useClones: false,
-			max: 5000 // Limit to 5k placeholder requests to prevent memory leak
+			useClones: false
 		})
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
-	const identityAssertDebounce = new NodeCache<boolean>({ 
-		stdTTL: 5, 
-		useClones: false,
-		max: 1000 // Limit to 1k identity assertions to prevent memory leak
-	})
+	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
 
 	let sendActiveReceipts = false
 

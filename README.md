@@ -375,8 +375,56 @@ connectToWhatsApp()
 
 ### Decrypt Poll Votes
 
-- By default poll votes are encrypted and handled in `messages.update`
-- That's a simple example
+- By default poll votes are encrypted and you need to decrypt them yourself in `messages.upsert`
+- Baileys provides `decryptPollVoteWithLidFallback` utility that handles both Phone Number (PN) and Local Identifier (LID) JID formats automatically
+
+```ts
+import { decryptPollVoteWithLidFallback } from '@whiskeysockets/baileys'
+
+sock.ev.on('messages.upsert', async ({ messages }) => {
+    for (const msg of messages) {
+        const pollUpdate = msg.message?.pollUpdateMessage
+        if (pollUpdate) {
+            // Fetch the poll creation message using your getMessage store implementation
+            const pollCreationMsg = await getMessage(pollUpdate.pollCreationMessageKey)
+            if (pollCreationMsg) {
+                const pollEncKey = pollCreationMsg.messageContextInfo?.messageSecret
+                if (pollEncKey) {
+                    // Decrypt with automatic LID/PN fallback
+                    const decrypted = decryptPollVoteWithLidFallback(
+                        pollUpdate.vote,
+                        {
+                            pollEncKey,
+                            pollCreationMsgKey: pollUpdate.pollCreationMessageKey,
+                            voteMsgKey: msg.key,
+                            meId: sock.user.id,
+                            meLid: sock.user.lid
+                        }
+                    )
+                    
+                    if (decrypted) {
+                        console.log('Poll vote options:', decrypted.selectedOptions)
+                        
+                        // Emit messages.update with the decrypted vote
+                        sock.ev.emit('messages.update', [{
+                            key: pollUpdate.pollCreationMessageKey,
+                            update: {
+                                pollUpdates: [{
+                                    pollUpdateMessageKey: msg.key,
+                                    vote: decrypted,
+                                    senderTimestampMs: pollUpdate.senderTimestampMs
+                                }]
+                            }
+                        }])
+                    }
+                }
+            }
+        }
+    }
+})
+```
+
+- Once you emit the `messages.update` event, you can listen to it and aggregate votes:
 ```ts
 sock.ev.on('messages.update', event => {
     for(const { key, update } of event) {
