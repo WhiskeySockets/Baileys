@@ -204,9 +204,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		let data: any
 		try {
-			const contentBuf = typeof payloadNode.content === 'string'
-				? Buffer.from(payloadNode.content, 'binary')
-				: Buffer.from(payloadNode.content)
+			const payloadContent = payloadNode.content
+			if (Array.isArray(payloadContent)) {
+				logger.warn({ payloadNode }, 'Invalid mex newsletter notification payload format')
+				return
+			}
+
+			const contentBuf =
+				typeof payloadContent === 'string' ? Buffer.from(payloadContent, 'binary') : Buffer.from(payloadContent)
 			data = JSON.parse(contentBuf.toString())
 		} catch (error) {
 			logger.error({ err: error, node }, 'Failed to parse mex newsletter notification')
@@ -262,9 +267,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					const lid = update?.jid
 					const addedProfiles = Array.isArray(update?.added_profiles) ? update.added_profiles : []
 					for (const profile of addedProfiles) {
-						const pn = typeof profile === 'string'
-							? profile
-							: profile?.pn ?? profile?.jid ?? null
+						const pn = typeof profile === 'string' ? profile : (profile?.pn ?? profile?.jid ?? null)
 						if (lid && pn) {
 							ev.emit('lid-mapping.update', { lid, pn })
 						}
