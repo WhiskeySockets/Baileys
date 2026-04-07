@@ -106,7 +106,10 @@ export const NEWSLETTER_MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	video: '/newsletter/newsletter-video',
 	document: '/newsletter/newsletter-document',
 	audio: '/newsletter/newsletter-audio',
-	sticker: '/newsletter/newsletter-image',
+	gif: '/newsletter/newsletter-gif',
+	ptt: '/newsletter/newsletter-ptt',
+	ptv: '/newsletter/newsletter-ptv',
+	sticker: '/newsletter/newsletter-sticker-pack',
 	'thumbnail-link': '/newsletter/newsletter-image'
 }
 

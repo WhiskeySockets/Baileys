@@ -860,6 +860,9 @@ export const getWAUploadToServer = (
 			let url = `https://${hostname}${mediaPath}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 			if (newsletter) {
 				url += '&server_thumb_gen=1'
+				if (mediaType === 'video' || mediaType === 'gif' || mediaType === 'ptv') {
+					url += '&server_transcode=1'
+				}
 			}
 
 			let result: MediaUploadResult | undefined
