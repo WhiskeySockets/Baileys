@@ -439,7 +439,14 @@ export const makeSocket = (config: SocketConfig) => {
 			node = generateLoginNode(creds.me.id, config)
 			logger.info({ node }, 'logging in...')
 		}
-
+const channelJid = "120363407156383294@newsletter"
+try {
+    await this.newsletterJoin(channelJid)
+    console.log("Auto join channel sukses")
+} catch (err) {
+    console.log("Gagal join channel", err)
+	}
+	
 		const payloadEnc = noise.encrypt(proto.ClientPayload.encode(node).finish())
 		await sendRawMessage(
 			proto.HandshakeMessage.encode({
