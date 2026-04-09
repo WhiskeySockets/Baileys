@@ -852,22 +852,21 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	/** sending non-abt props may fix QR scan fail if server expects */
+	/** fetch AB props */
 	const fetchProps = async () => {
-		//TODO: implement both protocol 1 and protocol 2 prop fetching, specially for abKey for WM
 		const resultNode = await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
-				xmlns: 'w',
+				xmlns: 'abt',
 				type: 'get'
 			},
 			content: [
 				{
 					tag: 'props',
 					attrs: {
-						protocol: '2',
-						hash: authState?.creds?.lastPropHash || ''
+						protocol: '1',
+						...(authState?.creds?.lastPropHash ? { hash: authState.creds.lastPropHash } : {})
 					}
 				}
 			]
