@@ -854,84 +854,110 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	/** sending non-abt props may fix QR scan fail if server expects */
 	const fetchProps = async () => {
-		let props = {};
+	let props = {};
+	let protocol2Failed = false;
+	let firstError;
+
+	try {
+		// 🔵 STEP 1: Try protocol 2 (modern ABT)
+		const resultNode2 = await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				xmlns: 'abt',
+				type: 'get'
+			},
+			content: [
+				{
+					tag: 'props',
+					attrs: {
+						protocol: '2',
+						hash: authState?.creds?.lastPropHash || ''
+					}
+				}
+			]
+		});
+
+		const propsNode2 = getBinaryNodeChild(resultNode2, 'props');
+
+		// ❌ Missing props node → force fallback
+		if (!propsNode2) {
+			throw new Error('Protocol 2: missing props node');
+		}
+
+		const parsedProps = reduceBinaryNodeToDictionary(propsNode2, 'prop');
+
+		// ❌ Empty props → force fallback
+		if (!parsedProps || Object.keys(parsedProps).length === 0) {
+			throw new Error('Protocol 2: empty props');
+		}
+
+		// ✅ Only update if valid
+		if (propsNode2.attrs?.hash) {
+			authState.creds.lastPropHash = propsNode2.attrs.hash;
+			ev.emit('creds.update', { lastPropHash: propsNode2.attrs.hash });
+		}
+
+		props = parsedProps;
+
+	} catch (err2) {
+		protocol2Failed = true;
+		firstError = err2;
+
+		logger.warn('⚠️ protocol 2 failed or invalid, trying protocol 1');
 
 		try {
-			// 🔵 STEP 1: Try protocol 2 (modern ABT)
-			const resultNode2 = await query({
+			// 🟡 STEP 2: fallback protocol 1 (legacy)
+			const resultNode1 = await query({
 				tag: 'iq',
 				attrs: {
 					to: S_WHATSAPP_NET,
-					xmlns: 'abt',
+					xmlns: 'w',
 					type: 'get'
 				},
 				content: [
 					{
 						tag: 'props',
 						attrs: {
-							protocol: '2',
-							hash: authState?.creds?.lastPropHash || ''
+							protocol: '1',
+							...(authState?.creds?.lastPropHash
+								? { hash: authState.creds.lastPropHash }
+								: {})
 						}
 					}
 				]
 			});
 
-			const propsNode2 = getBinaryNodeChild(resultNode2, 'props');
+			const propsNode1 = getBinaryNodeChild(resultNode1, 'props');
 
-			if (propsNode2) {
-				if (propsNode2.attrs?.hash) {
-					authState.creds.lastPropHash = propsNode2.attrs.hash;
-					ev.emit('creds.update', authState.creds);
-				}
-
-				props = reduceBinaryNodeToDictionary(propsNode2, 'prop');
+			if (!propsNode1) {
+				throw new Error('Protocol 1: missing props node');
 			}
 
-		} catch (err2) {
-			logger.warn('⚠️ protocol 2 props failed, trying protocol 1');
+			const parsedProps1 = reduceBinaryNodeToDictionary(propsNode1, 'prop');
 
-			try {
-				// 🟡 STEP 2: fallback protocol 1 (legacy)
-				const resultNode1 = await query({
-					tag: 'iq',
-					attrs: {
-						to: S_WHATSAPP_NET,
-						xmlns: 'w',
-						type: 'get'
-					},
-					content: [
-						{
-							tag: 'props',
-							attrs: {
-								protocol: '1',
-								...(authState?.creds?.lastPropHash
-									? { hash: authState.creds.lastPropHash }
-									: {})
-							}
-						}
-					]
-				});
-
-				const propsNode1 = getBinaryNodeChild(resultNode1, 'props');
-
-				if (propsNode1) {
-					if (propsNode1.attrs?.hash) {
-						authState.creds.lastPropHash = propsNode1.attrs.hash;
-						ev.emit('creds.update', authState.creds);
-					}
-
-					props = reduceBinaryNodeToDictionary(propsNode1, 'prop');
-				}
-
-			} catch (err1) {
-				logger.warn('⚠️ both protocol 1 and 2 failed, returning empty props');
-				return {};
+			if (!parsedProps1 || Object.keys(parsedProps1).length === 0) {
+				throw new Error('Protocol 1: empty props');
 			}
+
+			if (propsNode1.attrs?.hash) {
+				authState.creds.lastPropHash = propsNode1.attrs.hash;
+				ev.emit('creds.update', { lastPropHash: propsNode1.attrs.hash });
+			}
+
+			props = parsedProps1;
+
+		} catch (err1) {
+			logger.warn('⚠️ both protocol 1 and 2 failed');
+
+			// 🔥 IMPORTANT: throw real error instead of silent {}
+			throw firstError || err1;
 		}
+	}
 
-		logger.debug('fetched props');
-		return props;
-	};
+	logger.debug('fetched props');
+	return props;
+};
 
 	/**
 	 * modify a chat -- mark unread, read etc.
