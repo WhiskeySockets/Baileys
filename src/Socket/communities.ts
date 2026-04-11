@@ -14,6 +14,8 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
+	isLidUser,
+	isPnUser,
 	jidEncode,
 	jidNormalizedUser
 } from '../WABinary'
@@ -436,9 +438,15 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 	const descChild = getBinaryNodeChild(community, 'description')
 	let desc: string | undefined
 	let descId: string | undefined
+	let descOwner: string | undefined
+	let descOwnerPn: string | undefined
+	let descOwnerUsername: string | undefined
 	if (descChild) {
 		desc = getBinaryNodeChildString(descChild, 'body')
 		descId = descChild.attrs.id
+		descOwner = descChild.attrs.participant ? jidNormalizedUser(descChild.attrs.participant) : undefined
+		descOwnerPn = descChild.attrs.participant_pn ? jidNormalizedUser(descChild.attrs.participant_pn) : undefined
+		descOwnerUsername = descChild.attrs.participant_username || undefined
 	}
 
 	const communityId = community.attrs.id?.includes('@')
@@ -450,12 +458,19 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 		id: communityId,
 		subject: community.attrs.subject || '',
 		subjectOwner: community.attrs.s_o,
+		subjectOwnerPn: community.attrs.s_o_pn,
+		subjectOwnerUsername: community.attrs.s_o_username,
 		subjectTime: Number(community.attrs.s_t || 0),
 		size: getBinaryNodeChildren(community, 'participant').length,
 		creation: Number(community.attrs.creation || 0),
 		owner: community.attrs.creator ? jidNormalizedUser(community.attrs.creator) : undefined,
+		ownerPn: community.attrs.creator_pn ? jidNormalizedUser(community.attrs.creator_pn) : undefined,
+		ownerUsername: community.attrs.creator_username || undefined,
 		desc,
 		descId,
+		descOwner,
+		descOwnerPn,
+		descOwnerUsername,
 		linkedParent: getBinaryNodeChild(community, 'linked_parent')?.attrs.jid || undefined,
 		restrict: !!getBinaryNodeChild(community, 'locked'),
 		announce: !!getBinaryNodeChild(community, 'announcement'),
@@ -467,6 +482,9 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 			return {
 				// TODO: IMPLEMENT THE PN/LID FIELDS HERE!!
 				id: attrs.jid!,
+				phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
+				lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
+				username: attrs.participant_username || attrs.username || undefined,
 				admin: (attrs.type || null) as GroupParticipant['admin']
 			}
 		}),

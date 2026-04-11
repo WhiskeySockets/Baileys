@@ -519,12 +519,19 @@ const processMessage = async (
 				id: jid,
 				author: message.key.participant!,
 				authorPn: message.key.participantAlt!,
+				authorUsername: message.key.participantUsername!,
 				participants,
 				action
 			})
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
 			ev.emit('groups.update', [
-				{ id: jid, ...update, author: message.key.participant ?? undefined, authorPn: message.key.participantAlt }
+				{
+					id: jid,
+					...update,
+					author: message.key.participant ?? undefined,
+					authorPn: message.key.participantAlt,
+					authorUsername: message.key.participantUsername
+				}
 			])
 		}
 
@@ -533,6 +540,7 @@ const processMessage = async (
 				id: jid,
 				author: message.key.participant!,
 				authorPn: message.key.participantAlt!,
+				authorUsername: message.key.participantUsername!,
 				participant: participant.lid,
 				participantPn: participant.pn,
 				action,

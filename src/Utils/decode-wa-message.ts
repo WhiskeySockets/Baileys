@@ -196,11 +196,14 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const key: WAMessageKey = {
 		remoteJid: chatId,
 		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
-		remoteJidUsername: !isJidGroup(chatId) ? stanza.attrs.peer_recipient_username : undefined,
+		remoteJidUsername: !isJidGroup(chatId)
+			? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username
+			: undefined,
 		fromMe,
 		id: msgId,
 		participant,
 		participantAlt: isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		participantUsername: stanza.attrs.participant ? stanza.attrs.participant_username : undefined,
 		addressingMode: addressingContext.addressingMode,
 		...(msgType === 'newsletter' && stanza.attrs.server_id ? { server_id: stanza.attrs.server_id } : {})
 	}

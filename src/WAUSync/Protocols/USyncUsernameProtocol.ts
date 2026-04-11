@@ -1,0 +1,27 @@
+import type { USyncQueryProtocol } from '../../Types/USync'
+import { assertNodeErrorFree, type BinaryNode } from '../../WABinary'
+import { USyncUser } from '../USyncUser'
+
+export class USyncUsernameProtocol implements USyncQueryProtocol {
+	name = 'username'
+
+	getQueryElement(): BinaryNode {
+		return {
+			tag: 'username',
+			attrs: {}
+		}
+	}
+
+	getUserElement(_user: USyncUser): BinaryNode | null {
+		return null
+	}
+
+	parser(node: BinaryNode): string | null {
+		if (node.tag === 'username') {
+			assertNodeErrorFree(node)
+			return typeof node.content === 'string' ? node.content : null
+		}
+
+		return null
+	}
+}
