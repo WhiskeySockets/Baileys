@@ -854,12 +854,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	/** sending non-abt props may fix QR scan fail if server expects */
 	const fetchProps = async () => {
-		//TODO: implement both protocol 1 and protocol 2 prop fetching, specially for abKey for WM
-		const resultNode = await query({
+	let props = {};
+	let protocol2Failed = false;
+	let firstError;
+
+	try {
+		// 🔵 STEP 1: Try protocol 2 (modern ABT)
+		const resultNode2 = await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
-				xmlns: 'w',
+				xmlns: 'abt',
 				type: 'get'
 			},
 			content: [
@@ -871,25 +876,88 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					}
 				}
 			]
-		})
+		});
 
-		const propsNode = getBinaryNodeChild(resultNode, 'props')
+		const propsNode2 = getBinaryNodeChild(resultNode2, 'props');
 
-		let props: { [_: string]: string } = {}
-		if (propsNode) {
-			if (propsNode.attrs?.hash) {
-				// on some clients, the hash is returning as undefined
-				authState.creds.lastPropHash = propsNode?.attrs?.hash
-				ev.emit('creds.update', authState.creds)
-			}
-
-			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
+		// ❌ Missing props node → force fallback
+		if (!propsNode2) {
+			throw new Error('Protocol 2: missing props node');
 		}
 
-		logger.debug('fetched props')
+		const parsedProps = reduceBinaryNodeToDictionary(propsNode2, 'prop');
 
-		return props
+		// ❌ Empty props → force fallback
+		if (!parsedProps || Object.keys(parsedProps).length === 0) {
+			throw new Error('Protocol 2: empty props');
+		}
+
+		// ✅ Only update if valid
+		if (propsNode2.attrs?.hash) {
+			authState.creds.lastPropHash = propsNode2.attrs.hash;
+			ev.emit('creds.update', { lastPropHash: propsNode2.attrs.hash });
+		}
+
+		props = parsedProps;
+
+	} catch (err2) {
+		protocol2Failed = true;
+		firstError = err2;
+
+		logger.warn('⚠️ protocol 2 failed or invalid, trying protocol 1');
+
+		try {
+			// 🟡 STEP 2: fallback protocol 1 (legacy)
+			const resultNode1 = await query({
+				tag: 'iq',
+				attrs: {
+					to: S_WHATSAPP_NET,
+					xmlns: 'w',
+					type: 'get'
+				},
+				content: [
+					{
+						tag: 'props',
+						attrs: {
+							protocol: '1',
+							...(authState?.creds?.lastPropHash
+								? { hash: authState.creds.lastPropHash }
+								: {})
+						}
+					}
+				]
+			});
+
+			const propsNode1 = getBinaryNodeChild(resultNode1, 'props');
+
+			if (!propsNode1) {
+				throw new Error('Protocol 1: missing props node');
+			}
+
+			const parsedProps1 = reduceBinaryNodeToDictionary(propsNode1, 'prop');
+
+			if (!parsedProps1 || Object.keys(parsedProps1).length === 0) {
+				throw new Error('Protocol 1: empty props');
+			}
+
+			if (propsNode1.attrs?.hash) {
+				authState.creds.lastPropHash = propsNode1.attrs.hash;
+				ev.emit('creds.update', { lastPropHash: propsNode1.attrs.hash });
+			}
+
+			props = parsedProps1;
+
+		} catch (err1) {
+			logger.warn('⚠️ both protocol 1 and 2 failed');
+
+			
+			return {};
+		}
 	}
+
+	logger.debug('fetched props');
+	return props;
+};
 
 	/**
 	 * modify a chat -- mark unread, read etc.
