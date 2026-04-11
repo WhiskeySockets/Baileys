@@ -950,8 +950,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		} catch (err1) {
 			logger.warn('⚠️ both protocol 1 and 2 failed');
 
-			// 🔥 IMPORTANT: throw real error instead of silent {}
-			throw firstError || err1;
+			
+			return {};
 		}
 	}
 
