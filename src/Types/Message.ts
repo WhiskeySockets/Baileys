@@ -19,6 +19,7 @@ export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey & {
 	remoteJidAlt?: string
+	remoteJidUsername?: string
 	participantAlt?: string
 	server_id?: string
 	addressingMode?: string
