@@ -12,7 +12,8 @@ export class USyncUsernameProtocol implements USyncQueryProtocol {
 		}
 	}
 
-	getUserElement(_user: USyncUser): BinaryNode | null {
+	getUserElement(user: USyncUser): BinaryNode | null {
+		void user
 		return null
 	}
 
