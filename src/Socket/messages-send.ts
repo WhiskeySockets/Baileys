@@ -100,37 +100,42 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
+	// Prevent race conditions in media connection refresh
+	const mediaConnMutex = makeKeyedMutex()
+
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async (forceGet = false) => {
-		const media = await mediaConn
-		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
-			mediaConn = (async () => {
-				const result = await query({
-					tag: 'iq',
-					attrs: {
-						type: 'set',
-						xmlns: 'w:m',
-						to: S_WHATSAPP_NET
-					},
-					content: [{ tag: 'media_conn', attrs: {} }]
-				})
-				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
-				// TODO: explore full length of data that whatsapp provides
-				const node: MediaConnInfo = {
-					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
-						hostname: attrs.hostname!,
-						maxContentLengthBytes: +attrs.maxContentLengthBytes!
-					})),
-					auth: mediaConnNode.attrs.auth!,
-					ttl: +mediaConnNode.attrs.ttl!,
-					fetchDate: new Date()
-				}
-				logger.debug('fetched media conn')
-				return node
-			})()
-		}
+		return mediaConnMutex.mutex('media-conn', async () => {
+			const media = await mediaConn.catch(() => undefined)
+			if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
+				mediaConn = (async () => {
+					const result = await query({
+						tag: 'iq',
+						attrs: {
+							type: 'set',
+							xmlns: 'w:m',
+							to: S_WHATSAPP_NET
+						},
+						content: [{ tag: 'media_conn', attrs: {} }]
+					})
+					const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
+					// TODO: explore full length of data that whatsapp provides
+					const node: MediaConnInfo = {
+						hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
+							hostname: attrs.hostname!,
+							maxContentLengthBytes: +attrs.maxContentLengthBytes!
+						})),
+						auth: mediaConnNode.attrs.auth!,
+						ttl: +mediaConnNode.attrs.ttl!,
+						fetchDate: new Date()
+					}
+					logger.debug('fetched media conn')
+					return node
+				})()
+			}
 
-		return mediaConn
+			return mediaConn
+		})
 	}
 
 	/**
