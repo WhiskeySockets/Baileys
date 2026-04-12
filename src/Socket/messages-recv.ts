@@ -255,92 +255,94 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// Handles newsletter notifications
 	const handleNewsletterNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from!
-		const child = getAllBinaryNodeChildren(node)[0]!
+		const children = getAllBinaryNodeChildren(node)
 		const author = node.attrs.participant!
 
-		logger.info({ from, child }, 'got newsletter notification')
+		for (const child of children) {
+			logger.info({ from, child }, 'got newsletter notification')
 
-		switch (child.tag) {
-			case 'reaction':
-				const reactionUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					reaction: {
-						code: getBinaryNodeChildString(child, 'reaction'),
-						count: 1
-					}
-				}
-				ev.emit('newsletter.reaction', reactionUpdate)
-				break
-
-			case 'view':
-				const viewUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					count: parseInt(child.content?.toString() || '0', 10)
-				}
-				ev.emit('newsletter.view', viewUpdate)
-				break
-
-			case 'participant':
-				const participantUpdate = {
-					id: from,
-					author,
-					user: child.attrs.jid!,
-					action: child.attrs.action!,
-					new_role: child.attrs.role!
-				}
-				ev.emit('newsletter-participants.update', participantUpdate)
-				break
-
-			case 'update':
-				const settingsNode = getBinaryNodeChild(child, 'settings')
-				if (settingsNode) {
-					const update: Record<string, any> = {}
-					const nameNode = getBinaryNodeChild(settingsNode, 'name')
-					if (nameNode?.content) update.name = nameNode.content.toString()
-
-					const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
-					if (descriptionNode?.content) update.description = descriptionNode.content.toString()
-
-					ev.emit('newsletter-settings.update', {
+			switch (child.tag) {
+				case 'reaction':
+					const reactionUpdate = {
 						id: from,
-						update
-					})
-				}
-
-				break
-
-			case 'message':
-				const plaintextNode = getBinaryNodeChild(child, 'plaintext')
-				if (plaintextNode?.content) {
-					try {
-						const contentBuf =
-							typeof plaintextNode.content === 'string'
-								? Buffer.from(plaintextNode.content, 'binary')
-								: Buffer.from(plaintextNode.content as Uint8Array)
-						const messageProto = proto.Message.decode(contentBuf).toJSON()
-						const fullMessage = proto.WebMessageInfo.fromObject({
-							key: {
-								remoteJid: from,
-								id: child.attrs.message_id || child.attrs.server_id,
-								fromMe: false // TODO: is this really true though
-							},
-							message: messageProto,
-							messageTimestamp: +child.attrs.t!
-						}).toJSON() as WAMessage
-						await upsertMessage(fullMessage, 'append')
-						logger.info('Processed plaintext newsletter message')
-					} catch (error) {
-						logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						server_id: child.attrs.message_id!,
+						reaction: {
+							code: getBinaryNodeChildString(child, 'reaction'),
+							count: 1
+						}
 					}
-				}
+					ev.emit('newsletter.reaction', reactionUpdate)
+					break
 
-				break
+				case 'view':
+					const viewUpdate = {
+						id: from,
+						server_id: child.attrs.message_id!,
+						count: parseInt(child.content?.toString() || '0', 10)
+					}
+					ev.emit('newsletter.view', viewUpdate)
+					break
 
-			default:
-				logger.warn({ node }, 'Unknown newsletter notification')
-				break
+				case 'participant':
+					const participantUpdate = {
+						id: from,
+						author,
+						user: child.attrs.jid!,
+						action: child.attrs.action!,
+						new_role: child.attrs.role!
+					}
+					ev.emit('newsletter-participants.update', participantUpdate)
+					break
+
+				case 'update':
+					const settingsNode = getBinaryNodeChild(child, 'settings')
+					if (settingsNode) {
+						const update: Record<string, any> = {}
+						const nameNode = getBinaryNodeChild(settingsNode, 'name')
+						if (nameNode?.content) update.name = nameNode.content.toString()
+
+						const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
+						if (descriptionNode?.content) update.description = descriptionNode.content.toString()
+
+						ev.emit('newsletter-settings.update', {
+							id: from,
+							update
+						})
+					}
+
+					break
+
+				case 'message':
+					const plaintextNode = getBinaryNodeChild(child, 'plaintext')
+					if (plaintextNode?.content) {
+						try {
+							const contentBuf =
+								typeof plaintextNode.content === 'string'
+									? Buffer.from(plaintextNode.content, 'binary')
+									: Buffer.from(plaintextNode.content as Uint8Array)
+							const messageProto = proto.Message.decode(contentBuf).toJSON()
+							const fullMessage = proto.WebMessageInfo.fromObject({
+								key: {
+									remoteJid: from,
+									id: child.attrs.message_id || child.attrs.server_id,
+									fromMe: false // TODO: is this really true though
+								},
+								message: messageProto,
+								messageTimestamp: +child.attrs.t!
+							}).toJSON() as WAMessage
+							await upsertMessage(fullMessage, 'append')
+							logger.info('Processed plaintext newsletter message')
+						} catch (error) {
+							logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						}
+					}
+
+					break
+
+				default:
+					logger.warn({ node, child }, 'Unknown newsletter notification child')
+					break
+			}
 		}
 	}
 
