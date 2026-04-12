@@ -259,10 +259,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const author = node.attrs.participant!
 
 		for (const child of children) {
-			logger.info({ from, child }, 'got newsletter notification')
+			logger.debug({ from, child }, 'got newsletter notification')
 
 			switch (child.tag) {
-				case 'reaction':
+				case 'reaction': {
 					const reactionUpdate = {
 						id: from,
 						server_id: child.attrs.message_id!,
@@ -273,8 +273,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 					ev.emit('newsletter.reaction', reactionUpdate)
 					break
+				}
 
-				case 'view':
+				case 'view': {
 					const viewUpdate = {
 						id: from,
 						server_id: child.attrs.message_id!,
@@ -282,8 +283,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 					ev.emit('newsletter.view', viewUpdate)
 					break
+				}
 
-				case 'participant':
+				case 'participant': {
 					const participantUpdate = {
 						id: from,
 						author,
@@ -293,8 +295,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 					ev.emit('newsletter-participants.update', participantUpdate)
 					break
+				}
 
-				case 'update':
+				case 'update': {
 					const settingsNode = getBinaryNodeChild(child, 'settings')
 					if (settingsNode) {
 						const update: Record<string, any> = {}
@@ -311,8 +314,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					break
+				}
 
-				case 'message':
+				case 'message': {
 					const plaintextNode = getBinaryNodeChild(child, 'plaintext')
 					if (plaintextNode?.content) {
 						try {
@@ -331,13 +335,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								messageTimestamp: +child.attrs.t!
 							}).toJSON() as WAMessage
 							await upsertMessage(fullMessage, 'append')
-							logger.info('Processed plaintext newsletter message')
+							logger.debug('Processed plaintext newsletter message')
 						} catch (error) {
 							logger.error({ error }, 'Failed to decode plaintext newsletter message')
 						}
 					}
 
 					break
+				}
 
 				default:
 					logger.warn({ node, child }, 'Unknown newsletter notification child')
