@@ -124,7 +124,7 @@ type TcTokenParams = {
 	authState: {
 		keys: SignalKeyStoreWithTransaction
 	}
-	getLIDForPN?: (pn: string) => Promise<string | null>
+	getLIDForPN: (pn: string) => Promise<string | null>
 }
 
 export async function buildTcTokenFromJid({
@@ -134,7 +134,7 @@ export async function buildTcTokenFromJid({
 	getLIDForPN
 }: TcTokenParams): Promise<BinaryNode[] | undefined> {
 	try {
-		const storageJid = getLIDForPN ? await resolveTcTokenJid(jid, getLIDForPN) : jid
+		const storageJid = await resolveTcTokenJid(jid, getLIDForPN)
 		const tcTokenData = await authState.keys.get('tctoken', [storageJid])
 		const entry = tcTokenData?.[storageJid]
 		const tcTokenBuffer = entry?.token

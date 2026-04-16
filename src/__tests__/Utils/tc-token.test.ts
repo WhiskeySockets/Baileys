@@ -386,6 +386,7 @@ describe('buildTcTokenFromJid', () => {
 	const VALID_TOKEN = Buffer.from([4, 1, 33, 254, 110])
 	const RECENT_TS = String(nowSeconds() - 86400) // 1 day ago
 	const EXPIRED_TS = String(nowSeconds() - 30 * 86400) // 30 days ago
+	const noopGetLID = async (): Promise<string | null> => null
 
 	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
 
@@ -397,7 +398,7 @@ describe('buildTcTokenFromJid', () => {
 		// @ts-ignore
 		mockKeys.get.mockResolvedValue({ [TEST_JID]: { token: VALID_TOKEN, timestamp: RECENT_TS } })
 
-		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(result).toBeDefined()
 		expect(result).toHaveLength(1)
@@ -410,7 +411,7 @@ describe('buildTcTokenFromJid', () => {
 		// @ts-ignore
 		mockKeys.get.mockResolvedValue({})
 
-		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(result).toBeUndefined()
 	})
@@ -419,7 +420,7 @@ describe('buildTcTokenFromJid', () => {
 		// @ts-ignore
 		mockKeys.get.mockResolvedValue({ [TEST_JID]: { token: VALID_TOKEN, timestamp: EXPIRED_TS } })
 
-		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(result).toBeUndefined()
 	})
@@ -428,7 +429,7 @@ describe('buildTcTokenFromJid', () => {
 		// @ts-ignore
 		mockKeys.get.mockResolvedValue({ [TEST_JID]: { token: VALID_TOKEN, timestamp: EXPIRED_TS } })
 
-		await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(mockKeys.set).toHaveBeenCalledWith({ tctoken: { [TEST_JID]: null } })
 	})
@@ -440,7 +441,7 @@ describe('buildTcTokenFromJid', () => {
 			[TEST_JID]: { token: VALID_TOKEN, timestamp: EXPIRED_TS, senderTimestamp: senderTs }
 		})
 
-		await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(mockKeys.set).toHaveBeenCalledWith({
 			tctoken: {
@@ -453,7 +454,7 @@ describe('buildTcTokenFromJid', () => {
 		// @ts-ignore
 		mockKeys.get.mockResolvedValue({})
 
-		await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(mockKeys.set).not.toHaveBeenCalled()
 	})
@@ -465,6 +466,7 @@ describe('buildTcTokenFromJid', () => {
 
 		const result = await buildTcTokenFromJid({
 			authState: { keys: mockKeys },
+			getLIDForPN: noopGetLID,
 			jid: TEST_JID,
 			baseContent: [existingNode]
 		})
@@ -479,6 +481,7 @@ describe('buildTcTokenFromJid', () => {
 
 		const result = await buildTcTokenFromJid({
 			authState: { keys: mockKeys },
+			getLIDForPN: noopGetLID,
 			jid: TEST_JID,
 			baseContent: [existingNode]
 		})
@@ -494,7 +497,7 @@ describe('buildTcTokenFromJid', () => {
 		// @ts-ignore
 		mockKeys.get.mockRejectedValueOnce(new Error('database error'))
 
-		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(result).toBeUndefined()
 	})
@@ -506,6 +509,7 @@ describe('buildTcTokenFromJid', () => {
 
 		const result = await buildTcTokenFromJid({
 			authState: { keys: mockKeys },
+			getLIDForPN: noopGetLID,
 			jid: TEST_JID,
 			baseContent: [existingNode]
 		})
@@ -517,7 +521,7 @@ describe('buildTcTokenFromJid', () => {
 		// @ts-ignore
 		mockKeys.get.mockResolvedValue({ [TEST_JID]: { token: VALID_TOKEN } })
 
-		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+		const result = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: TEST_JID })
 
 		expect(result).toBeUndefined()
 	})
@@ -539,6 +543,7 @@ describe('tctoken integration scenarios', () => {
 	const JID_C = 'charlie@s.whatsapp.net'
 	const TOKEN_A = Buffer.from([4, 1, 33, 254, 110, 59])
 	const TOKEN_B = Buffer.from([4, 2, 44, 128, 200, 12])
+	const noopGetLID = async (): Promise<string | null> => null
 
 	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
 
@@ -554,7 +559,7 @@ describe('tctoken integration scenarios', () => {
 			// @ts-ignore
 			mockKeys.get.mockResolvedValueOnce({})
 
-			const result1 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: JID_A })
+			const result1 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: JID_A })
 			expect(result1).toBeUndefined()
 
 			// Simulate: after fetch, token is stored
@@ -567,7 +572,7 @@ describe('tctoken integration scenarios', () => {
 			// @ts-ignore
 			mockKeys.get.mockResolvedValueOnce({ [JID_A]: { token: TOKEN_A, timestamp: recentTs } })
 
-			const result2 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: JID_A })
+			const result2 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: JID_A })
 			expect(result2).toBeDefined()
 			const node2 = result2![0]!
 			expect(node2.tag).toBe('tctoken')
@@ -584,7 +589,7 @@ describe('tctoken integration scenarios', () => {
 			// @ts-ignore
 			mockKeys.get.mockResolvedValueOnce({ [JID_A]: { token: TOKEN_A, timestamp: expiredTs } })
 
-			const result1 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: JID_A })
+			const result1 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: JID_A })
 			expect(result1).toBeUndefined()
 			expect(isTcTokenExpired(expiredTs)).toBe(true)
 
@@ -595,7 +600,7 @@ describe('tctoken integration scenarios', () => {
 			// @ts-ignore
 			mockKeys.get.mockResolvedValueOnce({ [JID_A]: { token: TOKEN_B, timestamp: freshTs } })
 
-			const result2 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: JID_A })
+			const result2 = await buildTcTokenFromJid({ authState: { keys: mockKeys }, getLIDForPN: noopGetLID, jid: JID_A })
 			expect(result2).toBeDefined()
 			const freshNode = result2![0]!
 			expect(freshNode.content).toBe(TOKEN_B)
