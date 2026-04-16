@@ -1,6 +1,34 @@
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import type { BinaryNode } from '../WABinary'
-import { getBinaryNodeChild, getBinaryNodeChildren, isLidUser, jidNormalizedUser } from '../WABinary'
+import {
+	getBinaryNodeChild,
+	getBinaryNodeChildren,
+	isHostedLidUser,
+	isHostedPnUser,
+	isJidMetaAI,
+	isLidUser,
+	isPnUser,
+	jidNormalizedUser
+} from '../WABinary'
+
+// Same phone-number pattern as WABinary's isJidBot, applied against the user
+// part so the check is invariant to @c.us ↔ @s.whatsapp.net normalization.
+const BOT_PHONE_REGEX = /^1313555\d{4}$|^131655500\d{2}$/
+
+/**
+ * Mirrors WA Web's `Wid.isRegularUser()` (user ∧ ¬PSA ∧ ¬Bot). Used to gate tctoken
+ * storage against malformed notifications — WA Web filters server-side but we
+ * defend here for parity with `WAWebSetTcTokenChatAction.handleIncomingTcToken`.
+ * Works for both pre- and post-normalized JIDs (`@c.us` vs `@s.whatsapp.net`).
+ */
+function isRegularUser(jid: string | undefined): boolean {
+	if (!jid) return false
+	const user = jid.split('@')[0] ?? ''
+	if (user === '0') return false // PSA
+	if (BOT_PHONE_REGEX.test(user)) return false // Bot by phone pattern
+	if (isJidMetaAI(jid)) return false // MetaAI (@bot server)
+	return !!(isPnUser(jid) || isLidUser(jid) || isHostedPnUser(jid) || isHostedLidUser(jid) || jid.endsWith('@c.us'))
+}
 
 const TC_TOKEN_BUCKET_DURATION = 604800 // 7 days
 const TC_TOKEN_NUM_BUCKETS = 4 // ~28-day rolling window
@@ -164,6 +192,7 @@ export async function storeTcTokensFromIqResult({
 
 		// In notifications tokenNode.attrs.jid is your own device JID, not the sender's
 		const rawJid = jidNormalizedUser(fallbackJid || tokenNode.attrs.jid)
+		if (!isRegularUser(rawJid)) continue
 		const storageJid = await resolveTcTokenJid(rawJid, getLIDForPN)
 		const existingTcData = await keys.get('tctoken', [storageJid])
 		const existingEntry = existingTcData[storageJid]

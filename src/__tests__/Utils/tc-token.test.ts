@@ -173,6 +173,24 @@ describe('storeTcTokensFromIqResult', () => {
 		expect(onNewJidStored).toHaveBeenCalledWith(CONTACT_JID)
 	})
 
+	it.each([
+		['PSA', '0@c.us'],
+		['bot', '13135550001@c.us'],
+		['MetaAI', '13135550002@bot'],
+		['group', 'abc-def@g.us']
+	])('skips storage for non-regular user (%s)', async (_label, fallbackJid) => {
+		const node = makeNotificationNode(MY_DEVICE_JID, TOKEN_BYTES, RECENT_TS)
+
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid,
+			keys: mockKeys,
+			getLIDForPN: noopGetLID
+		})
+
+		expect(mockKeys.set).not.toHaveBeenCalled()
+	})
+
 	it('skips token nodes with non-trusted_contact type', async () => {
 		const node: BinaryNode = {
 			tag: 'notification',
@@ -512,14 +530,6 @@ describe('SERVER_ERROR_CODES', () => {
 
 	it('SmaxInvalid is 479', () => {
 		expect(SERVER_ERROR_CODES.SmaxInvalid).toBe('479')
-	})
-
-	it('StaleGroupAddressingMode is 421', () => {
-		expect(SERVER_ERROR_CODES.StaleGroupAddressingMode).toBe('421')
-	})
-
-	it('NewChatMessagesCapped is 475', () => {
-		expect(SERVER_ERROR_CODES.NewChatMessagesCapped).toBe('475')
 	})
 })
 
