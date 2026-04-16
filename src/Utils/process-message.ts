@@ -88,15 +88,17 @@ async function storeTcTokensFromHistorySync(
 	const entries: Record<string, { token: Buffer; timestamp?: string; senderTimestamp?: number }> = {}
 
 	for (const c of candidates) {
-		const existingTs = existing[c.storageJid]?.timestamp ? Number(existing[c.storageJid]!.timestamp) : 0
+		const existingEntry = existing[c.storageJid]
+		const existingTs = existingEntry?.timestamp ? Number(existingEntry.timestamp) : 0
 		if (existingTs > 0 && existingTs >= c.ts) {
 			continue
 		}
 
 		entries[c.storageJid] = {
+			...existingEntry,
 			token: c.token,
 			timestamp: String(c.ts),
-			...(c.senderTs ? { senderTimestamp: c.senderTs } : {})
+			...(c.senderTs !== undefined ? { senderTimestamp: c.senderTs } : {})
 		}
 	}
 

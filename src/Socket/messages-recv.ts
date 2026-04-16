@@ -1743,18 +1743,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const hasPeerToken = !!entry.token?.length
 				const peerTokenExpired = hasPeerToken && isTcTokenExpired(entry.timestamp)
 				const hasSenderTs = entry.senderTimestamp !== undefined
+				const senderTsExpired = hasSenderTs && isTcTokenExpired(entry.senderTimestamp)
+				const keepPeerToken = hasPeerToken && !peerTokenExpired
+				const keepSenderTs = hasSenderTs && !senderTsExpired
 
-				if (peerTokenExpired && hasSenderTs) {
-					// Drop stale peer token, keep senderTimestamp placeholder.
+				if (!keepPeerToken && !keepSenderTs) {
+					writes[jid] = null
+					mutated++
+				} else if (peerTokenExpired && keepSenderTs) {
 					writes[jid] = { token: Buffer.alloc(0), senderTimestamp: entry.senderTimestamp }
 					survivors.add(jid)
-					mutated++
-				} else if (peerTokenExpired && !hasSenderTs) {
-					writes[jid] = null
-					mutated++
-				} else if (!hasPeerToken && !hasSenderTs) {
-					// Empty placeholder with no dedupe state — cleanup.
-					writes[jid] = null
 					mutated++
 				} else {
 					survivors.add(jid)

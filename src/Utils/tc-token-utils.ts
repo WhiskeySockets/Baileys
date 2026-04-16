@@ -199,14 +199,9 @@ export async function storeTcTokensFromIqResult({
 
 		const existingTs = existingEntry?.timestamp ? Number(existingEntry.timestamp) : 0
 		const incomingTs = tokenNode.attrs.t ? Number(tokenNode.attrs.t) : 0
-		if (existingTs > 0 && incomingTs > 0 && existingTs > incomingTs) {
-			continue
-		}
-
 		// timestamp-less tokens would be immediately expired
-		if (existingTs > 0 && !incomingTs) {
-			continue
-		}
+		if (!incomingTs) continue
+		if (existingTs > 0 && existingTs > incomingTs) continue
 
 		await keys.set({
 			tctoken: {

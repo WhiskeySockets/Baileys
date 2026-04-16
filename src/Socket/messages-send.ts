@@ -37,6 +37,7 @@ import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
+	buildMergedTcTokenIndexWrite,
 	isTcTokenExpired,
 	resolveIssuanceJid,
 	resolveTcTokenJid,
@@ -1091,10 +1092,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				resolveIssuanceJid(destinationJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
 					.then(issueJid => issuePrivacyTokens([issueJid], issueTimestamp))
 					.then(async result => {
-						// Note: onNewJidStored not passed — the pruning index lives in messages-recv
-						// (higher layer). Benign: fire-and-forget only runs for contacts we're
-						// actively messaging, so their JIDs will be tracked via the receive path
-						// or by history sync.
 						await storeTcTokensFromIqResult({
 							result,
 							fallbackJid: tcTokenJid,
@@ -1102,17 +1099,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							getLIDForPN
 						})
 
-						// Persist senderTimestamp AFTER success (matches WA Web). The in-flight
-						// guard above prevents duplicate IQs while this is pending.
 						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
 						const currentEntry = currentData[tcTokenJid]
+						const indexWrite = await buildMergedTcTokenIndexWrite(authState.keys, [tcTokenJid])
 						await authState.keys.set({
 							tctoken: {
 								[tcTokenJid]: {
 									token: Buffer.alloc(0),
 									...currentEntry,
 									senderTimestamp: issueTimestamp
-								}
+								},
+								...indexWrite
 							}
 						})
 					})
