@@ -5,6 +5,39 @@ import { getBinaryNodeChild, getBinaryNodeChildren, isLidUser, jidNormalizedUser
 const TC_TOKEN_BUCKET_DURATION = 604800 // 7 days
 const TC_TOKEN_NUM_BUCKETS = 4 // ~28-day rolling window
 
+/** Sentinel key under `tctoken` store holding a JSON array of tracked storage JIDs for cross-session pruning. */
+export const TC_TOKEN_INDEX_KEY = '__index'
+
+/** Read the persisted tctoken JID index and return its entries (never contains the sentinel key itself). */
+export async function readTcTokenIndex(keys: SignalKeyStoreWithTransaction): Promise<string[]> {
+	const data = await keys.get('tctoken', [TC_TOKEN_INDEX_KEY])
+	const entry = data[TC_TOKEN_INDEX_KEY]
+	if (!entry?.token?.length) return []
+	try {
+		const parsed = JSON.parse(Buffer.from(entry.token).toString())
+		if (!Array.isArray(parsed)) return []
+		return parsed.filter((j): j is string => typeof j === 'string' && j.length > 0 && j !== TC_TOKEN_INDEX_KEY)
+	} catch {
+		return []
+	}
+}
+
+/** Build a SignalDataSet fragment that writes the merged index (persisted ∪ added) under the sentinel key. */
+export async function buildMergedTcTokenIndexWrite(
+	keys: SignalKeyStoreWithTransaction,
+	addedJids: Iterable<string>
+): Promise<{ [TC_TOKEN_INDEX_KEY]: { token: Buffer } }> {
+	const persisted = await readTcTokenIndex(keys)
+	const merged = new Set(persisted)
+	for (const jid of addedJids) {
+		if (jid && jid !== TC_TOKEN_INDEX_KEY) merged.add(jid)
+	}
+
+	return {
+		[TC_TOKEN_INDEX_KEY]: { token: Buffer.from(JSON.stringify([...merged])) }
+	}
+}
+
 // WA Web has separate sender/receiver AB props for these but they're identical today
 export function isTcTokenExpired(timestamp: number | string | null | undefined): boolean {
 	if (timestamp === null || timestamp === undefined) return true
@@ -80,7 +113,14 @@ export async function buildTcTokenFromJid({
 
 		if (!tcTokenBuffer?.length || isTcTokenExpired(entry?.timestamp)) {
 			if (tcTokenBuffer) {
-				await authState.keys.set({ tctoken: { [storageJid]: null } })
+				// Preserve senderTimestamp so shouldSendNewTcToken() keeps its dedupe state
+				// after we drop the unusable peer token. Only wipe the record entirely when
+				// there's nothing worth keeping.
+				const cleared =
+					entry?.senderTimestamp !== undefined
+						? { token: Buffer.alloc(0), senderTimestamp: entry.senderTimestamp }
+						: null
+				await authState.keys.set({ tctoken: { [storageJid]: cleared } })
 			}
 
 			return baseContent.length > 0 ? baseContent : undefined

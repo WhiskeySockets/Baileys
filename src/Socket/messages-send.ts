@@ -94,6 +94,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
+	/**
+	 * Set of tctoken storage JIDs with a fire-and-forget `issuePrivacyTokens` IQ in flight.
+	 * Prevents duplicate IQs from rapid back-to-back sends before `senderTimestamp` persists.
+	 * Entries are always removed in `.finally()`, so the set is bounded by concurrency.
+	 */
+	const inFlightTcTokenIssuance = new Set<string>()
+
 	const userDevicesCache =
 		config.userDevicesCache ||
 		new NodeCache<JidWithDevice[]>({
@@ -1039,11 +1046,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (tcTokenBuffer?.length && isTcTokenExpired(existingTokenEntry?.timestamp)) {
 				logger.debug({ jid: destinationJid, timestamp: existingTokenEntry?.timestamp }, 'tctoken expired, clearing')
 				tcTokenBuffer = undefined
-				// Opportunistic cleanup: remove expired token from store
+				// Preserve senderTimestamp so the fire-and-forget issuance dedupe survives cleanup.
+				const cleared =
+					existingTokenEntry?.senderTimestamp !== undefined
+						? { token: Buffer.alloc(0), senderTimestamp: existingTokenEntry.senderTimestamp }
+						: null
 				try {
-					await authState.keys.set({ tctoken: { [tcTokenJid]: null } })
-				} catch {
-					/* ignore cleanup errors */
+					await authState.keys.set({ tctoken: { [tcTokenJid]: cleared } })
+				} catch (err: any) {
+					logger.debug({ jid: destinationJid, err: err?.message }, 'failed to persist tctoken expiry cleanup')
 				}
 			}
 
@@ -1067,16 +1078,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)
 			const isProtocolMsg = !!normalizeMessageContent(message)?.protocolMessage
 			const isBotOrPSA = destinationJid === PSA_WID || isJidBot(destinationJid) || isJidMetaAI(destinationJid)
-			if (is1on1Send && !isProtocolMsg && !isBotOrPSA && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
+			if (
+				is1on1Send &&
+				!isProtocolMsg &&
+				!isBotOrPSA &&
+				shouldSendNewTcToken(existingTokenEntry?.senderTimestamp) &&
+				!inFlightTcTokenIssuance.has(tcTokenJid)
+			) {
+				inFlightTcTokenIssuance.add(tcTokenJid)
 				const issueTimestamp = unixTimestampSeconds()
 				const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 				resolveIssuanceJid(destinationJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
 					.then(issueJid => issuePrivacyTokens([issueJid], issueTimestamp))
 					.then(async result => {
-						// Store any tokens the server returned in the IQ response.
 						// Note: onNewJidStored not passed — the pruning index lives in messages-recv
-						// (higher layer). This is benign: fire-and-forget only runs for contacts
-						// we're actively messaging, so their JIDs will be tracked via the receive path.
+						// (higher layer). Benign: fire-and-forget only runs for contacts we're
+						// actively messaging, so their JIDs will be tracked via the receive path
+						// or by history sync.
 						await storeTcTokensFromIqResult({
 							result,
 							fallbackJid: tcTokenJid,
@@ -1084,15 +1102,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							getLIDForPN
 						})
 
-						// Persist senderTimestamp to prevent redundant issuances.
-						// WA Web stores tcTokenSenderTimestamp in the chat table unconditionally.
+						// Persist senderTimestamp AFTER success (matches WA Web). The in-flight
+						// guard above prevents duplicate IQs while this is pending.
 						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
 						const currentEntry = currentData[tcTokenJid]
 						await authState.keys.set({
 							tctoken: {
 								[tcTokenJid]: {
-									// Spread preserves token+timestamp if they exist,
-									// falls back to empty buffer if no token received yet
 									token: Buffer.alloc(0),
 									...currentEntry,
 									senderTimestamp: issueTimestamp
@@ -1102,6 +1118,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					})
 					.catch(err => {
 						logger.debug({ jid: destinationJid, err: err?.message }, 'fire-and-forget tctoken issuance failed')
+					})
+					.finally(() => {
+						inFlightTcTokenIssuance.delete(tcTokenJid)
 					})
 			}
 

@@ -33,7 +33,7 @@ import { aesDecryptGCM, hmacSign } from './crypto'
 import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
-import { resolveTcTokenJid } from './tc-token-utils'
+import { buildMergedTcTokenIndexWrite, resolveTcTokenJid } from './tc-token-utils'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -103,7 +103,9 @@ async function storeTcTokensFromHistorySync(
 	if (Object.keys(entries).length) {
 		logger?.debug({ count: Object.keys(entries).length }, 'storing tctokens from history sync')
 		try {
-			await keyStore.set({ tctoken: entries })
+			// Include updated __index so cross-session pruning picks these JIDs up.
+			const indexWrite = await buildMergedTcTokenIndexWrite(keyStore, Object.keys(entries))
+			await keyStore.set({ tctoken: { ...entries, ...indexWrite } })
 		} catch (err) {
 			logger?.warn({ err }, 'failed to store tctokens from history sync')
 		}

@@ -2,11 +2,14 @@ import { jest } from '@jest/globals'
 import { type SignalKeyStoreWithTransaction } from '../../Types'
 import { SERVER_ERROR_CODES } from '../../Utils'
 import {
+	buildMergedTcTokenIndexWrite,
 	buildTcTokenFromJid,
 	isTcTokenExpired,
+	readTcTokenIndex,
 	resolveIssuanceJid,
 	shouldSendNewTcToken,
-	storeTcTokensFromIqResult
+	storeTcTokensFromIqResult,
+	TC_TOKEN_INDEX_KEY
 } from '../../Utils/tc-token-utils'
 import type { BinaryNode } from '../../WABinary'
 import { isJidBot, isJidMetaAI, PSA_WID } from '../../WABinary'
@@ -410,6 +413,22 @@ describe('buildTcTokenFromJid', () => {
 		await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
 
 		expect(mockKeys.set).toHaveBeenCalledWith({ tctoken: { [TEST_JID]: null } })
+	})
+
+	it('preserves senderTimestamp when clearing an expired peer token', async () => {
+		const senderTs = nowSeconds() - 100
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({
+			[TEST_JID]: { token: VALID_TOKEN, timestamp: EXPIRED_TS, senderTimestamp: senderTs }
+		})
+
+		await buildTcTokenFromJid({ authState: { keys: mockKeys }, jid: TEST_JID })
+
+		expect(mockKeys.set).toHaveBeenCalledWith({
+			tctoken: {
+				[TEST_JID]: { token: Buffer.alloc(0), senderTimestamp: senderTs }
+			}
+		})
 	})
 
 	it('does NOT delete when token is simply missing', async () => {
@@ -1003,5 +1022,54 @@ describe('PSA and bot JID detection', () => {
 		const jid = 'alice@s.whatsapp.net'
 		expect(isJidBot(jid)).toBeFalsy()
 		expect(isJidMetaAI(jid)).toBeFalsy()
+	})
+})
+
+describe('tctoken index helpers', () => {
+	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
+
+	beforeEach(() => {
+		mockKeys = createMockKeys()
+	})
+
+	it('readTcTokenIndex returns empty array when no sentinel exists', async () => {
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({})
+		expect(await readTcTokenIndex(mockKeys)).toEqual([])
+	})
+
+	it('readTcTokenIndex parses persisted JIDs and drops the sentinel itself', async () => {
+		const persisted = ['a@lid', 'b@lid', TC_TOKEN_INDEX_KEY]
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({
+			[TC_TOKEN_INDEX_KEY]: { token: Buffer.from(JSON.stringify(persisted)) }
+		})
+		expect(await readTcTokenIndex(mockKeys)).toEqual(['a@lid', 'b@lid'])
+	})
+
+	it('readTcTokenIndex tolerates malformed payloads', async () => {
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({
+			[TC_TOKEN_INDEX_KEY]: { token: Buffer.from('not json') }
+		})
+		expect(await readTcTokenIndex(mockKeys)).toEqual([])
+	})
+
+	it('buildMergedTcTokenIndexWrite unions persisted and added JIDs', async () => {
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({
+			[TC_TOKEN_INDEX_KEY]: { token: Buffer.from(JSON.stringify(['a@lid'])) }
+		})
+		const write = await buildMergedTcTokenIndexWrite(mockKeys, ['b@lid', 'a@lid'])
+		const merged = JSON.parse(write[TC_TOKEN_INDEX_KEY].token.toString())
+		expect(new Set(merged)).toEqual(new Set(['a@lid', 'b@lid']))
+	})
+
+	it('buildMergedTcTokenIndexWrite filters out the sentinel key and empty strings', async () => {
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({})
+		const write = await buildMergedTcTokenIndexWrite(mockKeys, [TC_TOKEN_INDEX_KEY, '', 'a@lid'])
+		const merged = JSON.parse(write[TC_TOKEN_INDEX_KEY].token.toString())
+		expect(merged).toEqual(['a@lid'])
 	})
 })
