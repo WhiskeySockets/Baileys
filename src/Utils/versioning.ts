@@ -27,7 +27,7 @@ type ResolveVersionResult = {
 }
 
 const DEFAULT_VERSION_CACHE_FILENAME = '.baileys-last-known-good-version.json'
-let memoryLastKnownGoodVersion: WAVersion | undefined
+const memoryLastKnownGoodVersionByPath = new Map<string, WAVersion>()
 
 const isWAVersion = (value: unknown): value is WAVersion => {
 	return Array.isArray(value) && value.length === 3 && value.every(item => Number.isInteger(item) && Number(item) >= 0)
@@ -65,13 +65,15 @@ export const getLastKnownGoodVersion = async (
 	logger: ILogger,
 	versionCachePath?: string
 ): Promise<WAVersion | undefined> => {
-	if (memoryLastKnownGoodVersion) {
-		return cloneVersion(memoryLastKnownGoodVersion)
+	const cachePath = getVersionCachePath(versionCachePath)
+	const memoryVersion = memoryLastKnownGoodVersionByPath.get(cachePath)
+	if (memoryVersion) {
+		return cloneVersion(memoryVersion)
 	}
 
 	const diskVersion = await readVersionFromDisk(logger, versionCachePath)
 	if (diskVersion) {
-		memoryLastKnownGoodVersion = cloneVersion(diskVersion)
+		memoryLastKnownGoodVersionByPath.set(cachePath, cloneVersion(diskVersion))
 	}
 
 	return diskVersion
@@ -83,13 +85,13 @@ export const saveLastKnownGoodVersion = async (params: {
 	versionCachePath?: string
 }) => {
 	const { logger, version, versionCachePath } = params
-	memoryLastKnownGoodVersion = cloneVersion(version)
+	const cachePath = getVersionCachePath(versionCachePath)
+	memoryLastKnownGoodVersionByPath.set(cachePath, cloneVersion(version))
 
-	const path = getVersionCachePath(versionCachePath)
 	try {
-		await mkdir(dirname(path), { recursive: true })
+		await mkdir(dirname(cachePath), { recursive: true })
 		await writeFile(
-			path,
+			cachePath,
 			JSON.stringify(
 				{
 					version,
@@ -101,12 +103,17 @@ export const saveLastKnownGoodVersion = async (params: {
 			'utf-8'
 		)
 	} catch (error) {
-		logger.warn({ err: error, path }, 'failed persisting lastKnownGoodVersion to disk')
+		logger.warn({ err: error, path: cachePath }, 'failed persisting lastKnownGoodVersion to disk')
 	}
 }
 
-export const clearLastKnownGoodVersionMemoryCache = () => {
-	memoryLastKnownGoodVersion = undefined
+export const clearLastKnownGoodVersionMemoryCache = (versionCachePath?: string) => {
+	if (versionCachePath) {
+		memoryLastKnownGoodVersionByPath.delete(getVersionCachePath(versionCachePath))
+		return
+	}
+
+	memoryLastKnownGoodVersionByPath.clear()
 }
 
 export const resolveWaVersion = async ({
@@ -129,7 +136,13 @@ export const resolveWaVersion = async ({
 	}
 
 	if (allowLatestFetch) {
-		const latestWaWeb = await fetchLatestWaWebVersionFn(fetchOptions)
+		let latestWaWeb: Awaited<ReturnType<FetchLatestVersionFn>>
+		try {
+			latestWaWeb = await fetchLatestWaWebVersionFn(fetchOptions)
+		} catch (error) {
+			latestWaWeb = { version: defaultVersion, isLatest: false, error } as Awaited<ReturnType<FetchLatestVersionFn>>
+		}
+
 		if (latestWaWeb.isLatest && isWAVersion(latestWaWeb.version)) {
 			return {
 				version: cloneVersion(latestWaWeb.version),
@@ -140,7 +153,13 @@ export const resolveWaVersion = async ({
 
 		logger.warn({ latestWaWeb }, 'latest WA Web version fetch failed; attempting Baileys latest fallback')
 
-		const latestBaileys = await fetchLatestBaileysVersionFn(fetchOptions)
+		let latestBaileys: Awaited<ReturnType<FetchLatestVersionFn>>
+		try {
+			latestBaileys = await fetchLatestBaileysVersionFn(fetchOptions)
+		} catch (error) {
+			latestBaileys = { version: defaultVersion, isLatest: false, error } as Awaited<ReturnType<FetchLatestVersionFn>>
+		}
+
 		if (latestBaileys.isLatest && isWAVersion(latestBaileys.version)) {
 			return {
 				version: cloneVersion(latestBaileys.version),

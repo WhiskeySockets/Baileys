@@ -984,7 +984,17 @@ export const makeSocket = (config: SocketConfig) => {
 			void end(err)
 		}
 	})
-	ws.on('error', mapWebSocketError(end))
+	ws.on(
+		'error',
+		mapWebSocketError(error => {
+			if (isPerformingVersionRetry) {
+				logger.info({ error }, 'ignoring websocket error event during version fallback retry')
+				return
+			}
+
+			void end(error)
+		})
+	)
 	ws.on('close', () => {
 		if (isPerformingVersionRetry) {
 			logger.info('connection closed to perform version fallback retry')

@@ -162,4 +162,52 @@ describe('versioning', () => {
 		const loaded = await getLastKnownGoodVersion(logger, cachePath)
 		expect(loaded).toEqual([2, 3000, 777])
 	})
+
+	it('keeps memory cache isolated per cache path', async () => {
+		const cachePathOne = join(dir, 'cache-one.json')
+		const cachePathTwo = join(dir, 'cache-two.json')
+
+		await saveLastKnownGoodVersion({
+			logger,
+			version: [2, 3000, 111] as [number, number, number],
+			versionCachePath: cachePathOne
+		})
+
+		await saveLastKnownGoodVersion({
+			logger,
+			version: [2, 3000, 222] as [number, number, number],
+			versionCachePath: cachePathTwo
+		})
+
+		const loadedOne = await getLastKnownGoodVersion(logger, cachePathOne)
+		const loadedTwo = await getLastKnownGoodVersion(logger, cachePathTwo)
+
+		expect(loadedOne).toEqual([2, 3000, 111])
+		expect(loadedTwo).toEqual([2, 3000, 222])
+	})
+
+	it('continues fallback chain when latest fetchers throw', async () => {
+		await saveLastKnownGoodVersion({
+			logger,
+			version: [2, 3000, 444] as [number, number, number],
+			versionCachePath: cachePath
+		})
+
+		const result = await resolveWaVersion({
+			logger,
+			allowLatestFetch: true,
+			defaultVersion: [2, 3000, 1] as [number, number, number],
+			fetchOptions: {},
+			versionCachePath: cachePath,
+			fetchLatestWaWebVersionFn: async () => {
+				throw new Error('wa web fetch exception')
+			},
+			fetchLatestBaileysVersionFn: async () => {
+				throw new Error('baileys fetch exception')
+			}
+		})
+
+		expect(result.source).toBe('lastKnownGood')
+		expect(result.version).toEqual([2, 3000, 444])
+	})
 })
