@@ -41,6 +41,23 @@ const cloneVersion = (version: WAVersion): WAVersion => {
 	return [...version] as WAVersion
 }
 
+const summarizeError = (error: unknown) => {
+	const err = error as { code?: string; message?: string; name?: string } | undefined
+	return {
+		code: err?.code,
+		name: err?.name || 'Error',
+		message: err?.message || 'Unknown error'
+	}
+}
+
+const summarizeLatestResult = (result: Awaited<ReturnType<FetchLatestVersionFn>>) => {
+	return {
+		isLatest: result.isLatest,
+		version: isWAVersion(result.version) ? result.version : undefined,
+		hasError: 'error' in result && typeof result.error !== 'undefined'
+	}
+}
+
 const readVersionFromDisk = async (logger: ILogger, versionCachePath?: string): Promise<WAVersion | undefined> => {
 	const path = getVersionCachePath(versionCachePath)
 	try {
@@ -50,11 +67,11 @@ const readVersionFromDisk = async (logger: ILogger, versionCachePath?: string): 
 			return cloneVersion(parsed.version)
 		}
 
-		logger.warn({ path, parsed }, 'ignoring invalid lastKnownGoodVersion cache payload')
+		logger.warn({ path, hasVersionField: typeof parsed.version !== 'undefined' }, 'ignoring invalid lastKnownGoodVersion cache payload')
 	} catch (error) {
 		const fileError = error as { code?: string } | undefined
 		if (fileError?.code !== 'ENOENT') {
-			logger.warn({ err: error, path }, 'failed reading lastKnownGoodVersion cache from disk')
+			logger.warn({ path, error: summarizeError(error) }, 'failed reading lastKnownGoodVersion cache from disk')
 		}
 	}
 
@@ -103,7 +120,7 @@ export const saveLastKnownGoodVersion = async (params: {
 			'utf-8'
 		)
 	} catch (error) {
-		logger.warn({ err: error, path: cachePath }, 'failed persisting lastKnownGoodVersion to disk')
+		logger.warn({ path: cachePath, error: summarizeError(error) }, 'failed persisting lastKnownGoodVersion to disk')
 	}
 }
 
@@ -140,7 +157,11 @@ export const resolveWaVersion = async ({
 		try {
 			latestWaWeb = await fetchLatestWaWebVersionFn(fetchOptions)
 		} catch (error) {
-			latestWaWeb = { version: defaultVersion, isLatest: false, error } as Awaited<ReturnType<FetchLatestVersionFn>>
+			logger.warn(
+				{ error: summarizeError(error) },
+				'latest WA Web version fetch threw; attempting Baileys latest fallback'
+			)
+			latestWaWeb = { version: defaultVersion, isLatest: false } as Awaited<ReturnType<FetchLatestVersionFn>>
 		}
 
 		if (latestWaWeb.isLatest && isWAVersion(latestWaWeb.version)) {
@@ -151,13 +172,17 @@ export const resolveWaVersion = async ({
 			}
 		}
 
-		logger.warn({ latestWaWeb }, 'latest WA Web version fetch failed; attempting Baileys latest fallback')
+		logger.warn(
+			{ latestWaWeb: summarizeLatestResult(latestWaWeb) },
+			'latest WA Web version fetch failed; attempting Baileys latest fallback'
+		)
 
 		let latestBaileys: Awaited<ReturnType<FetchLatestVersionFn>>
 		try {
 			latestBaileys = await fetchLatestBaileysVersionFn(fetchOptions)
 		} catch (error) {
-			latestBaileys = { version: defaultVersion, isLatest: false, error } as Awaited<ReturnType<FetchLatestVersionFn>>
+			logger.warn({ error: summarizeError(error) }, 'latest Baileys version fetch threw; attempting fallback chain')
+			latestBaileys = { version: defaultVersion, isLatest: false } as Awaited<ReturnType<FetchLatestVersionFn>>
 		}
 
 		if (latestBaileys.isLatest && isWAVersion(latestBaileys.version)) {
@@ -168,7 +193,7 @@ export const resolveWaVersion = async ({
 			}
 		}
 
-		logger.warn({ latestBaileys }, 'latest Baileys version fetch failed; attempting fallback chain')
+		logger.warn({ latestBaileys: summarizeLatestResult(latestBaileys) }, 'latest Baileys version fetch failed; attempting fallback chain')
 	}
 
 	const resolvedLastKnownGood =
