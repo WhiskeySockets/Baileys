@@ -40,8 +40,12 @@ describe('versioning', () => {
 	})
 
 	it('prioritizes versionOverride over all other sources', async () => {
-		const fetchLatestVersion = jest.fn(async () => ({
+		const fetchLatestWaWebVersionFn = jest.fn(async () => ({
 			version: [2, 9999, 1] as [number, number, number],
+			isLatest: true
+		}))
+		const fetchLatestBaileysVersionFn = jest.fn(async () => ({
+			version: [2, 8888, 1] as [number, number, number],
 			isLatest: true
 		}))
 		const result = await resolveWaVersion({
@@ -51,32 +55,62 @@ describe('versioning', () => {
 			defaultVersion: [2, 3000, 1] as [number, number, number],
 			fetchOptions: {},
 			versionCachePath: cachePath,
-			fetchLatestVersion
+			fetchLatestWaWebVersionFn,
+			fetchLatestBaileysVersionFn
 		})
 
-		expect(fetchLatestVersion).not.toHaveBeenCalled()
+		expect(fetchLatestWaWebVersionFn).not.toHaveBeenCalled()
+		expect(fetchLatestBaileysVersionFn).not.toHaveBeenCalled()
 		expect(result.source).toBe('env/manual')
 		expect(result.version).toEqual([2, 3000, 111])
 	})
 
-	it('uses latest version when fetch succeeds', async () => {
+	it('uses WA Web latest version first when fetch succeeds', async () => {
+		const fetchLatestBaileysVersionFn = jest.fn(async () => ({
+			version: [2, 3000, 111] as [number, number, number],
+			isLatest: true
+		}))
 		const result = await resolveWaVersion({
 			logger,
 			allowLatestFetch: true,
 			defaultVersion: [2, 3000, 1] as [number, number, number],
 			fetchOptions: {},
 			versionCachePath: cachePath,
-			fetchLatestVersion: async () => ({
+			fetchLatestWaWebVersionFn: async () => ({
 				version: [2, 3000, 999] as [number, number, number],
+				isLatest: true
+			}),
+			fetchLatestBaileysVersionFn
+		})
+
+		expect(fetchLatestBaileysVersionFn).not.toHaveBeenCalled()
+		expect(result.source).toBe('latest')
+		expect(result.version).toEqual([2, 3000, 999])
+	})
+
+	it('falls back to Baileys latest when WA Web latest fails', async () => {
+		const result = await resolveWaVersion({
+			logger,
+			allowLatestFetch: true,
+			defaultVersion: [2, 3000, 1] as [number, number, number],
+			fetchOptions: {},
+			versionCachePath: cachePath,
+			fetchLatestWaWebVersionFn: async () => ({
+				version: [2, 3000, 1] as [number, number, number],
+				isLatest: false,
+				error: new Error('wa web fetch failed')
+			}),
+			fetchLatestBaileysVersionFn: async () => ({
+				version: [2, 3000, 888] as [number, number, number],
 				isLatest: true
 			})
 		})
 
 		expect(result.source).toBe('latest')
-		expect(result.version).toEqual([2, 3000, 999])
+		expect(result.version).toEqual([2, 3000, 888])
 	})
 
-	it('falls back to lastKnownGood when latest fetch fails', async () => {
+	it('falls back to lastKnownGood when all latest fetches fail', async () => {
 		await saveLastKnownGoodVersion({
 			logger,
 			version: [2, 3000, 555] as [number, number, number],
@@ -89,10 +123,15 @@ describe('versioning', () => {
 			defaultVersion: [2, 3000, 1] as [number, number, number],
 			fetchOptions: {},
 			versionCachePath: cachePath,
-			fetchLatestVersion: async () => ({
+			fetchLatestWaWebVersionFn: async () => ({
 				version: [2, 3000, 1] as [number, number, number],
 				isLatest: false,
-				error: new Error('fetch failed')
+				error: new Error('wa web fetch failed')
+			}),
+			fetchLatestBaileysVersionFn: async () => ({
+				version: [2, 3000, 1] as [number, number, number],
+				isLatest: false,
+				error: new Error('baileys fetch failed')
 			})
 		})
 

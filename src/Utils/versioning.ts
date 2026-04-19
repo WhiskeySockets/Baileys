@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import type { SocketConfig, WAVersion } from '../Types'
-import { fetchLatestBaileysVersion } from './generics'
+import { fetchLatestBaileysVersion, fetchLatestWaWebVersion } from './generics'
 import type { ILogger } from './logger'
 
 export type VersionSource = 'env/manual' | 'latest' | 'lastKnownGood' | 'default'
@@ -16,7 +16,8 @@ type ResolveVersionParams = {
 	fetchOptions: SocketConfig['options']
 	cachedLastKnownGoodVersion?: WAVersion
 	versionCachePath?: string
-	fetchLatestVersion?: FetchLatestVersionFn
+	fetchLatestWaWebVersionFn?: FetchLatestVersionFn
+	fetchLatestBaileysVersionFn?: FetchLatestVersionFn
 }
 
 type ResolveVersionResult = {
@@ -116,7 +117,8 @@ export const resolveWaVersion = async ({
 	fetchOptions,
 	cachedLastKnownGoodVersion,
 	versionCachePath,
-	fetchLatestVersion = fetchLatestBaileysVersion
+	fetchLatestWaWebVersionFn = fetchLatestWaWebVersion,
+	fetchLatestBaileysVersionFn = fetchLatestBaileysVersion
 }: ResolveVersionParams): Promise<ResolveVersionResult> => {
 	if (versionOverride && isWAVersion(versionOverride)) {
 		return {
@@ -127,16 +129,27 @@ export const resolveWaVersion = async ({
 	}
 
 	if (allowLatestFetch) {
-		const latest = await fetchLatestVersion(fetchOptions)
-		if (latest.isLatest && isWAVersion(latest.version)) {
+		const latestWaWeb = await fetchLatestWaWebVersionFn(fetchOptions)
+		if (latestWaWeb.isLatest && isWAVersion(latestWaWeb.version)) {
 			return {
-				version: cloneVersion(latest.version),
+				version: cloneVersion(latestWaWeb.version),
 				source: 'latest',
 				lastKnownGoodVersion: cachedLastKnownGoodVersion
 			}
 		}
 
-		logger.warn({ latest }, 'latest version fetch failed; attempting fallback chain')
+		logger.warn({ latestWaWeb }, 'latest WA Web version fetch failed; attempting Baileys latest fallback')
+
+		const latestBaileys = await fetchLatestBaileysVersionFn(fetchOptions)
+		if (latestBaileys.isLatest && isWAVersion(latestBaileys.version)) {
+			return {
+				version: cloneVersion(latestBaileys.version),
+				source: 'latest',
+				lastKnownGoodVersion: cachedLastKnownGoodVersion
+			}
+		}
+
+		logger.warn({ latestBaileys }, 'latest Baileys version fetch failed; attempting fallback chain')
 	}
 
 	const resolvedLastKnownGood =
