@@ -6,6 +6,7 @@ import { proto } from '../../WAProto/index.js'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
+	DEFAULT_CONNECTION_CONFIG,
 	INITIAL_PREKEY_COUNT,
 	MIN_PREKEY_COUNT,
 	MIN_UPLOAD_INTERVAL,
@@ -14,7 +15,7 @@ import {
 	TimeMs,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
-import type { LIDMapping, SocketConfig } from '../Types'
+import type { LIDMapping, SocketConfig, WAVersion } from '../Types'
 import { DisconnectReason } from '../Types'
 import {
 	addTransactionCapability,
@@ -37,6 +38,7 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { getPlatformId } from '../Utils/browser-utils'
+import { resolveWaVersion, saveLastKnownGoodVersion, type VersionSource } from '../Utils/versioning'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -110,14 +112,56 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
-	const ephemeralKeyPair = Curve.generateKeyPair()
+	let ephemeralKeyPair = Curve.generateKeyPair()
 	/** WA noise protocol wrapper */
-	const noise = makeNoiseHandler({
+	let noise = makeNoiseHandler({
 		keyPair: ephemeralKeyPair,
 		NOISE_HEADER: NOISE_WA_HEADER,
 		logger,
 		routingInfo: authState?.creds?.routingInfo
 	})
+
+	let lastKnownGoodVersion: WAVersion | undefined
+	let currentVersionSource: VersionSource = 'default'
+	let latestVersionRejected = false
+	let hasAttemptedVersionFallbackRetry = false
+	let isPerformingVersionRetry = false
+	let currentConnectionVersion = config.version
+
+	const resetNoiseState = () => {
+		ephemeralKeyPair = Curve.generateKeyPair()
+		noise = makeNoiseHandler({
+			keyPair: ephemeralKeyPair,
+			NOISE_HEADER: NOISE_WA_HEADER,
+			logger,
+			routingInfo: authState?.creds?.routingInfo
+		})
+	}
+
+	const resolveConnectionVersion = async (allowLatestFetch: boolean) => {
+		const resolved = await resolveWaVersion({
+			logger,
+			versionOverride: config.versionOverride,
+			allowLatestFetch,
+			defaultVersion: DEFAULT_CONNECTION_CONFIG.version,
+			fetchOptions: config.options,
+			cachedLastKnownGoodVersion: lastKnownGoodVersion,
+			versionCachePath: config.versionCachePath
+		})
+
+		lastKnownGoodVersion = resolved.lastKnownGoodVersion
+		currentVersionSource = resolved.source
+		currentConnectionVersion = [...resolved.version] as WAVersion
+		config.version = currentConnectionVersion
+
+		logger.info(
+			{
+				version: currentConnectionVersion,
+				versionSource: currentVersionSource
+			},
+			'resolved WA version for current connection attempt'
+		)
+	}
 
 	const ws = new WebSocketClient(url, config)
 
@@ -383,6 +427,91 @@ export const makeSocket = (config: SocketConfig) => {
 		logger.error({ err }, `unexpected error in '${msg}'`)
 	}
 
+	const getStatusCodeFromError = (error: unknown) => {
+		if (error instanceof Boom) {
+			return error.output?.statusCode
+		}
+
+		const maybeBoom = error as { output?: { statusCode?: number } } | undefined
+		return maybeBoom?.output?.statusCode
+	}
+
+	const is405Error = (error: unknown) => getStatusCodeFromError(error) === 405
+
+	const scheduleVersionFallbackRetry = async (error: Error | Boom, trigger: string) => {
+		if (!config.enableVersionFallbackRetry) {
+			return false
+		}
+
+		if (config.versionOverride) {
+			logger.warn(
+				{
+					trigger,
+					versionOverride: config.versionOverride
+				},
+				'version override is set, skipping automatic 405 fallback retry'
+			)
+			return false
+		}
+
+		if (hasAttemptedVersionFallbackRetry) {
+			logger.warn({ trigger }, 'automatic 405 fallback retry already attempted once, not retrying again')
+			return false
+		}
+
+		hasAttemptedVersionFallbackRetry = true
+		const previousVersion = [...currentConnectionVersion] as WAVersion
+		const previousSource = currentVersionSource
+
+		if (previousSource === 'latest') {
+			latestVersionRejected = true
+		}
+
+		await resolveConnectionVersion(!latestVersionRejected)
+
+		const fallbackIsSameVersion = currentConnectionVersion.every((part, idx) => part === previousVersion[idx])
+		if (fallbackIsSameVersion) {
+			logger.warn(
+				{
+					trigger,
+					version: currentConnectionVersion,
+					versionSource: currentVersionSource
+				},
+				'resolved fallback version is identical to previous version, skipping automatic retry'
+			)
+			return false
+		}
+
+		logger.warn(
+			{
+				trigger,
+				error,
+				fromVersion: previousVersion,
+				fromSource: previousSource,
+				toVersion: currentConnectionVersion,
+				toSource: currentVersionSource
+			},
+			'retrying socket once with fallback WA version after 405'
+		)
+
+		isPerformingVersionRetry = true
+		clearInterval(keepAliveReq)
+		clearTimeout(qrTimer)
+		resetNoiseState()
+
+		try {
+			if (!ws.isClosed && !ws.isClosing) {
+				await ws.close()
+			}
+		} catch (closeError) {
+			logger.debug({ closeError }, 'socket close failed during 405 fallback retry, reconnecting anyway')
+		}
+
+		isPerformingVersionRetry = false
+		ws.connect()
+		return true
+	}
+
 	/** await the next incoming message */
 	const awaitNextMessage = async <T>(sendMsg?: Uint8Array) => {
 		if (!ws.isOpen) {
@@ -620,6 +749,11 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const end = async (error: Error | undefined) => {
+		if (isPerformingVersionRetry) {
+			logger.debug({ trace: error?.stack }, 'skipping end() because socket retry is in progress')
+			return
+		}
+
 		if (closed) {
 			logger.trace({ trace: error?.stack }, 'connection already closed')
 			return
@@ -839,14 +973,26 @@ export const makeSocket = (config: SocketConfig) => {
 
 	ws.on('open', async () => {
 		try {
+			await resolveConnectionVersion(!latestVersionRejected)
 			await validateConnection()
 		} catch (err: any) {
+			if (is405Error(err) && (await scheduleVersionFallbackRetry(err, 'validateConnection'))) {
+				return
+			}
+
 			logger.error({ err }, 'error in validating connection')
 			void end(err)
 		}
 	})
 	ws.on('error', mapWebSocketError(end))
-	ws.on('close', () => void end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
+	ws.on('close', () => {
+		if (isPerformingVersionRetry) {
+			logger.info('connection closed to perform version fallback retry')
+			return
+		}
+
+		void end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed }))
+	})
 	// the server terminated the connection
 	ws.on(
 		'CB:xmlstreamend',
@@ -922,6 +1068,12 @@ export const makeSocket = (config: SocketConfig) => {
 			updateServerTimeOffset(node)
 			await uploadPreKeysToServerIfRequired()
 			await sendPassiveIq('active')
+			await saveLastKnownGoodVersion({
+				logger,
+				version: currentConnectionVersion,
+				versionCachePath: config.versionCachePath
+			})
+			lastKnownGoodVersion = [...currentConnectionVersion] as WAVersion
 
 			// After successful login, validate our key-bundle against server
 			try {
@@ -969,18 +1121,28 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ws.on('CB:stream:error', (node: BinaryNode) => {
+	ws.on('CB:stream:error', async (node: BinaryNode) => {
 		const [reasonNode] = getAllBinaryNodeChildren(node)
 		logger.error({ reasonNode, fullErrorNode: node }, 'stream errored out')
 
 		const { reason, statusCode } = getErrorCodeFromStreamError(node)
+		const error = new Boom(`Stream Errored (${reason})`, { statusCode, data: reasonNode || node })
 
-		void end(new Boom(`Stream Errored (${reason})`, { statusCode, data: reasonNode || node }))
+		if (statusCode === 405 && (await scheduleVersionFallbackRetry(error, 'stream:error'))) {
+			return
+		}
+
+		void end(error)
 	})
 	// stream fail, possible logout
-	ws.on('CB:failure', (node: BinaryNode) => {
+	ws.on('CB:failure', async (node: BinaryNode) => {
 		const reason = +(node.attrs.reason || 500)
-		void end(new Boom('Connection Failure', { statusCode: reason, data: node.attrs }))
+		const error = new Boom('Connection Failure', { statusCode: reason, data: node.attrs })
+		if (reason === 405 && (await scheduleVersionFallbackRetry(error, 'stream:failure'))) {
+			return
+		}
+
+		void end(error)
 	})
 
 	ws.on('CB:ib,,downgrade_webclient', () => {

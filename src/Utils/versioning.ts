@@ -1,0 +1,160 @@
+import { mkdir, readFile, writeFile } from 'fs/promises'
+import { dirname, join } from 'path'
+import type { SocketConfig, WAVersion } from '../Types'
+import { fetchLatestBaileysVersion } from './generics'
+import type { ILogger } from './logger'
+
+export type VersionSource = 'env/manual' | 'latest' | 'lastKnownGood' | 'default'
+
+type FetchLatestVersionFn = typeof fetchLatestBaileysVersion
+
+type ResolveVersionParams = {
+	logger: ILogger
+	versionOverride?: WAVersion
+	allowLatestFetch: boolean
+	defaultVersion: WAVersion
+	fetchOptions: SocketConfig['options']
+	cachedLastKnownGoodVersion?: WAVersion
+	versionCachePath?: string
+	fetchLatestVersion?: FetchLatestVersionFn
+}
+
+type ResolveVersionResult = {
+	version: WAVersion
+	source: VersionSource
+	lastKnownGoodVersion?: WAVersion
+}
+
+const DEFAULT_VERSION_CACHE_FILENAME = '.baileys-last-known-good-version.json'
+let memoryLastKnownGoodVersion: WAVersion | undefined
+
+const isWAVersion = (value: unknown): value is WAVersion => {
+	return Array.isArray(value) && value.length === 3 && value.every(item => Number.isInteger(item) && Number(item) >= 0)
+}
+
+const getVersionCachePath = (pathOverride?: string) => {
+	return pathOverride || process.env.BAILEYS_VERSION_CACHE_PATH || join(process.cwd(), DEFAULT_VERSION_CACHE_FILENAME)
+}
+
+const cloneVersion = (version: WAVersion): WAVersion => {
+	return [...version] as WAVersion
+}
+
+const readVersionFromDisk = async (logger: ILogger, versionCachePath?: string): Promise<WAVersion | undefined> => {
+	const path = getVersionCachePath(versionCachePath)
+	try {
+		const raw = await readFile(path, 'utf-8')
+		const parsed = JSON.parse(raw) as { version?: unknown }
+		if (isWAVersion(parsed.version)) {
+			return cloneVersion(parsed.version)
+		}
+
+		logger.warn({ path, parsed }, 'ignoring invalid lastKnownGoodVersion cache payload')
+	} catch (error) {
+		const fileError = error as { code?: string } | undefined
+		if (fileError?.code !== 'ENOENT') {
+			logger.warn({ err: error, path }, 'failed reading lastKnownGoodVersion cache from disk')
+		}
+	}
+
+	return undefined
+}
+
+export const getLastKnownGoodVersion = async (
+	logger: ILogger,
+	versionCachePath?: string
+): Promise<WAVersion | undefined> => {
+	if (memoryLastKnownGoodVersion) {
+		return cloneVersion(memoryLastKnownGoodVersion)
+	}
+
+	const diskVersion = await readVersionFromDisk(logger, versionCachePath)
+	if (diskVersion) {
+		memoryLastKnownGoodVersion = cloneVersion(diskVersion)
+	}
+
+	return diskVersion
+}
+
+export const saveLastKnownGoodVersion = async (params: {
+	logger: ILogger
+	version: WAVersion
+	versionCachePath?: string
+}) => {
+	const { logger, version, versionCachePath } = params
+	memoryLastKnownGoodVersion = cloneVersion(version)
+
+	const path = getVersionCachePath(versionCachePath)
+	try {
+		await mkdir(dirname(path), { recursive: true })
+		await writeFile(
+			path,
+			JSON.stringify(
+				{
+					version,
+					updatedAt: new Date().toISOString()
+				},
+				null,
+				2
+			),
+			'utf-8'
+		)
+	} catch (error) {
+		logger.warn({ err: error, path }, 'failed persisting lastKnownGoodVersion to disk')
+	}
+}
+
+export const clearLastKnownGoodVersionMemoryCache = () => {
+	memoryLastKnownGoodVersion = undefined
+}
+
+export const resolveWaVersion = async ({
+	logger,
+	versionOverride,
+	allowLatestFetch,
+	defaultVersion,
+	fetchOptions,
+	cachedLastKnownGoodVersion,
+	versionCachePath,
+	fetchLatestVersion = fetchLatestBaileysVersion
+}: ResolveVersionParams): Promise<ResolveVersionResult> => {
+	if (versionOverride && isWAVersion(versionOverride)) {
+		return {
+			version: cloneVersion(versionOverride),
+			source: 'env/manual',
+			lastKnownGoodVersion: cachedLastKnownGoodVersion
+		}
+	}
+
+	if (allowLatestFetch) {
+		const latest = await fetchLatestVersion(fetchOptions)
+		if (latest.isLatest && isWAVersion(latest.version)) {
+			return {
+				version: cloneVersion(latest.version),
+				source: 'latest',
+				lastKnownGoodVersion: cachedLastKnownGoodVersion
+			}
+		}
+
+		logger.warn({ latest }, 'latest version fetch failed; attempting fallback chain')
+	}
+
+	const resolvedLastKnownGood =
+		cachedLastKnownGoodVersion && isWAVersion(cachedLastKnownGoodVersion)
+			? cloneVersion(cachedLastKnownGoodVersion)
+			: await getLastKnownGoodVersion(logger, versionCachePath)
+
+	if (resolvedLastKnownGood) {
+		return {
+			version: resolvedLastKnownGood,
+			source: 'lastKnownGood',
+			lastKnownGoodVersion: resolvedLastKnownGood
+		}
+	}
+
+	return {
+		version: cloneVersion(defaultVersion),
+		source: 'default',
+		lastKnownGoodVersion: undefined
+	}
+}

@@ -9,6 +9,11 @@ const makeWASocket = (config: UserFacingSocketConfig) => {
 		...config
 	}
 
+	const hasLegacyVersion = Object.prototype.hasOwnProperty.call(config, 'version')
+	if (hasLegacyVersion && !newConfig.versionOverride) {
+		newConfig.versionOverride = config.version
+	}
+
 	return makeCommunitiesSocket(newConfig)
 }
 
