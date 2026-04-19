@@ -159,6 +159,7 @@ describe('versioning', () => {
 			versionCachePath: cachePath
 		})
 
+		clearLastKnownGoodVersionMemoryCache(cachePath)
 		const loaded = await getLastKnownGoodVersion(logger, cachePath)
 		expect(loaded).toEqual([2, 3000, 777])
 	})
