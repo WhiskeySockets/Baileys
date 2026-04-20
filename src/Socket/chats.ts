@@ -901,7 +901,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			if (isBadRequest && authState?.creds?.lastPropHash) {
 				logger.warn('fetchProps failed with bad-request, clearing lastPropHash and retrying')
 				authState.creds.lastPropHash = ''
-				ev.emit('creds.update', { lastPropHash: '' })
+				ev.emit('creds.update', authState.creds)
 				try {
 					return await doFetchProps('')
 				} catch (retryError) {

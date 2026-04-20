@@ -204,7 +204,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 				// Circuit breaker: if too many consecutive timeouts, force reconnection
 				if (maxConsecutiveTimeouts > 0 && consecutiveTimeouts >= maxConsecutiveTimeouts) {
-					logger.error(
+					logger?.error?.(
 						{ consecutiveTimeouts, maxConsecutiveTimeouts },
 						'circuit breaker triggered: too many consecutive timeouts, closing connection'
 					)
