@@ -855,40 +855,64 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/** sending non-abt props may fix QR scan fail if server expects */
 	const fetchProps = async () => {
 		//TODO: implement both protocol 1 and protocol 2 prop fetching, specially for abKey for WM
-		const resultNode = await query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				xmlns: 'w',
-				type: 'get'
-			},
-			content: [
-				{
-					tag: 'props',
-					attrs: {
-						protocol: '2',
-						hash: authState?.creds?.lastPropHash || ''
+		const doFetchProps = async (hash: string) => {
+			const resultNode = await query({
+				tag: 'iq',
+				attrs: {
+					to: S_WHATSAPP_NET,
+					xmlns: 'w',
+					type: 'get'
+				},
+				content: [
+					{
+						tag: 'props',
+						attrs: {
+							protocol: '2',
+							hash
+						}
 					}
+				]
+			})
+
+			const propsNode = getBinaryNodeChild(resultNode, 'props')
+
+			let props: { [_: string]: string } = {}
+			if (propsNode) {
+				if (propsNode.attrs?.hash) {
+					// on some clients, the hash is returning as undefined
+					authState.creds.lastPropHash = propsNode?.attrs?.hash
+					ev.emit('creds.update', authState.creds)
 				}
-			]
-		})
 
-		const propsNode = getBinaryNodeChild(resultNode, 'props')
-
-		let props: { [_: string]: string } = {}
-		if (propsNode) {
-			if (propsNode.attrs?.hash) {
-				// on some clients, the hash is returning as undefined
-				authState.creds.lastPropHash = propsNode?.attrs?.hash
-				ev.emit('creds.update', authState.creds)
+				props = reduceBinaryNodeToDictionary(propsNode, 'prop')
 			}
 
-			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
+			logger.debug('fetched props')
+
+			return props
 		}
 
-		logger.debug('fetched props')
+		try {
+			return await doFetchProps(authState?.creds?.lastPropHash || '')
+		} catch (error) {
+			// If fetch fails (e.g. bad-request due to stale hash), clear the hash and retry
+			const errorData = (error as any)?.data
+			const isBadRequest = errorData === 400 || errorData === 'bad-request'
+			if (isBadRequest && authState?.creds?.lastPropHash) {
+				logger.warn('fetchProps failed with bad-request, clearing lastPropHash and retrying')
+				authState.creds.lastPropHash = ''
+				ev.emit('creds.update', { lastPropHash: '' })
+				try {
+					return await doFetchProps('')
+				} catch (retryError) {
+					logger.warn({ err: retryError }, 'fetchProps retry also failed, continuing without props')
+					return {}
+				}
+			}
 
-		return props
+			logger.warn({ err: error }, 'fetchProps failed, continuing without props')
+			return {}
+		}
 	}
 
 	/**
@@ -1051,9 +1075,24 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/**
 	 * queries need to be fired on connection open
 	 * help ensure parity with WA Web
+	 * Uses Promise.allSettled to prevent one failing query from canceling the others
 	 * */
 	const executeInitQueries = async () => {
-		await Promise.all([fetchProps(), fetchBlocklist(), fetchPrivacySettings()])
+		const results = await Promise.allSettled([
+			fetchProps(),
+			fetchBlocklist(),
+			fetchPrivacySettings()
+		])
+
+		for (const [i, result] of results.entries()) {
+			if (result.status === 'rejected') {
+				const queryNames = ['fetchProps', 'fetchBlocklist', 'fetchPrivacySettings']
+				logger.warn(
+					{ err: result.reason, query: queryNames[i] },
+					`init query '${queryNames[i]}' failed, continuing without it`
+				)
+			}
+		}
 	}
 
 	const upsertMessage = ev.createBufferedFunction(async (msg: WAMessage, type: MessageUpsertType) => {
@@ -1198,7 +1237,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			return
 		}
 
-		logger.info('History sync is enabled, awaiting notification with a 20s timeout.')
+		const syncTimeoutMs = config.initialSyncTimeoutMs ?? 20_000
+		logger.info({ syncTimeoutMs }, 'History sync is enabled, awaiting notification with timeout.')
 
 		if (awaitingSyncTimeout) {
 			clearTimeout(awaitingSyncTimeout)
@@ -1206,12 +1246,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		awaitingSyncTimeout = setTimeout(() => {
 			if (syncState === SyncState.AwaitingInitialSync) {
-				// TODO: investigate
-				logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
+				logger.warn(
+					{ syncTimeoutMs },
+					'Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer'
+				)
 				syncState = SyncState.Online
 				ev.flush()
 			}
-		}, 20_000)
+		}, syncTimeoutMs)
 	})
 
 	ev.on('lid-mapping.update', async ({ lid, pn }) => {

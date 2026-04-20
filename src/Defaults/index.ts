@@ -77,6 +77,9 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	generateHighQualityLinkPreview: false,
 	enableAutoSessionRecreation: true,
 	enableRecentMessageCache: true,
+	proxyTimeoutMultiplier: 1.5,
+	maxConsecutiveTimeouts: 3,
+	initialSyncTimeoutMs: 20_000,
 	options: {},
 	appStateMacVerification: {
 		patch: false,
