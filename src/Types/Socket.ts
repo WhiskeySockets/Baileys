@@ -107,6 +107,26 @@ export type SocketConfig = {
 	enableRecentMessageCache: boolean
 
 	/**
+	 * Timeout multiplier applied when a proxy agent is configured.
+	 * All query timeouts are multiplied by this factor when `agent` is set.
+	 * Default: 1.5
+	 */
+	proxyTimeoutMultiplier: number
+
+	/**
+	 * Number of consecutive query timeouts before triggering a reconnection.
+	 * Set to 0 to disable the circuit breaker.
+	 * Default: 3
+	 */
+	maxConsecutiveTimeouts: number
+
+	/**
+	 * Timeout (in ms) while waiting for initial history sync.
+	 * Default: 20_000 (20 seconds)
+	 */
+	initialSyncTimeoutMs: number
+
+	/**
 	 * Returns if a jid should be ignored,
 	 * no event for that jid will be triggered.
 	 * Messages from that jid will also not be decrypted

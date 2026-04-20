@@ -76,6 +76,17 @@ export const makeSocket = (config: SocketConfig) => {
 		makeSignalRepository
 	} = config
 
+	/** Apply proxy timeout multiplier when a proxy agent is configured */
+	const useProxy = !!config.agent
+	const proxyMultiplier = useProxy ? (config.proxyTimeoutMultiplier ?? 1.5) : 1
+	const effectiveQueryTimeoutMs = defaultQueryTimeoutMs
+		? Math.round(defaultQueryTimeoutMs * proxyMultiplier)
+		: defaultQueryTimeoutMs
+
+	/** Circuit breaker: track consecutive timeouts */
+	let consecutiveTimeouts = 0
+	const maxConsecutiveTimeouts = config.maxConsecutiveTimeouts ?? 3
+
 	const publicWAMBuffer = new BinaryInfo()
 
 	let serverTimeOffsetMs = 0
@@ -156,12 +167,13 @@ export const makeSocket = (config: SocketConfig) => {
 	 * @param msgId the message tag to await
 	 * @param timeoutMs timeout after which the promise will reject
 	 */
-	const waitForMessage = async <T>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
+	const waitForMessage = async <T>(msgId: string, timeoutMs = effectiveQueryTimeoutMs) => {
 		let onRecv: ((data: T) => void) | undefined
 		let onErr: ((err: Error) => void) | undefined
 		try {
 			const result = await promiseTimeout<T>(timeoutMs, (resolve, reject) => {
 				onRecv = data => {
+					consecutiveTimeouts = 0
 					resolve(data)
 				}
 
@@ -184,7 +196,25 @@ export const makeSocket = (config: SocketConfig) => {
 		} catch (error) {
 			// Catch timeout and return undefined instead of throwing
 			if (error instanceof Boom && error.output?.statusCode === DisconnectReason.timedOut) {
-				logger?.warn?.({ msgId }, 'timed out waiting for message')
+				consecutiveTimeouts++
+				logger?.warn?.(
+					{ msgId, consecutiveTimeouts, useProxy, timeoutMs },
+					'timed out waiting for message'
+				)
+
+				// Circuit breaker: if too many consecutive timeouts, force reconnection
+				if (maxConsecutiveTimeouts > 0 && consecutiveTimeouts >= maxConsecutiveTimeouts) {
+					logger?.error?.(
+						{ consecutiveTimeouts, maxConsecutiveTimeouts },
+						'circuit breaker triggered: too many consecutive timeouts, closing connection'
+					)
+					void end(
+						new Boom('Too many consecutive timeouts', {
+							statusCode: DisconnectReason.connectionLost
+						})
+					)
+				}
+
 				return undefined
 			}
 
@@ -205,9 +235,13 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		const msgId = node.attrs.id
+		// Apply proxy multiplier to explicit timeouts as well
+		const resolvedTimeout = timeoutMs
+			? Math.round(timeoutMs * proxyMultiplier)
+			: effectiveQueryTimeoutMs
 
-		const result = await promiseTimeout<any>(timeoutMs, async (resolve, reject) => {
-			const result = waitForMessage(msgId, timeoutMs).catch(reject)
+		const result = await promiseTimeout<any>(resolvedTimeout, async (resolve, reject) => {
+			const result = waitForMessage(msgId, resolvedTimeout).catch(reject)
 			sendNode(node)
 				.then(async () => resolve(await result))
 				.catch(reject)
@@ -675,8 +709,10 @@ export const makeSocket = (config: SocketConfig) => {
 		})
 	}
 
-	const startKeepAliveRequest = () =>
-		(keepAliveReq = setInterval(() => {
+	const startKeepAliveRequest = () => {
+		// Adaptive keepalive threshold: add extra tolerance when using a proxy
+		const keepAliveGraceMs = useProxy ? Math.round(5000 * proxyMultiplier) : 5000
+		return (keepAliveReq = setInterval(() => {
 			if (!lastDateRecv) {
 				lastDateRecv = new Date()
 			}
@@ -686,7 +722,7 @@ export const makeSocket = (config: SocketConfig) => {
 				check if it's been a suspicious amount of time since the server responded with our last seen
 				it could be that the network is down
 			*/
-			if (diff > keepAliveIntervalMs + 5000) {
+			if (diff > keepAliveIntervalMs + keepAliveGraceMs) {
 				void end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if (ws.isOpen) {
 				// if its all good, send a keep alive request
@@ -706,6 +742,7 @@ export const makeSocket = (config: SocketConfig) => {
 				logger.warn('keep alive called when WS not open')
 			}
 		}, keepAliveIntervalMs))
+	}
 	/** i have no idea why this exists. pls enlighten me */
 	const sendPassiveIq = (tag: 'passive' | 'active') =>
 		query({
