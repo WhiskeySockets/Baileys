@@ -211,4 +211,38 @@ describe('versioning', () => {
 		expect(result.source).toBe('lastKnownGood')
 		expect(result.version).toEqual([2, 3000, 444])
 	})
+
+	it('snapshots version before async disk persistence', async () => {
+		const version = [2, 3000, 901] as [number, number, number]
+		const savePromise = saveLastKnownGoodVersion({
+			logger,
+			version,
+			versionCachePath: cachePath
+		})
+
+		version[2] = 999
+		await savePromise
+
+		clearLastKnownGoodVersionMemoryCache(cachePath)
+		const loaded = await getLastKnownGoodVersion(logger, cachePath)
+		expect(loaded).toEqual([2, 3000, 901])
+	})
+
+	it('returns independent clones for resolved lastKnownGood result fields', async () => {
+		const result = await resolveWaVersion({
+			logger,
+			allowLatestFetch: false,
+			defaultVersion: [2, 3000, 1] as [number, number, number],
+			fetchOptions: {},
+			cachedLastKnownGoodVersion: [2, 3000, 123] as [number, number, number],
+			versionCachePath: cachePath
+		})
+
+		expect(result.source).toBe('lastKnownGood')
+		expect(result.version).toEqual([2, 3000, 123])
+		expect(result.lastKnownGoodVersion).toEqual([2, 3000, 123])
+
+		result.version[2] = 777
+		expect(result.lastKnownGoodVersion).toEqual([2, 3000, 123])
+	})
 })

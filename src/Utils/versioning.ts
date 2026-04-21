@@ -41,6 +41,10 @@ const cloneVersion = (version: WAVersion): WAVersion => {
 	return [...version] as WAVersion
 }
 
+const cloneOptionalVersion = (version?: WAVersion): WAVersion | undefined => {
+	return version ? cloneVersion(version) : undefined
+}
+
 const summarizeError = (error: unknown) => {
 	const err = error as { code?: string; message?: string; name?: string } | undefined
 	return {
@@ -106,7 +110,8 @@ export const saveLastKnownGoodVersion = async (params: {
 }) => {
 	const { logger, version, versionCachePath } = params
 	const cachePath = getVersionCachePath(versionCachePath)
-	memoryLastKnownGoodVersionByPath.set(cachePath, cloneVersion(version))
+	const versionToPersist = cloneVersion(version)
+	memoryLastKnownGoodVersionByPath.set(cachePath, versionToPersist)
 
 	try {
 		await mkdir(dirname(cachePath), { recursive: true })
@@ -114,7 +119,7 @@ export const saveLastKnownGoodVersion = async (params: {
 			cachePath,
 			JSON.stringify(
 				{
-					version,
+					version: versionToPersist,
 					updatedAt: new Date().toISOString()
 				},
 				null,
@@ -151,7 +156,7 @@ export const resolveWaVersion = async ({
 		return {
 			version: cloneVersion(versionOverride),
 			source: 'env/manual',
-			lastKnownGoodVersion: cachedLastKnownGoodVersion
+			lastKnownGoodVersion: cloneOptionalVersion(cachedLastKnownGoodVersion)
 		}
 	}
 
@@ -171,7 +176,7 @@ export const resolveWaVersion = async ({
 			return {
 				version: cloneVersion(latestWaWeb.version),
 				source: 'latest',
-				lastKnownGoodVersion: cachedLastKnownGoodVersion
+				lastKnownGoodVersion: cloneOptionalVersion(cachedLastKnownGoodVersion)
 			}
 		}
 
@@ -192,7 +197,7 @@ export const resolveWaVersion = async ({
 			return {
 				version: cloneVersion(latestBaileys.version),
 				source: 'latest',
-				lastKnownGoodVersion: cachedLastKnownGoodVersion
+				lastKnownGoodVersion: cloneOptionalVersion(cachedLastKnownGoodVersion)
 			}
 		}
 
@@ -209,9 +214,9 @@ export const resolveWaVersion = async ({
 
 	if (resolvedLastKnownGood) {
 		return {
-			version: resolvedLastKnownGood,
+			version: cloneVersion(resolvedLastKnownGood),
 			source: 'lastKnownGood',
-			lastKnownGoodVersion: resolvedLastKnownGood
+			lastKnownGoodVersion: cloneVersion(resolvedLastKnownGood)
 		}
 	}
 
