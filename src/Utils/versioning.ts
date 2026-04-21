@@ -67,7 +67,10 @@ const readVersionFromDisk = async (logger: ILogger, versionCachePath?: string): 
 			return cloneVersion(parsed.version)
 		}
 
-		logger.warn({ path, hasVersionField: typeof parsed.version !== 'undefined' }, 'ignoring invalid lastKnownGoodVersion cache payload')
+		logger.warn(
+			{ path, hasVersionField: typeof parsed.version !== 'undefined' },
+			'ignoring invalid lastKnownGoodVersion cache payload'
+		)
 	} catch (error) {
 		const fileError = error as { code?: string } | undefined
 		if (fileError?.code !== 'ENOENT') {
@@ -193,7 +196,10 @@ export const resolveWaVersion = async ({
 			}
 		}
 
-		logger.warn({ latestBaileys: summarizeLatestResult(latestBaileys) }, 'latest Baileys version fetch failed; attempting fallback chain')
+		logger.warn(
+			{ latestBaileys: summarizeLatestResult(latestBaileys) },
+			'latest Baileys version fetch failed; attempting fallback chain'
+		)
 	}
 
 	const resolvedLastKnownGood =
