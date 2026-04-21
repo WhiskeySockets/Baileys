@@ -421,7 +421,8 @@ export const decodeSyncdSnapshot = async (
 	snapshot: proto.ISyncdSnapshot,
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	minimumVersionNumber: number | undefined,
-	validateMacs = true
+	validateMacs = true,
+	logger?: ILogger
 ) => {
 	const newState = newLTHashState()
 	newState.version = toNumber(snapshot.version!.version)
@@ -454,7 +455,15 @@ export const decodeSyncdSnapshot = async (
 		const result = mutationKeys(keyEnc.keyData!)
 		const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 		if (Buffer.compare(snapshot.mac!, computedSnapshotMac) !== 0) {
-			throw new Boom(`failed to verify LTHash at ${newState.version} of ${name} from snapshot`)
+			// LTHash verification may fail when decodeSyncdMutations skipped undecryptable
+			// records (poisoned server-side snapshot); the aggregate client hash diverges
+			// from the server-computed mac. Fall through with a warning so the session stays
+			// alive with partial state, symmetric to how decodePatches handles its own
+			// LTHash mismatch a few lines below.
+			logger?.warn(
+				{ name, version: newState.version },
+				'LTHash verification failed on snapshot, continuing with partial state'
+			)
 		}
 	}
 
