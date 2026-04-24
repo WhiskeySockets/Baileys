@@ -1573,7 +1573,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	) => {
 		// Fast path: ack and drop ignored JIDs before entering the buffer/queue
 		const from = node.attrs.from
-		if (from && from !== S_WHATSAPP_NET && shouldIgnoreJid(from)) {
+		let ignoreJid = from
+		if (type === 'receipt' && from) {
+			const attrs = node.attrs
+			const isLid = attrs.from!.includes('lid')
+			const isNodeFromMe = areJidsSameUser(
+				attrs.participant || attrs.from,
+				isLid ? authState.creds.me?.lid : authState.creds.me?.id
+			)
+			ignoreJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
+		}
+		if (ignoreJid && ignoreJid !== S_WHATSAPP_NET && shouldIgnoreJid(ignoreJid)) {
 			await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
 			return
 		}
