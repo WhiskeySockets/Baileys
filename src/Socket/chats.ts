@@ -56,6 +56,10 @@ import {
 	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
+	isPnUser,
+	isLidUser,
+	isHostedLidUser,
+	isHostedPnUser,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -399,6 +403,53 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const updateBlockStatus = async (jid: string, action: 'block' | 'unblock') => {
+		const normalizedJid = jidNormalizedUser(jid)
+		let lid: string
+		let pn_jid: string | undefined
+
+		if (isLidUser(normalizedJid) || isHostedLidUser(normalizedJid)) {
+			lid = normalizedJid
+
+			if (action === 'block') {
+				const pn = await signalRepository.lidMapping.getPNForLID(normalizedJid)
+				if (!pn) {
+					throw new Boom(`Unable to resolve PN JID for LID: ${jid}`, { statusCode: 400 })
+				}
+
+				pn_jid = jidNormalizedUser(pn)
+			}
+		} else if (isPnUser(normalizedJid) || isHostedPnUser(normalizedJid)) {
+			const mapped = await signalRepository.lidMapping.getLIDForPN(normalizedJid)
+			if (!mapped) {
+				throw new Boom(`Unable to resolve LID for PN JID: ${jid}`, { statusCode: 400 })
+			}
+
+			lid = mapped
+
+			if (action === 'block') {
+				pn_jid = jidNormalizedUser(normalizedJid)
+			}
+		} else {
+			throw new Boom(`Invalid jid: ${jid}`, { statusCode: 400 })
+		}
+
+		const itemAttrs: {
+			action: 'block' | 'unblock'
+			jid: string
+			pn_jid?: string
+		} = {
+			action,
+			jid: lid
+		}
+
+		if (action === 'block') {
+			if (!pn_jid) {
+				throw new Boom(`pn_jid required for block: ${jid}`, { statusCode: 400 })
+			}
+
+			itemAttrs.pn_jid = pn_jid
+		}
+
 		await query({
 			tag: 'iq',
 			attrs: {
@@ -409,10 +460,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			content: [
 				{
 					tag: 'item',
-					attrs: {
-						action,
-						jid
-					}
+					attrs: itemAttrs
 				}
 			]
 		})
