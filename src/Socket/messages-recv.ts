@@ -44,6 +44,7 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	SERVER_ERROR_CODES,
 	toNumber,
 	unixTimestampSeconds,
 	xmppPreKey,
@@ -52,6 +53,15 @@ import {
 import { makeMutex } from '../Utils/make-mutex'
 import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
+import {
+	buildMergedTcTokenIndexWrite,
+	isTcTokenExpired,
+	readTcTokenIndex,
+	resolveIssuanceJid,
+	resolveTcTokenJid,
+	storeTcTokensFromIqResult,
+	TC_TOKEN_INDEX_KEY
+} from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -95,8 +105,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
-		messageRetryManager
+		messageRetryManager,
+		issuePrivacyTokens
 	} = sock
+
+	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
@@ -521,6 +534,43 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}, authState?.creds?.me?.id || 'sendRetryRequest')
 	}
 
+	/**
+	 * Fire-and-forget tctoken re-issuance after a peer's device identity changed.
+	 * Mirrors WAWebSendTcTokenWhenDeviceIdentityChange — runs in parallel with
+	 * the session refresh (not after it).
+	 */
+	const reissueTcTokenAfterIdentityChange = (from: string): void => {
+		void (async () => {
+			const normalizedJid = jidNormalizedUser(from)
+			const tcJid = await resolveTcTokenJid(normalizedJid, getLIDForPN)
+			const tcTokenData = await authState.keys.get('tctoken', [tcJid])
+			const senderTs = tcTokenData?.[tcJid]?.senderTimestamp
+
+			if (senderTs === null || senderTs === undefined || isTcTokenExpired(senderTs)) {
+				return
+			}
+
+			logger.debug({ jid: normalizedJid, senderTimestamp: senderTs }, 'identity changed, re-issuing tctoken')
+			const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
+			const issueJid = await resolveIssuanceJid(
+				normalizedJid,
+				sock.serverProps.lidTrustedTokenIssueToLid,
+				getLIDForPN,
+				getPNForLID
+			)
+			const result = await issuePrivacyTokens([issueJid], senderTs)
+			await storeTcTokensFromIqResult({
+				result,
+				fallbackJid: tcJid,
+				keys: authState.keys,
+				getLIDForPN,
+				onNewJidStored: trackTcTokenJid
+			})
+		})().catch(err => {
+			logger.debug({ jid: from, err: err?.message }, 'failed to re-issue tctoken after identity change')
+		})
+	}
+
 	const handleEncryptNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from
 		if (from === S_WHATSAPP_NET) {
@@ -539,7 +589,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				validateSession: signalRepository.validateSession,
 				assertSessions,
 				debounceCache: identityAssertDebounce,
-				logger
+				logger,
+				onBeforeSessionRefresh: reissueTcTokenAfterIdentityChange
 			})
 
 			if (result.action === 'no_identity_node') {
@@ -863,34 +914,80 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	/**
+	 * In-memory cache of storage JIDs with stored tctokens, seeded from the persisted index.
+	 * Used to coalesce writes during a session; pruning always re-reads the persisted index
+	 * to cover writes made by other layers (e.g. history sync).
+	 */
+	const tcTokenKnownJids = new Set<string>()
+
+	const tcTokenIndexLoaded = (async () => {
+		try {
+			const jids = await readTcTokenIndex(authState.keys)
+			for (const jid of jids) tcTokenKnownJids.add(jid)
+			logger.debug({ count: tcTokenKnownJids.size }, 'loaded tctoken index')
+		} catch (err: any) {
+			logger.warn({ err: err?.message }, 'failed to load tctoken index')
+		}
+	})()
+
+	let tcTokenIndexTimer: ReturnType<typeof setTimeout> | undefined
+
+	async function flushTcTokenIndex() {
+		if (tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+			tcTokenIndexTimer = undefined
+		}
+
+		// Merge with whatever is already persisted so we don't clobber writes from other
+		// paths (history sync, concurrent sessions on the same store).
+		const write = await buildMergedTcTokenIndexWrite(authState.keys, tcTokenKnownJids)
+		return authState.keys.set({ tctoken: write })
+	}
+
+	function scheduleTcTokenIndexSave() {
+		if (tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+		}
+
+		tcTokenIndexTimer = setTimeout(() => {
+			tcTokenIndexTimer = undefined
+			flushTcTokenIndex().catch(err => {
+				logger.warn({ err: err?.message }, 'failed to save tctoken index')
+			})
+		}, 5000)
+	}
+
+	function trackTcTokenJid(jid: string) {
+		if (jid && jid !== TC_TOKEN_INDEX_KEY && !tcTokenKnownJids.has(jid)) {
+			tcTokenKnownJids.add(jid)
+			scheduleTcTokenIndexSave()
+		}
+	}
+
 	const handlePrivacyTokenNotification = async (node: BinaryNode) => {
 		const tokensNode = getBinaryNodeChild(node, 'tokens')
-		const from = jidNormalizedUser(node.attrs.from)
-
 		if (!tokensNode) return
 
-		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
+		const from = jidNormalizedUser(node.attrs.from)
 
-		for (const tokenNode of tokenNodes) {
-			const { attrs, content } = tokenNode
-			const type = attrs.type
-			const timestamp = attrs.t
+		// WA Web uses: senderLid ?? toLid(from) for the storage key
+		// The sender_lid attribute provides the LID directly when available
+		const senderLid =
+			node.attrs.sender_lid && isLidUser(jidNormalizedUser(node.attrs.sender_lid))
+				? jidNormalizedUser(node.attrs.sender_lid)
+				: undefined
+		const fallbackJid = senderLid ?? (await resolveTcTokenJid(from, getLIDForPN))
 
-			if (type === 'trusted_contact' && content instanceof Buffer) {
-				logger.debug(
-					{
-						from,
-						timestamp,
-						tcToken: content
-					},
-					'received trusted contact token'
-				)
+		logger.debug({ from, storageJid: fallbackJid }, 'processing privacy token notification')
 
-				await authState.keys.set({
-					tctoken: { [from]: { token: content, timestamp } }
-				})
-			}
-		}
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid,
+			keys: authState.keys,
+			getLIDForPN,
+			onNewJidStored: trackTcTokenJid
+		})
 	}
 
 	async function decipherLinkPublicKey(data: Uint8Array | Buffer) {
@@ -1455,7 +1552,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
-			logger.warn({ attrs }, 'received error in ack')
+			if (attrs.error === SERVER_ERROR_CODES.MissingTcToken) {
+				// 463 = account restricted + no tctoken for this contact.
+				// WA Web prevents this client-side (disables compose bar).
+				// No retry — retrying worsens the restriction by counting
+				// as another "reach out" to an unknown contact.
+				logger.warn(
+					{ msgId: attrs.id, from: attrs.from },
+					'error 463: account restricted or missing tctoken for contact'
+				)
+			} else if (attrs.error === SERVER_ERROR_CODES.SmaxInvalid) {
+				logger.warn(
+					{ msgId: attrs.id, from: attrs.from },
+					'smax-invalid (479): stanza rejected by server — likely stale device session or malformed addressing'
+				)
+			} else {
+				logger.warn({ attrs }, 'received error in ack')
+			}
+
 			ev.emit('messages.update', [
 				{
 					key,
@@ -1465,20 +1579,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 			])
-
-			// resend the message with device_fanout=false, use at your own risk
-			// if (attrs.error === '475') {
-			// 	const msg = await getMessage(key)
-			// 	if (msg) {
-			// 		await relayMessage(key.remoteJid!, msg, {
-			// 			messageId: key.id!,
-			// 			useUserDevicesCache: false,
-			// 			additionalAttributes: {
-			// 				device_fanout: 'false'
-			// 			}
-			// 		})
-			// 	}
-			// }
 		}
 	}
 
@@ -1579,12 +1679,105 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ isOnline }) => {
+	/** timestamp of last tctoken prune run — throttles to once per 24h */
+	let lastTcTokenPruneTs = 0
+
+	ev.on('connection.update', ({ isOnline, connection }) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
 		}
+
+		// Flush pending tctoken index save on disconnect to avoid writing after close
+		if (connection === 'close' && tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+			tcTokenIndexTimer = undefined
+			// Best-effort flush — may fail if store is already closed
+			try {
+				void Promise.resolve(flushTcTokenIndex()).catch(() => {})
+			} catch {
+				/* ignore sync errors */
+			}
+		}
+
+		// Prune expired tctokens when coming online, at most once per 24 hours
+		// Matches WA Web's CLEAN_TC_TOKENS task
+		// Note: don't gate on tcTokenKnownJids.size — the index may still be loading
+		if (isOnline) {
+			const now = Date.now()
+			const DAY_MS = 24 * 60 * 60 * 1000
+			if (now - lastTcTokenPruneTs >= DAY_MS) {
+				lastTcTokenPruneTs = now
+				void pruneExpiredTcTokens()
+			}
+		}
 	})
+
+	async function pruneExpiredTcTokens() {
+		try {
+			await tcTokenIndexLoaded
+
+			// Union with the persisted index picks up JIDs added by other layers
+			// (history sync) without needing inter-module wiring.
+			const persisted = await readTcTokenIndex(authState.keys)
+			const allJids = new Set<string>(tcTokenKnownJids)
+			for (const jid of persisted) allJids.add(jid)
+			if (!allJids.size) return
+
+			const jids = [...allJids]
+			const allTokens = await authState.keys.get('tctoken', jids)
+
+			type TcTokenWriteValue = null | { token: Buffer; timestamp?: string; senderTimestamp?: number }
+			const writes: { [jid: string]: TcTokenWriteValue } = {}
+			const survivors = new Set<string>()
+			let mutated = 0
+
+			for (const jid of jids) {
+				const entry = allTokens[jid]
+				if (!entry) {
+					// Tracked but nothing in store — drop from index.
+					mutated++
+					continue
+				}
+
+				const hasPeerToken = !!entry.token?.length
+				const peerTokenExpired = hasPeerToken && isTcTokenExpired(entry.timestamp)
+				const hasSenderTs = entry.senderTimestamp !== undefined
+				const senderTsExpired = hasSenderTs && isTcTokenExpired(entry.senderTimestamp)
+				const keepPeerToken = hasPeerToken && !peerTokenExpired
+				const keepSenderTs = hasSenderTs && !senderTsExpired
+
+				if (!keepPeerToken && !keepSenderTs) {
+					writes[jid] = null
+					mutated++
+				} else if (peerTokenExpired && keepSenderTs) {
+					writes[jid] = { token: Buffer.alloc(0), senderTimestamp: entry.senderTimestamp }
+					survivors.add(jid)
+					mutated++
+				} else {
+					survivors.add(jid)
+				}
+			}
+
+			if (mutated === 0) return
+
+			await authState.keys.set({
+				tctoken: {
+					...writes,
+					[TC_TOKEN_INDEX_KEY]: {
+						token: Buffer.from(JSON.stringify([...survivors]))
+					}
+				}
+			})
+
+			tcTokenKnownJids.clear()
+			for (const jid of survivors) tcTokenKnownJids.add(jid)
+
+			logger.debug({ mutated, remaining: survivors.size }, 'pruned expired tctokens')
+		} catch (err: any) {
+			logger.warn({ err: err?.message }, 'failed to prune expired tctokens')
+		}
+	}
 
 	return {
 		...sock,

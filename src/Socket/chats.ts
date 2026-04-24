@@ -52,6 +52,8 @@ import {
 	type BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	isLidUser,
+	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
 	reduceBinaryNodeToDictionary,
@@ -83,7 +85,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		sendUnifiedSession
 	} = sock
 
+	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
+
 	let privacySettings: { [_: string]: string } | undefined
+
+	/** Server-assigned AB props for protocol behavior. */
+	const serverProps = {
+		/** AB prop 10518: gate tctoken on 1:1 messages. Default true (safe: avoids 463). */
+		privacyTokenOn1to1: true,
+		/** AB prop 9666: gate tctoken on profile picture IQs. WA Web default: true. */
+		profilePicPrivacyToken: true,
+		/** AB prop 14303: issue tctokens to LID instead of PN. WA Web default: false. */
+		lidTrustedTokenIssueToLid: false
+	}
 
 	let syncState: SyncState = SyncState.Connecting
 
@@ -680,7 +694,24 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
 		const baseContent: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
 
-		const tcTokenContent = await buildTcTokenFromJid({ authState, jid, baseContent })
+		// WA Web only includes tctoken for user JIDs (not groups/newsletters)
+		// and never for own profile pic (Chat model for self has no tcToken).
+		// Including tctoken for own JID causes the server to never respond.
+		const normalizedJid = jidNormalizedUser(jid)
+		const isUserJid = isPnUser(normalizedJid) || isLidUser(normalizedJid)
+		const me = authState.creds.me
+		const isSelf =
+			me && (normalizedJid === jidNormalizedUser(me.id) || (me.lid && normalizedJid === jidNormalizedUser(me.lid)))
+		let content: BinaryNode[] | undefined = baseContent
+
+		if (serverProps.profilePicPrivacyToken && isUserJid && !isSelf) {
+			content = await buildTcTokenFromJid({
+				authState,
+				jid: normalizedJid,
+				baseContent,
+				getLIDForPN
+			})
+		}
 
 		jid = jidNormalizedUser(jid)
 		const result = await query(
@@ -692,7 +723,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type: 'get',
 					xmlns: 'w:profile:picture'
 				},
-				content: tcTokenContent
+				content
 			},
 			timeoutMs
 		)
@@ -769,7 +800,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * @param tcToken token for subscription, use if present
 	 */
 	const presenceSubscribe = async (toJid: string) => {
-		const tcTokenContent = await buildTcTokenFromJid({ authState, jid: toJid })
+		// Only include tctoken for user JIDs — groups/newsletters don't use tctokens
+		const normalizedToJid = jidNormalizedUser(toJid)
+		const isUserJid = isPnUser(normalizedToJid) || isLidUser(normalizedToJid)
+		const tcTokenContent = isUserJid
+			? await buildTcTokenFromJid({ authState, jid: normalizedToJid, getLIDForPN })
+			: undefined
 
 		return sendNode({
 			tag: 'presence',
@@ -927,7 +963,23 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
 		}
 
-		logger.debug('fetched props')
+		// Extract protocol-relevant AB props (only the ones we need)
+		const privacyTokenProp = props['10518'] ?? props['privacy_token_sending_on_all_1_on_1_messages']
+		if (privacyTokenProp !== undefined) {
+			serverProps.privacyTokenOn1to1 = privacyTokenProp === 'true' || privacyTokenProp === '1'
+		}
+
+		const profilePicProp = props['9666'] ?? props['profile_scraping_privacy_token_in_photo_iq']
+		if (profilePicProp !== undefined) {
+			serverProps.profilePicPrivacyToken = profilePicProp === 'true' || profilePicProp === '1'
+		}
+
+		const lidIssueProp = props['14303'] ?? props['lid_trusted_token_issue_to_lid']
+		if (lidIssueProp !== undefined) {
+			serverProps.lidTrustedTokenIssueToLid = lidIssueProp === 'true' || lidIssueProp === '1'
+		}
+
+		logger.debug({ serverProps }, 'fetched props')
 
 		return props
 	}
@@ -1364,6 +1416,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		serverProps,
 		createCallLink,
 		getBotListV2,
 		messageMutex,
