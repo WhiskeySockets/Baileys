@@ -1486,6 +1486,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				status
 			}
 
+      if (status === 'relaylatency') {
+        const latencyValue = infoChild.attrs.latency || infoChild.attrs['latency_ms'] || infoChild.attrs['latency-ms']
+        const latencyMs = latencyValue ? Number(latencyValue) : undefined
+        if (Number.isFinite(latencyMs)) {
+          call.latencyMs = latencyMs
+        }
+      }
+      
 			if (status === 'offer') {
 				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
