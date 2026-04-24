@@ -1572,12 +1572,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		exec: (node: BinaryNode) => Promise<void>
 	) => {
 		// Fast path: ack and drop ignored JIDs before entering the buffer/queue
-		if (type !== 'call') {
-			const from = node.attrs.from
-			if (from && from !== S_WHATSAPP_NET && shouldIgnoreJid(from)) {
-				await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
-				return
-			}
+		const from = node.attrs.from
+		if (from && from !== S_WHATSAPP_NET && shouldIgnoreJid(from)) {
+			await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
+			return
 		}
 
 		const isOffline = !!node.attrs.offline
