@@ -56,8 +56,6 @@ import {
 	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
-	isPnUser,
-	isLidUser,
 	isHostedLidUser,
 	isHostedPnUser,
 	reduceBinaryNodeToDictionary,
