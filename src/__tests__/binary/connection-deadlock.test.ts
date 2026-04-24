@@ -48,7 +48,7 @@ describe('Connection Deadlock Test', () => {
 			})
 		)
 
-		sock.end(new Error('Test completed'))
+		await sock.end(new Error('Test completed'))
 		await clear()
 	})
 })

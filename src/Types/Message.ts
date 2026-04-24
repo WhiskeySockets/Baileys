@@ -113,6 +113,8 @@ export interface WAUrlInfo {
 type Mentionable = {
 	/** list of jids that are mentioned in the accompanying text */
 	mentions?: string[]
+	/** mention all */
+	mentionAll?: boolean
 }
 type Contextable = {
 	/** add contextInfo to the message */
@@ -372,9 +374,9 @@ export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WA
 export type MessageUserReceiptUpdate = { key: WAMessageKey; receipt: MessageUserReceipt }
 
 export type MediaDecryptionKeyInfo = {
-	iv: Buffer
-	cipherKey: Buffer
-	macKey?: Buffer
+	iv: Uint8Array
+	cipherKey: Uint8Array
+	macKey?: Uint8Array
 }
 
 export type MinimalMessage = Pick<WAMessage, 'key' | 'messageTimestamp'>

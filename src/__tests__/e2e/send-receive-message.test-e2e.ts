@@ -9,7 +9,8 @@ import makeWASocket, {
 	jidNormalizedUser,
 	proto,
 	toBuffer,
-	useMultiFileAuthState
+	useMultiFileAuthState,
+	type WAMessage
 } from '../../index'
 
 jest.setTimeout(30_000)
@@ -326,7 +327,7 @@ describe('E2E Tests', () => {
 			console.log('Received image message, attempting to download...')
 
 			const buffer = await downloadMediaMessage(
-				receivedMsg,
+				receivedMsg as WAMessage,
 				'buffer',
 				{},
 				{
@@ -387,7 +388,7 @@ describe('E2E Tests', () => {
 			console.log('Received LID image message, attempting to download...')
 
 			const buffer = await downloadMediaMessage(
-				receivedMsg,
+				receivedMsg as WAMessage,
 				'buffer',
 				{},
 				{
@@ -571,7 +572,7 @@ describe('E2E Tests', () => {
 			const receivedVideoPromise = new Promise<proto.IWebMessageInfo>((resolve, reject) => {
 				videoListener = ({ messages }) => {
 					const msg = messages.find(
-						m => m.key.remoteJid === groupJid && m.message?.videoMessage?.caption === originalCaption
+						m => m.key!.remoteJid === groupJid && m.message?.videoMessage?.caption === originalCaption
 					)
 					if (msg) resolve(msg)
 				}
@@ -594,7 +595,7 @@ describe('E2E Tests', () => {
 			const receivedCommandPromise = new Promise<proto.IWebMessageInfo>((resolve, reject) => {
 				commandListener = ({ messages }) => {
 					const msg = messages.find(
-						m => m.key.remoteJid === groupJid && m.message?.extendedTextMessage?.text === commandText
+						m => m.key!.remoteJid === groupJid && m.message?.extendedTextMessage?.text === commandText
 					)
 					if (msg) resolve(msg)
 				}

@@ -74,6 +74,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	let data = makeBufferData()
 	let isBuffering = false
 	let bufferTimeout: NodeJS.Timeout | null = null
+	let flushPendingTimeout: NodeJS.Timeout | null = null // Add a specific timer for the debounced flush to prevent leak
 	let bufferCount = 0
 	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
 	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
@@ -89,9 +90,8 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		if (!isBuffering) {
 			logger.debug('Event buffer activated')
 			isBuffering = true
-			bufferCount++
+			bufferCount = 0
 
-			// Auto-flush after a timeout to prevent infinite buffering
 			if (bufferTimeout) {
 				clearTimeout(bufferTimeout)
 			}
@@ -102,9 +102,10 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 					flush()
 				}
 			}, BUFFER_TIMEOUT_MS)
-		} else {
-			bufferCount++
 		}
+
+		// Always increment count when requested
+		bufferCount++
 	}
 
 	function flush() {
@@ -120,6 +121,11 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		if (bufferTimeout) {
 			clearTimeout(bufferTimeout)
 			bufferTimeout = null
+		}
+
+		if (flushPendingTimeout) {
+			clearTimeout(flushPendingTimeout)
+			flushPendingTimeout = null
 		}
 
 		// Clear history cache if it exceeds the max size
@@ -217,8 +223,10 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 				} finally {
 					bufferCount = Math.max(0, bufferCount - 1)
 					if (bufferCount === 0) {
-						// Auto-flush when no other buffers are active
-						setTimeout(flush, 100)
+						// Only schedule ONE timeout, not 10,000
+						if (!flushPendingTimeout) {
+							flushPendingTimeout = setTimeout(flush, 100)
+						}
 					}
 				}
 			}
