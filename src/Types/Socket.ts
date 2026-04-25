@@ -48,6 +48,12 @@ export type SocketConfig = {
 	logger: ILogger
 	/** version to connect with */
 	version: WAVersion
+	/** manually force a specific WA Web version (priority over auto resolution) */
+	versionOverride?: WAVersion
+	/** enable a one-shot automatic reconnect with fallback version when WA returns 405 */
+	enableVersionFallbackRetry: boolean
+	/** optional file path used to persist/reload last known good WA version */
+	versionCachePath?: string
 	/** override browser config */
 	browser: WABrowserDescription
 	/** agent used for fetch requests -- uploading/downloading media */
