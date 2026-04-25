@@ -208,21 +208,37 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// Handles mex newsletter notifications
 	const handleMexNewsletterNotification = async (node: BinaryNode) => {
 		const mexNode = getBinaryNodeChild(node, 'mex')
-		if (!mexNode?.content) {
+		const updateNode = mexNode?.content ? null : getBinaryNodeChild(node, 'update') || getAllBinaryNodeChildren(node)[0]
+		const payloadNode = mexNode?.content ? mexNode : updateNode
+		if (!payloadNode?.content) {
 			logger.warn({ node }, 'Invalid mex newsletter notification')
 			return
 		}
 
 		let data: any
 		try {
-			data = JSON.parse(mexNode.content.toString())
+			const payloadContent = payloadNode.content
+			if (Array.isArray(payloadContent)) {
+				logger.warn({ payloadNode }, 'Invalid mex newsletter notification payload format')
+				return
+			}
+
+			const contentBuf =
+				typeof payloadContent === 'string' ? Buffer.from(payloadContent, 'binary') : Buffer.from(payloadContent)
+			data = JSON.parse(contentBuf.toString())
 		} catch (error) {
 			logger.error({ err: error, node }, 'Failed to parse mex newsletter notification')
 			return
 		}
 
-		const operation = data?.operation
-		const updates = data?.updates
+		const operation = data?.operation ?? payloadNode?.attrs?.op_name
+		let updates = data?.updates
+		if (!updates) {
+			const linkedProfiles = data?.data?.xwa2_notify_linked_profiles
+			if (linkedProfiles) {
+				updates = [linkedProfiles]
+			}
+		}
 
 		if (!updates || !operation) {
 			logger.warn({ data }, 'Invalid mex newsletter notification content')
@@ -254,6 +270,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							new_role: 'ADMIN',
 							action: 'promote'
 						})
+					}
+				}
+
+				break
+
+			case 'NotificationLinkedProfilesUpdates':
+				for (const update of updates) {
+					const lid = update?.jid
+					const addedProfiles = Array.isArray(update?.added_profiles) ? update.added_profiles : []
+					for (const profile of addedProfiles) {
+						const pn = typeof profile === 'string' ? profile : (profile?.pn ?? profile?.jid ?? null)
+						if (lid && pn) {
+							ev.emit('lid-mapping.update', { lid, pn })
+						}
 					}
 				}
 
