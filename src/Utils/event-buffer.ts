@@ -76,6 +76,13 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	let bufferTimeout: NodeJS.Timeout | null = null
 	let flushPendingTimeout: NodeJS.Timeout | null = null // Add a specific timer for the debounced flush to prevent leak
 	let bufferCount = 0
+	/**
+	 * CONNECTION STABILITY: Track all setTimeout handles created by
+	 * createBufferedFunction so they can be cleared on disconnect.
+	 * Without this, orphaned timeouts fire after the connection is
+	 * torn down, causing errors or keeping memory alive.
+	 */
+	let activeBufferedTimeouts = new Set<NodeJS.Timeout>()
 	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
 	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
 
@@ -210,11 +217,17 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 					const result = await work(...args)
 					// If this is the only buffer, flush after a small delay
 					if (bufferCount === 1) {
-						setTimeout(() => {
+						/**
+						 * CONNECTION STABILITY: Track this timeout so it can
+						 * be cancelled if the connection closes before it fires.
+						 */
+						const t = setTimeout(() => {
+							activeBufferedTimeouts.delete(t)
 							if (isBuffering && bufferCount === 1) {
 								flush()
 							}
-						}, 100) // Small delay to allow nested buffers
+						}, 100)
+						activeBufferedTimeouts.add(t)
 					}
 
 					return result
@@ -233,7 +246,37 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		},
 		on: (...args) => ev.on(...args),
 		off: (...args) => ev.off(...args),
-		removeAllListeners: (...args) => ev.removeAllListeners(...args)
+		removeAllListeners: (...args) => {
+			/**
+			 * CONNECTION STABILITY: When all listeners are removed (on
+			 * disconnect), also clear all pending timers and buffered data.
+			 * This prevents:
+			 * - Orphaned setTimeout callbacks firing after disconnect
+			 * - The historyCache Set growing unbounded across reconnections
+			 * - Buffered event data holding references to stale messages
+			 */
+			if (bufferTimeout) {
+				clearTimeout(bufferTimeout)
+				bufferTimeout = null
+			}
+
+			if (flushPendingTimeout) {
+				clearTimeout(flushPendingTimeout)
+				flushPendingTimeout = null
+			}
+
+			for (const t of activeBufferedTimeouts) {
+				clearTimeout(t)
+			}
+			activeBufferedTimeouts.clear()
+
+			isBuffering = false
+			bufferCount = 0
+			historyCache.clear()
+			data = makeBufferData()
+
+			return ev.removeAllListeners(...args)
+		}
 	}
 }
 
