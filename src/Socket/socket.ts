@@ -312,12 +312,12 @@ export const makeSocket = (config: SocketConfig) => {
 
 	const onWhatsApp = async (...phoneNumber: string[]) => {
 		let usyncQuery = new USyncQuery()
+		const lidQuery = new USyncQuery().withLIDProtocol()
 
 		let contactEnabled = false
 		for (const jid of phoneNumber) {
 			if (isLidUser(jid)) {
-				logger?.warn('LIDs are not supported with onWhatsApp')
-				continue
+				lidQuery.withUser(new USyncUser().withLid(jid))
 			} else {
 				if (!contactEnabled) {
 					contactEnabled = true
@@ -329,15 +329,27 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		}
 
-		if (usyncQuery.users.length === 0) {
-			return [] // return early without forcing an empty query
+		const output: { jid: string; exists: boolean }[] = []
+
+		if (usyncQuery.users.length > 0) {
+			const results = await executeUSyncQuery(usyncQuery)
+			if (results) {
+				const mapped = results.list.filter(a => !!a.contact).map(({ contact, id }) => ({ jid: id, exists: contact as boolean }))
+				output.push(...mapped)
+			}
 		}
 
-		const results = await executeUSyncQuery(usyncQuery)
-
-		if (results) {
-			return results.list.filter(a => !!a.contact).map(({ contact, id }) => ({ jid: id, exists: contact as boolean }))
+		if (lidQuery.users.length > 0) {
+			const lidResults = await executeUSyncQuery(lidQuery)
+			if (lidResults) {
+				const mapped = lidResults.list
+					.filter(a => !!a.lid)
+					.map(({ lid, id }) => ({ jid: id, exists: true, lid: lid as string }))
+				output.push(...mapped)
+			}
 		}
+
+		return output
 	}
 
 	const pnFromLIDUSync = async (jids: string[]): Promise<LIDMapping[] | undefined> => {
