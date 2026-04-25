@@ -101,6 +101,18 @@ export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	'biz-cover-photo': '/pps/biz-cover-photo'
 }
 
+export const NEWSLETTER_MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
+	image: '/newsletter/newsletter-image',
+	video: '/newsletter/newsletter-video',
+	document: '/newsletter/newsletter-document',
+	audio: '/newsletter/newsletter-audio',
+	gif: '/newsletter/newsletter-gif',
+	ptt: '/newsletter/newsletter-ptt',
+	ptv: '/newsletter/newsletter-ptv',
+	sticker: '/newsletter/newsletter-sticker-pack',
+	'thumbnail-link': '/newsletter/newsletter-image'
+}
+
 export const MEDIA_HKDF_KEY_MAPPING = {
 	audio: 'Audio',
 	document: 'Document',
