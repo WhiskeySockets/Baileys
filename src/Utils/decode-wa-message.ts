@@ -326,9 +326,7 @@ export const decryptMessageNode = (
 						// imageMessage.viewOnce / videoMessage.viewOnce / audioMessage.viewOnce = true.
 						// Only real view-once media carries viewOnce: true on the inner media message.
 						const viewOnceInner =
-							msg.viewOnceMessage?.message ||
-							msg.viewOnceMessageV2?.message ||
-							msg.viewOnceMessageV2Extension?.message
+							msg.viewOnceMessage?.message || msg.viewOnceMessageV2?.message || msg.viewOnceMessageV2Extension?.message
 						if (
 							viewOnceInner?.imageMessage?.viewOnce ||
 							viewOnceInner?.videoMessage?.viewOnce ||
