@@ -521,16 +521,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}, authState?.creds?.me?.id || 'sendRetryRequest')
 	}
 
+	// Mirrors WAWeb/Handle/PreKeyLow.js: skip a re-issued notification with the same stanza id.
+	const inFlightPreKeyLow = new Set<string>()
+
 	const handleEncryptNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from
 		if (from === S_WHATSAPP_NET) {
+			const stanzaId = node.attrs.id
+			if (stanzaId && inFlightPreKeyLow.has(stanzaId)) {
+				return
+			}
+
 			const countChild = getBinaryNodeChild(node, 'count')
 			const count = +countChild!.attrs.value!
 			const shouldUploadMorePreKeys = count < MIN_PREKEY_COUNT
 
 			logger.debug({ count, shouldUploadMorePreKeys }, 'recv pre-key count')
 			if (shouldUploadMorePreKeys) {
-				await uploadPreKeys()
+				if (stanzaId) inFlightPreKeyLow.add(stanzaId)
+				try {
+					await uploadPreKeys()
+				} finally {
+					if (stanzaId) inFlightPreKeyLow.delete(stanzaId)
+				}
 			}
 		} else {
 			const result = await handleIdentityChange(node, {
@@ -1281,31 +1294,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							}
 						}
 
-						const errorMessage = msg?.messageStubParameters?.[0] || ''
-						const isPreKeyError = errorMessage.includes('PreKey')
+						logger.debug('[handleMessage] Attempting retry request for failed decryption')
 
-						logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
-
-						// Handle both pre-key and normal retries in single mutex
+						// WAWeb only retry-receipts here; server emits PreKeyLow if prekeys run low.
 						await retryMutex.mutex(async () => {
 							try {
 								if (!ws.isOpen) {
 									logger.debug({ node }, 'Connection closed, skipping retry')
 									return
-								}
-
-								// Handle pre-key errors with upload and delay
-								if (isPreKeyError) {
-									logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
-
-									try {
-										logger.debug('Uploading pre-keys for error recovery')
-										await uploadPreKeys(5)
-										logger.debug('Waiting for server to process new pre-keys')
-										await delay(1000)
-									} catch (uploadErr) {
-										logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
-									}
 								}
 
 								const encNode = getBinaryNodeChild(node, 'enc')
@@ -1314,14 +1310,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									await delay(retryRequestDelayMs)
 								}
 							} catch (err) {
-								logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
-								// Still attempt retry even if pre-key upload failed
-								try {
-									const encNode = getBinaryNodeChild(node, 'enc')
-									await sendRetryRequest(node, !encNode)
-								} catch (retryErr) {
-									logger.error({ retryErr }, 'Failed to send retry after error handling')
-								}
+								logger.error({ err }, 'Failed to send retry')
 							}
 
 							acked = true
