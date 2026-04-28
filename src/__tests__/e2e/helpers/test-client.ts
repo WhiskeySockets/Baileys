@@ -73,6 +73,7 @@ type AttemptResult =
 
 interface AttemptOutcome {
 	sock: Socket
+	saveCreds: () => Promise<void>
 	result: AttemptResult
 }
 
@@ -125,7 +126,7 @@ const attemptConnect = async (config: ResolvedConfig): Promise<AttemptOutcome> =
 		})
 	})
 
-	return { sock, result }
+	return { sock, saveCreds, result }
 }
 
 const safeEnd = async (sock: Socket): Promise<void> => {
@@ -167,12 +168,14 @@ const waitWithTimeout = <T>(
 
 const toError = (value: unknown): Error => (value instanceof Error ? value : new Error(String(value)))
 
-const openConnection = async (config: ResolvedConfig): Promise<{ sock: Socket; meJid: string; meLid?: string }> => {
+const openConnection = async (
+	config: ResolvedConfig
+): Promise<{ sock: Socket; saveCreds: () => Promise<void>; meJid: string; meLid?: string }> => {
 	for (;;) {
-		const { sock, result } = await attemptConnect(config)
+		const { sock, saveCreds, result } = await attemptConnect(config)
 
 		if (result.kind === 'open') {
-			return { sock, meJid: result.meJid, meLid: result.meLid }
+			return { sock, saveCreds, meJid: result.meJid, meLid: result.meLid }
 		}
 
 		await safeEnd(sock)
@@ -206,7 +209,8 @@ export class TestClient {
 		readonly sock: Socket,
 		readonly meJid: string,
 		readonly meLid: string | undefined,
-		readonly config: ResolvedConfig
+		readonly config: ResolvedConfig,
+		private readonly saveCreds: () => Promise<void>
 	) {}
 
 	static async connect(opts: TestClientOptions = {}): Promise<TestClient> {
@@ -214,8 +218,8 @@ export class TestClient {
 		// stale auth would skip pairing and disconnect with logged-out
 		await rm(config.authDir, { recursive: true, force: true })
 
-		const { sock, meJid, meLid } = await openConnection(config)
-		const client = new TestClient(sock, meJid, meLid, config)
+		const { sock, saveCreds, meJid, meLid } = await openConnection(config)
+		const client = new TestClient(sock, meJid, meLid, config, saveCreds)
 
 		if (opts.resolveTestGroup) {
 			await client.resolveTestGroup(opts.testGroupName)
@@ -281,7 +285,9 @@ export class TestClient {
 	}
 
 	async cleanup(): Promise<void> {
+		// In-flight signal session writes can race with cleanup; leave the tmp dir in place
+		// (it's recreated fresh in connect()) so late writes don't ENOENT the test runner.
+		this.sock.ev.off('creds.update', this.saveCreds)
 		await safeEnd(this.sock)
-		await rm(this.config.authDir, { recursive: true, force: true })
 	}
 }
