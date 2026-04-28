@@ -2,12 +2,7 @@ import { jest } from '@jest/globals'
 import { randomBytes } from 'crypto'
 import { proto } from '../../../WAProto/index.js'
 import type { LTHashState, WAPatchName } from '../../Types'
-import {
-	decodeSyncdMutations,
-	decodeSyncdSnapshot,
-	encodeSyncdPatch,
-	newLTHashState
-} from '../../Utils/chat-utils'
+import { decodeSyncdMutations, decodeSyncdSnapshot, encodeSyncdPatch, newLTHashState } from '../../Utils/chat-utils'
 
 /**
  * Resilience tests for app-state-sync decode paths.
@@ -58,27 +53,11 @@ const collector = () => {
 	const onMutation = (m: { syncAction: unknown; index: unknown }) => {
 		seen.push(m.index)
 	}
+
 	return { seen, onMutation }
 }
 
 describe('decodeSyncdMutations resilience', () => {
-	it('skips a record whose key is not found (no throw)', async () => {
-		const initial = newLTHashState()
-		const { record } = await encodeValidRecord(initial)
-
-		// Swap the keyId to one the getAppStateSyncKey function will reject.
-		const orphan: proto.ISyncdRecord = {
-			...record,
-			keyId: { id: Buffer.from('unknown-key-id') }
-		}
-		const { seen, onMutation } = collector()
-
-		const result = await decodeSyncdMutations([orphan], initial, getAppStateSyncKey, onMutation, true)
-
-		expect(result).toBeDefined()
-		expect(seen.length).toBe(0)
-	})
-
 	it('skips a record whose content HMAC does not verify (no throw)', async () => {
 		const initial = newLTHashState()
 		const { record } = await encodeValidRecord(initial)
@@ -125,19 +104,18 @@ describe('decodeSyncdMutations resilience', () => {
 		const { record: good1, newState: s1 } = await encodeValidRecord(initial)
 		const { record: good2 } = await encodeValidRecord(s1)
 
+		// "Bad" record uses the right key but has a tampered HMAC blob — exercises
+		// the record-level corruption skip path (NOT missing-key, which now propagates).
+		const tamperedBlob = Buffer.from(good1.value!.blob!)
+		tamperedBlob[tamperedBlob.length - 1] = (tamperedBlob[tamperedBlob.length - 1]! ^ 0xff) & 0xff
 		const bad: proto.ISyncdRecord = {
-			...good1,
-			keyId: { id: Buffer.from('unknown-key-id') }
+			keyId: good1.keyId,
+			value: { blob: tamperedBlob },
+			index: { blob: randomBytes(32) }
 		}
 		const { seen, onMutation } = collector()
 
-		const result = await decodeSyncdMutations(
-			[good1, bad, good2],
-			initial,
-			getAppStateSyncKey,
-			onMutation,
-			true
-		)
+		const result = await decodeSyncdMutations([good1, bad, good2], initial, getAppStateSyncKey, onMutation, true)
 
 		expect(result).toBeDefined()
 		// Both valid records should have been emitted via onMutation.

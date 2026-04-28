@@ -248,8 +248,11 @@ export const decodeSyncdMutations = async (
 		let key: ReturnType<typeof mutationKeys>
 		try {
 			key = await getKey(record.keyId!.id!)
-		} catch {
-			// key not found — skip this record instead of aborting the entire snapshot
+		} catch (err) {
+			// Missing-key errors must propagate so the orchestrator can park the
+			// collection (Blocked) and retry when APP_STATE_SYNC_KEY_SHARE arrives.
+			// Other errors → individual record corruption, skip and keep going.
+			if (isMissingKeyError(err)) throw err
 			continue
 		}
 
@@ -520,6 +523,7 @@ export const decodePatches = async (
 				validateMacs
 			)
 		} catch (err) {
+			if (isMissingKeyError(err)) throw err
 			logger?.warn({ name, version: patchVersion, error: (err as Error).message }, 'failed to decode patch, skipping')
 			continue
 		}
