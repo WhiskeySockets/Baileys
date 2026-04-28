@@ -174,11 +174,54 @@ export function makeLibSignalRepository(
 			}, group)
 		},
 
+		async getSenderKeyDistributionMessage({ group, meId }) {
+			const senderName = jidToSignalSenderKeyName(group, meId)
+			const builder = new GroupSessionBuilder(storage)
+			const senderNameStr = senderName.toString()
+
+			return parsedKeys.transaction(async () => {
+				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
+				if (!senderKey) {
+					await storage.storeSenderKey(senderName, new SenderKeyRecord())
+				}
+
+				const senderKeyDistributionMessage = await builder.create(senderName)
+				return senderKeyDistributionMessage.serialize()
+			}, group)
+		},
+
+		async hasSenderKey({ group, meId }) {
+			const senderName = jidToSignalSenderKeyName(group, meId).toString()
+			const { [senderName]: key } = await auth.keys.get('sender-key', [senderName])
+			return !!key
+		},
+
+		async getSessionInfo(jid) {
+			const addr = jidToSignalProtocolAddress(jid).toString()
+			const session = (await storage.loadSession(addr)) as {
+				getOpenSession?: () => { indexInfo?: { baseKey?: Buffer }; registrationId?: number } | undefined
+			} | null
+			if (!session) {
+				return null
+			}
+
+			const open = session.getOpenSession?.()
+			const baseKey = open?.indexInfo?.baseKey
+			const registrationId = open?.registrationId
+			if (!baseKey || typeof registrationId !== 'number') {
+				return null
+			}
+
+			return { baseKey: new Uint8Array(baseKey), registrationId }
+		},
+
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			return parsedKeys.transaction(async () => {
-				await cipher.initOutgoing(session)
+				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
+				// but the bundled .d.ts marks it required.
+				await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
 			}, jid)
 		},
 		jidToSignalProtocolAddress(jid) {
