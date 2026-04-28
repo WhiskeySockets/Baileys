@@ -17,6 +17,7 @@ import {
 	assertMediaContent,
 	bindWaitForEvent,
 	decryptMediaRetryData,
+	DEF_MEDIA_HOST,
 	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
@@ -25,14 +26,12 @@ import {
 	generateMessageIDV2,
 	generateParticipantHashV2,
 	generateWAMessage,
-	getMediaHost,
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
-	setMediaHost,
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
@@ -118,6 +117,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const encryptionMutex = makeKeyedMutex()
 
 	let mediaConn: Promise<MediaConnInfo>
+	/** Per-socket media host; updated whenever media_conn is fetched. Defaults to the public WhatsApp host. */
+	let mediaHost: string = DEF_MEDIA_HOST
 	const refreshMediaConn = async (forceGet = false) => {
 		const media = await mediaConn
 		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
@@ -144,7 +145,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 				logger.debug('fetched media conn')
 				if (node.hosts[0]) {
-					setMediaHost(node.hosts[0].hostname)
+					mediaHost = node.hosts[0].hostname
 				}
 
 				return node
@@ -1221,9 +1222,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendReceipts,
 		readMessages,
 		refreshMediaConn,
-		get mediaHost() {
-			return getMediaHost()
-		},
+		// Function (not getter) so the spread in chats.ts preserves the live closure binding.
+		getMediaHost: () => mediaHost,
 		waUploadToServer,
 		fetchPrivacySettings,
 		sendPeerDataOperationMessage,
@@ -1257,7 +1257,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								}
 
 								content.directPath = media.directPath
-								content.url = getUrlFromDirectPath(content.directPath!)
+								content.url = getUrlFromDirectPath(content.directPath!, mediaHost)
 
 								logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 							} catch (err: any) {
