@@ -471,13 +471,14 @@ export const makeSocket = (config: SocketConfig) => {
 	let uploadPreKeysPromise: Promise<void> | null = null
 
 	/** generates and uploads a set of pre-keys to the server */
-	const uploadPreKeys = async (count = MIN_PREKEY_COUNT, retryCount = 0) => {
+	const uploadPreKeys = async (count = MIN_PREKEY_COUNT) => {
 		if (uploadPreKeysPromise) {
 			logger.debug('Pre-key upload already in progress, waiting for completion')
 			await uploadPreKeysPromise
+			return
 		}
 
-		const uploadLogic = async () => {
+		const uploadLogic = async (retryCount: number): Promise<void> => {
 			logger.info({ count, retryCount }, 'uploading pre-keys')
 
 			// Generate and save pre-keys atomically (prevents ID collisions on retry)
@@ -486,7 +487,7 @@ export const makeSocket = (config: SocketConfig) => {
 				const { update, node } = await getNextPreKeysNode({ creds, keys }, count)
 				// Update credentials immediately to prevent duplicate IDs on retry
 				ev.emit('creds.update', update)
-				return node // Only return node since update is already used
+				return node
 			}, creds?.me?.id || 'upload-pre-keys')
 
 			// Upload to server (outside transaction, can fail without affecting local keys)
@@ -496,12 +497,12 @@ export const makeSocket = (config: SocketConfig) => {
 			} catch (uploadError) {
 				logger.error({ uploadError: (uploadError as Error).toString(), count }, 'Failed to upload pre-keys to server')
 
-				// Exponential backoff retry (max 3 retries)
+				// Recurse into uploadLogic; calling uploadPreKeys would await its own in-flight promise.
 				if (retryCount < 3) {
 					const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000)
 					logger.info(`Retrying pre-key upload in ${backoffDelay}ms`)
 					await new Promise(resolve => setTimeout(resolve, backoffDelay))
-					return uploadPreKeys(count, retryCount + 1)
+					return uploadLogic(retryCount + 1)
 				}
 
 				throw uploadError
@@ -510,7 +511,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		// Add timeout protection
 		uploadPreKeysPromise = Promise.race([
-			uploadLogic(),
+			uploadLogic(0),
 			new Promise<void>((_, reject) =>
 				setTimeout(() => reject(new Boom('Pre-key upload timeout', { statusCode: 408 })), UPLOAD_TIMEOUT)
 			)
