@@ -52,12 +52,12 @@ import {
 	type BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	isHostedLidUser,
+	isHostedPnUser,
 	isLidUser,
 	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
-	isHostedLidUser,
-	isHostedPnUser,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
 } from '../WABinary'
