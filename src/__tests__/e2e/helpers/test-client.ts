@@ -56,7 +56,7 @@ const resolveConfig = (opts: TestClientOptions): ResolvedConfig => ({
 	agent: new Agent({ rejectUnauthorized: false })
 })
 
-const getDisconnectReason = (lastDisconnect: { error?: Error | unknown } | undefined): DisconnectReason | undefined => {
+const getDisconnectReason = (lastDisconnect: { error?: unknown } | undefined): DisconnectReason | undefined => {
 	const error = lastDisconnect?.error
 	if (error instanceof Boom) {
 		return error.output?.statusCode
@@ -148,6 +148,7 @@ const waitWithTimeout = <T>(
 ): Promise<T> =>
 	new Promise<T>((resolve, reject) => {
 		let unsubscribe: () => void = () => {}
+
 		const cleanup = () => {
 			clearTimeout(timer)
 			unsubscribe()
@@ -239,27 +240,35 @@ export class TestClient {
 		predicate: (data: BaileysEventMap[K]) => boolean,
 		timeoutMs = DEFAULT_TIMEOUT_MS
 	): Promise<BaileysEventMap[K]> {
-		return waitWithTimeout<BaileysEventMap[K]>(emit => {
-			const handler = (data: BaileysEventMap[K]) => {
-				if (predicate(data)) emit(data)
-			}
+		return waitWithTimeout<BaileysEventMap[K]>(
+			emit => {
+				const handler = (data: BaileysEventMap[K]) => {
+					if (predicate(data)) emit(data)
+				}
 
-			this.sock.ev.on(event, handler)
-			return () => this.sock.ev.off(event, handler)
-		}, timeoutMs, String(event))
+				this.sock.ev.on(event, handler)
+				return () => this.sock.ev.off(event, handler)
+			},
+			timeoutMs,
+			String(event)
+		)
 	}
 
 	/** Wait for a single message inside `messages.upsert` matching `predicate`. */
 	waitForMessage(predicate: MessagePredicate, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<WAMessageInfo> {
-		return waitWithTimeout<WAMessageInfo>(emit => {
-			const handler = ({ messages }: { messages: WAMessageInfo[] }) => {
-				const hit = messages.find(predicate)
-				if (hit) emit(hit)
-			}
+		return waitWithTimeout<WAMessageInfo>(
+			emit => {
+				const handler = ({ messages }: { messages: WAMessageInfo[] }) => {
+					const hit = messages.find(predicate)
+					if (hit) emit(hit)
+				}
 
-			this.sock.ev.on('messages.upsert', handler)
-			return () => this.sock.ev.off('messages.upsert', handler)
-		}, timeoutMs, 'message')
+				this.sock.ev.on('messages.upsert', handler)
+				return () => this.sock.ev.off('messages.upsert', handler)
+			},
+			timeoutMs,
+			'message'
+		)
 	}
 
 	waitForText(text: string, opts: { remoteJid?: string; timeoutMs?: number } = {}): Promise<WAMessageInfo> {

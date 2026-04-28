@@ -127,6 +127,9 @@ export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING
 
 export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 
+/** 120s timeout for history sync stall detection, same as WA Web's handleChunkProgress / restartPausedTimer (g = 120) */
+export const HISTORY_SYNC_PAUSED_TIMEOUT_MS = 120_000
+
 export const MIN_PREKEY_COUNT = 5
 
 export const INITIAL_PREKEY_COUNT = 812

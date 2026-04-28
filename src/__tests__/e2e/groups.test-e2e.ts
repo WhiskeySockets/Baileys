@@ -10,10 +10,11 @@ jest.setTimeout(90_000)
  * is installable.
  */
 const createGroup = async (creator: TestClient, subject: string, members: TestClient[]): Promise<string> => {
-	const seenByMembers = members.map(m =>
-		m.waitForEvent('groups.upsert', g => g.some(x => x.subject === subject))
+	const seenByMembers = members.map(m => m.waitForEvent('groups.upsert', g => g.some(x => x.subject === subject)))
+	const { id } = await creator.sock.groupCreate(
+		subject,
+		members.map(m => m.meJid)
 	)
-	const { id } = await creator.sock.groupCreate(subject, members.map(m => m.meJid))
 	await Promise.all(seenByMembers)
 	return id
 }

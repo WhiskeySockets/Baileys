@@ -307,11 +307,13 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	let descId: string | undefined
 	let descOwner: string | undefined
 	let descOwnerPn: string | undefined
+	let descOwnerUsername: string | undefined
 	let descTime: number | undefined
 	if (descChild) {
 		desc = getBinaryNodeChildString(descChild, 'body')
 		descOwner = descChild.attrs.participant ? jidNormalizedUser(descChild.attrs.participant) : undefined
 		descOwnerPn = descChild.attrs.participant_pn ? jidNormalizedUser(descChild.attrs.participant_pn) : undefined
+		descOwnerUsername = descChild.attrs.participant_username || undefined
 		descTime = +descChild.attrs.t!
 		descId = descChild.attrs.id
 	}
@@ -326,16 +328,19 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		subject: group.attrs.subject!,
 		subjectOwner: group.attrs.s_o,
 		subjectOwnerPn: group.attrs.s_o_pn,
+		subjectOwnerUsername: group.attrs.s_o_username,
 		subjectTime: +group.attrs.s_t!,
 		size: group.attrs.size ? +group.attrs.size : getBinaryNodeChildren(group, 'participant').length,
 		creation: +group.attrs.creation!,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		ownerPn: group.attrs.creator_pn ? jidNormalizedUser(group.attrs.creator_pn) : undefined,
+		ownerUsername: group.attrs.creator_username || undefined,
 		owner_country_code: group.attrs.creator_country_code,
 		desc,
 		descId,
 		descOwner,
 		descOwnerPn,
+		descOwnerUsername,
 		descTime,
 		linkedParent: getBinaryNodeChild(group, 'linked_parent')?.attrs.jid || undefined,
 		restrict: !!getBinaryNodeChild(group, 'locked'),
@@ -350,6 +355,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 				id: attrs.jid!,
 				phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
 				lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
+				username: attrs.participant_username || attrs.username || undefined,
 				admin: (attrs.type || null) as GroupParticipant['admin']
 			}
 		}),
