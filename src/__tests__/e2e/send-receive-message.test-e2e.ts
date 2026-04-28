@@ -111,7 +111,7 @@ describe('E2E Tests', () => {
 		expect(sent!.message?.stickerMessage).toBeDefined()
 	})
 
-	test('should send a poll message and receive a vote', async () => {
+	test('should send a poll creation message', async () => {
 		const sent = await tc.sock.sendMessage(tc.meJid, {
 			poll: { name: 'E2E Test Poll', values: ['Option 1', 'Option 2', 'Option 3'], selectableCount: 1 }
 		})
@@ -143,7 +143,7 @@ describe('E2E Tests', () => {
 		const buffer = await downloadMediaMessage(
 			msg as WAMessage,
 			'buffer',
-			{},
+			{ host: tc.sock.getMediaHost() },
 			{
 				logger: tc.sock.logger,
 				reuploadRequest: m => tc.sock.updateMediaMessage(m)
@@ -165,7 +165,7 @@ describe('E2E Tests', () => {
 		const buffer = await downloadMediaMessage(
 			msg as WAMessage,
 			'buffer',
-			{},
+			{ host: tc.sock.getMediaHost() },
 			{
 				logger: tc.sock.logger,
 				reuploadRequest: m => tc.sock.updateMediaMessage(m)
@@ -187,7 +187,8 @@ describe('E2E Tests', () => {
 
 		const stream = await downloadContentFromMessage(
 			{ url: imageMessage!.url, mediaKey: imageMessage!.mediaKey, directPath: imageMessage!.directPath },
-			'image'
+			'image',
+			{ host: tc.sock.getMediaHost() }
 		)
 		const buffer = await toBuffer(stream)
 		expect(buffer.length).toBeGreaterThan(0)
@@ -214,7 +215,8 @@ describe('E2E Tests', () => {
 				mediaKey: quoted!.imageMessage!.mediaKey,
 				directPath: quoted!.imageMessage!.directPath
 			},
-			'image'
+			'image',
+			{ host: tc.sock.getMediaHost() }
 		)
 		const buffer = await toBuffer(stream)
 		expect(buffer.length).toBeGreaterThan(0)
@@ -248,7 +250,8 @@ describe('E2E Tests', () => {
 				mediaKey: quoted!.videoMessage!.mediaKey,
 				directPath: quoted!.videoMessage!.directPath
 			},
-			'video'
+			'video',
+			{ host: tc.sock.getMediaHost() }
 		)
 		const buffer = await toBuffer(stream)
 		expect(buffer.length).toBeGreaterThan(0)

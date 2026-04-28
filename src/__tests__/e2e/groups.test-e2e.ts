@@ -84,7 +84,7 @@ describe('Groups', () => {
 		expect(demoteResult[0]?.status).toBe('200')
 	})
 
-	test('group metadata cache invalidates on participant add', async () => {
+	test('groupMetadata reflects fresh participant list after an add', async () => {
 		const groupJid = await createGroup(alice, 'Cache Test Group', [bob])
 
 		const before = await alice.sock.groupMetadata(groupJid)
@@ -92,7 +92,6 @@ describe('Groups', () => {
 
 		await alice.sock.groupParticipantsUpdate(groupJid, [charlie.meJid], 'add')
 
-		// stale cache would still report 2 participants
 		const after = await alice.sock.groupMetadata(groupJid)
 		expect(after.participants.length).toBe(3)
 	})
