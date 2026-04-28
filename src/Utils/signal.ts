@@ -93,6 +93,9 @@ export const extractE2ESessionFromRetryReceipt = (receipt: BinaryNode) => {
 	const keysNode = getBinaryNodeChild(receipt, 'keys')
 	if (!keysNode) return null
 
+	const typeBuf = getBinaryNodeChildBuffer(keysNode, 'type')
+	if (!typeBuf || typeBuf.length !== 1 || typeBuf[0] !== KEY_BUNDLE_TYPE[0]) return null
+
 	const identity = getBinaryNodeChildBuffer(keysNode, 'identity')
 	const skey = getBinaryNodeChild(keysNode, 'skey')
 	if (!identity || identity.length !== 32 || !skey) return null

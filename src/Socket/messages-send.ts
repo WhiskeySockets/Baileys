@@ -940,16 +940,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					if (groupSenderIdentity) {
-						const skdm = await signalRepository.getSenderKeyDistributionMessage({
-							group: destinationJid,
-							meId: groupSenderIdentity
-						})
-						messageToSend = {
-							...message,
-							senderKeyDistributionMessage: {
-								groupId: destinationJid,
-								axolotlSenderKeyDistributionMessage: skdm
+						try {
+							const skdm = await signalRepository.getSenderKeyDistributionMessage({
+								group: destinationJid,
+								meId: groupSenderIdentity
+							})
+							messageToSend = {
+								...message,
+								senderKeyDistributionMessage: {
+									groupId: destinationJid,
+									axolotlSenderKeyDistributionMessage: skdm
+								}
 							}
+						} catch (err) {
+							logger.warn({ err, jid: destinationJid }, 'failed to build SKDM for retry, sending without it')
 						}
 					}
 				}
