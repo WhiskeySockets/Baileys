@@ -1,3 +1,4 @@
+import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 
 const ADMIN_PATH = '/admin/mock-phone/scan-qr'
@@ -11,14 +12,17 @@ const wsToHttp = (wsUrl: string): URL => {
 // bartender stopped auto-pairing; tests drive the scan over its admin endpoint.
 export const postQrToMockPhone = (socketUrl: string, qr: string): Promise<void> => {
 	const adminUrl = wsToHttp(socketUrl)
+	const isHttps = adminUrl.protocol === 'https:'
+	const request = isHttps ? httpsRequest : httpRequest
+
 	return new Promise((resolve, reject) => {
-		const req = httpsRequest(
+		const req = request(
 			{
 				host: adminUrl.hostname,
 				port: adminUrl.port,
 				path: ADMIN_PATH,
 				method: 'POST',
-				rejectUnauthorized: false
+				...(isHttps ? { rejectUnauthorized: false } : {})
 			},
 			res => {
 				res.resume()
