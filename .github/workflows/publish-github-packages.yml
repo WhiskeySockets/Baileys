@@ -1,9 +1,8 @@
 name: Publish Package
-on:
-  release:
-    types: [created]
+on: push
 jobs:
-  build:
+  release:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     env:
       CR_PAT: ${{ secrets.GHCR_PAT }}
