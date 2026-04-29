@@ -861,8 +861,8 @@ export const getWAUploadToServer = (
 	config: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
-	const { customUploadHosts, fetchAgent, logger, options, sendInstrumentation, auth } = config
-	const instanceId = auth?.creds?.me?.id
+	const { customUploadHosts, fetchAgent, logger, options, sendInstrumentation, auth: mediaAuth } = config
+	const instanceId = mediaAuth?.creds?.me?.id
 
 	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, signal }) => {
 		if (signal?.aborted) {
@@ -896,8 +896,8 @@ export const getWAUploadToServer = (
 		for (const [attempt, { hostname }] of hosts.entries()) {
 			logger.debug({ hostname, attempt: attempt + 1 }, 'uploading media to host')
 
-			const auth = encodeURIComponent(uploadInfo.auth)
-			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+			const uploadAuth = encodeURIComponent(uploadInfo.auth)
+			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${uploadAuth}&token=${fileEncSha256B64}`
 
 			const startedAt = Date.now()
 			let result: MediaUploadResult | undefined

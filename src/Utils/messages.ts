@@ -320,49 +320,68 @@ export const prepareWAMessageMedia = async (
 				logger?.debug({ mediaType, cacheKeyHash: sourceKeyHash, sourceHost }, 'uploaded media')
 				return result
 			})(),
-			measureSendInstrumentation(
-				options.sendInstrumentation,
-				{
-					stage: 'mediaThumbnail',
-					instanceId: options.instanceId
-				},
-				async () => {
+			(async () => {
+				const startedAt = Date.now()
+				let failed = false
+				const logFailure = (error: unknown) => {
+					failed = true
+					logger?.warn({ trace: (error as any).stack }, 'failed to obtain extra info')
+				}
+
+				if (requiresThumbnailComputation) {
 					try {
-						if (requiresThumbnailComputation) {
-							const { thumbnail, originalImageDimensions } = await generateThumbnail(
-								originalFilePath!,
-								mediaType as 'image' | 'video',
-								options
-							)
-							uploadData.jpegThumbnail = thumbnail
-							if (!uploadData.width && originalImageDimensions) {
-								uploadData.width = originalImageDimensions.width
-								uploadData.height = originalImageDimensions.height
-								logger?.debug('set dimensions')
-							}
-
-							logger?.debug('generated thumbnail')
+						const { thumbnail, originalImageDimensions } = await generateThumbnail(
+							originalFilePath!,
+							mediaType as 'image' | 'video',
+							options
+						)
+						uploadData.jpegThumbnail = thumbnail
+						if (!uploadData.width && originalImageDimensions) {
+							uploadData.width = originalImageDimensions.width
+							uploadData.height = originalImageDimensions.height
+							logger?.debug('set dimensions')
 						}
 
-						if (requiresDurationComputation) {
-							uploadData.seconds = await getAudioDuration(originalFilePath!)
-							logger?.debug('computed audio duration')
-						}
-
-						if (requiresWaveformProcessing) {
-							uploadData.waveform = await getAudioWaveform(originalFilePath!, logger)
-							logger?.debug('processed waveform')
-						}
-
-						if (requiresAudioBackground) {
-							uploadData.backgroundArgb = await assertColor(options.backgroundColor)
-							logger?.debug('computed backgroundColor audio status')
-						}
+						logger?.debug('generated thumbnail')
 					} catch (error) {
-						logger?.warn({ trace: (error as any).stack }, 'failed to obtain extra info')
+						logFailure(error)
 					}
 				}
-			)
+
+				if (requiresDurationComputation) {
+					try {
+						uploadData.seconds = await getAudioDuration(originalFilePath!)
+						logger?.debug('computed audio duration')
+					} catch (error) {
+						logFailure(error)
+					}
+				}
+
+				if (requiresWaveformProcessing) {
+					try {
+						uploadData.waveform = await getAudioWaveform(originalFilePath!, logger)
+						logger?.debug('processed waveform')
+					} catch (error) {
+						logFailure(error)
+					}
+				}
+
+				if (requiresAudioBackground) {
+					try {
+						uploadData.backgroundArgb = await assertColor(options.backgroundColor)
+						logger?.debug('computed backgroundColor audio status')
+					} catch (error) {
+						logFailure(error)
+					}
+				}
+
+				await emitSendInstrumentation(options.sendInstrumentation, {
+					stage: 'mediaThumbnail',
+					instanceId: options.instanceId,
+					status: failed ? 'failure' : 'success',
+					durationMs: Date.now() - startedAt
+				})
+			})()
 		]).finally(async () => {
 			try {
 				await fs.unlink(encFilePath)
