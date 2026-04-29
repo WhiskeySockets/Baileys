@@ -553,6 +553,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const patchedMessages = Array.isArray(patched)
 			? patched
 			: recipientJids.map(jid => ({ recipientJid: jid, message: patched }))
+		const sharedPatchedBytes = Array.isArray(patched) ? undefined : encodeWAMessage(patched)
+		const sharedDsmBytes = dsmMessage ? encodeWAMessage(dsmMessage) : undefined
 
 		let shouldIncludeDeviceIdentity = false
 		const meId = authState.creds.me!.id
@@ -580,7 +582,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					const bytes = encodeWAMessage(msgToEncrypt)
+					const bytes =
+						!Array.isArray(patched) && msgToEncrypt === patched
+							? sharedPatchedBytes!
+							: !Array.isArray(patched) && sharedDsmBytes && msgToEncrypt === dsmMessage
+								? sharedDsmBytes
+								: encodeWAMessage(msgToEncrypt)
 					const mutexKey = jid
 
 					const node = await encryptionMutex.mutex(mutexKey, async () => {
@@ -680,7 +687,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 		}
 
-		await authState.keys.transaction(async () => {
+		{
 			const mediaType = getMediaType(message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
@@ -703,13 +710,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						...(additionalAttributes || {})
 					},
 					content: binaryNodeContent
+					}
+					logger.debug({ msgId }, `sending newsletter message to ${jid}`)
+					await sendNode(stanza)
+					return msgId
 				}
-				logger.debug({ msgId }, `sending newsletter message to ${jid}`)
-				await sendNode(stanza)
-				return
-			}
 
-			if (normalizeMessageContent(message)?.pinInChatMessage || normalizeMessageContent(message)?.reactionMessage) {
+			const normalizedMessage = normalizeMessageContent(message)
+			if (normalizedMessage?.pinInChatMessage || normalizedMessage?.reactionMessage) {
 				extraAttrs['decrypt-fail'] = 'hide' // todo: expand for reactions and other types
 			}
 
@@ -770,13 +778,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const groupAddressingMode = additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
 				const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
 
-				const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
-					group: destinationJid,
-					data: bytes,
-					meId: groupSenderIdentity
-				})
-
 				const senderKeyRecipients: string[] = []
+				let senderKeyMapChanged = false
 				for (const device of devices) {
 					const deviceJid = device.jid
 					const hasKey = !!senderKeyMap[deviceJid]
@@ -789,12 +792,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						//todo: revamp all this logic
 						// the goal is to follow with what I said above for each group, and instead of a true false map of ids, we can set an array full of those the app has already sent pkmsgs
 						senderKeyRecipients.push(deviceJid)
+						if (!hasKey) {
+							senderKeyMapChanged = true
+						}
 						senderKeyMap[deviceJid] = true
 					}
 				}
 
+				const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
+					group: destinationJid,
+					data: bytes,
+					meId: groupSenderIdentity,
+					createDistributionMessage: senderKeyRecipients.length > 0
+				})
+
 				if (senderKeyRecipients.length) {
 					logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
+					if (!senderKeyDistributionMessage) {
+						throw new Boom('Missing sender key distribution message for group fanout', { statusCode: 500 })
+					}
 
 					const senderKeyMsg: proto.IMessage = {
 						senderKeyDistributionMessage: {
@@ -818,7 +834,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: ciphertext
 				})
 
-				await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+				if (senderKeyMapChanged) {
+					await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+				}
 			} else {
 				// ADDRESSING CONSISTENCY: Match own identity to conversation context
 				// TODO: investigate if this is true
@@ -1122,13 +1140,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			// Add message to retry cache if enabled
-			if (messageRetryManager && !participant) {
-				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
+				if (messageRetryManager && !participant) {
+					messageRetryManager.addRecentMessage(destinationJid, msgId, message)
+				}
 			}
-		}, meId)
 
-		return msgId
-	}
+			return msgId
+		}
 
 	const getMessageType = (message: proto.IMessage) => {
 		const normalizedMessage = normalizeMessageContent(message)

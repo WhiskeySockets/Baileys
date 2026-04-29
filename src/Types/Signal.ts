@@ -27,6 +27,7 @@ type EncryptGroupMessageOpts = {
 	group: string
 	data: Uint8Array
 	meId: string
+	createDistributionMessage?: boolean
 }
 
 type PreKey = {
@@ -59,7 +60,7 @@ export type SignalRepository = {
 		ciphertext: Uint8Array
 	}>
 	encryptGroupMessage(opts: EncryptGroupMessageOpts): Promise<{
-		senderKeyDistributionMessage: Uint8Array
+		senderKeyDistributionMessage?: Uint8Array
 		ciphertext: Uint8Array
 	}>
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>

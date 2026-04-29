@@ -151,25 +151,28 @@ export function makeLibSignalRepository(
 			}, jid)
 		},
 
-		async encryptGroupMessage({ group, meId, data }) {
+		async encryptGroupMessage({ group, meId, data, createDistributionMessage = true }) {
 			const senderName = jidToSignalSenderKeyName(group, meId)
 			const builder = new GroupSessionBuilder(storage)
 
-			const senderNameStr = senderName.toString()
-
 			return parsedKeys.transaction(async () => {
-				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-				if (!senderKey) {
-					await storage.storeSenderKey(senderName, new SenderKeyRecord())
+				let senderKeyDistributionMessage: Uint8Array | undefined
+				if (createDistributionMessage) {
+					senderKeyDistributionMessage = (await builder.create(senderName)).serialize()
+				} else {
+					// Ensure sender key state exists before encrypting even when no DSM fanout is needed.
+					const senderKeyRecord = await storage.loadSenderKey(senderName)
+					if (senderKeyRecord.isEmpty()) {
+						await builder.create(senderName)
+					}
 				}
 
-				const senderKeyDistributionMessage = await builder.create(senderName)
 				const session = new GroupCipher(storage, senderName)
 				const ciphertext = await session.encrypt(data)
 
 				return {
 					ciphertext,
-					senderKeyDistributionMessage: senderKeyDistributionMessage.serialize()
+					senderKeyDistributionMessage
 				}
 			}, group)
 		},
