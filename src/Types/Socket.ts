@@ -13,7 +13,7 @@ export type WABrowserDescription = [string, string, string]
 
 export type CacheStore = {
 	/** get a cached key and change the stats */
-	get<T>(key: string): Promise<T> | T | undefined
+	get<T>(key: string): Promise<T | undefined> | T | undefined
 	/** set a key in the cache */
 	set<T>(key: string, value: T): Promise<void> | void | number | boolean
 	/** delete a key from the cache */
