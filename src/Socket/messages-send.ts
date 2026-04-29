@@ -206,10 +206,10 @@ export const warmUpGroupSend = async (
 		}
 
 		if (!metadata) {
-			metadataSource = 'missing'
+			throw new Boom('missing group metadata')
 		}
 
-		const participants = metadata?.participants.map(participant => participant.id) || []
+		const participants = metadata.participants.map(participant => participant.id)
 		const participantSummary = await warmUpGroupParticipants(groupJid, participants, deps)
 
 		const summary: WarmUpGroupSendSummary = {

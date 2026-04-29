@@ -125,32 +125,33 @@ describe('Group warm-up', () => {
 		expect(getUSyncDevices).toHaveBeenCalledWith(['changed-user@s.whatsapp.net'], true, false)
 	})
 
-	it('reports missing metadata when the group cannot be loaded', async () => {
+	it('propagates group metadata failures instead of fabricating a missing summary', async () => {
 		const getUSyncDevices = jest.fn(async () => [])
 		const assertSessions = jest.fn(async () => true)
-		const groupMetadata = jest.fn(async () => undefined) as jest.MockedFunction<
-			(jid: string) => Promise<GroupMetadata | undefined>
-		>
+		const groupMetadata = jest.fn(async () => {
+			throw new Error('group fetch failed')
+		}) as jest.MockedFunction<(jid: string) => Promise<GroupMetadata | undefined>>
 		const sendInstrumentation = jest.fn(async () => undefined) as jest.MockedFunction<SendInstrumentation>
 
-		const summary = await warmUpGroupSend('12345@g.us', {
-			instanceId: 'me@s.whatsapp.net',
-			groupMetadata,
-			getUSyncDevices,
-			assertSessions,
-			sendInstrumentation
-		})
+		await expect(
+			warmUpGroupSend('12345@g.us', {
+				instanceId: 'me@s.whatsapp.net',
+				groupMetadata,
+				getUSyncDevices,
+				assertSessions,
+				sendInstrumentation
+			})
+		).rejects.toThrow('group fetch failed')
 
-		expect(summary).toMatchObject({
-			groupJid: '12345@g.us',
-			metadataSource: 'missing',
-			participants: 0,
-			devices: 0,
-			sessionsExisting: 0,
-			sessionsFetched: 0
-		})
 		expect(groupMetadata).toHaveBeenCalledWith('12345@g.us')
-		expect(getUSyncDevices).toHaveBeenCalledWith([], true, false)
-		expect(assertSessions).toHaveBeenCalledWith([], false, expect.any(Object))
+		expect(getUSyncDevices).not.toHaveBeenCalled()
+		expect(assertSessions).not.toHaveBeenCalled()
+		expect(sendInstrumentation).toHaveBeenCalledWith(
+			expect.objectContaining({
+				stage: 'warmUpGroupSend',
+				status: 'failure',
+				groupJid: '12345@g.us'
+			})
+		)
 	})
 })

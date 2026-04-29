@@ -26,7 +26,7 @@ export type SendInstrumentation = (event: SendInstrumentationEvent) => void | Pr
 
 export type WarmUpGroupSendSummary = {
 	groupJid: string
-	metadataSource: 'cache' | 'network' | 'missing'
+	metadataSource: 'cache' | 'network'
 	participants: number
 	devices: number
 	sessionsExisting: number
