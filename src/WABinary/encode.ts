@@ -117,6 +117,11 @@ class ByteEncoder {
 			return
 		}
 
+		if (str === '') {
+			this.writeStringRaw(str)
+			return
+		}
+
 		const tokenIndex = TOKEN_MAP_REFACTOR.get(str)
 		if (tokenIndex) {
 			if (typeof tokenIndex.dict === 'number') {
