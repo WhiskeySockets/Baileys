@@ -427,7 +427,7 @@ export const encryptedStream = async (
 			if (
 				type === 'remote' &&
 				(opts as any)?.maxContentLength &&
-				fileLength + data.length > (opts as any).maxContentLength
+				fileLength > (opts as any).maxContentLength
 			) {
 				throw new Boom(`content length exceeded when encrypting "${type}"`, {
 					data: { media, type }
