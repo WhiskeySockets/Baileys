@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals'
-import { createPeerSessionsCache, warmUpGroupParticipants, warmUpGroupSend } from '../../Socket/messages-send'
+import { createPeerSessionsCache, readCacheEntry, warmUpGroupParticipants, warmUpGroupSend } from '../../Socket/messages-send'
 import type { CacheStore, GroupMetadata, SendInstrumentation } from '../../Types'
 
 const makeGroupMetadata = (participants: string[]): GroupMetadata => ({
@@ -20,6 +20,17 @@ describe('Group warm-up', () => {
 		}
 
 		expect(createPeerSessionsCache(cache)).toBe(cache)
+	})
+
+	it('awaits async cache reads before using the value', async () => {
+		const cache: CacheStore = {
+			get: async <T>() => true as T,
+			set: () => undefined,
+			del: () => undefined,
+			flushAll: () => undefined
+		}
+
+		await expect(readCacheEntry<boolean>(cache, 'signal-id')).resolves.toBe(true)
 	})
 
 	it('does not use sendNode and warms the full group from cached metadata', async () => {
