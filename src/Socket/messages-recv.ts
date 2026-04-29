@@ -1,5 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
+import { LRUCache } from 'lru-cache'
 import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
@@ -123,6 +124,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
+
+	/** Tracks message IDs that failed to decrypt so shouldIgnoreJid is bypassed on retry */
+	const failedDecryptMsgIds = new LRUCache<string, true>({
+		max: 500,
+		ttl: 5 * 60 * 1000, // 5 minutes
+		ttlAutopurge: true
+	})
 
 	let sendActiveReceipts = false
 
@@ -1151,7 +1159,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
-		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
+		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET && !failedDecryptMsgIds.has(node.attrs.id!)) {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
 			await sendMessageAck(node, NACK_REASONS.UnhandledError)
 			return
@@ -1284,6 +1292,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						const errorMessage = msg?.messageStubParameters?.[0] || ''
 						const isPreKeyError = errorMessage.includes('PreKey')
 
+						if (msg.key.id) {
+							failedDecryptMsgIds.set(msg.key.id, true)
+						}
+
 						logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
 
 						// Handle both pre-key and normal retries in single mutex
@@ -1329,6 +1341,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						})
 					}
 				} else {
+					if (msg.key.id) {
+						failedDecryptMsgIds.delete(msg.key.id)
+					}
+
 					if (messageRetryManager && msg.key.id) {
 						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
 					}
