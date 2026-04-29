@@ -1,15 +1,18 @@
 {
-  "name": "baileys",
+  "name": "@wayapiteam/baileys",
   "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "version": "7.0.1",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
     "automation"
   ],
-  "homepage": "https://github.com/WhiskeySockets/Baileys/",
+  "homepage": "https://github.com/wayapiteam/Baileys/",
   "repository": {
-    "url": "git@github.com:WhiskeySockets/Baileys.git"
+    "url": "git@github.com:wayapiteam/Baileys.git"
   },
   "license": "MIT",
   "author": "Rajeh Taher",
