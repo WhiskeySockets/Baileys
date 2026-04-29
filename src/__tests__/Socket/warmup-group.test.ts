@@ -113,4 +113,33 @@ describe('Group warm-up', () => {
 		expect(groupMetadata).not.toHaveBeenCalled()
 		expect(getUSyncDevices).toHaveBeenCalledWith(['changed-user@s.whatsapp.net'], true, false)
 	})
+
+	it('reports missing metadata when the group cannot be loaded', async () => {
+		const getUSyncDevices = jest.fn(async () => [])
+		const assertSessions = jest.fn(async () => true)
+		const groupMetadata = jest.fn(async () => undefined) as jest.MockedFunction<
+			(jid: string) => Promise<GroupMetadata | undefined>
+		>
+		const sendInstrumentation = jest.fn(async () => undefined) as jest.MockedFunction<SendInstrumentation>
+
+		const summary = await warmUpGroupSend('12345@g.us', {
+			instanceId: 'me@s.whatsapp.net',
+			groupMetadata,
+			getUSyncDevices,
+			assertSessions,
+			sendInstrumentation
+		})
+
+		expect(summary).toMatchObject({
+			groupJid: '12345@g.us',
+			metadataSource: 'missing',
+			participants: 0,
+			devices: 0,
+			sessionsExisting: 0,
+			sessionsFetched: 0
+		})
+		expect(groupMetadata).toHaveBeenCalledWith('12345@g.us')
+		expect(getUSyncDevices).toHaveBeenCalledWith([], true, false)
+		expect(assertSessions).toHaveBeenCalledWith([], false, expect.any(Object))
+	})
 })
