@@ -1,7 +1,7 @@
 import { promisify } from 'util'
 import { inflate } from 'zlib'
 import * as constants from './constants'
-import { jidEncode } from './jid-utils'
+import { jidEncode, WAJIDDomains, type JidServer } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 
 const inflatePromise = promisify(inflate)
@@ -148,6 +148,29 @@ class ByteDecoder {
 		}
 	}
 
+	private readFbJid = () => {
+		const user = this.readString(this.readByte()!)
+		const device = this.readInt(2)
+		const server = this.readString(this.readByte()!)
+		return `${user}:${device}@${server}`
+	}
+
+	private readInteropJid = () => {
+		const user = this.readString(this.readByte()!)
+		const device = this.readInt(2)
+		const integrator = this.readInt(2)
+
+		let server = 'interop'
+		const beforeServer = this.index
+		try {
+			server = this.readString(this.readByte()!)
+		} catch (err) {
+			this.index = beforeServer
+		}
+
+		return `${integrator}-${user}:${device}@${server}`
+	}
+
 	private readJidPair(): string {
 		const i = this.readString(this.readByte())
 		const j = this.readString(this.readByte())
@@ -165,7 +188,16 @@ class ByteDecoder {
 		const device = this.readByte()
 		const user = this.readString(this.readByte())
 
-		return jidEncode(user, domainType === 0 || domainType === 128 ? 's.whatsapp.net' : 'lid', device)
+		let server: JidServer = 's.whatsapp.net' // default whatsapp server
+		if (domainType === WAJIDDomains.LID) {
+			server = 'lid'
+		} else if (domainType === WAJIDDomains.HOSTED) {
+			server = 'hosted'
+		} else if (domainType === WAJIDDomains.HOSTED_LID) {
+			server = 'hosted.lid'
+		}
+
+		return jidEncode(user, server, device)
 	}
 
 	private readString(tag: number): string {
@@ -190,6 +222,10 @@ class ByteDecoder {
 				return this.readStringFromChars(this.readInt(4))
 			case TAGS.JID_PAIR:
 				return this.readJidPair()
+			case TAGS.FB_JID:
+				return this.readFbJid()
+			case TAGS.INTEROP_JID:
+				return this.readInteropJid()
 			case TAGS.AD_JID:
 				return this.readAdJid()
 			case TAGS.HEX_8:
