@@ -2,6 +2,7 @@ import { proto } from '../../WAProto/index.js'
 import type { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey } from '../Types'
 import { WAMessageAddressingMode, WAMessageStubType } from '../Types'
 import { generateMessageIDV2, unixTimestampSeconds } from '../Utils'
+import { emitSendInstrumentation } from '../Utils/instrumentation'
 import {
 	type BinaryNode,
 	getBinaryNodeChild,
@@ -17,6 +18,8 @@ import { makeChatsSocket } from './chats'
 export const makeGroupsSocket = (config: SocketConfig) => {
 	const sock = makeChatsSocket(config)
 	const { authState, ev, query, upsertMessage } = sock
+	const sendInstrumentation = config.sendInstrumentation
+	const instanceId = authState.creds.me?.id
 
 	const groupQuery = async (jid: string, type: 'get' | 'set', content: BinaryNode[]) =>
 		query({
@@ -30,8 +33,31 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		})
 
 	const groupMetadata = async (jid: string) => {
-		const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
-		return extractGroupMetadata(result)
+		const startedAt = Date.now()
+		try {
+			const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
+			const metadata = extractGroupMetadata(result)
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'groupMetadata',
+				status: 'success',
+				instanceId,
+				groupJid: jid,
+				durationMs: Date.now() - startedAt,
+				counts: {
+					participants: metadata.participants.length
+				}
+			})
+			return metadata
+		} catch (error) {
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'groupMetadata',
+				status: 'failure',
+				instanceId,
+				groupJid: jid,
+				durationMs: Date.now() - startedAt
+			})
+			throw error
+		}
 	}
 
 	const groupFetchAllParticipating = async () => {

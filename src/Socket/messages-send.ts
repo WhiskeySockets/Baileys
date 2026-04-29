@@ -4,13 +4,18 @@ import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMessageContent,
+	CacheStore,
+	GroupMetadata,
 	MediaConnInfo,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MiscMessageGenerationOptions,
 	SocketConfig,
 	WAMessage,
-	WAMessageKey
+	WAMessageKey,
+	SendInstrumentation,
+	WarmUpGroupParticipantsSummary,
+	WarmUpGroupSendSummary
 } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
@@ -34,6 +39,7 @@ import {
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
+import { emitSendInstrumentation } from '../Utils/instrumentation'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
@@ -68,6 +74,137 @@ import {
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
 
+type DeviceWithJid = {
+	jid: string
+}
+
+type WarmUpGroupDeps = {
+	instanceId?: string
+	cachedGroupMetadata?: (jid: string) => Promise<GroupMetadata | undefined>
+	groupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
+	getUSyncDevices: (jids: string[], useCache: boolean, ignoreZeroDevices: boolean) => Promise<DeviceWithJid[]>
+	assertSessions: (
+		jids: string[],
+		force?: boolean,
+		summary?: { existingCount: number; fetchedCount: number }
+	) => Promise<boolean>
+	sendInstrumentation?: SendInstrumentation
+}
+
+export const createPeerSessionsCache = (peerSessionsCache?: CacheStore) =>
+	peerSessionsCache ||
+	new NodeCache<boolean>({
+		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES,
+		useClones: false
+	})
+
+export const warmUpGroupParticipants = async (
+	groupJid: string,
+	participants: string[],
+	deps: WarmUpGroupDeps
+): Promise<WarmUpGroupParticipantsSummary> => {
+	const startedAt = Date.now()
+	try {
+		const sessionSummary = { existingCount: 0, fetchedCount: 0 }
+		const devices = await deps.getUSyncDevices(participants, true, false)
+		await deps.assertSessions(devices.map(device => device.jid), false, sessionSummary)
+
+		const summary: WarmUpGroupParticipantsSummary = {
+			groupJid,
+			participants: participants.length,
+			devices: devices.length,
+			sessionsExisting: sessionSummary.existingCount,
+			sessionsFetched: sessionSummary.fetchedCount,
+			durationMs: Date.now() - startedAt
+		}
+
+		await emitSendInstrumentation(deps.sendInstrumentation, {
+			stage: 'warmUpGroupParticipants',
+			status: 'success',
+			instanceId: deps.instanceId,
+			groupJid,
+			counts: {
+				participants: summary.participants,
+				devices: summary.devices,
+				sessionsExisting: summary.sessionsExisting,
+				sessionsFetched: summary.sessionsFetched
+			},
+			durationMs: summary.durationMs
+		})
+
+		return summary
+	} catch (error) {
+		await emitSendInstrumentation(deps.sendInstrumentation, {
+			stage: 'warmUpGroupParticipants',
+			status: 'failure',
+			instanceId: deps.instanceId,
+			groupJid,
+			durationMs: Date.now() - startedAt
+		})
+		throw error
+	}
+}
+
+export const warmUpGroupSend = async (
+	groupJid: string,
+	deps: WarmUpGroupDeps
+): Promise<WarmUpGroupSendSummary> => {
+	const startedAt = Date.now()
+	try {
+		let metadata: GroupMetadata | undefined
+		let metadataSource: WarmUpGroupSendSummary['metadataSource'] = 'network'
+
+		if (deps.cachedGroupMetadata) {
+			metadata = await deps.cachedGroupMetadata(groupJid)
+			if (metadata) {
+				metadataSource = 'cache'
+			}
+		}
+
+		if (!metadata) {
+			metadata = await deps.groupMetadata(groupJid)
+		}
+
+		const participants = metadata?.participants.map(participant => participant.id) || []
+		const participantSummary = await warmUpGroupParticipants(groupJid, participants, deps)
+
+		const summary: WarmUpGroupSendSummary = {
+			groupJid,
+			metadataSource,
+			participants: participantSummary.participants,
+			devices: participantSummary.devices,
+			sessionsExisting: participantSummary.sessionsExisting,
+			sessionsFetched: participantSummary.sessionsFetched,
+			durationMs: Date.now() - startedAt
+		}
+
+		await emitSendInstrumentation(deps.sendInstrumentation, {
+			stage: 'warmUpGroupSend',
+			status: 'success',
+			instanceId: deps.instanceId,
+			groupJid,
+			counts: {
+				participants: summary.participants,
+				devices: summary.devices,
+				sessionsExisting: summary.sessionsExisting,
+				sessionsFetched: summary.sessionsFetched
+			},
+			durationMs: summary.durationMs
+		})
+
+		return summary
+	} catch (error) {
+		await emitSendInstrumentation(deps.sendInstrumentation, {
+			stage: 'warmUpGroupSend',
+			status: 'failure',
+			instanceId: deps.instanceId,
+			groupJid,
+			durationMs: Date.now() - startedAt
+		})
+		throw error
+	}
+}
+
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
 		logger,
@@ -92,6 +229,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		groupMetadata,
 		groupToggleEphemeral
 	} = sock
+	const sendInstrumentation = config.sendInstrumentation
+	const instanceId = authState.creds.me?.id
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
@@ -109,10 +248,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
-	const peerSessionsCache = new NodeCache<boolean>({
-		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES,
-		useClones: false
-	})
+	const peerSessionsCache = createPeerSessionsCache(config.peerSessionsCache)
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
@@ -120,37 +256,65 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
-	let mediaConn: Promise<MediaConnInfo>
+	let mediaConn: Promise<MediaConnInfo> | undefined
 	const refreshMediaConn = async (forceGet = false) => {
-		const media = await mediaConn
-		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
-			mediaConn = (async () => {
-				const result = await query({
-					tag: 'iq',
-					attrs: {
-						type: 'set',
-						xmlns: 'w:m',
-						to: S_WHATSAPP_NET
-					},
-					content: [{ tag: 'media_conn', attrs: {} }]
-				})
-				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
-				// TODO: explore full length of data that whatsapp provides
-				const node: MediaConnInfo = {
-					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
-						hostname: attrs.hostname!,
-						maxContentLengthBytes: +attrs.maxContentLengthBytes!
-					})),
-					auth: mediaConnNode.attrs.auth!,
-					ttl: +mediaConnNode.attrs.ttl!,
-					fetchDate: new Date()
-				}
-				logger.debug('fetched media conn')
-				return node
-			})()
+		const currentMedia = await mediaConn
+		if (currentMedia && !forceGet && new Date().getTime() - currentMedia.fetchDate.getTime() <= currentMedia.ttl * 1000) {
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'refreshMediaConn',
+				status: 'hit',
+				instanceId,
+				counts: { attempts: 0 }
+			})
+			return currentMedia
 		}
 
-		return mediaConn
+		const startedAt = Date.now()
+		mediaConn = (async () => {
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					type: 'set',
+					xmlns: 'w:m',
+					to: S_WHATSAPP_NET
+				},
+				content: [{ tag: 'media_conn', attrs: {} }]
+			})
+			const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
+			// TODO: explore full length of data that whatsapp provides
+			const node: MediaConnInfo = {
+				hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
+					hostname: attrs.hostname!,
+					maxContentLengthBytes: +attrs.maxContentLengthBytes!
+				})),
+				auth: mediaConnNode.attrs.auth!,
+				ttl: +mediaConnNode.attrs.ttl!,
+				fetchDate: new Date()
+			}
+			logger.debug('fetched media conn')
+			return node
+		})()
+
+		try {
+			const result = await mediaConn
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'refreshMediaConn',
+				status: 'success',
+				instanceId,
+				durationMs: Date.now() - startedAt,
+				counts: { attempts: 1 }
+			})
+			return result
+		} catch (error) {
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'refreshMediaConn',
+				status: 'failure',
+				instanceId,
+				durationMs: Date.now() - startedAt,
+				counts: { attempts: 1 }
+			})
+			throw error
+		}
 	}
 
 	/**
@@ -207,7 +371,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		logger.debug({ attrs: node.attrs, messageIds }, 'sending receipt for messages')
+		const sendNodeStartedAt = Date.now()
 		await sendNode(node)
+		await emitSendInstrumentation(sendInstrumentation, {
+			stage: 'sendNode',
+			status: 'success',
+			instanceId,
+			durationMs: Date.now() - sendNodeStartedAt,
+			counts: {
+				participants: messageIds.length
+			}
+		})
 	}
 
 	/** Correctly bulk send receipts to multiple chats, participants */
@@ -237,11 +411,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useCache: boolean,
 		ignoreZeroDevices: boolean
 	): Promise<DeviceWithJid[]> => {
+		const startedAt = Date.now()
 		const deviceResults: DeviceWithJid[] = []
+		let cacheHits = 0
+		let cacheMisses = 0
 
-		if (!useCache) {
-			logger.debug('not using cache for devices')
-		}
+		try {
+			if (!useCache) {
+				logger.debug('not using cache for devices')
+			}
 
 		const toFetch: string[] = []
 
@@ -279,6 +457,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					mgetDevices?.[user!] ||
 					(userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as FullJid[]))
 				if (devices) {
+					cacheHits += 1
 					const devicesWithJid = devices.map(d => ({
 						...d,
 						jid: jidEncode(d.user, d.server, d.device)
@@ -287,14 +466,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					logger.trace({ user }, 'using cache for devices')
 				} else {
+					cacheMisses += 1
 					toFetch.push(jid)
 				}
 			} else {
+				cacheMisses += 1
 				toFetch.push(jid)
 			}
 		}
 
 		if (!toFetch.length) {
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'getUSyncDevices',
+				status: 'success',
+				instanceId,
+				durationMs: Date.now() - startedAt,
+				counts: {
+					cacheHits,
+					cacheMisses,
+					devices: deviceResults.length
+				}
+			})
 			return deviceResults
 		}
 
@@ -401,7 +593,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		return deviceResults
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'getUSyncDevices',
+				status: 'success',
+				instanceId,
+				durationMs: Date.now() - startedAt,
+				counts: {
+					cacheHits,
+					cacheMisses,
+					devices: deviceResults.length
+				}
+			})
+			return deviceResults
+		} catch (error) {
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'getUSyncDevices',
+				status: 'failure',
+				instanceId,
+				durationMs: Date.now() - startedAt,
+				counts: {
+					cacheHits,
+					cacheMisses,
+					devices: deviceResults.length
+				}
+			})
+			throw error
+		}
 	}
 
 	/**
@@ -434,24 +651,29 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		)
 	}
 
-	const assertSessions = async (jids: string[], force?: boolean) => {
+	const assertSessions = async (jids: string[], force?: boolean, summary?: { existingCount: number; fetchedCount: number }) => {
+		const startedAt = Date.now()
 		let didFetchNewSession = false
 		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
+		let existingCount = 0
 
-		logger.debug({ jids }, 'assertSessions call with jids')
+		try {
+			logger.debug({ jids }, 'assertSessions call with jids')
 
 		// Check peerSessionsCache and validate sessions using libsignal loadSession
 		for (const jid of uniqueJids) {
 			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
 			const cachedSession = peerSessionsCache.get(signalId)
 			if (cachedSession !== undefined) {
+				if (cachedSession) existingCount += 1
 				if (cachedSession && !force) {
 					continue // Session exists in cache
 				}
 			} else {
 				const sessionValidation = await signalRepository.validateSession(jid)
 				const hasSession = sessionValidation.exists
+				if (hasSession) existingCount += 1
 				peerSessionsCache.set(signalId, hasSession)
 				if (hasSession && !force) {
 					continue
@@ -502,7 +724,35 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		return didFetchNewSession
+			if (summary) {
+				summary.existingCount = existingCount
+				summary.fetchedCount = jidsRequiringFetch.length
+			}
+
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'assertSessions',
+				status: 'success',
+				instanceId,
+				durationMs: Date.now() - startedAt,
+				counts: {
+					sessionsExisting: existingCount,
+					sessionsFetched: jidsRequiringFetch.length
+				}
+			})
+			return didFetchNewSession
+		} catch (error) {
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'assertSessions',
+				status: 'failure',
+				instanceId,
+				durationMs: Date.now() - startedAt,
+				counts: {
+					sessionsExisting: existingCount,
+					sessionsFetched: jidsRequiringFetch.length
+				}
+			})
+			throw error
+		}
 	}
 
 	const sendPeerDataOperationMessage = async (
@@ -545,7 +795,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		extraAttrs?: BinaryNode['attrs'],
 		dsmMessage?: proto.IMessage
 	) => {
+		const startedAt = Date.now()
 		if (!recipientJids.length) {
+			await emitSendInstrumentation(sendInstrumentation, {
+				stage: 'createParticipantNodes',
+				status: 'success',
+				instanceId,
+				counts: {
+					participants: 0,
+					devices: 0
+				},
+				durationMs: Date.now() - startedAt
+			})
 			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
 		}
 
@@ -624,6 +885,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			throw new Boom('All encryptions failed', { statusCode: 500 })
 		}
 
+		await emitSendInstrumentation(sendInstrumentation, {
+			stage: 'createParticipantNodes',
+			status: 'success',
+			instanceId,
+			counts: {
+				participants: recipientJids.length,
+				devices: nodes.length
+			},
+			durationMs: Date.now() - startedAt
+		})
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
@@ -701,18 +972,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {},
 					content: bytes
 				})
-				const stanza: BinaryNode = {
-					tag: 'message',
-					attrs: {
-						to: jid,
+					const stanza: BinaryNode = {
+						tag: 'message',
+						attrs: {
+							to: jid,
 						id: msgId,
 						type: getMessageType(message),
 						...(additionalAttributes || {})
 					},
-					content: binaryNodeContent
+						content: binaryNodeContent
 					}
 					logger.debug({ msgId }, `sending newsletter message to ${jid}`)
+					const sendNodeStartedAt = Date.now()
 					await sendNode(stanza)
+					await emitSendInstrumentation(sendInstrumentation, {
+						stage: 'sendNode',
+						status: 'success',
+						instanceId,
+						groupJid: jid,
+						durationMs: Date.now() - sendNodeStartedAt,
+						counts: {
+							participants: 1,
+							devices: 1
+						}
+					})
 					return msgId
 				}
 
@@ -799,11 +1082,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
+				const encryptStartedAt = Date.now()
 				const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
 					group: destinationJid,
 					data: bytes,
 					meId: groupSenderIdentity,
 					createDistributionMessage: senderKeyRecipients.length > 0
+				})
+				await emitSendInstrumentation(sendInstrumentation, {
+					stage: 'encryptGroupMessage',
+					status: 'success',
+					instanceId,
+					groupJid: destinationJid,
+					durationMs: Date.now() - encryptStartedAt,
+					counts: {
+						participants: senderKeyRecipients.length,
+						devices: devices.length
+					}
 				})
 
 				if (senderKeyRecipients.length) {
@@ -1091,7 +1386,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
-			await sendNode(stanza)
+				const sendNodeStartedAt = Date.now()
+				await sendNode(stanza)
+				await emitSendInstrumentation(sendInstrumentation, {
+					stage: 'sendNode',
+					status: 'success',
+					instanceId,
+					groupJid: destinationJid,
+					durationMs: Date.now() - sendNodeStartedAt,
+					counts: {
+						participants: participants.length,
+						devices: devices.length
+					}
+				})
 
 			// Fire-and-forget: issue our token to the contact AFTER message send.
 			// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)
@@ -1268,7 +1575,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			let error: Error | undefined = undefined
 			await Promise.all([
-				sendNode(node),
+				(async () => {
+					const sendNodeStartedAt = Date.now()
+					await sendNode(node)
+					await emitSendInstrumentation(sendInstrumentation, {
+						stage: 'sendNode',
+						status: 'success',
+						instanceId,
+							groupJid: message.key.remoteJid || undefined,
+						durationMs: Date.now() - sendNodeStartedAt,
+						counts: {
+							participants: 1,
+							devices: 1
+						}
+					})
+				})(),
 				waitForMsgMediaUpdate(async update => {
 					const result = update.find(c => c.key.id === message.key.id)
 					if (result) {
@@ -1307,6 +1628,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			return message
 		},
+		warmUpGroupSend: async (groupJid: string) =>
+			warmUpGroupSend(groupJid, {
+				instanceId,
+				cachedGroupMetadata: config.cachedGroupMetadata,
+				groupMetadata,
+				getUSyncDevices,
+				assertSessions,
+				sendInstrumentation
+			}),
+		warmUpGroupParticipants: async (groupJid: string, participants: string[]) =>
+			warmUpGroupParticipants(groupJid, participants, {
+				instanceId,
+				cachedGroupMetadata: config.cachedGroupMetadata,
+				groupMetadata,
+				getUSyncDevices,
+				assertSessions,
+				sendInstrumentation
+			}),
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
 			const userJid = authState.creds.me!.id
 			if (
@@ -1327,6 +1666,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const fullMsg = await generateWAMessage(jid, content, {
 					logger,
 					userJid,
+					instanceId,
+					sendInstrumentation,
 					getUrlInfo: text =>
 						getUrlInfo(text, {
 							thumbnailWidth: linkPreviewImageThumbnailWidth,

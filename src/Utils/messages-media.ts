@@ -27,6 +27,7 @@ import type {
 import { type BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageIDV2 } from './generics'
+import { emitSendInstrumentation } from './instrumentation'
 import type { ILogger } from './logger'
 
 const getTmpFilesDirectory = () => tmpdir()
@@ -807,9 +808,12 @@ const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<Medi
 }
 
 export const getWAUploadToServer = (
-	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
+	config: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
+	const { customUploadHosts, fetchAgent, logger, options, sendInstrumentation, auth } = config
+	const instanceId = auth?.creds?.me?.id
+
 	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs }) => {
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
@@ -832,13 +836,15 @@ export const getWAUploadToServer = (
 			Origin: DEFAULT_ORIGIN
 		}
 
-		for (const { hostname } of hosts) {
-			logger.debug(`uploading to "${hostname}"`)
+		for (const [attempt, { hostname }] of hosts.entries()) {
+			logger.debug({ hostname, attempt: attempt + 1 }, 'uploading media to host')
 
 			const auth = encodeURIComponent(uploadInfo.auth)
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 
+			const startedAt = Date.now()
 			let result: MediaUploadResult | undefined
+			let failureEmitted = false
 			try {
 				result = await uploadMedia(
 					{
@@ -852,6 +858,14 @@ export const getWAUploadToServer = (
 				)
 
 				if (result?.url || result?.direct_path) {
+					await emitSendInstrumentation(sendInstrumentation, {
+						stage: 'uploadMediaHost',
+						status: 'success',
+						instanceId,
+						host: hostname,
+						durationMs: Date.now() - startedAt,
+						counts: { attempts: attempt + 1 }
+					})
 					urls = {
 						mediaUrl: result.url!,
 						directPath: result.direct_path!,
@@ -861,11 +875,33 @@ export const getWAUploadToServer = (
 					}
 					break
 				} else {
+					await emitSendInstrumentation(sendInstrumentation, {
+						stage: 'uploadMediaHost',
+						status: 'failure',
+						instanceId,
+						host: hostname,
+						retryFromHost: hosts[attempt + 1]?.hostname,
+						durationMs: Date.now() - startedAt,
+						counts: { attempts: attempt + 1 }
+					})
+					failureEmitted = true
 					uploadInfo = await refreshMediaConn(true)
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
 			} catch (error: any) {
-				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
+				const nextHost = hosts[attempt + 1]?.hostname
+				const isLast = !nextHost
+				if (!failureEmitted) {
+					await emitSendInstrumentation(sendInstrumentation, {
+						stage: 'uploadMediaHost',
+						status: 'failure',
+						instanceId,
+						host: hostname,
+						retryFromHost: nextHost,
+						durationMs: Date.now() - startedAt,
+						counts: { attempts: attempt + 1 }
+					})
+				}
 				logger.warn(
 					{ trace: error?.stack, uploadResult: result },
 					`Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`

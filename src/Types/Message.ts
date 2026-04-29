@@ -5,6 +5,7 @@ import type { MediaType } from '../Defaults'
 import type { BinaryNode } from '../WABinary'
 import type { GroupMetadata } from './GroupMetadata'
 import type { CacheStore } from './Socket'
+import type { SendInstrumentation } from './Instrumentation'
 
 // export the WAMessage Prototypes
 export { proto as WAProto }
@@ -357,6 +358,10 @@ export type MediaGenerationOptions = {
 	upload: WAMediaUploadFunction
 	/** cache media so it does not have to be uploaded again */
 	mediaCache?: CacheStore
+	/** optional metrics hook for media preparation instrumentation */
+	sendInstrumentation?: SendInstrumentation
+	/** stable instance identifier for instrumentation */
+	instanceId?: string
 
 	mediaUploadTimeoutMs?: number
 

@@ -2,6 +2,7 @@ import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
+import type { SendInstrumentation } from './Instrumentation'
 import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
@@ -84,6 +85,10 @@ export type SocketConfig = {
 	msgRetryCounterCache?: CacheStore
 	/** provide a cache to store a user's device list */
 	userDevicesCache?: PossiblyExtendedCacheStore
+	/** provide a cache to store Signal peer sessions */
+	peerSessionsCache?: CacheStore
+	/** optional metrics hook for send-path instrumentation */
+	sendInstrumentation?: SendInstrumentation
 	/** cache to store call offers */
 	callOfferCache?: CacheStore
 	/** cache to track placeholder resends */
@@ -148,3 +153,10 @@ export type SocketConfig = {
 		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 	) => SignalRepositoryWithLIDStore
 }
+
+export type {
+	SendInstrumentation,
+	SendInstrumentationEvent,
+	WarmUpGroupParticipantsSummary,
+	WarmUpGroupSendSummary
+} from './Instrumentation'
