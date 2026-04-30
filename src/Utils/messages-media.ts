@@ -857,7 +857,8 @@ export const getWAUploadToServer = (
 	config: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
-	const { customUploadHosts, fetchAgent, logger, options, sendInstrumentation, auth: mediaAuth } = config
+	const { customUploadHosts, fetchAgent, logger, options, auth: mediaAuth } = config
+	const sendInstrumentation = config.telemetry ?? config.sendInstrumentation
 	const getInstanceId = () => mediaAuth?.creds?.me?.id
 
 	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, signal }) => {
