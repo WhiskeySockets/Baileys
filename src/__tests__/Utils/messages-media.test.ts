@@ -402,4 +402,41 @@ describe('encryptedStream', () => {
 			await cleanupFiles([result.encFilePath, result.originalFilePath])
 		}
 	})
+
+	it('should abort uploadWithNodeHttp when the signal is aborted', async () => {
+		const filePath = await createTempFile('abort test content')
+		const server = http.createServer((req, res) => {
+			req.on('data', () => {})
+			req.on('end', () => {
+				// Keep the connection open until the caller aborts.
+			})
+		})
+
+		const port = await new Promise<number>(resolve => {
+			server.listen(0, () => {
+				const address = server.address()
+				if (address && typeof address === 'object') {
+					resolve(address.port)
+				}
+			})
+		})
+
+		try {
+			const controller = new AbortController()
+			const params: UploadParams = {
+				url: `http://localhost:${port}/upload`,
+				filePath,
+				headers: { 'Content-Type': 'application/octet-stream' },
+				signal: controller.signal
+			}
+
+			const uploadPromise = uploadWithNodeHttp(params)
+			setTimeout(() => controller.abort(new Error('Timed out')), 20)
+
+			await expect(uploadPromise).rejects.toThrow('Timed out')
+		} finally {
+			server.close()
+			await cleanupTempFile(filePath)
+		}
+	})
 })

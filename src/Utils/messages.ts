@@ -179,14 +179,16 @@ export const prepareWAMessageMedia = async (
 		const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(
 			uploadData.media,
 			options.mediaTypeOverride || mediaType,
-			logger
+			logger,
+			options.options
 		)
 
 		const fileSha256B64 = fileSha256.toString('base64')
 		const { mediaUrl, directPath } = await options.upload(filePath, {
 			fileEncSha256B64: fileSha256B64,
 			mediaType: mediaType,
-			timeoutMs: options.mediaUploadTimeoutMs
+			timeoutMs: options.mediaUploadTimeoutMs,
+			signal: options.options?.signal ?? undefined
 		})
 
 		await fs.unlink(filePath)
@@ -243,7 +245,8 @@ export const prepareWAMessageMedia = async (
 			const result = await options.upload(encFilePath, {
 				fileEncSha256B64,
 				mediaType,
-				timeoutMs: options.mediaUploadTimeoutMs
+				timeoutMs: options.mediaUploadTimeoutMs,
+				signal: options.options?.signal ?? undefined
 			})
 			logger?.debug({ mediaType, cacheableKey }, 'uploaded media')
 			return result

@@ -14,11 +14,10 @@ const getCompressedJpegThumbnail = async (url: string, { thumbnailWidth, fetchOp
 
 export type URLGenerationOptions = {
 	thumbnailWidth: number
-	fetchOpts: {
+	fetchOpts: RequestInit & {
 		/** Timeout in ms */
 		timeout: number
 		proxyUrl?: string
-		headers?: HeadersInit
 	}
 	uploadImage?: WAMediaUploadFunction
 	logger?: ILogger

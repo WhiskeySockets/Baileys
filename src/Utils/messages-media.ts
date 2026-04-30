@@ -51,8 +51,13 @@ export const hkdfInfoKey = (type: MediaType) => {
 	return `WhatsApp ${hkdfInfo} Keys`
 }
 
-export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: MediaType, logger?: ILogger) => {
-	const { stream } = await getStream(media)
+export const getRawMediaUploadData = async (
+	media: WAMediaUpload,
+	mediaType: MediaType,
+	logger?: ILogger,
+	opts?: RequestInit
+) => {
+	const { stream } = await getStream(media, opts)
 	logger?.debug('got stream for raw upload')
 
 	const hasher = Crypto.createHash('sha256')
@@ -674,14 +679,19 @@ export type UploadParams = {
 	headers: Record<string, string>
 	timeoutMs?: number
 	agent?: Agent
+	signal?: AbortSignal
 }
 
 export const uploadWithNodeHttp = async (
-	{ url, filePath, headers, timeoutMs, agent }: UploadParams,
+	{ url, filePath, headers, timeoutMs, agent, signal }: UploadParams,
 	redirectCount = 0
 ): Promise<MediaUploadResult | undefined> => {
 	if (redirectCount > 5) {
 		throw new Error('Too many redirects')
+	}
+
+	if (signal?.aborted) {
+		throw signal.reason ?? new Error('Upload aborted')
 	}
 
 	const parsedUrl = new URL(url)
@@ -692,6 +702,7 @@ export const uploadWithNodeHttp = async (
 	const fileSize = fileStats.size
 
 	return new Promise((resolve, reject) => {
+		const abortError = () => signal?.reason ?? new Error('Upload aborted')
 		const req = httpModule.request(
 			{
 				hostname: parsedUrl.hostname,
@@ -717,7 +728,8 @@ export const uploadWithNodeHttp = async (
 								filePath,
 								headers,
 								timeoutMs,
-								agent
+								agent,
+								signal
 							},
 							redirectCount + 1
 						)
@@ -737,9 +749,22 @@ export const uploadWithNodeHttp = async (
 			}
 		)
 
-		req.on('error', reject)
+		const onAbort = () => {
+			req.destroy()
+			reject(abortError())
+		}
+
+		if (signal) {
+			signal.addEventListener('abort', onAbort, { once: true })
+		}
+
+		req.on('error', err => {
+			signal?.removeEventListener('abort', onAbort)
+			reject(err)
+		})
 		req.on('timeout', () => {
 			req.destroy()
+			signal?.removeEventListener('abort', onAbort)
 			reject(new Error('Upload timeout'))
 		})
 
@@ -747,7 +772,12 @@ export const uploadWithNodeHttp = async (
 		stream.pipe(req)
 		stream.on('error', err => {
 			req.destroy()
+			signal?.removeEventListener('abort', onAbort)
 			reject(err)
+		})
+
+		req.on('close', () => {
+			signal?.removeEventListener('abort', onAbort)
 		})
 	})
 }
@@ -757,25 +787,41 @@ const uploadWithFetch = async ({
 	filePath,
 	headers,
 	timeoutMs,
-	agent
+	agent,
+	signal
 }: UploadParams): Promise<MediaUploadResult | undefined> => {
 	// Convert Node.js Readable to Web ReadableStream
 	const nodeStream = createReadStream(filePath)
 	const webStream = Readable.toWeb(nodeStream) as ReadableStream
 
-	const response = await fetch(url, {
-		dispatcher: agent,
-		method: 'POST',
-		body: webStream,
-		headers,
-		duplex: 'half',
-		signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
-	})
+		try {
+			const combinedSignal =
+				signal && timeoutMs
+					? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
+					: signal ?? (timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined)
+			const response = await fetch(url, {
+				dispatcher: agent,
+				method: 'POST',
+			body: webStream,
+			headers,
+			duplex: 'half',
+			signal: combinedSignal
+		})
 
-	try {
 		return (await response.json()) as MediaUploadResult
-	} catch {
+	} catch (error) {
+		if (signal?.aborted) {
+			throw signal.reason ?? error
+		}
+
+		const { name, code } = error as { name?: string; code?: string }
+		if (name === 'AbortError' || name === 'TimeoutError' || code === 'ABORT_ERR') {
+			throw error
+		}
+
 		return undefined
+	} finally {
+		nodeStream.destroy()
 	}
 }
 
@@ -810,9 +856,16 @@ export const getWAUploadToServer = (
 	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
-	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs }) => {
+	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, signal }) => {
+		if (signal?.aborted) {
+			throw signal.reason ?? new Error('Upload aborted')
+		}
+
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
+		if (signal?.aborted) {
+			throw signal.reason ?? new Error('Upload aborted')
+		}
 
 		let urls: { mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number } | undefined
 		const hosts = [...customUploadHosts, ...uploadInfo.hosts]
@@ -846,7 +899,8 @@ export const getWAUploadToServer = (
 						filePath,
 						headers,
 						timeoutMs,
-						agent: fetchAgent
+						agent: fetchAgent,
+						signal
 					},
 					logger
 				)
@@ -861,10 +915,22 @@ export const getWAUploadToServer = (
 					}
 					break
 				} else {
+					if (signal?.aborted) {
+						throw signal.reason ?? new Error('Upload aborted')
+					}
 					uploadInfo = await refreshMediaConn(true)
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
 			} catch (error: any) {
+				if (signal?.aborted) {
+					throw signal.reason ?? error
+				}
+
+				const { name, code } = error as { name?: string; code?: string }
+				if (name === 'AbortError' || name === 'TimeoutError' || code === 'ABORT_ERR') {
+					throw error
+				}
+
 				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
 				logger.warn(
 					{ trace: error?.stack, uploadResult: result },
