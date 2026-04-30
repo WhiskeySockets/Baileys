@@ -322,6 +322,8 @@ export type MessageRelayOptions = MinimalRelayOptions & {
 	useUserDevicesCache?: boolean
 	/** jid list of participants for status@broadcast */
 	statusJidList?: string[]
+	/** abort signal for cancellation/timeouts */
+	signal?: AbortSignal
 }
 
 export type MiscMessageGenerationOptions = MinimalRelayOptions & {
@@ -329,6 +331,10 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
 	timestamp?: Date
 	/** the message you want to quote */
 	quoted?: WAMessage
+	/** timeout for the full sendMessage pipeline */
+	timeoutMs?: number
+	/** debug/test hook: delay before the message is relayed */
+	debugDelayBeforeRelayMs?: number
 	/** disappearing messages settings */
 	ephemeralExpiration?: number | string
 	/** timeout for media upload to WA server */
@@ -348,7 +354,7 @@ export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions &
 
 export type WAMediaUploadFunction = (
 	encFilePath: string,
-	opts: { fileEncSha256B64: string; mediaType: MediaType; timeoutMs?: number }
+	opts: { fileEncSha256B64: string; mediaType: MediaType; timeoutMs?: number; signal?: AbortSignal }
 ) => Promise<{ mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number }>
 
 export type MediaGenerationOptions = {

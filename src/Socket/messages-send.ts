@@ -12,6 +12,7 @@ import type {
 	WAMessage,
 	WAMessageKey
 } from '../Types'
+import { DisconnectReason } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
@@ -31,6 +32,7 @@ import {
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
+	delay,
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
@@ -67,6 +69,41 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
+
+const makeSendTimeoutError = () =>
+	new Boom('Timed out sending message', {
+		statusCode: DisconnectReason.timedOut
+	})
+
+const withAbort = async <T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => {
+	if (!signal) {
+		return promise
+	}
+
+	if (signal.aborted) {
+		throw signal.reason ?? makeSendTimeoutError()
+	}
+
+	return await new Promise<T>((resolve, reject) => {
+		const cleanup = () => signal.removeEventListener('abort', onAbort)
+		const onAbort = () => {
+			cleanup()
+			reject(signal.reason ?? makeSendTimeoutError())
+		}
+
+		signal.addEventListener('abort', onAbort, { once: true })
+		promise.then(
+			value => {
+				cleanup()
+				resolve(value)
+			},
+			error => {
+				cleanup()
+				reject(error)
+			}
+		)
+	})
+}
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -1309,43 +1346,70 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		},
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
 			const userJid = authState.creds.me!.id
-			if (
-				typeof content === 'object' &&
-				'disappearingMessagesInChat' in content &&
-				typeof content['disappearingMessagesInChat'] !== 'undefined' &&
-				isJidGroup(jid)
-			) {
-				const { disappearingMessagesInChat } = content
-				const value =
-					typeof disappearingMessagesInChat === 'boolean'
-						? disappearingMessagesInChat
-							? WA_DEFAULT_EPHEMERAL
-							: 0
-						: disappearingMessagesInChat
-				await groupToggleEphemeral(jid, value)
-			} else {
-				const fullMsg = await generateWAMessage(jid, content, {
-					logger,
-					userJid,
-					getUrlInfo: text =>
+			const timeoutMs = options.timeoutMs && options.timeoutMs > 0 ? options.timeoutMs : undefined
+			const timeoutController = timeoutMs ? new AbortController() : undefined
+			let timeoutHandle: NodeJS.Timeout | undefined
+			const signal = timeoutController?.signal
+
+			if (timeoutController) {
+				timeoutHandle = setTimeout(() => {
+					timeoutController.abort(makeSendTimeoutError())
+				}, timeoutMs)
+			}
+
+			const messageGenerationOptions = {
+				logger,
+				userJid,
+				getUrlInfo: (text: string) =>
+					withAbort(
 						getUrlInfo(text, {
 							thumbnailWidth: linkPreviewImageThumbnailWidth,
 							fetchOpts: {
 								timeout: 3_000,
-								...(httpRequestOptions || {})
+								...(httpRequestOptions || {}),
+								signal
 							},
 							logger,
 							uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
 						}),
-					//TODO: CACHE
-					getProfilePicUrl: sock.profilePictureUrl,
-					getCallLink: sock.createCallLink,
-					upload: waUploadToServer,
-					mediaCache: config.mediaCache,
-					options: config.options,
-					messageId: generateMessageIDV2(sock.user?.id),
-					...options
-				})
+						signal
+					),
+				//TODO: CACHE
+				getProfilePicUrl: (jid: string, type: 'image' | 'preview') => withAbort(sock.profilePictureUrl(jid, type), signal),
+				getCallLink: (type: 'audio' | 'video', event?: { startTime: number }) =>
+					withAbort(sock.createCallLink(type, event), signal),
+				upload: waUploadToServer,
+				mediaCache: config.mediaCache,
+				options: {
+					...config.options,
+					signal
+				},
+				messageId: generateMessageIDV2(sock.user?.id),
+				...options
+			}
+
+			try {
+				if (
+					typeof content === 'object' &&
+					'disappearingMessagesInChat' in content &&
+					typeof content['disappearingMessagesInChat'] !== 'undefined' &&
+					isJidGroup(jid)
+				) {
+					const { disappearingMessagesInChat } = content
+					const value =
+						typeof disappearingMessagesInChat === 'boolean'
+							? disappearingMessagesInChat
+								? WA_DEFAULT_EPHEMERAL
+								: 0
+							: disappearingMessagesInChat
+					await withAbort(groupToggleEphemeral(jid, value), signal)
+					return
+				}
+
+				const fullMsg = await withAbort(generateWAMessage(jid, content, messageGenerationOptions), signal)
+				if (options.debugDelayBeforeRelayMs && options.debugDelayBeforeRelayMs > 0) {
+					await withAbort(delay(options.debugDelayBeforeRelayMs), signal)
+				}
 				const isEventMsg = 'event' in content && !!content.event
 				const isDeleteMsg = 'delete' in content && !!content.delete
 				const isEditMsg = 'edit' in content && !!content.edit
@@ -1381,13 +1445,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					} as BinaryNode)
 				}
 
-				await relayMessage(jid, fullMsg.message!, {
-					messageId: fullMsg.key.id!,
-					useCachedGroupMetadata: options.useCachedGroupMetadata,
-					additionalAttributes,
-					statusJidList: options.statusJidList,
-					additionalNodes
-				})
+				await withAbort(
+					relayMessage(jid, fullMsg.message!, {
+						messageId: fullMsg.key.id!,
+						useCachedGroupMetadata: options.useCachedGroupMetadata,
+						additionalAttributes,
+						statusJidList: options.statusJidList,
+						additionalNodes,
+						signal
+					}),
+					signal
+				)
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
 						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
@@ -1395,6 +1463,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				return fullMsg
+			} catch (error) {
+				if (signal?.aborted) {
+					throw signal.reason ?? makeSendTimeoutError()
+				}
+
+				throw error
+			} finally {
+				if (timeoutHandle) {
+					clearTimeout(timeoutHandle)
+				}
 			}
 		}
 	}
