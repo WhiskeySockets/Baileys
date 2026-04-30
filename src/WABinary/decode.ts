@@ -1,7 +1,7 @@
 import { promisify } from 'util'
 import { inflate } from 'zlib'
 import * as constants from './constants'
-import { jidEncode, WAJIDDomains, type JidServer } from './jid-utils'
+import { jidEncode, type JidServer, WAJIDDomains } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 
 const inflatePromise = promisify(inflate)
@@ -148,14 +148,14 @@ class ByteDecoder {
 		}
 	}
 
-	private readFbJid = () => {
+	private readFbJid(): string {
 		const user = this.readString(this.readByte()!)
 		const device = this.readInt(2)
 		const server = this.readString(this.readByte()!)
 		return `${user}:${device}@${server}`
 	}
 
-	private readInteropJid = () => {
+	private readInteropJid(): string {
 		const user = this.readString(this.readByte()!)
 		const device = this.readInt(2)
 		const integrator = this.readInt(2)
