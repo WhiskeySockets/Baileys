@@ -333,6 +333,8 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
 	quoted?: WAMessage
 	/** timeout for the full sendMessage pipeline */
 	timeoutMs?: number
+	/** debug/test hook: delay before the message is relayed */
+	debugDelayBeforeRelayMs?: number
 	/** disappearing messages settings */
 	ephemeralExpiration?: number | string
 	/** timeout for media upload to WA server */

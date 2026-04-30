@@ -32,6 +32,7 @@ import {
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
+	delay,
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
@@ -1406,6 +1407,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const fullMsg = await withAbort(generateWAMessage(jid, content, messageGenerationOptions), signal)
+				if (options.debugDelayBeforeRelayMs && options.debugDelayBeforeRelayMs > 0) {
+					await withAbort(delay(options.debugDelayBeforeRelayMs), signal)
+				}
 				const isEventMsg = 'event' in content && !!content.event
 				const isDeleteMsg = 'delete' in content && !!content.delete
 				const isEditMsg = 'edit' in content && !!content.edit
