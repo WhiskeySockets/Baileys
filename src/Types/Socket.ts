@@ -2,7 +2,7 @@ import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
-import type { SendInstrumentation } from './Instrumentation'
+import type { SendInstrumentation, WarmUpGroupParticipantsSummary, WarmUpGroupSendSummary } from './Instrumentation'
 import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
@@ -26,6 +26,11 @@ export type PossiblyExtendedCacheStore = CacheStore & {
 	mget?: <T>(keys: string[]) => Promise<Record<string, T | undefined>>
 	mset?: <T>(entries: { key: string; value: T }[]) => Promise<void> | void | number | boolean
 	mdel?: (keys: string[]) => void | Promise<void> | number | boolean
+}
+
+export type GroupWarmUpSocketMethods = {
+	warmUpGroupSend(groupJid: string): Promise<WarmUpGroupSendSummary>
+	warmUpGroupParticipants(groupJid: string, participants: string[]): Promise<WarmUpGroupParticipantsSummary>
 }
 
 export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
