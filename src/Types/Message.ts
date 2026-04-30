@@ -3,6 +3,7 @@ import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { MediaType } from '../Defaults'
 import type { BinaryNode } from '../WABinary'
+import type { SendInstrumentation } from './Instrumentation'
 import type { GroupMetadata } from './GroupMetadata'
 import type { CacheStore } from './Socket'
 
@@ -363,6 +364,8 @@ export type MediaGenerationOptions = {
 	upload: WAMediaUploadFunction
 	/** cache media so it does not have to be uploaded again */
 	mediaCache?: CacheStore
+	/** optional telemetry hook for media preparation */
+	telemetry?: SendInstrumentation
 	/** stable instance identifier (e.g. own JID), passed where useful */
 	instanceId?: string
 

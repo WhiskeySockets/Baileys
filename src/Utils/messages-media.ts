@@ -27,6 +27,7 @@ import type {
 import { type BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageIDV2 } from './generics'
+import { measureTelemetry } from './instrumentation'
 import type { ILogger } from './logger'
 
 const getTmpFilesDirectory = () => tmpdir()
@@ -856,7 +857,7 @@ export const getWAUploadToServer = (
 	config: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
-	const { customUploadHosts, fetchAgent, logger, options } = config
+	const { customUploadHosts, fetchAgent, logger, options, telemetry } = config
 
 	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, signal }) => {
 		if (signal?.aborted) {
@@ -895,16 +896,25 @@ export const getWAUploadToServer = (
 
 			let result: MediaUploadResult | undefined
 			try {
-				result = await uploadMedia(
+				result = await measureTelemetry(
+					telemetry,
 					{
-						url,
-						filePath,
-						headers,
-						timeoutMs,
-						agent: fetchAgent,
-						signal
+						stage: 'uploadMedia',
+						host: hostname,
+						counts: { attempts: attempt + 1 }
 					},
-					logger
+					() =>
+						uploadMedia(
+							{
+								url,
+								filePath,
+								headers,
+								timeoutMs,
+								agent: fetchAgent,
+								signal
+							},
+							logger
+						)
 				)
 
 				if (result?.url || result?.direct_path) {

@@ -1582,6 +1582,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logger,
 						userJid,
 						instanceId: getInstanceId(),
+						telemetry: config.telemetry,
 						getUrlInfo: (text: string) =>
 							withAbort(
 								getUrlInfo(text, {

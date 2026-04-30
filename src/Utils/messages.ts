@@ -40,6 +40,7 @@ import {
 	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
+import { emitTelemetry } from './instrumentation'
 import { shouldIncludeReportingToken } from './reporting-utils'
 
 type ExtractByKey<T, K extends PropertyKey> = T extends Record<K, any> ? T : never
@@ -181,6 +182,12 @@ export const prepareWAMessageMedia = async (
 		const mediaBuff = await options.mediaCache!.get<Buffer>(cacheableKey)
 		if (mediaBuff) {
 			logger?.debug({ cacheKeyHash: sourceKeyHash, sourceHost }, 'got media cache hit')
+			await emitTelemetry(options.telemetry, {
+				stage: 'prepareWAMessageMedia',
+				status: 'hit',
+				instanceId: options.instanceId,
+				counts: { cacheHits: 1 }
+			})
 
 			const obj = proto.Message.decode(mediaBuff)
 			const key = `${mediaType}Message`
@@ -194,6 +201,12 @@ export const prepareWAMessageMedia = async (
 	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
 	if (isNewsletter) {
 		logger?.info({ cacheKeyHash: sourceKeyHash, sourceHost }, 'Preparing raw media for newsletter')
+		await emitTelemetry(options.telemetry, {
+			stage: 'prepareWAMessageMedia',
+			status: 'start',
+			instanceId: options.instanceId,
+			counts: { attempts: 1 }
+		})
 		const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(
 			uploadData.media,
 			options.mediaTypeOverride || mediaType,
@@ -207,6 +220,12 @@ export const prepareWAMessageMedia = async (
 			mediaType: mediaType,
 			timeoutMs: options.mediaUploadTimeoutMs,
 			signal: options.options?.signal ?? undefined
+		})
+		await emitTelemetry(options.telemetry, {
+			stage: 'prepareWAMessageMedia',
+			status: 'success',
+			instanceId: options.instanceId,
+			counts: { attempts: 1 }
 		})
 
 		await fs.unlink(filePath)
@@ -266,6 +285,12 @@ export const prepareWAMessageMedia = async (
 				signal: options.options?.signal ?? undefined
 			})
 			logger?.debug({ mediaType, cacheKeyHash: sourceKeyHash, sourceHost }, 'uploaded media')
+			await emitTelemetry(options.telemetry, {
+				stage: 'prepareWAMessageMedia',
+				status: 'success',
+				instanceId: options.instanceId,
+				counts: { attempts: 1 }
+			})
 			return result
 		})(),
 		(async () => {
