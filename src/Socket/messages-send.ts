@@ -417,17 +417,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useCache: boolean,
 		ignoreZeroDevices: boolean
 	): Promise<DeviceWithJid[]> => {
-		const startedAt = Date.now()
 		const deviceResults: DeviceWithJid[] = []
-		let cacheHits = 0
-		let cacheMisses = 0
+		if (!useCache) {
+			logger.debug('not using cache for devices')
+		}
 
-		try {
-			if (!useCache) {
-				logger.debug('not using cache for devices')
-			}
-
-			const toFetch: string[] = []
+		const toFetch: string[] = []
 
 			const jidsWithUser = jids
 				.map(jid => {
@@ -458,32 +453,28 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			for (const { jid, user } of jidsWithUser) {
-				if (useCache) {
-					const devices =
-						mgetDevices?.[user!] ||
-						(userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as FullJid[]))
-					if (devices) {
-						cacheHits += 1
-						const devicesWithJid = devices.map(d => ({
-							...d,
-							jid: jidEncode(d.user, d.server, d.device)
-						}))
-						deviceResults.push(...devicesWithJid)
+			if (useCache) {
+				const devices =
+					mgetDevices?.[user!] || (userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as FullJid[]))
+				if (devices) {
+					const devicesWithJid = devices.map(d => ({
+						...d,
+						jid: jidEncode(d.user, d.server, d.device)
+					}))
+					deviceResults.push(...devicesWithJid)
 
-						logger.trace({ user }, 'using cache for devices')
-					} else {
-						cacheMisses += 1
-						toFetch.push(jid)
-					}
+					logger.trace({ user }, 'using cache for devices')
 				} else {
-					cacheMisses += 1
 					toFetch.push(jid)
 				}
+			} else {
+				toFetch.push(jid)
 			}
+		}
 
-			if (!toFetch.length) {
-				return deviceResults
-			}
+		if (!toFetch.length) {
+			return deviceResults
+		}
 
 			const requestedLidUsers = new Set<string>()
 			for (const jid of toFetch) {
@@ -590,10 +581,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			return deviceResults
-		} catch (error) {
-			throw error
-		}
+		return deviceResults
 	}
 
 	/**
@@ -631,86 +619,81 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		force?: boolean,
 		summary?: { existingCount: number; fetchedCount: number }
 	) => {
-		const startedAt = Date.now()
 		let didFetchNewSession = false
 		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
 		let existingCount = 0
 
-		try {
-			logger.debug({ jids }, 'assertSessions call with jids')
+		logger.debug({ jids }, 'assertSessions call with jids')
 
-			// Check peerSessionsCache and validate sessions using libsignal loadSession
-			for (const jid of uniqueJids) {
-				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-				const cachedSession = await readCacheEntry<boolean>(peerSessionsCache, signalId)
-				if (cachedSession !== undefined) {
-					if (cachedSession) existingCount += 1
-					if (cachedSession && !force) {
-						continue // Session exists in cache
-					}
-				} else {
-					const sessionValidation = await signalRepository.validateSession(jid)
-					const hasSession = sessionValidation.exists
-					if (hasSession) existingCount += 1
-					await peerSessionsCache.set(signalId, hasSession)
-					if (hasSession && !force) {
-						continue
-					}
+		// Check peerSessionsCache and validate sessions using libsignal loadSession
+		for (const jid of uniqueJids) {
+			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+			const cachedSession = await readCacheEntry<boolean>(peerSessionsCache, signalId)
+			if (cachedSession !== undefined) {
+				if (cachedSession) existingCount += 1
+				if (cachedSession && !force) {
+					continue // Session exists in cache
 				}
-
-				jidsRequiringFetch.push(jid)
-			}
-
-			if (jidsRequiringFetch.length) {
-				// LID if mapped, otherwise original
-				const wireJids = [
-					...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
-					...(
-						(await signalRepository.lidMapping.getLIDsForPNs(
-							jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
-						)) || []
-					).map(a => a.lid)
-				]
-
-				logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
-				const result = await query({
-					tag: 'iq',
-					attrs: {
-						xmlns: 'encrypt',
-						type: 'get',
-						to: S_WHATSAPP_NET
-					},
-					content: [
-						{
-							tag: 'key',
-							attrs: {},
-							content: wireJids.map(jid => {
-								const attrs: { [key: string]: string } = { jid }
-								if (force) attrs.reason = 'identity'
-								return { tag: 'user', attrs }
-							})
-						}
-					]
-				})
-				await parseAndInjectE2ESessions(result, signalRepository)
-				didFetchNewSession = true
-
-				// Cache fetched sessions using wire JIDs
-				for (const wireJid of wireJids) {
-					const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
-					await peerSessionsCache.set(signalId, true)
+			} else {
+				const sessionValidation = await signalRepository.validateSession(jid)
+				const hasSession = sessionValidation.exists
+				if (hasSession) existingCount += 1
+				await peerSessionsCache.set(signalId, hasSession)
+				if (hasSession && !force) {
+					continue
 				}
 			}
 
-			if (summary) {
-				summary.existingCount = existingCount
-				summary.fetchedCount = jidsRequiringFetch.length
-			}
-			return didFetchNewSession
-		} catch (error) {
-			throw error
+			jidsRequiringFetch.push(jid)
 		}
+
+		if (jidsRequiringFetch.length) {
+			// LID if mapped, otherwise original
+			const wireJids = [
+				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
+				...(
+					(await signalRepository.lidMapping.getLIDsForPNs(
+						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
+					)) || []
+				).map(a => a.lid)
+			]
+
+			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					xmlns: 'encrypt',
+					type: 'get',
+					to: S_WHATSAPP_NET
+				},
+				content: [
+					{
+						tag: 'key',
+						attrs: {},
+						content: wireJids.map(jid => {
+							const attrs: { [key: string]: string } = { jid }
+							if (force) attrs.reason = 'identity'
+							return { tag: 'user', attrs }
+						})
+					}
+				]
+			})
+			await parseAndInjectE2ESessions(result, signalRepository)
+			didFetchNewSession = true
+
+			// Cache fetched sessions using wire JIDs
+			for (const wireJid of wireJids) {
+				const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
+				await peerSessionsCache.set(signalId, true)
+			}
+		}
+
+		if (summary) {
+			summary.existingCount = existingCount
+			summary.fetchedCount = jidsRequiringFetch.length
+		}
+		return didFetchNewSession
 	}
 
 	const sendPeerDataOperationMessage = async (
