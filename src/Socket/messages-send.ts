@@ -17,6 +17,7 @@ import type {
 	WarmUpGroupSendSummary
 } from '../Types'
 import { DisconnectReason } from '../Types'
+import type { ILogger } from '../Utils/logger'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
@@ -217,6 +218,60 @@ export const warmUpGroupSend = async (groupJid: string, deps: WarmUpGroupDeps): 
 		durationMs: Date.now() - startedAt
 	}
 }
+
+export const createRefreshMediaConn = (
+	query: (node: BinaryNode) => Promise<BinaryNode>,
+	logger: ILogger
+) => {
+	let mediaConn: Promise<MediaConnInfo> | undefined
+
+	return async (forceGet = false) => {
+		const currentMedia = await mediaConn
+		if (
+			currentMedia &&
+			!forceGet &&
+			new Date().getTime() - currentMedia.fetchDate.getTime() <= currentMedia.ttl * 1000
+		) {
+			return currentMedia
+		}
+
+		const pendingMediaConn = (async () => {
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					type: 'set',
+					xmlns: 'w:m',
+					to: S_WHATSAPP_NET
+				},
+				content: [{ tag: 'media_conn', attrs: {} }]
+			})
+			const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
+			const node: MediaConnInfo = {
+				hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
+					hostname: attrs.hostname!,
+					maxContentLengthBytes: +attrs.maxContentLengthBytes!
+				})),
+				auth: mediaConnNode.attrs.auth!,
+				ttl: +mediaConnNode.attrs.ttl!,
+				fetchDate: new Date()
+			}
+			logger.debug('fetched media conn')
+			return node
+		})()
+
+		mediaConn = pendingMediaConn
+
+		try {
+			return await pendingMediaConn
+		} catch (error) {
+			// Only clear the cache if this promise is still the active one.
+			if (mediaConn === pendingMediaConn) {
+				mediaConn = undefined
+			}
+			throw error
+		}
+	}
+}
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
 		logger,
@@ -276,49 +331,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		inflightParticipantWarmUps
 	}
 
-	let mediaConn: Promise<MediaConnInfo> | undefined
-
-	const refreshMediaConn = async (forceGet = false) => {
-		const currentMedia = await mediaConn
-		if (
-			currentMedia &&
-			!forceGet &&
-			new Date().getTime() - currentMedia.fetchDate.getTime() <= currentMedia.ttl * 1000
-		) {
-			return currentMedia
-		}
-
-		mediaConn = (async () => {
-			const result = await query({
-				tag: 'iq',
-				attrs: {
-					type: 'set',
-					xmlns: 'w:m',
-					to: S_WHATSAPP_NET
-				},
-				content: [{ tag: 'media_conn', attrs: {} }]
-			})
-			const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
-			const node: MediaConnInfo = {
-				hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
-					hostname: attrs.hostname!,
-					maxContentLengthBytes: +attrs.maxContentLengthBytes!
-				})),
-				auth: mediaConnNode.attrs.auth!,
-				ttl: +mediaConnNode.attrs.ttl!,
-				fetchDate: new Date()
-			}
-			logger.debug('fetched media conn')
-			return node
-		})()
-
-		try {
-			return await mediaConn
-		} catch (error) {
-			mediaConn = undefined
-			throw error
-		}
-	}
+	const refreshMediaConn = createRefreshMediaConn(query, logger)
 
 	/**
 	 * generic send receipt function
