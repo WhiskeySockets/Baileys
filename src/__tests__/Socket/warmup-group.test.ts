@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals'
 import { createPeerSessionsCache, readCacheEntry, warmUpGroupParticipants, warmUpGroupSend } from '../../Socket/messages-send'
-import type { CacheStore, GroupMetadata, SendInstrumentation } from '../../Types'
+import type { CacheStore, GroupMetadata } from '../../Types'
 
 const makeGroupMetadata = (participants: string[]): GroupMetadata => ({
 	id: '12345@g.us',
@@ -51,15 +51,12 @@ describe('Group warm-up', () => {
 		const groupMetadata = jest.fn(async () => undefined) as jest.MockedFunction<
 			(jid: string) => Promise<GroupMetadata | undefined>
 		>
-		const sendInstrumentation = jest.fn(async () => undefined) as jest.MockedFunction<SendInstrumentation>
 
 		const summary = await warmUpGroupSend('12345@g.us', {
-			instanceId: 'me@s.whatsapp.net',
 			cachedGroupMetadata: async () => cachedMetadata,
 			groupMetadata,
 			getUSyncDevices,
 			assertSessions,
-			sendInstrumentation,
 			// Extra field to assert that the warm-up helper never touches message send plumbing.
 			sendNode
 		} as any)
@@ -99,19 +96,12 @@ describe('Group warm-up', () => {
 		const groupMetadata = jest.fn(async () => undefined) as jest.MockedFunction<
 			(jid: string) => Promise<GroupMetadata | undefined>
 		>
-		const sendInstrumentation = jest.fn(async () => undefined) as jest.MockedFunction<SendInstrumentation>
 
-		const summary = await warmUpGroupParticipants(
-			'12345@g.us',
-			['changed-user@s.whatsapp.net'],
-			{
-				instanceId: 'me@s.whatsapp.net',
-				groupMetadata,
-				getUSyncDevices,
-				assertSessions,
-				sendInstrumentation
-			}
-		)
+		const summary = await warmUpGroupParticipants('12345@g.us', ['changed-user@s.whatsapp.net'], {
+			groupMetadata,
+			getUSyncDevices,
+			assertSessions
+		})
 
 		expect(summary).toMatchObject({
 			groupJid: '12345@g.us',
@@ -131,27 +121,17 @@ describe('Group warm-up', () => {
 		const groupMetadata = jest.fn(async () => {
 			throw new Error('group fetch failed')
 		}) as jest.MockedFunction<(jid: string) => Promise<GroupMetadata | undefined>>
-		const sendInstrumentation = jest.fn(async () => undefined) as jest.MockedFunction<SendInstrumentation>
 
 		await expect(
 			warmUpGroupSend('12345@g.us', {
-				instanceId: 'me@s.whatsapp.net',
 				groupMetadata,
 				getUSyncDevices,
-				assertSessions,
-				sendInstrumentation
+				assertSessions
 			})
 		).rejects.toThrow('group fetch failed')
 
 		expect(groupMetadata).toHaveBeenCalledWith('12345@g.us')
 		expect(getUSyncDevices).not.toHaveBeenCalled()
 		expect(assertSessions).not.toHaveBeenCalled()
-		expect(sendInstrumentation).toHaveBeenCalledWith(
-			expect.objectContaining({
-				stage: 'warmUpGroupSend',
-				status: 'failure',
-				groupJid: '12345@g.us'
-			})
-		)
 	})
 })

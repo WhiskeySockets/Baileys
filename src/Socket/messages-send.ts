@@ -13,7 +13,6 @@ import type {
 	SocketConfig,
 	WAMessage,
 	WAMessageKey,
-	SendInstrumentation,
 	WarmUpGroupParticipantsSummary,
 	WarmUpGroupSendSummary
 } from '../Types'
@@ -41,8 +40,9 @@ import {
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
-import { emitSendInstrumentation, measureSendInstrumentation } from '../Utils/instrumentation'
+import type { KeyedMutex } from '../Utils/make-mutex'
 import { makeKeyedMutex } from '../Utils/make-mutex'
+import { shareInflightPromise } from '../Utils/share-inflight'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -116,8 +116,13 @@ type DeviceWithJid = {
 	jid: string
 }
 
+/** Wired by makeMessagesSocket: coalesce duplicate warm-ups; mutex serializes vs relay fan-out per group. */
+export type GroupParticipantPrepCoordination = {
+	keyedMutex: KeyedMutex
+	inflightParticipantWarmUps: Map<string, Promise<WarmUpGroupParticipantsSummary>>
+}
+
 type WarmUpGroupDeps = {
-	instanceId?: string | (() => string | undefined)
 	cachedGroupMetadata?: (jid: string) => Promise<GroupMetadata | undefined>
 	groupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
 	getUSyncDevices: (jids: string[], useCache: boolean, ignoreZeroDevices: boolean) => Promise<DeviceWithJid[]>
@@ -126,8 +131,11 @@ type WarmUpGroupDeps = {
 		force?: boolean,
 		summary?: { existingCount: number; fetchedCount: number }
 	) => Promise<boolean>
-	sendInstrumentation?: SendInstrumentation
+	participantPrepCoordination?: GroupParticipantPrepCoordination
 }
+
+const participantWarmInflightKey = (groupJid: string, participants: string[]): string =>
+	`${groupJid}\x1e${[...participants].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join('\x1d')}`
 
 export const createPeerSessionsCache = (peerSessionsCache?: CacheStore): CacheStore =>
 	(peerSessionsCache ||
@@ -145,8 +153,9 @@ export const warmUpGroupParticipants = async (
 	deps: WarmUpGroupDeps
 ): Promise<WarmUpGroupParticipantsSummary> => {
 	const startedAt = Date.now()
-	const instanceId = typeof deps.instanceId === 'function' ? deps.instanceId() : deps.instanceId
-	try {
+	const coordinator = deps.participantPrepCoordination
+
+	const runInner = async (): Promise<WarmUpGroupParticipantsSummary> => {
 		const sessionSummary = { existingCount: 0, fetchedCount: 0 }
 		const devices = await deps.getUSyncDevices(participants, true, false)
 		await deps.assertSessions(
@@ -155,7 +164,7 @@ export const warmUpGroupParticipants = async (
 			sessionSummary
 		)
 
-		const summary: WarmUpGroupParticipantsSummary = {
+		return {
 			groupJid,
 			participants: participants.length,
 			devices: devices.length,
@@ -163,96 +172,51 @@ export const warmUpGroupParticipants = async (
 			sessionsFetched: sessionSummary.fetchedCount,
 			durationMs: Date.now() - startedAt
 		}
-
-		await emitSendInstrumentation(deps.sendInstrumentation, {
-			stage: 'warmUpGroupParticipants',
-			status: 'success',
-			instanceId,
-			groupJid,
-			counts: {
-				participants: summary.participants,
-				devices: summary.devices,
-				sessionsExisting: summary.sessionsExisting,
-				sessionsFetched: summary.sessionsFetched
-			},
-			durationMs: summary.durationMs
-		})
-
-		return summary
-	} catch (error) {
-		await emitSendInstrumentation(deps.sendInstrumentation, {
-			stage: 'warmUpGroupParticipants',
-			status: 'failure',
-			instanceId,
-			groupJid,
-			durationMs: Date.now() - startedAt
-		})
-		throw error
 	}
+
+	if (!coordinator) {
+		return runInner()
+	}
+
+	return shareInflightPromise(coordinator.inflightParticipantWarmUps, participantWarmInflightKey(groupJid, participants), () =>
+		coordinator.keyedMutex.mutex(groupJid, runInner)
+	)
 }
 
 export const warmUpGroupSend = async (groupJid: string, deps: WarmUpGroupDeps): Promise<WarmUpGroupSendSummary> => {
 	const startedAt = Date.now()
-	const instanceId = typeof deps.instanceId === 'function' ? deps.instanceId() : deps.instanceId
-	try {
-		let metadata: GroupMetadata | undefined
-		let metadataSource: WarmUpGroupSendSummary['metadataSource'] = 'network'
 
-		if (deps.cachedGroupMetadata) {
-			metadata = await deps.cachedGroupMetadata(groupJid)
-			if (metadata) {
-				metadataSource = 'cache'
-			}
+	let metadata: GroupMetadata | undefined
+	let metadataSource: WarmUpGroupSendSummary['metadataSource'] = 'network'
+
+	if (deps.cachedGroupMetadata) {
+		metadata = await deps.cachedGroupMetadata(groupJid)
+		if (metadata) {
+			metadataSource = 'cache'
 		}
+	}
 
-		if (!metadata) {
-			metadata = await deps.groupMetadata(groupJid)
-		}
+	if (!metadata) {
+		metadata = await deps.groupMetadata(groupJid)
+	}
 
-		if (!metadata) {
-			throw new Boom('missing group metadata')
-		}
+	if (!metadata) {
+		throw new Boom('missing group metadata')
+	}
 
-		const participants = metadata.participants.map(participant => participant.id)
-		const participantSummary = await warmUpGroupParticipants(groupJid, participants, deps)
+	const participantIds = metadata.participants.map(participant => participant.id)
+	const participantSummary = await warmUpGroupParticipants(groupJid, participantIds, deps)
 
-		const summary: WarmUpGroupSendSummary = {
-			groupJid,
-			metadataSource,
-			participants: participantSummary.participants,
-			devices: participantSummary.devices,
-			sessionsExisting: participantSummary.sessionsExisting,
-			sessionsFetched: participantSummary.sessionsFetched,
-			durationMs: Date.now() - startedAt
-		}
-
-		await emitSendInstrumentation(deps.sendInstrumentation, {
-			stage: 'warmUpGroupSend',
-			status: 'success',
-			instanceId,
-			groupJid,
-			counts: {
-				participants: summary.participants,
-				devices: summary.devices,
-				sessionsExisting: summary.sessionsExisting,
-				sessionsFetched: summary.sessionsFetched
-			},
-			durationMs: summary.durationMs
-		})
-
-		return summary
-	} catch (error) {
-		await emitSendInstrumentation(deps.sendInstrumentation, {
-			stage: 'warmUpGroupSend',
-			status: 'failure',
-			instanceId,
-			groupJid,
-			durationMs: Date.now() - startedAt
-		})
-		throw error
+	return {
+		groupJid,
+		metadataSource,
+		participants: participantSummary.participants,
+		devices: participantSummary.devices,
+		sessionsExisting: participantSummary.sessionsExisting,
+		sessionsFetched: participantSummary.sessionsFetched,
+		durationMs: Date.now() - startedAt
 	}
 }
-
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
 		logger,
@@ -277,7 +241,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		groupMetadata,
 		groupToggleEphemeral
 	} = sock
-	const sendInstrumentation = config.telemetry ?? config.sendInstrumentation
 	const getInstanceId = () => authState.creds.me?.id
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -304,7 +267,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
+	/** Serialized per `@g.us` participant prep (warm-up vs relay fan-out overlap). Status broadcasts untouched. */
+	const groupParticipantPrepMutex = makeKeyedMutex()
+	const inflightParticipantWarmUps = new Map<string, Promise<WarmUpGroupParticipantsSummary>>()
+
+	const participantPrepCoordination: GroupParticipantPrepCoordination = {
+		keyedMutex: groupParticipantPrepMutex,
+		inflightParticipantWarmUps
+	}
+
 	let mediaConn: Promise<MediaConnInfo> | undefined
+
 	const refreshMediaConn = async (forceGet = false) => {
 		const currentMedia = await mediaConn
 		if (
@@ -312,16 +285,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			!forceGet &&
 			new Date().getTime() - currentMedia.fetchDate.getTime() <= currentMedia.ttl * 1000
 		) {
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'refreshMediaConn',
-				status: 'hit',
-				instanceId: getInstanceId(),
-				counts: { attempts: 0 }
-			})
 			return currentMedia
 		}
 
-		const startedAt = Date.now()
 		mediaConn = (async () => {
 			const result = await query({
 				tag: 'iq',
@@ -333,7 +299,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				content: [{ tag: 'media_conn', attrs: {} }]
 			})
 			const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
-			// TODO: explore full length of data that whatsapp provides
 			const node: MediaConnInfo = {
 				hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
 					hostname: attrs.hostname!,
@@ -348,23 +313,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		})()
 
 		try {
-			const result = await mediaConn
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'refreshMediaConn',
-				status: 'success',
-				instanceId: getInstanceId(),
-				durationMs: Date.now() - startedAt,
-				counts: { attempts: 1 }
-			})
-			return result
+			return await mediaConn
 		} catch (error) {
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'refreshMediaConn',
-				status: 'failure',
-				instanceId: getInstanceId(),
-				durationMs: Date.now() - startedAt,
-				counts: { attempts: 1 }
-			})
 			mediaConn = undefined
 			throw error
 		}
@@ -424,17 +374,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		logger.debug({ attrs: node.attrs, messageIds }, 'sending receipt for messages')
-		const sendNodeStartedAt = Date.now()
 		await sendNode(node)
-		await emitSendInstrumentation(sendInstrumentation, {
-			stage: 'sendNode',
-			status: 'success',
-			instanceId: getInstanceId(),
-			durationMs: Date.now() - sendNodeStartedAt,
-			counts: {
-				participants: messageIds.length
-			}
-		})
 	}
 
 	/** Correctly bulk send receipts to multiple chats, participants */
@@ -529,17 +469,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (!toFetch.length) {
-				await emitSendInstrumentation(sendInstrumentation, {
-					stage: 'getUSyncDevices',
-					status: 'success',
-					instanceId: getInstanceId(),
-					durationMs: Date.now() - startedAt,
-					counts: {
-						cacheHits,
-						cacheMisses,
-						devices: deviceResults.length
-					}
-				})
 				return deviceResults
 			}
 
@@ -648,30 +577,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'getUSyncDevices',
-				status: 'success',
-				instanceId: getInstanceId(),
-				durationMs: Date.now() - startedAt,
-				counts: {
-					cacheHits,
-					cacheMisses,
-					devices: deviceResults.length
-				}
-			})
 			return deviceResults
 		} catch (error) {
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'getUSyncDevices',
-				status: 'failure',
-				instanceId: getInstanceId(),
-				durationMs: Date.now() - startedAt,
-				counts: {
-					cacheHits,
-					cacheMisses,
-					devices: deviceResults.length
-				}
-			})
 			throw error
 		}
 	}
@@ -787,29 +694,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				summary.existingCount = existingCount
 				summary.fetchedCount = jidsRequiringFetch.length
 			}
-
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'assertSessions',
-				status: 'success',
-				instanceId: getInstanceId(),
-				durationMs: Date.now() - startedAt,
-				counts: {
-					sessionsExisting: existingCount,
-					sessionsFetched: jidsRequiringFetch.length
-				}
-			})
 			return didFetchNewSession
 		} catch (error) {
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'assertSessions',
-				status: 'failure',
-				instanceId: getInstanceId(),
-				durationMs: Date.now() - startedAt,
-				counts: {
-					sessionsExisting: existingCount,
-					sessionsFetched: jidsRequiringFetch.length
-				}
-			})
 			throw error
 		}
 	}
@@ -854,18 +740,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		extraAttrs?: BinaryNode['attrs'],
 		dsmMessage?: proto.IMessage
 	) => {
-		const startedAt = Date.now()
 		if (!recipientJids.length) {
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'createParticipantNodes',
-				status: 'success',
-				instanceId: getInstanceId(),
-				counts: {
-					participants: 0,
-					devices: 0
-				},
-				durationMs: Date.now() - startedAt
-			})
 			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
 		}
 
@@ -889,11 +764,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					let msgToEncrypt = patchedMessage
 
 					if (dsmMessage) {
-						const { user: targetUser } = jidDecode(jid)!
-						const { user: ownPnUser } = jidDecode(meId)!
+						const targetDec = jidDecode(jid)
+						const ownPnDec = jidDecode(meId)
+						const targetUser = targetDec?.user
+						const ownPnUser = ownPnDec?.user
 						const ownLidUser = meLidUser
 
-						const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
+						const isOwnUser =
+							targetUser != null &&
+							ownPnUser != null &&
+							(targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser))
 						const isExactSenderDevice = jid === meId || (meLid && jid === meLid)
 
 						if (isOwnUser && !isExactSenderDevice) {
@@ -943,17 +823,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (recipientJids.length > 0 && nodes.length === 0) {
 			throw new Boom('All encryptions failed', { statusCode: 500 })
 		}
-
-		await emitSendInstrumentation(sendInstrumentation, {
-			stage: 'createParticipantNodes',
-			status: 'success',
-			instanceId: getInstanceId(),
-			counts: {
-				participants: recipientJids.length,
-				devices: nodes.length
-			},
-			durationMs: Date.now() - startedAt
-		})
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
@@ -976,7 +845,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		let shouldIncludeDeviceIdentity = isRetryResend
 		const statusJid = 'status@broadcast'
 
-		const { user, server } = jidDecode(jid)!
+		const destinationDecoded = jidDecode(jid)
+		if (!destinationDecoded) {
+			throw new Boom(
+				`Invalid destination JID: expected a WhatsApp address containing "@", e.g. "553199...@s.whatsapp.net" or "...@g.us". Got: ${String(jid)}`,
+				{ statusCode: 400 }
+			)
+		}
+		const { user, server } = destinationDecoded
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
@@ -1009,7 +885,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
 			}
 
-			const { user, device } = jidDecode(participant.jid)!
+			const participantDecoded = jidDecode(participant.jid)
+			if (!participantDecoded) {
+				throw new Boom(`Invalid participant JID for relay: ${String(participant.jid)}`, {
+					statusCode: 400
+				})
+			}
+			const { user, device } = participantDecoded
 			devices.push({
 				user,
 				device,
@@ -1042,19 +924,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: binaryNodeContent
 				}
 				logger.debug({ msgId }, `sending newsletter message to ${jid}`)
-				const sendNodeStartedAt = Date.now()
 				await sendNode(stanza)
-				await emitSendInstrumentation(sendInstrumentation, {
-					stage: 'sendNode',
-					status: 'success',
-					instanceId: getInstanceId(),
-					groupJid: jid,
-					durationMs: Date.now() - sendNodeStartedAt,
-					counts: {
-						participants: 1,
-						devices: 1
-					}
-				})
 				return msgId
 			}
 
@@ -1100,96 +970,91 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					participantsList.push(...statusJidList)
 				}
 
-				const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
-				devices.push(...additionalDevices)
+				const performGroupOrStatusFanOut = async (): Promise<void> => {
+					const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
+					devices.push(...additionalDevices)
+
+					if (isGroup) {
+						additionalAttributes = {
+							...additionalAttributes,
+							addressing_mode: groupData?.addressingMode || 'lid'
+						}
+					}
+
+					const patched = await patchMessageBeforeSending(message)
+					if (Array.isArray(patched)) {
+						throw new Boom('Per-jid patching is not supported in groups')
+					}
+
+					const bytes = encodeWAMessage(patched)
+					reportingMessage = patched
+					const groupAddressingMode =
+						additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
+					const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
+
+					const senderKeyRecipients: string[] = []
+					let senderKeyMapChanged = false
+					for (const device of devices) {
+						const deviceJid = device.jid
+						const hasKey = !!senderKeyMap[deviceJid]
+						if (
+							(!hasKey || !!participant) &&
+							!isHostedLidUser(deviceJid) &&
+							!isHostedPnUser(deviceJid) &&
+							device.device !== 99
+						) {
+							senderKeyRecipients.push(deviceJid)
+							if (!hasKey) {
+								senderKeyMapChanged = true
+							}
+							senderKeyMap[deviceJid] = true
+						}
+					}
+
+					const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
+						group: destinationJid,
+						data: bytes,
+						meId: groupSenderIdentity,
+						createDistributionMessage: senderKeyRecipients.length > 0
+					})
+
+					if (senderKeyRecipients.length) {
+						logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
+						if (!senderKeyDistributionMessage) {
+							throw new Boom('Missing sender key distribution message for group fanout', { statusCode: 500 })
+						}
+
+						const senderKeyMsg: proto.IMessage = {
+							senderKeyDistributionMessage: {
+								axolotlSenderKeyDistributionMessage: senderKeyDistributionMessage,
+								groupId: destinationJid
+							}
+						}
+
+						const senderKeySessionTargets = senderKeyRecipients
+						await assertSessions(senderKeySessionTargets)
+
+						const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
+						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
+
+						participants.push(...result.nodes)
+					}
+
+					binaryNodeContent.push({
+						tag: 'enc',
+						attrs: { v: '2', type: 'skmsg', ...extraAttrs },
+						content: ciphertext
+					})
+
+					if (senderKeyMapChanged) {
+						await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+					}
+				}
 
 				if (isGroup) {
-					additionalAttributes = {
-						...additionalAttributes,
-						addressing_mode: groupData?.addressingMode || 'lid'
-					}
-				}
-
-				const patched = await patchMessageBeforeSending(message)
-				if (Array.isArray(patched)) {
-					throw new Boom('Per-jid patching is not supported in groups')
-				}
-
-				const bytes = encodeWAMessage(patched)
-				reportingMessage = patched
-				const groupAddressingMode = additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
-				const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
-
-				const senderKeyRecipients: string[] = []
-				let senderKeyMapChanged = false
-				for (const device of devices) {
-					const deviceJid = device.jid
-					const hasKey = !!senderKeyMap[deviceJid]
-					if (
-						(!hasKey || !!participant) &&
-						!isHostedLidUser(deviceJid) &&
-						!isHostedPnUser(deviceJid) &&
-						device.device !== 99
-					) {
-						//todo: revamp all this logic
-						// the goal is to follow with what I said above for each group, and instead of a true false map of ids, we can set an array full of those the app has already sent pkmsgs
-						senderKeyRecipients.push(deviceJid)
-						if (!hasKey) {
-							senderKeyMapChanged = true
-						}
-						senderKeyMap[deviceJid] = true
-					}
-				}
-
-				const encryptStartedAt = Date.now()
-				const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
-					group: destinationJid,
-					data: bytes,
-					meId: groupSenderIdentity,
-					createDistributionMessage: senderKeyRecipients.length > 0
-				})
-				await emitSendInstrumentation(sendInstrumentation, {
-					stage: 'encryptGroupMessage',
-					status: 'success',
-					instanceId: getInstanceId(),
-					groupJid: destinationJid,
-					durationMs: Date.now() - encryptStartedAt,
-					counts: {
-						participants: senderKeyRecipients.length,
-						devices: devices.length
-					}
-				})
-
-				if (senderKeyRecipients.length) {
-					logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
-					if (!senderKeyDistributionMessage) {
-						throw new Boom('Missing sender key distribution message for group fanout', { statusCode: 500 })
-					}
-
-					const senderKeyMsg: proto.IMessage = {
-						senderKeyDistributionMessage: {
-							axolotlSenderKeyDistributionMessage: senderKeyDistributionMessage,
-							groupId: destinationJid
-						}
-					}
-
-					const senderKeySessionTargets = senderKeyRecipients
-					await assertSessions(senderKeySessionTargets)
-
-					const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
-					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
-
-					participants.push(...result.nodes)
-				}
-
-				binaryNodeContent.push({
-					tag: 'enc',
-					attrs: { v: '2', type: 'skmsg', ...extraAttrs },
-					content: ciphertext
-				})
-
-				if (senderKeyMapChanged) {
-					await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+					await groupParticipantPrepMutex.mutex(jid, performGroupOrStatusFanOut)
+				} else {
+					await performGroupOrStatusFanOut()
 				}
 			} else {
 				// ADDRESSING CONSISTENCY: Match own identity to conversation context
@@ -1445,19 +1310,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
-			const sendNodeStartedAt = Date.now()
 			await sendNode(stanza)
-			await emitSendInstrumentation(sendInstrumentation, {
-				stage: 'sendNode',
-				status: 'success',
-				instanceId: getInstanceId(),
-				groupJid: destinationJid,
-				durationMs: Date.now() - sendNodeStartedAt,
-				counts: {
-					participants: participants.length,
-					devices: devices.length
-				}
-			})
 
 			// Fire-and-forget: issue our token to the contact AFTER message send.
 			// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)
@@ -1635,19 +1488,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			let error: Error | undefined = undefined
 			await Promise.all([
 				(async () => {
-					const sendNodeStartedAt = Date.now()
 					await sendNode(node)
-					await emitSendInstrumentation(sendInstrumentation, {
-						stage: 'sendNode',
-						status: 'success',
-						instanceId: getInstanceId(),
-						groupJid: message.key.remoteJid || undefined,
-						durationMs: Date.now() - sendNodeStartedAt,
-						counts: {
-							participants: 1,
-							devices: 1
-						}
-					})
 				})(),
 				waitForMsgMediaUpdate(async update => {
 					const result = update.find(c => c.key.id === message.key.id)
@@ -1689,21 +1530,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		},
 		warmUpGroupSend: async (groupJid: string) =>
 			warmUpGroupSend(groupJid, {
-				instanceId: getInstanceId(),
 				cachedGroupMetadata: config.cachedGroupMetadata,
 				groupMetadata,
 				getUSyncDevices,
 				assertSessions,
-				sendInstrumentation
+				participantPrepCoordination
 			}),
 		warmUpGroupParticipants: async (groupJid: string, participants: string[]) =>
 			warmUpGroupParticipants(groupJid, participants, {
-				instanceId: getInstanceId(),
 				cachedGroupMetadata: config.cachedGroupMetadata,
 				groupMetadata,
 				getUSyncDevices,
 				assertSessions,
-				sendInstrumentation
+				participantPrepCoordination
 			}),
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
 			const timeoutMs = options.timeoutMs && options.timeoutMs > 0 ? options.timeoutMs : undefined
@@ -1718,155 +1557,117 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			try {
-				return await measureSendInstrumentation(
-					sendInstrumentation,
-					{
-						stage: 'sendMessage',
+				const userJid = authState.creds.me!.id
+
+				if (
+					typeof content === 'object' &&
+					'disappearingMessagesInChat' in content &&
+					typeof content['disappearingMessagesInChat'] !== 'undefined' &&
+					isJidGroup(jid)
+				) {
+					const { disappearingMessagesInChat } = content
+					const value =
+						typeof disappearingMessagesInChat === 'boolean'
+							? disappearingMessagesInChat
+								? WA_DEFAULT_EPHEMERAL
+								: 0
+							: disappearingMessagesInChat
+
+					await withAbort(groupToggleEphemeral(jid, value), signal)
+					return
+				}
+
+				const fullMsg = await withAbort(
+					generateWAMessage(jid, content, {
+						logger,
+						userJid,
 						instanceId: getInstanceId(),
-						groupJid: isJidGroup(jid) ? jid : undefined
-					},
-					async () => {
-						const userJid = authState.creds.me!.id
-
-						const messageGenerationOptions = {
-							logger,
-							userJid,
-							instanceId: getInstanceId(),
-							sendInstrumentation,
-							getUrlInfo: (text: string) =>
-								withAbort(
-									getUrlInfo(text, {
-										thumbnailWidth: linkPreviewImageThumbnailWidth,
-										fetchOpts: {
-											timeout: 3_000,
-											...(httpRequestOptions || {}),
-											signal
-										},
-										logger,
-										uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
-									}),
-									signal
-								),
-							//TODO: CACHE
-							getProfilePicUrl: (jid: string, type: 'image' | 'preview') =>
-								withAbort(sock.profilePictureUrl(jid, type), signal),
-							getCallLink: (type: 'audio' | 'video', event?: { startTime: number }) =>
-								withAbort(sock.createCallLink(type, event), signal),
-							upload: waUploadToServer,
-							mediaCache: config.mediaCache,
-							options: {
-								...config.options,
-								signal
-							},
-							messageId: generateMessageIDV2(sock.user?.id),
-							...options
-						}
-
-						if (
-							typeof content === 'object' &&
-							'disappearingMessagesInChat' in content &&
-							typeof content['disappearingMessagesInChat'] !== 'undefined' &&
-							isJidGroup(jid)
-						) {
-							const { disappearingMessagesInChat } = content
-							const value =
-								typeof disappearingMessagesInChat === 'boolean'
-									? disappearingMessagesInChat
-										? WA_DEFAULT_EPHEMERAL
-										: 0
-									: disappearingMessagesInChat
-
-							await measureSendInstrumentation(
-								sendInstrumentation,
-								{
-									stage: 'groupToggleEphemeral',
-									instanceId: getInstanceId(),
-									groupJid: jid
-								},
-								() => withAbort(groupToggleEphemeral(jid, value), signal)
-							)
-							return
-						}
-
-						const fullMsg = await measureSendInstrumentation(
-							sendInstrumentation,
-							{
-								stage: 'generateWAMessage',
-								instanceId: getInstanceId(),
-								groupJid: isJidGroup(jid) ? jid : undefined
-							},
-							() => withAbort(generateWAMessage(jid, content, messageGenerationOptions), signal)
-						)
-
-						if (options.debugDelayBeforeRelayMs && options.debugDelayBeforeRelayMs > 0) {
-							await withAbort(delay(options.debugDelayBeforeRelayMs), signal)
-						}
-
-						const isEventMsg = 'event' in content && !!content.event
-						const isDeleteMsg = 'delete' in content && !!content.delete
-						const isEditMsg = 'edit' in content && !!content.edit
-						const isPinMsg = 'pin' in content && !!content.pin
-						const isPollMessage = 'poll' in content && !!content.poll
-						const additionalAttributes: BinaryNodeAttributes = {}
-						const additionalNodes: BinaryNode[] = []
-						// required for delete
-						if (isDeleteMsg) {
-							// if the chat is a group, and I am not the author, then delete the message as an admin
-							if (isJidGroup(content.delete?.remoteJid as string) && !content.delete?.fromMe) {
-								additionalAttributes.edit = '8'
-							} else {
-								additionalAttributes.edit = '7'
-							}
-						} else if (isEditMsg) {
-							additionalAttributes.edit = '1'
-						} else if (isPinMsg) {
-							additionalAttributes.edit = '2'
-						} else if (isPollMessage) {
-							additionalNodes.push({
-								tag: 'meta',
-								attrs: {
-									polltype: 'creation'
-								}
-							} as BinaryNode)
-						} else if (isEventMsg) {
-							additionalNodes.push({
-								tag: 'meta',
-								attrs: {
-									event_type: 'creation'
-								}
-							} as BinaryNode)
-						}
-
-						await measureSendInstrumentation(
-							sendInstrumentation,
-							{
-								stage: 'relayMessage',
-								instanceId: getInstanceId(),
-								groupJid: jid
-							},
-							() =>
-								withAbort(
-									relayMessage(jid, fullMsg.message!, {
-										messageId: fullMsg.key.id!,
-										useCachedGroupMetadata: options.useCachedGroupMetadata,
-										additionalAttributes,
-										statusJidList: options.statusJidList,
-										additionalNodes,
+						getUrlInfo: (text: string) =>
+							withAbort(
+								getUrlInfo(text, {
+									thumbnailWidth: linkPreviewImageThumbnailWidth,
+									fetchOpts: {
+										timeout: 3_000,
+										...(httpRequestOptions || {}),
 										signal
-									}),
-									signal
-								)
-						)
-
-						if (config.emitOwnEvents) {
-							process.nextTick(async () => {
-								await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
-							})
-						}
-
-						return fullMsg
-					}
+									},
+									logger,
+									uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
+								}),
+								signal
+							),
+						getProfilePicUrl: (j: string, type: 'image' | 'preview') =>
+							withAbort(sock.profilePictureUrl(j, type), signal),
+						getCallLink: (type: 'audio' | 'video', event?: { startTime: number }) =>
+							withAbort(sock.createCallLink(type, event), signal),
+						upload: waUploadToServer,
+						mediaCache: config.mediaCache,
+						options: {
+							...config.options,
+							signal
+						},
+						messageId: generateMessageIDV2(sock.user?.id),
+						...options
+					}),
+					signal
 				)
+
+				if (options.debugDelayBeforeRelayMs && options.debugDelayBeforeRelayMs > 0) {
+					await withAbort(delay(options.debugDelayBeforeRelayMs), signal)
+				}
+
+				const isEventMsg = 'event' in content && !!content.event
+				const isDeleteMsg = 'delete' in content && !!content.delete
+				const isEditMsg = 'edit' in content && !!content.edit
+				const isPinMsg = 'pin' in content && !!content.pin
+				const isPollMessage = 'poll' in content && !!content.poll
+				const additionalAttributes: BinaryNodeAttributes = {}
+				const additionalNodes: BinaryNode[] = []
+				if (isDeleteMsg) {
+					if (isJidGroup(content.delete?.remoteJid as string) && !content.delete?.fromMe) {
+						additionalAttributes.edit = '8'
+					} else {
+						additionalAttributes.edit = '7'
+					}
+				} else if (isEditMsg) {
+					additionalAttributes.edit = '1'
+				} else if (isPinMsg) {
+					additionalAttributes.edit = '2'
+				} else if (isPollMessage) {
+					additionalNodes.push({
+						tag: 'meta',
+						attrs: {
+							polltype: 'creation'
+						}
+					} as BinaryNode)
+				} else if (isEventMsg) {
+					additionalNodes.push({
+						tag: 'meta',
+						attrs: {
+							event_type: 'creation'
+						}
+					} as BinaryNode)
+				}
+
+				await withAbort(
+					relayMessage(jid, fullMsg.message!, {
+						messageId: fullMsg.key.id!,
+						useCachedGroupMetadata: options.useCachedGroupMetadata,
+						additionalAttributes,
+						statusJidList: options.statusJidList,
+						additionalNodes,
+						signal
+					}),
+					signal
+				)
+
+				if (config.emitOwnEvents) {
+					process.nextTick(async () => {
+						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
+					})
+				}
+
+				return fullMsg
 			} catch (error) {
 				if (signal?.aborted) {
 					throw signal.reason ?? makeSendTimeoutError()
