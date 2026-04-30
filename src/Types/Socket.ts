@@ -93,6 +93,11 @@ export type SocketConfig = {
 	/** provide a cache to store Signal peer sessions */
 	peerSessionsCache?: CacheStore
 	/** optional metrics hook for send-path instrumentation */
+	telemetry?: SendInstrumentation
+	/**
+	 * @deprecated use `telemetry` instead.
+	 * kept for compatibility while callers migrate
+	 */
 	sendInstrumentation?: SendInstrumentation
 	/** cache to store call offers */
 	callOfferCache?: CacheStore

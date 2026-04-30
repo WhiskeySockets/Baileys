@@ -430,11 +430,7 @@ export const encryptedStream = async (
 		for await (const data of stream) {
 			fileLength += data.length
 
-			if (
-				type === 'remote' &&
-				(opts as any)?.maxContentLength &&
-				fileLength > (opts as any).maxContentLength
-			) {
+			if (type === 'remote' && (opts as any)?.maxContentLength && fileLength > (opts as any).maxContentLength) {
 				throw new Boom(`content length exceeded when encrypting "${type}"`, {
 					data: { media, type }
 				})
@@ -862,7 +858,7 @@ export const getWAUploadToServer = (
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
 	const { customUploadHosts, fetchAgent, logger, options, sendInstrumentation, auth: mediaAuth } = config
-	const instanceId = mediaAuth?.creds?.me?.id
+	const getInstanceId = () => mediaAuth?.creds?.me?.id
 
 	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, signal }) => {
 		if (signal?.aborted) {
@@ -919,7 +915,7 @@ export const getWAUploadToServer = (
 					await emitSendInstrumentation(sendInstrumentation, {
 						stage: 'uploadMediaHost',
 						status: 'success',
-						instanceId,
+						instanceId: getInstanceId(),
 						host: hostname,
 						durationMs: Date.now() - startedAt,
 						counts: { attempts: attempt + 1 }
@@ -940,7 +936,7 @@ export const getWAUploadToServer = (
 					await emitSendInstrumentation(sendInstrumentation, {
 						stage: 'uploadMediaHost',
 						status: 'failure',
-						instanceId,
+						instanceId: getInstanceId(),
 						host: hostname,
 						retryFromHost: hosts[attempt + 1]?.hostname,
 						durationMs: Date.now() - startedAt,
@@ -966,7 +962,7 @@ export const getWAUploadToServer = (
 					await emitSendInstrumentation(sendInstrumentation, {
 						stage: 'uploadMediaHost',
 						status: 'failure',
-						instanceId,
+						instanceId: getInstanceId(),
 						host: hostname,
 						retryFromHost: nextHost,
 						durationMs: Date.now() - startedAt,

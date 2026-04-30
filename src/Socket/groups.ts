@@ -18,8 +18,8 @@ import { makeChatsSocket } from './chats'
 export const makeGroupsSocket = (config: SocketConfig) => {
 	const sock = makeChatsSocket(config)
 	const { authState, ev, query, upsertMessage } = sock
-	const sendInstrumentation = config.sendInstrumentation
-	const instanceId = authState.creds.me?.id
+	const sendInstrumentation = config.telemetry ?? config.sendInstrumentation
+	const getInstanceId = () => authState.creds.me?.id
 
 	const groupQuery = async (jid: string, type: 'get' | 'set', content: BinaryNode[]) =>
 		query({
@@ -40,7 +40,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			await emitSendInstrumentation(sendInstrumentation, {
 				stage: 'groupMetadata',
 				status: 'success',
-				instanceId,
+				instanceId: getInstanceId(),
 				groupJid: jid,
 				durationMs: Date.now() - startedAt,
 				counts: {
@@ -52,7 +52,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			await emitSendInstrumentation(sendInstrumentation, {
 				stage: 'groupMetadata',
 				status: 'failure',
-				instanceId,
+				instanceId: getInstanceId(),
 				groupJid: jid,
 				durationMs: Date.now() - startedAt
 			})
