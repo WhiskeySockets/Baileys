@@ -718,7 +718,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const sessionValidation = await signalRepository.validateSession(jid)
 					const hasSession = sessionValidation.exists
 					if (hasSession) existingCount += 1
-					peerSessionsCache.set(signalId, hasSession)
+					await peerSessionsCache.set(signalId, hasSession)
 					if (hasSession && !force) {
 						continue
 					}
@@ -764,7 +764,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Cache fetched sessions using wire JIDs
 				for (const wireJid of wireJids) {
 					const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
-					peerSessionsCache.set(signalId, true)
+					await peerSessionsCache.set(signalId, true)
 				}
 			}
 

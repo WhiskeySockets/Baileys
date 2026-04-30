@@ -409,14 +409,18 @@ export const prepareWAMessageMedia = async (
 			} as any)
 		})
 
-		if (uploadData.ptv) {
-			obj.ptvMessage = obj.videoMessage
-			delete obj.videoMessage
-		}
+			if (uploadData.ptv) {
+				obj.ptvMessage = obj.videoMessage
+				delete obj.videoMessage
+			}
 
-		if (cacheableKey) {
-			logger?.debug({ cacheKeyHash: sourceKeyHash, sourceHost }, 'set cache')
-			await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
+			if (obj.stickerMessage) {
+				obj.stickerMessage.stickerSentTs = Date.now()
+			}
+
+			if (cacheableKey) {
+				logger?.debug({ cacheKeyHash: sourceKeyHash, sourceHost }, 'set cache')
+				await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
 			await emitSendInstrumentation(options.sendInstrumentation, {
 				stage: 'mediaCache',
 				status: 'success',
