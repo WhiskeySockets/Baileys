@@ -794,21 +794,25 @@ const uploadWithFetch = async ({
 	const nodeStream = createReadStream(filePath)
 	const webStream = Readable.toWeb(nodeStream) as ReadableStream
 
-		try {
-			const combinedSignal =
-				signal && timeoutMs
-					? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
-					: signal ?? (timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined)
-			const response = await fetch(url, {
-				dispatcher: agent,
-				method: 'POST',
+	try {
+		const combinedSignal =
+			signal && timeoutMs
+				? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
+				: signal ?? (timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined)
+		const response = await fetch(url, {
+			dispatcher: agent,
+			method: 'POST',
 			body: webStream,
 			headers,
 			duplex: 'half',
 			signal: combinedSignal
 		})
 
-		return (await response.json()) as MediaUploadResult
+		try {
+			return (await response.json()) as MediaUploadResult
+		} catch {
+			return undefined
+		}
 	} catch (error) {
 		if (signal?.aborted) {
 			throw signal.reason ?? error
@@ -819,7 +823,7 @@ const uploadWithFetch = async ({
 			throw error
 		}
 
-		return undefined
+		throw error
 	} finally {
 		nodeStream.destroy()
 	}
