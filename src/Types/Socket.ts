@@ -7,26 +7,10 @@ import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapab
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
 import type { SignalRepositoryWithLIDStore } from './Signal'
+import type { CacheStore, PossiblyExtendedCacheStore } from './cache-store'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
-
-export type CacheStore = {
-	/** get a cached key and change the stats */
-	get<T>(key: string): Promise<T | undefined> | T | undefined
-	/** set a key in the cache */
-	set<T>(key: string, value: T): Promise<void> | void | number | boolean
-	/** delete a key from the cache */
-	del(key: string): void | Promise<void> | number | boolean
-	/** flush all data */
-	flushAll(): void | Promise<void>
-}
-
-export type PossiblyExtendedCacheStore = CacheStore & {
-	mget?: <T>(keys: string[]) => Promise<Record<string, T | undefined>>
-	mset?: <T>(entries: { key: string; value: T }[]) => Promise<void> | void | number | boolean
-	mdel?: (keys: string[]) => void | Promise<void> | number | boolean
-}
 
 export type GroupWarmUpSocketMethods = {
 	warmUpGroupSend(groupJid: string): Promise<WarmUpGroupSendSummary>

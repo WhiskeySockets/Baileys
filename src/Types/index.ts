@@ -1,3 +1,4 @@
+export * from './cache-store'
 export * from './Auth'
 export * from './GroupMetadata'
 export * from './Chat'

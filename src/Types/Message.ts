@@ -3,9 +3,9 @@ import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { MediaType } from '../Defaults'
 import type { BinaryNode } from '../WABinary'
+import type { CacheStore } from './cache-store'
 import type { SendInstrumentation } from './Instrumentation'
 import type { GroupMetadata } from './GroupMetadata'
-import type { CacheStore } from './Socket'
 
 // export the WAMessage Prototypes
 export { proto as WAProto }
