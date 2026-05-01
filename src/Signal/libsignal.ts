@@ -22,6 +22,38 @@ import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
+let isSessionCipherYieldPatched = false
+
+/**
+ * Workaround for libsignal-node event-loop starvation when decrypting with many stale sessions.
+ * Yields to the event loop before each CPU-heavy session decrypt attempt.
+ */
+function patchSessionCipherYield(logger: ILogger) {
+	if (isSessionCipherYieldPatched) {
+		return
+	}
+
+	const sessionCipherProto = (libsignal as any).SessionCipher?.prototype
+	if (!sessionCipherProto) {
+		logger.warn('libsignal SessionCipher prototype not found, skipping event-loop yield patch')
+		return
+	}
+
+	const originalDecrypt = sessionCipherProto.doDecryptWhisperMessage
+	if (typeof originalDecrypt !== 'function') {
+		logger.warn('libsignal SessionCipher#doDecryptWhisperMessage not found, skipping event-loop yield patch')
+		return
+	}
+
+	sessionCipherProto.doDecryptWhisperMessage = async function (...args: unknown[]) {
+		await new Promise<void>(resolve => setImmediate(resolve))
+		return await (originalDecrypt as (...fnArgs: unknown[]) => Promise<unknown>).apply(this, args)
+	}
+
+	isSessionCipherYieldPatched = true
+	logger.info('applied libsignal SessionCipher event-loop yield patch')
+}
+
 /** Extract identity key from PreKeyWhisperMessage for identity change detection */
 function extractIdentityFromPkmsg(ciphertext: Uint8Array): Uint8Array | undefined {
 	try {
@@ -52,6 +84,8 @@ export function makeLibSignalRepository(
 	logger: ILogger,
 	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 ): SignalRepositoryWithLIDStore {
+	patchSessionCipherYield(logger)
+
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
 
@@ -456,9 +490,7 @@ function signalStorage(
 			const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
 
 			const keysMatch =
-				existingKey &&
-				existingKey.length === identityKey.length &&
-				existingKey.every((byte, i) => byte === identityKey[i])
+				existingKey?.length === identityKey.length && existingKey.every((byte, i) => byte === identityKey[i])
 
 			if (existingKey && !keysMatch) {
 				// Identity changed - clear session and update key
