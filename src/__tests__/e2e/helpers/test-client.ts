@@ -27,6 +27,8 @@ export interface TestClientOptions {
 	socketUrl?: string
 	/** Defaults to a unique tmp dir so concurrent clients don't collide. */
 	authDir?: string
+	/** Force-wipe `authDir` before connecting. Defaults to true only when `authDir` was auto-generated. */
+	resetAuthDir?: boolean
 	/** Bartender derives a deterministic phone number from this. Defaults to a unique value. */
 	pushName?: string
 	advSecretKey?: string
@@ -215,17 +217,24 @@ export class TestClient {
 
 	static async connect(opts: TestClientOptions = {}): Promise<TestClient> {
 		const config = resolveConfig({ ...opts, pushName: opts.pushName ?? uniquePushName() })
-		// stale auth would skip pairing and disconnect with logged-out
-		await rm(config.authDir, { recursive: true, force: true })
+		// Auto-generated dirs are always reset; caller-provided ones only on explicit opt-in.
+		if (opts.resetAuthDir ?? !opts.authDir) {
+			await rm(config.authDir, { recursive: true, force: true })
+		}
 
 		const { sock, saveCreds, meJid, meLid } = await openConnection(config)
 		const client = new TestClient(sock, meJid, meLid, config, saveCreds)
 
-		if (opts.resolveTestGroup) {
-			await client.resolveTestGroup(opts.testGroupName)
-		}
+		try {
+			if (opts.resolveTestGroup) {
+				await client.resolveTestGroup(opts.testGroupName)
+			}
 
-		return client
+			return client
+		} catch (error) {
+			await client.cleanup()
+			throw error
+		}
 	}
 
 	get pushName(): string | undefined {
