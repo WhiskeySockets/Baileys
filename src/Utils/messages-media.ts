@@ -519,12 +519,24 @@ export type MediaDownloadOptions = {
 export const getUrlFromDirectPath = (directPath: string, host: string = DEF_MEDIA_HOST) =>
 	`https://${host}${directPath}`
 
+const extractHost = (url: string | null | undefined): string | undefined => {
+	if (!url) return undefined
+	try {
+		return new URL(url).host
+	} catch {
+		return undefined
+	}
+}
+
 export const downloadContentFromMessage = async (
 	{ mediaKey, directPath, url }: DownloadableMessage,
 	type: MediaType,
 	opts: MediaDownloadOptions = {}
 ) => {
-	const downloadUrl = directPath ? getUrlFromDirectPath(directPath, opts.host) : url
+	// Fallback host: explicit opt > host parsed from `url` > DEF_MEDIA_HOST.
+	// Lets us honor a non-default host carried by the proto without forcing callers to thread it through.
+	const fallbackHost = opts.host ?? extractHost(url)
+	const downloadUrl = directPath ? getUrlFromDirectPath(directPath, fallbackHost) : url
 	if (!downloadUrl) {
 		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
 	}
