@@ -7,12 +7,13 @@ jest.setTimeout(90_000)
  * Create a group and wait until each participant receives the corresponding
  * `groups.upsert` event. Without this barrier, an immediate sendMessage races
  * the recipient's group materialization and arrives before the SKDM session
- * is installable.
+ * is installable. The unique suffix prevents cross-run subject collisions.
  */
 const createGroup = async (creator: TestClient, subject: string, members: TestClient[]): Promise<string> => {
-	const seenByMembers = members.map(m => m.waitForEvent('groups.upsert', g => g.some(x => x.subject === subject)))
+	const uniqueSubject = `${subject}-${Date.now()}`
+	const seenByMembers = members.map(m => m.waitForEvent('groups.upsert', g => g.some(x => x.subject === uniqueSubject)))
 	const { id } = await creator.sock.groupCreate(
-		subject,
+		uniqueSubject,
 		members.map(m => m.meJid)
 	)
 	await Promise.all(seenByMembers)
@@ -70,8 +71,17 @@ describe('Groups', () => {
 
 		const text = `After remove ${Date.now()}`
 		const bobReceives = bob.waitForText(text, { remoteJid: groupJid })
+		// charlie must NOT receive after removal; race a short window against the same wait
+		const charlieDoesNotReceive = Promise.race([
+			charlie.waitForText(text, { remoteJid: groupJid, timeoutMs: 1500 }).then(
+				() => {
+					throw new Error('charlie received group message after removal')
+				},
+				() => undefined
+			)
+		])
 		await alice.sock.sendMessage(groupJid, { text })
-		await bobReceives
+		await Promise.all([bobReceives, charlieDoesNotReceive])
 	})
 
 	test('alice promotes bob to admin and demotes back', async () => {
@@ -90,7 +100,8 @@ describe('Groups', () => {
 		const before = await alice.sock.groupMetadata(groupJid)
 		expect(before.participants.length).toBe(2)
 
-		await alice.sock.groupParticipantsUpdate(groupJid, [charlie.meJid], 'add')
+		const addResult = await alice.sock.groupParticipantsUpdate(groupJid, [charlie.meJid], 'add')
+		expect(addResult[0]?.status).toBe('200')
 
 		const after = await alice.sock.groupMetadata(groupJid)
 		expect(after.participants.length).toBe(3)
