@@ -26,7 +26,10 @@ describe('Groups', () => {
 	let charlie: TestClient
 
 	beforeAll(async () => {
-		;[alice, bob, charlie] = await Promise.all([TestClient.connect(), TestClient.connect(), TestClient.connect()])
+		// Sequential so a mid-fan-out failure doesn't leak the already-opened siblings.
+		alice = await TestClient.connect()
+		bob = await TestClient.connect()
+		charlie = await TestClient.connect()
 	})
 
 	afterAll(async () => {
@@ -71,15 +74,16 @@ describe('Groups', () => {
 
 		const text = `After remove ${Date.now()}`
 		const bobReceives = bob.waitForText(text, { remoteJid: groupJid })
-		// charlie must NOT receive after removal; race a short window against the same wait
-		const charlieDoesNotReceive = Promise.race([
-			charlie.waitForText(text, { remoteJid: groupJid, timeoutMs: 1500 }).then(
-				() => {
-					throw new Error('charlie received group message after removal')
-				},
-				() => undefined
-			)
-		])
+		// charlie must NOT receive after removal; only the timeout itself counts as success
+		const charlieDoesNotReceive = charlie.waitForText(text, { remoteJid: groupJid, timeoutMs: 1500 }).then(
+			() => {
+				throw new Error('charlie received group message after removal')
+			},
+			(err: Error) => {
+				if (err.message.startsWith('Timed out')) return
+				throw err
+			}
+		)
 		await alice.sock.sendMessage(groupJid, { text })
 		await Promise.all([bobReceives, charlieDoesNotReceive])
 	})
