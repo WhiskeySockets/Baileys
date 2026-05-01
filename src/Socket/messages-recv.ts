@@ -1575,7 +1575,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								result,
 								fallbackJid: tcStorageJid,
 								keys: authState.keys,
-								getLIDForPN
+								getLIDForPN,
+								onNewJidStored: trackTcTokenJid
 							})
 							logger.debug({ from: ackFrom }, 'completed 463 token recovery issuance')
 						} catch (err: any) {
