@@ -31,7 +31,20 @@ export type BaileysEventMap = {
 		isLatest?: boolean
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType | null
+		chunkOrder?: number | null
 		peerDataRequestSessionId?: string | null
+	}
+	/** signals history sync milestones (completion or stall) per sync type */
+	'messaging-history.status': {
+		/** which sync phase this status refers to */
+		syncType: proto.HistorySync.HistorySyncType
+		/** the status of this sync phase */
+		status: 'complete' | 'paused'
+		/**
+		 * progress === 100 was received from the server.
+		 * when false, completion was inferred via timeout (no more chunks arriving).
+		 */
+		explicit: boolean
 	}
 	/** upsert chats */
 	'chats.upsert': Chat[]
@@ -67,6 +80,7 @@ export type BaileysEventMap = {
 		id: string
 		author: string
 		authorPn?: string
+		authorUsername?: string
 		participants: GroupParticipant[]
 		action: ParticipantAction
 	}
@@ -74,6 +88,7 @@ export type BaileysEventMap = {
 		id: string
 		author: string
 		authorPn?: string
+		authorUsername?: string
 		participant: string
 		participantPn?: string
 		action: RequestJoinAction
@@ -134,6 +149,7 @@ export type BufferedEventData = {
 		isLatest: boolean
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType
+		chunkOrder?: number | null
 		peerDataRequestSessionId?: string
 	}
 	chatUpserts: { [jid: string]: Chat }

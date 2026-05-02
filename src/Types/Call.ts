@@ -1,4 +1,13 @@
-export type WACallUpdateType = 'offer' | 'ringing' | 'timeout' | 'reject' | 'accept' | 'terminate'
+export type WACallUpdateType =
+	| 'offer'
+	| 'ringing'
+	| 'preaccept'
+	| 'transport'
+	| 'relaylatency'
+	| 'timeout'
+	| 'reject'
+	| 'accept'
+	| 'terminate'
 
 export type WACallEvent = {
 	chatId: string

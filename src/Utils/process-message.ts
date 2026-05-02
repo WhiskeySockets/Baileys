@@ -33,6 +33,7 @@ import { aesDecryptGCM, hmacSign } from './crypto'
 import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
+import { buildMergedTcTokenIndexWrite, resolveTcTokenJid } from './tc-token-utils'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -54,6 +55,64 @@ const REAL_MSG_STUB_TYPES = new Set([
 ])
 
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
+
+async function storeTcTokensFromHistorySync(
+	chats: Chat[],
+	signalRepository: SignalRepositoryWithLIDStore,
+	keyStore: SignalKeyStoreWithTransaction,
+	logger?: ILogger
+) {
+	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
+
+	const candidates: { storageJid: string; token: Buffer; ts: number; senderTs?: number }[] = []
+	for (const chat of chats) {
+		const ts = chat.tcTokenTimestamp ? toNumber(chat.tcTokenTimestamp) : 0
+		if (chat.tcToken?.length && ts > 0) {
+			const jid = jidNormalizedUser(chat.id!)
+			const storageJid = await resolveTcTokenJid(jid, getLIDForPN)
+			candidates.push({
+				storageJid,
+				token: Buffer.from(chat.tcToken),
+				ts,
+				senderTs: chat.tcTokenSenderTimestamp ? toNumber(chat.tcTokenSenderTimestamp) : undefined
+			})
+		}
+	}
+
+	if (!candidates.length) {
+		return
+	}
+
+	const jids = candidates.map(c => c.storageJid)
+	const existing = await keyStore.get('tctoken', jids)
+	const entries: Record<string, { token: Buffer; timestamp?: string; senderTimestamp?: number }> = {}
+
+	for (const c of candidates) {
+		const existingEntry = existing[c.storageJid]
+		const existingTs = existingEntry?.timestamp ? Number(existingEntry.timestamp) : 0
+		if (existingTs > 0 && existingTs >= c.ts) {
+			continue
+		}
+
+		entries[c.storageJid] = {
+			...existingEntry,
+			token: c.token,
+			timestamp: String(c.ts),
+			...(c.senderTs !== undefined ? { senderTimestamp: c.senderTs } : {})
+		}
+	}
+
+	if (Object.keys(entries).length) {
+		logger?.debug({ count: Object.keys(entries).length }, 'storing tctokens from history sync')
+		try {
+			// Include updated __index so cross-session pruning picks these JIDs up.
+			const indexWrite = await buildMergedTcTokenIndexWrite(keyStore, Object.keys(entries))
+			await keyStore.set({ tctoken: { ...entries, ...indexWrite } })
+		} catch (err) {
+			logger?.warn({ err }, 'failed to store tctokens from history sync')
+		}
+	}
+}
 
 /** Cleans a received message to further processing */
 export const cleanMessage = (message: WAMessage, meId: string, meLid: string) => {
@@ -294,9 +353,12 @@ const processMessage = async (
 							.catch(err => logger?.warn({ err }, 'failed to store LID-PN mappings from history sync'))
 					}
 
+					await storeTcTokensFromHistorySync(data.chats, signalRepository, keyStore, logger)
+
 					ev.emit('messaging-history.set', {
 						...data,
 						isLatest: histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND ? isLatest : undefined,
+						chunkOrder: histNotification.chunkOrder,
 						peerDataRequestSessionId: histNotification.peerDataRequestSessionId
 					})
 				}
@@ -519,12 +581,19 @@ const processMessage = async (
 				id: jid,
 				author: message.key.participant!,
 				authorPn: message.key.participantAlt!,
+				authorUsername: message.key.participantUsername!,
 				participants,
 				action
 			})
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
 			ev.emit('groups.update', [
-				{ id: jid, ...update, author: message.key.participant ?? undefined, authorPn: message.key.participantAlt }
+				{
+					id: jid,
+					...update,
+					author: message.key.participant ?? undefined,
+					authorPn: message.key.participantAlt,
+					authorUsername: message.key.participantUsername
+				}
 			])
 		}
 
@@ -533,6 +602,7 @@ const processMessage = async (
 				id: jid,
 				author: message.key.participant!,
 				authorPn: message.key.participantAlt!,
+				authorUsername: message.key.participantUsername!,
 				participant: participant.lid,
 				participantPn: participant.pn,
 				action,
