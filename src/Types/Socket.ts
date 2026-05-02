@@ -8,9 +8,15 @@ import { type MediaConnInfo, type WAMessageKey } from './Message'
 import type { SignalRepositoryWithLIDStore } from './Signal'
 
 /**
- * Represents a dispatcher for the fetch API, primarily for use with Node.js's undici.
+ * Structural type for an undici-compatible dispatcher (e.g. `Agent`, `ProxyAgent`).
+ * Defined structurally so consumers don't need `undici` as a peer dep, while still
+ * preventing values that lack the dispatcher contract (such as `https.Agent`).
  */
-export type FetchDispatcher = object
+export interface FetchDispatcher {
+	dispatch(options: object, handler: object): boolean
+	close(): Promise<void>
+	destroy(): Promise<void>
+}
 
 /**
  * Extended RequestInit that includes undici's dispatcher property for Node.js environments.

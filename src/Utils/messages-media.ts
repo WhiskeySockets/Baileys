@@ -13,6 +13,7 @@ import { proto } from '../../WAProto/index.js'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP, type MediaType } from '../Defaults'
 import type {
 	BaileysEventMap,
+	CustomRequestInit,
 	DownloadableMessage,
 	FetchDispatcher,
 	MediaConnInfo,
@@ -363,7 +364,7 @@ export async function generateThumbnail(
 	}
 }
 
-export const getHttpStream = async (url: string | URL, options: RequestInit & { isStream?: true } = {}) => {
+export const getHttpStream = async (url: string | URL, options: CustomRequestInit & { isStream?: true } = {}) => {
 	const response = await fetch(url.toString(), {
 		dispatcher: options.dispatcher,
 		method: 'GET',
@@ -661,6 +662,14 @@ const isNodeRuntime = (): boolean => {
 	)
 }
 
+/**
+ * Duck-types an undici-style dispatcher. A Node `http.Agent` does not have `dispatch()`,
+ * so this lets us route only true dispatchers through the fetch path.
+ */
+export const isFetchDispatcher = (agent: Agent | FetchDispatcher | undefined): agent is FetchDispatcher => {
+	return !!agent && typeof (agent as FetchDispatcher).dispatch === 'function'
+}
+
 type MediaUploadResult = {
 	url?: string
 	direct_path?: string
@@ -703,7 +712,7 @@ export const uploadWithNodeHttp = async (
 					...headers,
 					'Content-Length': fileSize
 				},
-				agent: agent as Agent,
+				agent: isFetchDispatcher(agent) ? undefined : agent,
 				timeout: timeoutMs
 			},
 			res => {
@@ -765,7 +774,7 @@ const uploadWithFetch = async ({
 	const webStream = Readable.toWeb(nodeStream) as ReadableStream
 
 	const response = await fetch(url, {
-		dispatcher: agent,
+		dispatcher: isFetchDispatcher(agent) ? agent : undefined,
 		method: 'POST',
 		body: webStream,
 		headers,
@@ -797,11 +806,13 @@ const uploadWithFetch = async ({
  * Once the undici bug is fixed, we can simplify this to use only the Fetch API
  * across all runtimes. Monitor the GitHub issue for updates.
  */
-const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<MediaUploadResult | undefined> => {
-	if (isNodeRuntime()) {
+export const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<MediaUploadResult | undefined> => {
+	if (isNodeRuntime() && !isFetchDispatcher(params.agent)) {
 		logger?.debug('Using Node.js https module for upload (avoids undici buffering bug)')
 		return uploadWithNodeHttp(params)
 	} else {
+		// Node's http.request agent ignores undici dispatchers, so when one is supplied we
+		// must use fetch — accepting the undici buffering cost only for proxied uploads.
 		logger?.debug('Using web-standard Fetch API for upload')
 		return uploadWithFetch(params)
 	}

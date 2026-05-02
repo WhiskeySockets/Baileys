@@ -1,9 +1,16 @@
+import { jest } from '@jest/globals'
 import * as fs from 'fs'
 import * as http from 'http'
 import * as os from 'os'
 import * as path from 'path'
 import { Readable } from 'stream'
-import { encryptedStream, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import {
+	encryptedStream,
+	isFetchDispatcher,
+	uploadMedia,
+	type UploadParams,
+	uploadWithNodeHttp
+} from '../../Utils/messages-media'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -282,6 +289,103 @@ describe('uploadWithNodeHttp', () => {
 
 		expect(result).toEqual(expectedResponse)
 		expect(finalReceivedBody).toBe(testFileContent)
+	})
+})
+
+describe('isFetchDispatcher', () => {
+	it('returns true for a duck-typed undici dispatcher', () => {
+		const dispatcher = {
+			dispatch: () => true,
+			close: async () => {},
+			destroy: async () => {}
+		}
+		expect(isFetchDispatcher(dispatcher)).toBe(true)
+	})
+
+	it('returns false for a Node http.Agent (no dispatch method)', () => {
+		const nodeAgent = new http.Agent()
+		expect(isFetchDispatcher(nodeAgent as never)).toBe(false)
+	})
+
+	it('returns false for undefined', () => {
+		expect(isFetchDispatcher(undefined)).toBe(false)
+	})
+
+	it('returns false for an object without dispatch', () => {
+		expect(isFetchDispatcher({ close: async () => {} } as never)).toBe(false)
+	})
+})
+
+describe('uploadMedia routing', () => {
+	let tempFile: string
+
+	beforeAll(async () => {
+		tempFile = await createTempFile('routing test payload')
+	})
+
+	afterAll(async () => {
+		await cleanupTempFile(tempFile)
+	})
+
+	it('routes to fetch (honoring dispatcher) when an undici-style agent is provided in Node', async () => {
+		const dispatcher = {
+			dispatch: jest.fn(() => true),
+			close: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {})
+		}
+
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+			new Response(JSON.stringify({ url: 'https://example.com/dispatched' }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			})
+		)
+
+		const params: UploadParams = {
+			url: 'https://example.com/upload',
+			filePath: tempFile,
+			headers: { 'Content-Type': 'application/octet-stream' },
+			agent: dispatcher
+		}
+
+		try {
+			const result = await uploadMedia(params)
+			expect(result).toEqual({ url: 'https://example.com/dispatched' })
+			expect(fetchSpy).toHaveBeenCalledTimes(1)
+			const init = fetchSpy.mock.calls[0]![1] as RequestInit
+			expect(init.dispatcher).toBe(dispatcher)
+		} finally {
+			fetchSpy.mockRestore()
+		}
+	})
+
+	it('does not call fetch when no dispatcher is provided in Node (uses http path)', async () => {
+		const fetchSpy = jest.spyOn(global, 'fetch')
+
+		const expectedResponse = { url: 'https://example.com/node-path' }
+		const localServer = http.createServer((req, res) => {
+			req.on('data', () => {})
+			req.on('end', () => {
+				res.writeHead(200, { 'Content-Type': 'application/json' })
+				res.end(JSON.stringify(expectedResponse))
+			})
+		})
+		await new Promise<void>(resolve => localServer.listen(0, () => resolve()))
+		const port = (localServer.address() as { port: number }).port
+
+		try {
+			const params: UploadParams = {
+				url: `http://localhost:${port}/upload`,
+				filePath: tempFile,
+				headers: { 'Content-Type': 'application/octet-stream' }
+			}
+			const result = await uploadMedia(params)
+			expect(result).toEqual(expectedResponse)
+			expect(fetchSpy).not.toHaveBeenCalled()
+		} finally {
+			fetchSpy.mockRestore()
+			localServer.close()
+		}
 	})
 })
 
