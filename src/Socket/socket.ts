@@ -107,20 +107,31 @@ export const makeSocket = (config: SocketConfig) => {
 	const enableUnifiedSession =
 		enableUnifiedSessionConfig !== undefined ? enableUnifiedSessionConfig : shouldEnableUnifiedSession()
 
-	// Initialize circuit breakers if enabled
+	// Initialize circuit breakers if enabled.
+	//
+	// Env var override: BAILEYS_DISABLE_CIRCUIT_BREAKER=true completely disables
+	// all three circuit breakers without requiring a code change. Useful when the
+	// query CB is opening on slow `init queries` after a fresh QR pairing — those
+	// initial USync / device-list / app-state queries can legitimately take longer
+	// than the per-call timeout when the auth state is fresh and the server has
+	// no warm caches for this client.
+	const envDisableCB = process.env.BAILEYS_DISABLE_CIRCUIT_BREAKER === 'true'
 	let queryCircuitBreaker: CircuitBreaker | undefined
 	let connectionCircuitBreaker: CircuitBreaker | undefined
 	let preKeyCircuitBreaker: CircuitBreaker | undefined
 
-	if (enableCircuitBreaker) {
-		// Circuit breaker for query operations (most critical)
+	if (enableCircuitBreaker && !envDisableCB) {
+		// Circuit breaker for query operations (most critical).
+		// timeout=120s gives `init queries` (USync, device-list, app-state-sync)
+		// enough room on fresh QR pairings; the per-query timeout in waitForMessage
+		// already enforces a tighter bound for individual operations.
 		queryCircuitBreaker = createConnectionCircuitBreaker({
 			name: 'socket-query',
 			failureThreshold: 5,
 			failureWindow: 60000,
 			resetTimeout: 30000,
 			successThreshold: 2,
-			timeout: defaultQueryTimeoutMs || 60000,
+			timeout: Math.max(defaultQueryTimeoutMs || 0, 120_000),
 			onStateChange: (from, to) => {
 				logger.info({ from, to }, 'Query circuit breaker state changed')
 			},
