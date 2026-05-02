@@ -305,12 +305,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		counts?: { participants?: number; devices?: number; sessionsExisting?: number; sessionsFetched?: number; cacheHits?: number; cacheMisses?: number; cacheSets?: number; attempts?: number },
 		details?: Record<string, unknown>
 	) => {
+		const normalizedDetails = {
+			namespace: 'send_path',
+			component: 'messages-send',
+			schemaVersion: 1,
+			...details
+		}
 		void emitTelemetry(config.telemetry, {
 			stage,
 			status,
 			instanceId: getInstanceId(),
 			counts,
-			details
+			details: normalizedDetails
 		})
 	}
 
