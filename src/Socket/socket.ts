@@ -82,7 +82,7 @@ export const makeSocket = (config: SocketConfig) => {
 		makeSignalRepository
 	} = config
 
-	configureBaileysFileInstrumentation(config.baileysInstrumentation)
+	configureBaileysFileInstrumentation(config.baileysInstrumentation, logger)
 
 	const publicWAMBuffer = new BinaryInfo()
 

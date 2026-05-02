@@ -18,11 +18,17 @@ import type { BinaryNode } from '../WABinary'
 import type { BaileysFileInstrumentationConfig } from '../Types'
 import type { USyncQueryResult } from '../WAUSync/USyncQuery'
 import type { ParsedDeviceInfo } from '../WAUSync/Protocols/USyncDeviceProtocol'
+import type { ILogger } from './logger'
 
 let activePath: string | undefined
 let writeChain: Promise<void> = Promise.resolve()
+let instrumentationLogger: ILogger | undefined
 
-export function configureBaileysFileInstrumentation(config: BaileysFileInstrumentationConfig | undefined): void {
+export function configureBaileysFileInstrumentation(
+	config: BaileysFileInstrumentationConfig | undefined,
+	logger?: ILogger
+): void {
+	instrumentationLogger = logger
 	activePath = config?.logPath
 		? path.isAbsolute(config.logPath)
 			? config.logPath
@@ -30,7 +36,16 @@ export function configureBaileysFileInstrumentation(config: BaileysFileInstrumen
 		: undefined
 
 	if (activePath) {
+		instrumentationLogger?.info(
+			{
+				configuredLogPath: config?.logPath,
+				resolvedLogPath: activePath
+			},
+			'baileysInstrumentation enabled'
+		)
 		writeChain = mkdir(path.dirname(activePath), { recursive: true }).then(() => {})
+	} else {
+		instrumentationLogger?.debug('baileysInstrumentation disabled (no logPath provided)')
 	}
 }
 
@@ -40,10 +55,17 @@ export function logBaileysFileInstrumentation(record: Record<string, unknown>): 
 	}
 
 	const line = JSON.stringify({ ts: new Date().toISOString(), ...record }) + '\n'
+	instrumentationLogger?.debug({ path: activePath, event: record.event }, 'baileysInstrumentation append queued')
 	writeChain = writeChain
 		.then(() => appendFile(activePath!, line, 'utf8'))
+		.then(() => {
+			instrumentationLogger?.debug(
+				{ path: activePath, bytes: Buffer.byteLength(line, 'utf8'), event: record.event },
+				'baileysInstrumentation append success'
+			)
+		})
 		.catch(err => {
-			console.error('[baileysInstrumentation] append failed', err)
+			instrumentationLogger?.error({ err, path: activePath, event: record.event }, 'baileysInstrumentation append failed')
 		})
 }
 
