@@ -41,6 +41,7 @@ import {
 	unixTimestampSeconds
 } from '../Utils'
 import { logBaileysFileInstrumentation } from '../Utils/baileys-file-instrumentation'
+import { emitTelemetry } from '../Utils/instrumentation'
 import { getUrlInfo } from '../Utils/link-preview'
 import type { KeyedMutex } from '../Utils/make-mutex'
 import { makeKeyedMutex } from '../Utils/make-mutex'
@@ -298,6 +299,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		groupToggleEphemeral
 	} = sock
 	const getInstanceId = () => authState.creds.me?.id
+	const emitSendPathTelemetry = (
+		stage: string,
+		status: 'start' | 'success' | 'hit' | 'miss' | 'failure',
+		counts?: { participants?: number; devices?: number; sessionsExisting?: number; sessionsFetched?: number; cacheHits?: number; cacheMisses?: number; cacheSets?: number; attempts?: number },
+		details?: Record<string, unknown>
+	) => {
+		void emitTelemetry(config.telemetry, {
+			stage,
+			status,
+			instanceId: getInstanceId(),
+			counts,
+			details
+		})
+	}
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
@@ -446,6 +461,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			pid: process.pid,
 			uptimeSec: Math.floor(process.uptime())
 		})
+		emitSendPathTelemetry('getUSyncDevices.start', 'start', { participants: jids.length }, {
+			useCache,
+			ignoreZeroDevices,
+			pid: process.pid,
+			uptimeSec: Math.floor(process.uptime())
+		})
 
 		if (!useCache) {
 			logger.debug('not using cache for devices')
@@ -516,6 +537,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			cacheHitUsers: cacheHitUsers.slice(0, 20),
 			cacheMissUsers: cacheMissUsers.slice(0, 20)
 		})
+		emitSendPathTelemetry('getUSyncDevices.cachePhase', cacheMissUsers.length ? 'miss' : 'hit', {
+			participants: jidsWithUser.length,
+			cacheHits: cacheHitUsers.length,
+			cacheMisses: cacheMissUsers.length
+		})
 
 		if (!toFetch.length) {
 			const summary = summarizeDevicesByUser(deviceResults)
@@ -526,6 +552,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				path: 'cache_only',
 				...summary
 			})
+			emitSendPathTelemetry('getUSyncDevices.complete', 'success', {
+				participants: summary.uniqueUsersReturned,
+				devices: deviceResults.length,
+				cacheHits: cacheHitUsers.length,
+				cacheMisses: cacheMissUsers.length
+			}, { path: 'cache_only', ...summary })
 			return deviceResults
 		}
 
@@ -646,6 +678,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				usyncFetchUserCount: toFetch.length,
 				...summary
 			})
+			emitSendPathTelemetry('getUSyncDevices.complete', 'success', {
+				participants: summary.uniqueUsersReturned,
+				devices: deviceResults.length,
+				cacheHits: cacheHitUsers.length,
+				cacheMisses: cacheMissUsers.length
+			}, { path: 'network_usync', ...summary })
 
 		return deviceResults
 	}
@@ -697,6 +735,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			uniqueJids: uniqueJids.length,
 			force: !!force
 		})
+		emitSendPathTelemetry('assertSessions.start', 'start', { participants: uniqueJids.length }, { force: !!force })
 
 		logger.debug({ jids }, 'assertSessions call with jids')
 
@@ -737,6 +776,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			logBaileysFileInstrumentation({
 				event: 'assertSessions.fetching',
 				jidsRequiringFetch: jidsRequiringFetch.length,
+				wireJids: wireJids.length,
+				force: !!force
+			})
+			emitSendPathTelemetry('assertSessions.fetching', 'start', { participants: jidsRequiringFetch.length }, {
 				wireJids: wireJids.length,
 				force: !!force
 			})
@@ -783,6 +826,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			didFetchNewSession,
 			force: !!force
 		})
+		emitSendPathTelemetry('assertSessions.complete', didFetchNewSession ? 'success' : 'hit', {
+			participants: uniqueJids.length,
+			sessionsExisting: existingCount,
+			sessionsFetched: jidsRequiringFetch.length
+		}, { didFetchNewSession, force: !!force })
 		return didFetchNewSession
 	}
 
@@ -1053,6 +1101,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					participantCountFromMetadata: groupData?.participants?.length,
 					senderKeyMemoryEntries: Object.keys(senderKeyMap || {}).length
 				})
+				emitSendPathTelemetry('relay.group.prep.metadataAndSenderKey', 'success', {
+					participants: groupData?.participants?.length
+				}, {
+					isGroup,
+					isStatus,
+					useCachedGroupMetadata,
+					hasGroupData: !!groupData,
+					senderKeyMemoryEntries: Object.keys(senderKeyMap || {}).length
+				})
 
 				const participantsList = groupData ? groupData.participants.map(p => p.id) : []
 
@@ -1077,6 +1134,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						devicesReturned: additionalDevices.length,
 						useUserDevicesCache: !!useUserDevicesCache
 					})
+					emitSendPathTelemetry('relay.group.fanOut.getUSyncDevices', 'success', {
+						participants: participantsList.length,
+						devices: additionalDevices.length
+					}, { useUserDevicesCache: !!useUserDevicesCache })
 					devices.push(...additionalDevices)
 
 					if (isGroup) {
@@ -1102,6 +1163,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						groupSenderIdentity,
 						totalDevicesAfterUSync: devices.length
 					})
+					emitSendPathTelemetry('relay.group.fanOut.addressing', 'success', {
+						devices: devices.length
+					}, { groupAddressingMode })
 
 					const senderKeyRecipients: string[] = []
 					let senderKeyMapChanged = false
@@ -1136,6 +1200,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							recipients: senderKeyRecipients.length,
 							senderKeyMapChanged
 						})
+						emitSendPathTelemetry('relay.group.senderKey.distribution', 'success', {
+							participants: senderKeyRecipients.length
+						}, { senderKeyMapChanged })
 						if (!senderKeyDistributionMessage) {
 							throw new Boom('Missing sender key distribution message for group fanout', { statusCode: 500 })
 						}
@@ -1152,6 +1219,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logBaileysFileInstrumentation({
 							event: 'relay.group.senderKey.assertSessions',
 							targets: senderKeySessionTargets.length
+						})
+						emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'success', {
+							participants: senderKeySessionTargets.length
 						})
 
 						const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
@@ -1172,6 +1242,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							event: 'relay.group.senderKey.memoryPersisted',
 							entries: Object.keys(senderKeyMap).length
 						})
+						emitSendPathTelemetry('relay.group.senderKey.memoryPersisted', 'success', {
+							cacheSets: 1
+						}, { entries: Object.keys(senderKeyMap).length })
 					}
 				}
 
@@ -1273,11 +1346,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					otherRecipients: otherRecipients.length,
 					rawDevicesEnumerated: devices.length
 				})
+				emitSendPathTelemetry('relay.direct.recipients.split', 'success', {
+					participants: allRecipients.length,
+					devices: devices.length
+				}, { meRecipients: meRecipients.length, otherRecipients: otherRecipients.length })
 
 				await assertSessions(allRecipients)
 				logBaileysFileInstrumentation({
 					event: 'relay.direct.assertSessions',
 					targets: allRecipients.length
+				})
+				emitSendPathTelemetry('relay.direct.assertSessions', 'success', {
+					participants: allRecipients.length
 				})
 
 				const [

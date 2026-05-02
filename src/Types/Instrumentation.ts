@@ -20,6 +20,7 @@ export type SendInstrumentationEvent = {
 	host?: string
 	retryFromHost?: string
 	counts?: SendInstrumentationCounts
+	details?: Record<string, unknown>
 }
 
 export type SendInstrumentation = (event: SendInstrumentationEvent) => void | Promise<void>
