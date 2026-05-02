@@ -14,9 +14,14 @@ export * from './Newsletter'
 export * from './Instrumentation'
 
 import type { AuthenticationState } from './Auth'
+import type { BaileysFileInstrumentationConfig } from './Instrumentation'
 import type { SocketConfig } from './Socket'
 
-export type UserFacingSocketConfig = Partial<SocketConfig> & { auth: AuthenticationState }
+/** Everything optional except `auth`; `baileysInstrumentation` listed explicitly for stable public typings. */
+export type UserFacingSocketConfig = Partial<Omit<SocketConfig, 'auth' | 'baileysInstrumentation'>> & {
+	auth: AuthenticationState
+	baileysInstrumentation?: BaileysFileInstrumentationConfig
+}
 
 export type BrowsersMap = {
 	ubuntu(browser: string): [string, string, string]
