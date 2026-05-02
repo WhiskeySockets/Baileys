@@ -3,7 +3,6 @@ import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
 import type {
-	BaileysFileInstrumentationConfig,
 	SendInstrumentation,
 	WarmUpGroupParticipantsSummary,
 	WarmUpGroupSendSummary
@@ -140,9 +139,6 @@ export type SocketConfig = {
 
 	/** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
 	cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
-
-	/** NDJSON append log for USync / device enumeration profiling (see `Utils/baileys-instrumentation-file.ts`) */
-	baileysInstrumentation?: BaileysFileInstrumentationConfig
 
 	makeSignalRepository: (
 		auth: SignalAuthState,

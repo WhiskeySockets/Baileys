@@ -14,13 +14,11 @@ export * from './Newsletter'
 export * from './Instrumentation'
 
 import type { AuthenticationState } from './Auth'
-import type { BaileysFileInstrumentationConfig } from './Instrumentation'
 import type { SocketConfig } from './Socket'
 
-/** Everything optional except `auth`; `baileysInstrumentation` listed explicitly for stable public typings. */
-export type UserFacingSocketConfig = Partial<Omit<SocketConfig, 'auth' | 'baileysInstrumentation'>> & {
+/** Everything optional except `auth`. */
+export type UserFacingSocketConfig = Partial<SocketConfig> & {
 	auth: AuthenticationState
-	baileysInstrumentation?: BaileysFileInstrumentationConfig
 }
 
 export type BrowsersMap = {
