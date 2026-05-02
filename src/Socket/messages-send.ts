@@ -412,6 +412,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		jid: string
 	}
 
+	const summarizeDevicesByUser = (devices: DeviceWithJid[]) => {
+		const counts: Record<string, number> = {}
+		for (const device of devices) {
+			const key = device.user || 'unknown'
+			counts[key] = (counts[key] || 0) + 1
+		}
+
+		const values = Object.values(counts)
+		return {
+			uniqueUsersReturned: Object.keys(counts).length,
+			maxDevicesPerUser: values.length ? Math.max(...values) : 0,
+			minDevicesPerUser: values.length ? Math.min(...values) : 0,
+			devicesPerUser: counts
+		}
+	}
+
 	/** Fetch all the devices we've to send a message to */
 	const getUSyncDevices = async (
 		jids: string[],
@@ -426,7 +442,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			event: 'getUSyncDevices.start',
 			inputJids: jids.length,
 			useCache,
-			ignoreZeroDevices
+			ignoreZeroDevices,
+			pid: process.pid,
+			uptimeSec: Math.floor(process.uptime())
 		})
 
 		if (!useCache) {
@@ -434,6 +452,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		const toFetch: string[] = []
+		const cacheHitUsers: string[] = []
+		const cacheMissUsers: string[] = []
 
 			const jidsWithUser = jids
 				.map(jid => {
@@ -474,13 +494,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						jid: jidEncode(d.user, d.server, d.device)
 					}))
 					deviceResults.push(...devicesWithJid)
+					cacheHitUsers.push(user!)
 
 					logger.trace({ user }, 'using cache for devices')
 				} else {
 					toFetch.push(jid)
+					cacheMissUsers.push(user!)
 				}
 			} else {
 				toFetch.push(jid)
+				cacheMissUsers.push(user!)
 			}
 		}
 
@@ -489,15 +512,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			explicitDeviceBypassCount,
 			usersSubjectToLookup: jidsWithUser.length,
 			cacheMissUserCount: toFetch.length,
-			cacheHitUserCount: useCache ? Math.max(0, jidsWithUser.length - toFetch.length) : 0
+			cacheHitUserCount: useCache ? Math.max(0, jidsWithUser.length - toFetch.length) : 0,
+			cacheHitUsers: cacheHitUsers.slice(0, 20),
+			cacheMissUsers: cacheMissUsers.slice(0, 20)
 		})
 
 		if (!toFetch.length) {
+			const summary = summarizeDevicesByUser(deviceResults)
 			logBaileysFileInstrumentation({
 				event: 'getUSyncDevices.complete',
 				durationMs: Date.now() - overallStart,
 				totalDevicesReturned: deviceResults.length,
-				path: 'cache_only'
+				path: 'cache_only',
+				...summary
 			})
 			return deviceResults
 		}
@@ -609,13 +636,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
+			const summary = summarizeDevicesByUser(deviceResults)
 			logBaileysFileInstrumentation({
 				event: 'getUSyncDevices.complete',
 				durationMs: Date.now() - overallStart,
 				networkPhaseMs: Date.now() - networkPhaseStart,
 				totalDevicesReturned: deviceResults.length,
 				path: 'network_usync',
-				usyncFetchUserCount: toFetch.length
+				usyncFetchUserCount: toFetch.length,
+				...summary
 			})
 
 		return deviceResults
@@ -656,10 +685,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		force?: boolean,
 		summary?: { existingCount: number; fetchedCount: number }
 	) => {
+		const startedAt = Date.now()
 		let didFetchNewSession = false
 		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
 		let existingCount = 0
+
+		logBaileysFileInstrumentation({
+			event: 'assertSessions.start',
+			inputJids: jids.length,
+			uniqueJids: uniqueJids.length,
+			force: !!force
+		})
 
 		logger.debug({ jids }, 'assertSessions call with jids')
 
@@ -697,6 +734,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			]
 
 			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
+			logBaileysFileInstrumentation({
+				event: 'assertSessions.fetching',
+				jidsRequiringFetch: jidsRequiringFetch.length,
+				wireJids: wireJids.length,
+				force: !!force
+			})
 			const result = await query({
 				tag: 'iq',
 				attrs: {
@@ -730,6 +773,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			summary.existingCount = existingCount
 			summary.fetchedCount = jidsRequiringFetch.length
 		}
+		logBaileysFileInstrumentation({
+			event: 'assertSessions.complete',
+			durationMs: Date.now() - startedAt,
+			inputJids: jids.length,
+			uniqueJids: uniqueJids.length,
+			existingCount,
+			jidsRequiringFetch: jidsRequiringFetch.length,
+			didFetchNewSession,
+			force: !!force
+		})
 		return didFetchNewSession
 	}
 
