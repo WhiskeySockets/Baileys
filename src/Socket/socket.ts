@@ -36,13 +36,8 @@ import {
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
-import {
-	configureBaileysFileInstrumentation,
-	estimateBinaryNodeFootprint,
-	logBaileysFileInstrumentation,
-	summarizeUsyncDeviceDistribution
-} from '../Utils/baileys-file-instrumentation'
 import { getPlatformId } from '../Utils/browser-utils'
+import { emitTelemetry } from '../Utils/instrumentation'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -81,8 +76,6 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 		makeSignalRepository
 	} = config
-
-	configureBaileysFileInstrumentation(config.baileysInstrumentation, logger)
 
 	const publicWAMBuffer = new BinaryInfo()
 
@@ -320,18 +313,29 @@ export const makeSocket = (config: SocketConfig) => {
 		const durationMs = Date.now() - startedAt
 		const parsed = usyncQuery.parseUSyncQueryResult(result)
 
-		logBaileysFileInstrumentation({
-			event: 'usync.query',
-			context: usyncQuery.context,
-			mode: usyncQuery.mode,
-			protocols: protocolNames,
-			requestedUsers,
+		void emitTelemetry(config.telemetry, {
+			stage: 'usync.query',
+			status: 'success',
+			instanceId: authState.creds.me?.id,
+			counts: {
+				participants: requestedUsers,
+				devices: parsed?.list?.reduce((total, entry) => {
+					const deviceList = (entry as { devices?: { deviceList?: unknown[] } })?.devices?.deviceList
+					return total + (deviceList?.length || 0)
+				}, 0)
+			},
 			durationMs,
-			iqTag: result?.tag,
-			iqType: result?.attrs?.type,
-			iqFootprintBytesEstimate: estimateBinaryNodeFootprint(result),
-			parseSucceeded: !!parsed,
-			...summarizeUsyncDeviceDistribution(parsed)
+			details: {
+				namespace: 'send_path',
+				component: 'socket',
+				schemaVersion: 1,
+				context: usyncQuery.context,
+				mode: usyncQuery.mode,
+				protocols: protocolNames,
+				iqTag: result?.tag,
+				iqType: result?.attrs?.type,
+				parseSucceeded: !!parsed
+			}
 		})
 
 		return parsed

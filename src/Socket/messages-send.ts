@@ -40,7 +40,6 @@ import {
 	delay,
 	unixTimestampSeconds
 } from '../Utils'
-import { logBaileysFileInstrumentation } from '../Utils/baileys-file-instrumentation'
 import { emitTelemetry } from '../Utils/instrumentation'
 import { getUrlInfo } from '../Utils/link-preview'
 import type { KeyedMutex } from '../Utils/make-mutex'
@@ -459,14 +458,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const deviceResults: DeviceWithJid[] = []
 		let explicitDeviceBypassCount = 0
 
-		logBaileysFileInstrumentation({
-			event: 'getUSyncDevices.start',
-			inputJids: jids.length,
-			useCache,
-			ignoreZeroDevices,
-			pid: process.pid,
-			uptimeSec: Math.floor(process.uptime())
-		})
 		emitSendPathTelemetry('getUSyncDevices.start', 'start', { participants: jids.length }, {
 			useCache,
 			ignoreZeroDevices,
@@ -482,36 +473,36 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const cacheHitUsers: string[] = []
 		const cacheMissUsers: string[] = []
 
-			const jidsWithUser = jids
-				.map(jid => {
-					const decoded = jidDecode(jid)
-					const user = decoded?.user
-					const device = decoded?.device
-					const isExplicitDevice = typeof device === 'number' && device >= 0
+		const jidsWithUser = jids
+			.map(jid => {
+				const decoded = jidDecode(jid)
+				const user = decoded?.user
+				const device = decoded?.device
+				const isExplicitDevice = typeof device === 'number' && device >= 0
 
-					if (isExplicitDevice && user) {
-						explicitDeviceBypassCount += 1
-						deviceResults.push({
-							user,
-							device,
-							jid
-						})
-						return null
-					}
+				if (isExplicitDevice && user) {
+					explicitDeviceBypassCount += 1
+					deviceResults.push({
+						user,
+						device,
+						jid
+					})
+					return null
+				}
 
-					jid = jidNormalizedUser(jid)
-					return { jid, user }
-				})
-				.filter(jid => jid !== null)
+				jid = jidNormalizedUser(jid)
+				return { jid, user }
+			})
+			.filter(jid => jid !== null)
 
-			let mgetDevices: undefined | Record<string, FullJid[] | undefined>
+		let mgetDevices: undefined | Record<string, FullJid[] | undefined>
 
-			if (useCache && userDevicesCache.mget) {
-				const usersToFetch = jidsWithUser.map(j => j?.user).filter(Boolean) as string[]
-				mgetDevices = await userDevicesCache.mget(usersToFetch)
-			}
+		if (useCache && userDevicesCache.mget) {
+			const usersToFetch = jidsWithUser.map(j => j?.user).filter(Boolean) as string[]
+			mgetDevices = await userDevicesCache.mget(usersToFetch)
+		}
 
-			for (const { jid, user } of jidsWithUser) {
+		for (const { jid, user } of jidsWithUser) {
 			if (useCache) {
 				const devices =
 					mgetDevices?.[user!] || (userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as FullJid[]))
@@ -534,30 +525,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		logBaileysFileInstrumentation({
-			event: 'getUSyncDevices.cachePhase',
-			explicitDeviceBypassCount,
-			usersSubjectToLookup: jidsWithUser.length,
-			cacheMissUserCount: toFetch.length,
-			cacheHitUserCount: useCache ? Math.max(0, jidsWithUser.length - toFetch.length) : 0,
-			cacheHitUsers: cacheHitUsers.slice(0, 20),
-			cacheMissUsers: cacheMissUsers.slice(0, 20)
-		})
 		emitSendPathTelemetry('getUSyncDevices.cachePhase', cacheMissUsers.length ? 'miss' : 'hit', {
 			participants: jidsWithUser.length,
 			cacheHits: cacheHitUsers.length,
 			cacheMisses: cacheMissUsers.length
+		}, {
+			explicitDeviceBypassCount,
+			cacheHitUsers: cacheHitUsers.slice(0, 20),
+			cacheMissUsers: cacheMissUsers.slice(0, 20)
 		})
 
 		if (!toFetch.length) {
 			const summary = summarizeDevicesByUser(deviceResults)
-			logBaileysFileInstrumentation({
-				event: 'getUSyncDevices.complete',
-				durationMs: Date.now() - overallStart,
-				totalDevicesReturned: deviceResults.length,
-				path: 'cache_only',
-				...summary
-			})
 			emitSendPathTelemetry('getUSyncDevices.complete', 'success', {
 				participants: summary.uniqueUsersReturned,
 				devices: deviceResults.length,
@@ -567,129 +546,111 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return deviceResults
 		}
 
-			const networkPhaseStart = Date.now()
+		const networkPhaseStart = Date.now()
 
-			const requestedLidUsers = new Set<string>()
-			for (const jid of toFetch) {
-				if (isLidUser(jid) || isHostedLidUser(jid)) {
-					const user = jidDecode(jid)?.user
-					if (user) requestedLidUsers.add(user)
+		const requestedLidUsers = new Set<string>()
+		for (const jid of toFetch) {
+			if (isLidUser(jid) || isHostedLidUser(jid)) {
+				const user = jidDecode(jid)?.user
+				if (user) requestedLidUsers.add(user)
+			}
+		}
+
+		const query = new USyncQuery().withContext('message').withDeviceProtocol().withLIDProtocol()
+		for (const jid of toFetch) {
+			query.withUser(new USyncUser().withId(jid))
+		}
+
+		const result = await sock.executeUSyncQuery(query)
+
+		if (result) {
+			const lidResults = result.list.filter(a => !!a.lid)
+			if (lidResults.length > 0) {
+				logger.trace('Storing LID maps from device call')
+				await signalRepository.lidMapping.storeLIDPNMappings(lidResults.map(a => ({ lid: a.lid as string, pn: a.id })))
+
+				try {
+					const lids = lidResults.map(a => a.lid as string)
+					if (lids.length) {
+						await assertSessions(lids, true)
+					}
+				} catch (e) {
+					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
 				}
 			}
 
-			const query = new USyncQuery().withContext('message').withDeviceProtocol().withLIDProtocol()
+			const extracted = extractDeviceJids(result?.list, authState.creds.me!.id, authState.creds.me!.lid!, ignoreZeroDevices)
+			const deviceMap: { [_: string]: FullJid[] } = {}
 
-			for (const jid of toFetch) {
-				query.withUser(new USyncUser().withId(jid)) // todo: investigate - the idea here is that <user> should have an inline lid field with the lid being the pn equivalent
+			for (const item of extracted) {
+				deviceMap[item.user] = deviceMap[item.user] || []
+				deviceMap[item.user]?.push(item)
 			}
 
-			const result = await sock.executeUSyncQuery(query)
+			for (const [user, userDevices] of Object.entries(deviceMap)) {
+				const isLidUser = requestedLidUsers.has(user)
+				for (const item of userDevices) {
+					const finalJid = isLidUser
+						? jidEncode(user, item.server, item.device)
+						: jidEncode(item.user, item.server, item.device)
 
-			if (result) {
-				// TODO: LID MAP this stuff (lid protocol will now return lid with devices)
-				const lidResults = result.list.filter(a => !!a.lid)
-				if (lidResults.length > 0) {
-					logger.trace('Storing LID maps from device call')
-					await signalRepository.lidMapping.storeLIDPNMappings(
-						lidResults.map(a => ({ lid: a.lid as string, pn: a.id }))
+					deviceResults.push({
+						...item,
+						jid: finalJid
+					})
+
+					logger.debug(
+						{
+							user: item.user,
+							device: item.device,
+							finalJid,
+							usedLid: isLidUser
+						},
+						'Processed device with LID priority'
 					)
-
-					// Force-refresh sessions for newly mapped LIDs to align identity addressing
-					try {
-						const lids = lidResults.map(a => a.lid as string)
-						if (lids.length) {
-							await assertSessions(lids, true)
-						}
-					} catch (e) {
-						logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
-					}
-				}
-
-				const extracted = extractDeviceJids(
-					result?.list,
-					authState.creds.me!.id,
-					authState.creds.me!.lid!,
-					ignoreZeroDevices
-				)
-				const deviceMap: { [_: string]: FullJid[] } = {}
-
-				for (const item of extracted) {
-					deviceMap[item.user] = deviceMap[item.user] || []
-					deviceMap[item.user]?.push(item)
-				}
-
-				// Process each user's devices as a group for bulk LID migration
-				for (const [user, userDevices] of Object.entries(deviceMap)) {
-					const isLidUser = requestedLidUsers.has(user)
-
-					// Process all devices for this user
-					for (const item of userDevices) {
-						const finalJid = isLidUser
-							? jidEncode(user, item.server, item.device)
-							: jidEncode(item.user, item.server, item.device)
-
-						deviceResults.push({
-							...item,
-							jid: finalJid
-						})
-
-						logger.debug(
-							{
-								user: item.user,
-								device: item.device,
-								finalJid,
-								usedLid: isLidUser
-							},
-							'Processed device with LID priority'
-						)
-					}
-				}
-
-				if (userDevicesCache.mset) {
-					// if the cache supports mset, we can set all devices in one go
-					await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
-				} else {
-					for (const key in deviceMap) {
-						if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
-					}
-				}
-
-				const userDeviceUpdates: { [userId: string]: string[] } = {}
-				for (const [userId, devices] of Object.entries(deviceMap)) {
-					if (devices && devices.length > 0) {
-						userDeviceUpdates[userId] = devices.map(d => d.device?.toString() || '0')
-					}
-				}
-
-				if (Object.keys(userDeviceUpdates).length > 0) {
-					try {
-						await authState.keys.set({ 'device-list': userDeviceUpdates })
-						logger.debug(
-							{ userCount: Object.keys(userDeviceUpdates).length },
-							'stored user device lists for bulk migration'
-						)
-					} catch (error) {
-						logger.warn({ error }, 'failed to store user device lists')
-					}
 				}
 			}
 
-			const summary = summarizeDevicesByUser(deviceResults)
-			logBaileysFileInstrumentation({
-				event: 'getUSyncDevices.complete',
-				durationMs: Date.now() - overallStart,
-				networkPhaseMs: Date.now() - networkPhaseStart,
-				totalDevicesReturned: deviceResults.length,
-				path: 'network_usync',
-				usyncFetchUserCount: toFetch.length,
-				...summary
-			})
-			emitSendPathTelemetry('getUSyncDevices.complete', 'success', {
-				participants: summary.uniqueUsersReturned,
-				devices: deviceResults.length,
-				cacheHits: cacheHitUsers.length,
-				cacheMisses: cacheMissUsers.length
-			}, { path: 'network_usync', ...summary })
+			if (userDevicesCache.mset) {
+				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+			} else {
+				for (const key in deviceMap) {
+					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+				}
+			}
+
+			const userDeviceUpdates: { [userId: string]: string[] } = {}
+			for (const [userId, devices] of Object.entries(deviceMap)) {
+				if (devices && devices.length > 0) {
+					userDeviceUpdates[userId] = devices.map(d => d.device?.toString() || '0')
+				}
+			}
+
+			if (Object.keys(userDeviceUpdates).length > 0) {
+				try {
+					await authState.keys.set({ 'device-list': userDeviceUpdates })
+					logger.debug(
+						{ userCount: Object.keys(userDeviceUpdates).length },
+						'stored user device lists for bulk migration'
+					)
+				} catch (error) {
+					logger.warn({ error }, 'failed to store user device lists')
+				}
+			}
+		}
+
+		const summary = summarizeDevicesByUser(deviceResults)
+		emitSendPathTelemetry('getUSyncDevices.complete', 'success', {
+			participants: summary.uniqueUsersReturned,
+			devices: deviceResults.length,
+			cacheHits: cacheHitUsers.length,
+			cacheMisses: cacheMissUsers.length
+		}, {
+			path: 'network_usync',
+			networkPhaseMs: Date.now() - networkPhaseStart,
+			usyncFetchUserCount: toFetch.length,
+			...summary
+		})
 
 		return deviceResults
 	}
@@ -735,12 +696,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const jidsRequiringFetch: string[] = []
 		let existingCount = 0
 
-		logBaileysFileInstrumentation({
-			event: 'assertSessions.start',
-			inputJids: jids.length,
-			uniqueJids: uniqueJids.length,
-			force: !!force
-		})
 		emitSendPathTelemetry('assertSessions.start', 'start', { participants: uniqueJids.length }, { force: !!force })
 
 		logger.debug({ jids }, 'assertSessions call with jids')
@@ -779,12 +734,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			]
 
 			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
-			logBaileysFileInstrumentation({
-				event: 'assertSessions.fetching',
-				jidsRequiringFetch: jidsRequiringFetch.length,
-				wireJids: wireJids.length,
-				force: !!force
-			})
 			emitSendPathTelemetry('assertSessions.fetching', 'start', { participants: jidsRequiringFetch.length }, {
 				wireJids: wireJids.length,
 				force: !!force
@@ -822,16 +771,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			summary.existingCount = existingCount
 			summary.fetchedCount = jidsRequiringFetch.length
 		}
-		logBaileysFileInstrumentation({
-			event: 'assertSessions.complete',
-			durationMs: Date.now() - startedAt,
-			inputJids: jids.length,
-			uniqueJids: uniqueJids.length,
-			existingCount,
-			jidsRequiringFetch: jidsRequiringFetch.length,
-			didFetchNewSession,
-			force: !!force
-		})
 		emitSendPathTelemetry('assertSessions.complete', didFetchNewSession ? 'success' : 'hit', {
 			participants: uniqueJids.length,
 			sessionsExisting: existingCount,
@@ -1097,19 +1036,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						return {}
 					})()
 				])
-				logBaileysFileInstrumentation({
-					event: 'relay.group.prep.metadataAndSenderKey',
-					durationMs: Date.now() - metadataLoadStarted,
-					isGroup,
-					isStatus,
-					useCachedGroupMetadata,
-					hasGroupData: !!groupData,
-					participantCountFromMetadata: groupData?.participants?.length,
-					senderKeyMemoryEntries: Object.keys(senderKeyMap || {}).length
-				})
 				emitSendPathTelemetry('relay.group.prep.metadataAndSenderKey', 'success', {
 					participants: groupData?.participants?.length
 				}, {
+					durationMs: Date.now() - metadataLoadStarted,
 					isGroup,
 					isStatus,
 					useCachedGroupMetadata,
@@ -1133,17 +1063,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const performGroupOrStatusFanOut = async (): Promise<void> => {
 					const usyncFanOutStarted = Date.now()
 					const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
-					logBaileysFileInstrumentation({
-						event: 'relay.group.fanOut.getUSyncDevices',
-						durationMs: Date.now() - usyncFanOutStarted,
-						participantJidsRequested: participantsList.length,
-						devicesReturned: additionalDevices.length,
-						useUserDevicesCache: !!useUserDevicesCache
-					})
 					emitSendPathTelemetry('relay.group.fanOut.getUSyncDevices', 'success', {
 						participants: participantsList.length,
 						devices: additionalDevices.length
-					}, { useUserDevicesCache: !!useUserDevicesCache })
+					}, { durationMs: Date.now() - usyncFanOutStarted, useUserDevicesCache: !!useUserDevicesCache })
 					devices.push(...additionalDevices)
 
 					if (isGroup) {
@@ -1163,15 +1086,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const groupAddressingMode =
 						additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
 					const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
-					logBaileysFileInstrumentation({
-						event: 'relay.group.fanOut.addressing',
-						groupAddressingMode,
-						groupSenderIdentity,
-						totalDevicesAfterUSync: devices.length
-					})
 					emitSendPathTelemetry('relay.group.fanOut.addressing', 'success', {
 						devices: devices.length
-					}, { groupAddressingMode })
+					}, { groupAddressingMode, groupSenderIdentity })
 
 					const senderKeyRecipients: string[] = []
 					let senderKeyMapChanged = false
@@ -1201,11 +1118,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					if (senderKeyRecipients.length) {
 						logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
-						logBaileysFileInstrumentation({
-							event: 'relay.group.senderKey.distribution',
-							recipients: senderKeyRecipients.length,
-							senderKeyMapChanged
-						})
 						emitSendPathTelemetry('relay.group.senderKey.distribution', 'success', {
 							participants: senderKeyRecipients.length
 						}, { senderKeyMapChanged })
@@ -1222,10 +1134,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						const senderKeySessionTargets = senderKeyRecipients
 						await assertSessions(senderKeySessionTargets)
-						logBaileysFileInstrumentation({
-							event: 'relay.group.senderKey.assertSessions',
-							targets: senderKeySessionTargets.length
-						})
 						emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'success', {
 							participants: senderKeySessionTargets.length
 						})
@@ -1244,10 +1152,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					if (senderKeyMapChanged) {
 						await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
-						logBaileysFileInstrumentation({
-							event: 'relay.group.senderKey.memoryPersisted',
-							entries: Object.keys(senderKeyMap).length
-						})
 						emitSendPathTelemetry('relay.group.senderKey.memoryPersisted', 'success', {
 							cacheSets: 1
 						}, { entries: Object.keys(senderKeyMap).length })
@@ -1345,23 +1249,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					allRecipients.push(jid)
 				}
-				logBaileysFileInstrumentation({
-					event: 'relay.direct.recipients.split',
-					allRecipients: allRecipients.length,
+				emitSendPathTelemetry('relay.direct.recipients.split', 'success', {
+					participants: allRecipients.length,
+					devices: devices.length
+				}, {
 					meRecipients: meRecipients.length,
 					otherRecipients: otherRecipients.length,
 					rawDevicesEnumerated: devices.length
 				})
-				emitSendPathTelemetry('relay.direct.recipients.split', 'success', {
-					participants: allRecipients.length,
-					devices: devices.length
-				}, { meRecipients: meRecipients.length, otherRecipients: otherRecipients.length })
 
 				await assertSessions(allRecipients)
-				logBaileysFileInstrumentation({
-					event: 'relay.direct.assertSessions',
-					targets: allRecipients.length
-				})
 				emitSendPathTelemetry('relay.direct.assertSessions', 'success', {
 					participants: allRecipients.length
 				})
