@@ -44,6 +44,13 @@ export function configureBaileysFileInstrumentation(
 			'baileysInstrumentation enabled'
 		)
 		writeChain = mkdir(path.dirname(activePath), { recursive: true }).then(() => {})
+		// Write a bootstrap line so the file is created immediately when enabled.
+		logBaileysFileInstrumentation({
+			event: 'baileysInstrumentation.enabled',
+			configuredLogPath: config?.logPath,
+			resolvedLogPath: activePath,
+			processCwd: process.cwd()
+		})
 	} else {
 		instrumentationLogger?.debug('baileysInstrumentation disabled (no logPath provided)')
 	}
@@ -55,6 +62,7 @@ export function logBaileysFileInstrumentation(record: Record<string, unknown>): 
 	}
 
 	const line = JSON.stringify({ ts: new Date().toISOString(), ...record }) + '\n'
+	instrumentationLogger?.debug({ record }, 'baileysInstrumentation event')
 	instrumentationLogger?.debug({ path: activePath, event: record.event }, 'baileysInstrumentation append queued')
 	writeChain = writeChain
 		.then(() => appendFile(activePath!, line, 'utf8'))

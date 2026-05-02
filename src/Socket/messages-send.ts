@@ -967,6 +967,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isGroupOrStatus && !isRetryResend) {
+				const metadataLoadStarted = Date.now()
 				const [groupData, senderKeyMap] = await Promise.all([
 					(async () => {
 						let groupData = useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined // todo: should we rely on the cache specially if the cache is outdated and the metadata has new fields?
@@ -989,6 +990,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						return {}
 					})()
 				])
+				logBaileysFileInstrumentation({
+					event: 'relay.group.prep.metadataAndSenderKey',
+					durationMs: Date.now() - metadataLoadStarted,
+					isGroup,
+					isStatus,
+					useCachedGroupMetadata,
+					hasGroupData: !!groupData,
+					participantCountFromMetadata: groupData?.participants?.length,
+					senderKeyMemoryEntries: Object.keys(senderKeyMap || {}).length
+				})
 
 				const participantsList = groupData ? groupData.participants.map(p => p.id) : []
 
@@ -1032,6 +1043,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const groupAddressingMode =
 						additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
 					const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
+					logBaileysFileInstrumentation({
+						event: 'relay.group.fanOut.addressing',
+						groupAddressingMode,
+						groupSenderIdentity,
+						totalDevicesAfterUSync: devices.length
+					})
 
 					const senderKeyRecipients: string[] = []
 					let senderKeyMapChanged = false
@@ -1061,6 +1078,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					if (senderKeyRecipients.length) {
 						logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
+						logBaileysFileInstrumentation({
+							event: 'relay.group.senderKey.distribution',
+							recipients: senderKeyRecipients.length,
+							senderKeyMapChanged
+						})
 						if (!senderKeyDistributionMessage) {
 							throw new Boom('Missing sender key distribution message for group fanout', { statusCode: 500 })
 						}
@@ -1074,6 +1096,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						const senderKeySessionTargets = senderKeyRecipients
 						await assertSessions(senderKeySessionTargets)
+						logBaileysFileInstrumentation({
+							event: 'relay.group.senderKey.assertSessions',
+							targets: senderKeySessionTargets.length
+						})
 
 						const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
 						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
@@ -1089,6 +1115,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					if (senderKeyMapChanged) {
 						await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+						logBaileysFileInstrumentation({
+							event: 'relay.group.senderKey.memoryPersisted',
+							entries: Object.keys(senderKeyMap).length
+						})
 					}
 				}
 
@@ -1183,8 +1213,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					allRecipients.push(jid)
 				}
+				logBaileysFileInstrumentation({
+					event: 'relay.direct.recipients.split',
+					allRecipients: allRecipients.length,
+					meRecipients: meRecipients.length,
+					otherRecipients: otherRecipients.length,
+					rawDevicesEnumerated: devices.length
+				})
 
 				await assertSessions(allRecipients)
+				logBaileysFileInstrumentation({
+					event: 'relay.direct.assertSessions',
+					targets: allRecipients.length
+				})
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
