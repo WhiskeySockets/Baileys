@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals'
-import type { ILogger } from '../../Utils/logger'
 import { hasSessionCipherYieldPatch, patchSessionCipherYield } from '../../Signal/libsignal'
+import type { ILogger } from '../../Utils/logger'
 
 const mockLogger = {
 	info: jest.fn(),

@@ -46,19 +46,21 @@ export function hasSessionCipherYieldPatch(): boolean {
  * Workaround for libsignal-node event-loop starvation when decrypting with many stale sessions.
  * Yields to the event loop before each CPU-heavy session decrypt attempt.
  */
-export function patchSessionCipherYield(logger: ILogger): true {
+export function patchSessionCipherYield(logger: ILogger): boolean {
 	if (isSessionCipherYieldPatched) {
 		return true
 	}
 
 	const sessionCipherProto = (libsignal as unknown as LibSignalLike).SessionCipher?.prototype
 	if (!sessionCipherProto) {
-		throw new Error('libsignal SessionCipher prototype not found; cannot apply event-loop yield patch')
+		logger.warn('libsignal SessionCipher prototype not found; skipping event-loop yield patch')
+		return false
 	}
 
 	const originalDecrypt = sessionCipherProto.doDecryptWhisperMessage
 	if (typeof originalDecrypt !== 'function') {
-		throw new Error('libsignal SessionCipher#doDecryptWhisperMessage not found; cannot apply event-loop yield patch')
+		logger.warn('libsignal SessionCipher#doDecryptWhisperMessage not found; skipping event-loop yield patch')
+		return false
 	}
 
 	if (originalDecrypt[SESSION_CIPHER_YIELD_PATCH_MARKER]) {
@@ -66,10 +68,10 @@ export function patchSessionCipherYield(logger: ILogger): true {
 		return true
 	}
 
-	const wrappedDecrypt = (async function (this: unknown, ...args: unknown[]) {
+	const wrappedDecrypt = async function (this: unknown, ...args: unknown[]) {
 		await new Promise<void>(resolve => setImmediate(resolve))
 		return await originalDecrypt.apply(this, args)
-	}) as DecryptWhisperFn & { [SESSION_CIPHER_YIELD_PATCH_MARKER]?: true }
+	} as DecryptWhisperFn & { [SESSION_CIPHER_YIELD_PATCH_MARKER]?: true }
 	wrappedDecrypt[SESSION_CIPHER_YIELD_PATCH_MARKER] = true
 	sessionCipherProto.doDecryptWhisperMessage = wrappedDecrypt
 
