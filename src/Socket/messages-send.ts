@@ -40,6 +40,7 @@ import {
 	delay,
 	unixTimestampSeconds
 } from '../Utils'
+import { logBaileysFileInstrumentation } from '../Utils/baileys-file-instrumentation'
 import { getUrlInfo } from '../Utils/link-preview'
 import type { KeyedMutex } from '../Utils/make-mutex'
 import { makeKeyedMutex } from '../Utils/make-mutex'
@@ -417,7 +418,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useCache: boolean,
 		ignoreZeroDevices: boolean
 	): Promise<DeviceWithJid[]> => {
+		const overallStart = Date.now()
 		const deviceResults: DeviceWithJid[] = []
+		let explicitDeviceBypassCount = 0
+
+		logBaileysFileInstrumentation({
+			event: 'getUSyncDevices.start',
+			inputJids: jids.length,
+			useCache,
+			ignoreZeroDevices
+		})
+
 		if (!useCache) {
 			logger.debug('not using cache for devices')
 		}
@@ -432,6 +443,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const isExplicitDevice = typeof device === 'number' && device >= 0
 
 					if (isExplicitDevice && user) {
+						explicitDeviceBypassCount += 1
 						deviceResults.push({
 							user,
 							device,
@@ -472,9 +484,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
+		logBaileysFileInstrumentation({
+			event: 'getUSyncDevices.cachePhase',
+			explicitDeviceBypassCount,
+			usersSubjectToLookup: jidsWithUser.length,
+			cacheMissUserCount: toFetch.length,
+			cacheHitUserCount: useCache ? Math.max(0, jidsWithUser.length - toFetch.length) : 0
+		})
+
 		if (!toFetch.length) {
+			logBaileysFileInstrumentation({
+				event: 'getUSyncDevices.complete',
+				durationMs: Date.now() - overallStart,
+				totalDevicesReturned: deviceResults.length,
+				path: 'cache_only'
+			})
 			return deviceResults
 		}
+
+			const networkPhaseStart = Date.now()
 
 			const requestedLidUsers = new Set<string>()
 			for (const jid of toFetch) {
@@ -580,6 +608,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 			}
+
+			logBaileysFileInstrumentation({
+				event: 'getUSyncDevices.complete',
+				durationMs: Date.now() - overallStart,
+				networkPhaseMs: Date.now() - networkPhaseStart,
+				totalDevicesReturned: deviceResults.length,
+				path: 'network_usync',
+				usyncFetchUserCount: toFetch.length
+			})
 
 		return deviceResults
 	}
@@ -967,7 +1004,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const performGroupOrStatusFanOut = async (): Promise<void> => {
+					const usyncFanOutStarted = Date.now()
 					const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
+					logBaileysFileInstrumentation({
+						event: 'relay.group.fanOut.getUSyncDevices',
+						durationMs: Date.now() - usyncFanOutStarted,
+						participantJidsRequested: participantsList.length,
+						devicesReturned: additionalDevices.length,
+						useUserDevicesCache: !!useUserDevicesCache
+					})
 					devices.push(...additionalDevices)
 
 					if (isGroup) {

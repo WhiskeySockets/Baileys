@@ -36,6 +36,12 @@ import {
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
+import {
+	configureBaileysFileInstrumentation,
+	estimateBinaryNodeFootprint,
+	logBaileysFileInstrumentation,
+	summarizeUsyncDeviceDistribution
+} from '../Utils/baileys-file-instrumentation'
 import { getPlatformId } from '../Utils/browser-utils'
 import {
 	assertNodeErrorFree,
@@ -75,6 +81,8 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 		makeSignalRepository
 	} = config
+
+	configureBaileysFileInstrumentation(config.baileysInstrumentation)
 
 	const publicWAMBuffer = new BinaryInfo()
 
@@ -305,9 +313,28 @@ export const makeSocket = (config: SocketConfig) => {
 			]
 		}
 
+		const requestedUsers = validUsers.length
+		const protocolNames = usyncQuery.protocols.map(p => p.name)
+		const startedAt = Date.now()
 		const result = await query(iq)
+		const durationMs = Date.now() - startedAt
+		const parsed = usyncQuery.parseUSyncQueryResult(result)
 
-		return usyncQuery.parseUSyncQueryResult(result)
+		logBaileysFileInstrumentation({
+			event: 'usync.query',
+			context: usyncQuery.context,
+			mode: usyncQuery.mode,
+			protocols: protocolNames,
+			requestedUsers,
+			durationMs,
+			iqTag: result?.tag,
+			iqType: result?.attrs?.type,
+			iqFootprintBytesEstimate: estimateBinaryNodeFootprint(result),
+			parseSucceeded: !!parsed,
+			...summarizeUsyncDeviceDistribution(parsed)
+		})
+
+		return parsed
 	}
 
 	const onWhatsApp = async (...phoneNumber: string[]) => {

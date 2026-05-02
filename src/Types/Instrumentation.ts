@@ -24,6 +24,15 @@ export type SendInstrumentationEvent = {
 
 export type SendInstrumentation = (event: SendInstrumentationEvent) => void | Promise<void>
 
+/**
+ * Append structured profiling lines as NDJSON for offline analysis (timings, response summaries).
+ * Does not log raw USync/XML payloads unless extended later.
+ */
+export type BaileysFileInstrumentationConfig = {
+	/** Path to NDJSON log file (relative to `process.cwd()` or absolute). Parent dirs are created automatically. */
+	logPath: string
+}
+
 export type WarmUpGroupSendSummary = {
 	groupJid: string
 	metadataSource: 'cache' | 'network'
