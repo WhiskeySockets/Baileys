@@ -359,4 +359,66 @@ describe('processHistoryMessage', () => {
 			expect(result.lidPnMappings).toHaveLength(0)
 		})
 	})
+
+	describe('contact username field removal', () => {
+		it('should not set username field on contacts (removed in this PR)', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '1234567890123@s.whatsapp.net',
+						name: 'Test User',
+						username: 'testusername',
+						displayName: 'Test User Display'
+					} as any
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.contacts).toHaveLength(1)
+			// username field should NOT be present (was removed from Contact type and history processing)
+			expect((result.contacts[0] as any).username).toBeUndefined()
+		})
+
+		it('should still set name from username field when displayName and name are absent', () => {
+			// history.ts still uses chat.username as a fallback for contact name
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '1234567890123@s.whatsapp.net',
+						username: 'myusername'
+					} as any
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.contacts).toHaveLength(1)
+			// name should come from username as fallback
+			expect(result.contacts[0].name).toBe('myusername')
+			// but the username field itself is NOT on the Contact object
+			expect((result.contacts[0] as any).username).toBeUndefined()
+		})
+
+		it('should return shallow copy of chat object (chats.push uses spread)', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '1234567890123@s.whatsapp.net',
+						name: 'Test'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.chats).toHaveLength(1)
+			// The chat object in result should be a copy, not the original reference
+			expect(result.chats[0]).not.toBe(historySync.conversations![0])
+			expect(result.chats[0].id).toBe('1234567890123@s.whatsapp.net')
+		})
+	})
 })

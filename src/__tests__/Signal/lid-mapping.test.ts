@@ -44,4 +44,40 @@ describe('LIDMappingStore', () => {
 			expect(result).toBeNull()
 		})
 	})
+
+	describe('close()', () => {
+		it('should not throw when called', () => {
+			expect(() => lidMappingStore.close()).not.toThrow()
+		})
+
+		it('should clear the mapping cache so subsequent lookups go to the key store', async () => {
+			const lid = '12345@lid'
+			const pnUser = '54321'
+
+			// @ts-ignore
+			mockKeys.get.mockResolvedValue({ [`12345_reverse`]: pnUser } as SignalDataTypeMap['lid-mapping'])
+
+			// Warm up the cache with a lookup
+			await lidMappingStore.getPNForLID(lid)
+			const callCountBeforeClose = mockKeys.get.mock.calls.length
+
+			// Close clears the cache
+			lidMappingStore.close()
+
+			// Next lookup should go to key store again (cache was cleared)
+			// @ts-ignore
+			mockKeys.get.mockResolvedValue({ [`12345_reverse`]: pnUser } as SignalDataTypeMap['lid-mapping'])
+			await lidMappingStore.getPNForLID(lid)
+
+			// After close, the key store should have been queried again
+			expect(mockKeys.get.mock.calls.length).toBeGreaterThan(callCountBeforeClose)
+		})
+
+		it('should be idempotent - calling close() twice should not throw', () => {
+			expect(() => {
+				lidMappingStore.close()
+				lidMappingStore.close()
+			}).not.toThrow()
+		})
+	})
 })

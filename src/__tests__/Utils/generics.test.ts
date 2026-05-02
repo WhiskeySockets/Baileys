@@ -1,4 +1,5 @@
-import { BufferJSON } from '../../Utils/generics'
+import { BufferJSON, getCallStatusFromNode } from '../../Utils/generics'
+import type { BinaryNode } from '../../WABinary'
 
 describe('BufferJSON', () => {
 	const originalObject = {
@@ -66,5 +67,61 @@ describe('BufferJSON', () => {
 	it('should correctly handle an empty object', () => {
 		const revived = JSON.parse('{}', BufferJSON.reviver)
 		expect(revived).toEqual({})
+	})
+})
+
+describe('getCallStatusFromNode', () => {
+	const makeNode = (tag: string, attrs: Record<string, string> = {}): BinaryNode => ({
+		tag,
+		attrs
+	})
+
+	it('should return "offer" for tag "offer"', () => {
+		expect(getCallStatusFromNode(makeNode('offer'))).toBe('offer')
+	})
+
+	it('should return "offer" for tag "offer_notice"', () => {
+		expect(getCallStatusFromNode(makeNode('offer_notice'))).toBe('offer')
+	})
+
+	it('should return "timeout" for tag "terminate" with reason "timeout"', () => {
+		expect(getCallStatusFromNode(makeNode('terminate', { reason: 'timeout' }))).toBe('timeout')
+	})
+
+	it('should return "terminate" for tag "terminate" with non-timeout reason', () => {
+		expect(getCallStatusFromNode(makeNode('terminate', { reason: 'caller-cancel' }))).toBe('terminate')
+	})
+
+	it('should return "terminate" for tag "terminate" with no reason', () => {
+		expect(getCallStatusFromNode(makeNode('terminate'))).toBe('terminate')
+	})
+
+	it('should return "reject" for tag "reject"', () => {
+		expect(getCallStatusFromNode(makeNode('reject'))).toBe('reject')
+	})
+
+	it('should return "accept" for tag "accept"', () => {
+		expect(getCallStatusFromNode(makeNode('accept'))).toBe('accept')
+	})
+
+	it('should return "ringing" for unknown/default tag', () => {
+		expect(getCallStatusFromNode(makeNode('ringing'))).toBe('ringing')
+	})
+
+	// These tags were removed from the PR - they now fall through to the default 'ringing' case
+	it('should return "ringing" for previously supported "preaccept" tag (removed in PR)', () => {
+		expect(getCallStatusFromNode(makeNode('preaccept'))).toBe('ringing')
+	})
+
+	it('should return "ringing" for previously supported "transport" tag (removed in PR)', () => {
+		expect(getCallStatusFromNode(makeNode('transport'))).toBe('ringing')
+	})
+
+	it('should return "ringing" for previously supported "relaylatency" tag (removed in PR)', () => {
+		expect(getCallStatusFromNode(makeNode('relaylatency'))).toBe('ringing')
+	})
+
+	it('should return "ringing" for completely unknown tag', () => {
+		expect(getCallStatusFromNode(makeNode('somethingelse'))).toBe('ringing')
 	})
 })
