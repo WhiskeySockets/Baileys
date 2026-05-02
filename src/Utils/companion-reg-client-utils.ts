@@ -41,5 +41,5 @@ export const buildPairingQRData = (
 	advB64: string,
 	browser: WABrowserDescription
 ): string => {
-	return [ref, noiseKeyB64, identityKeyB64, advB64, getCompanionPlatformId(browser)].join(',')
+	return ['https://wa.me/settings/linked_devices#', ref, noiseKeyB64, identityKeyB64, advB64, getCompanionPlatformId(browser)].join(',')
 }
