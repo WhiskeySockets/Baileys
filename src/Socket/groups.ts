@@ -1,3 +1,4 @@
+import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import type { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey } from '../Types'
 import { WAMessageAddressingMode, WAMessageStubType } from '../Types'
@@ -301,7 +302,23 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 }
 
 export const extractGroupMetadata = (result: BinaryNode) => {
-	const group = getBinaryNodeChild(result, 'group')!
+	const group = getBinaryNodeChild(result, 'group')
+	if (!group) {
+		// Mirror WAWeb: surface server/client errors with their code+text instead of crashing.
+		const errorNode = getBinaryNodeChild(result, 'error')
+		if (errorNode) {
+			const code = errorNode.attrs.code ? +errorNode.attrs.code : 500
+			const text = errorNode.attrs.text || 'group metadata query failed'
+			throw new Boom(text, { statusCode: code, data: errorNode })
+		}
+
+		throw new Boom('Invalid group metadata response: missing <group> node', { data: result })
+	}
+
+	if (!group.attrs.id) {
+		throw new Boom('Invalid group metadata response: missing group id', { data: group })
+	}
+
 	const descChild = getBinaryNodeChild(group, 'description')
 	let desc: string | undefined
 	let descId: string | undefined
@@ -318,11 +335,11 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		descId = descChild.attrs.id
 	}
 
-	const groupId = group.attrs.id!.includes('@') ? group.attrs.id : jidEncode(group.attrs.id!, 'g.us')
+	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
 	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') === 'all_member_add'
 	const metadata: GroupMetadata = {
-		id: groupId!,
+		id: groupId,
 		notify: group.attrs.notify,
 		addressingMode: group.attrs.addressing_mode === 'lid' ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
 		subject: group.attrs.subject!,

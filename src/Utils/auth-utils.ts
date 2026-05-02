@@ -1,4 +1,5 @@
 import NodeCache from '@cacheable/node-cache'
+import { Boom } from '@hapi/boom'
 import { AsyncLocalStorage } from 'async_hooks'
 import { Mutex } from 'async-mutex'
 import { randomBytes } from 'crypto'
@@ -341,6 +342,19 @@ export const addTransactionCapability = (
 			}
 		}
 	}
+}
+
+/**
+ * Returns the authenticated user's JID, or throws a Boom-401 if creds are not yet authenticated.
+ * Use this anywhere we'd otherwise reach for `creds.me!.id` to fail fast with a descriptive error.
+ */
+export const assertMeId = (creds: AuthenticationCreds): string => {
+	const id = creds.me?.id
+	if (!id) {
+		throw new Boom('Cannot proceed: socket is not authenticated yet (creds.me.id is missing)', { statusCode: 401 })
+	}
+
+	return id
 }
 
 export const initAuthCreds = (): AuthenticationCreds => {
