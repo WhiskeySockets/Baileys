@@ -135,6 +135,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			clearTimeout(chatDeleteDebounceTimeout)
 			chatDeleteDebounceTimeout = null
 		}
+
 		pendingChatDeletes.clear()
 
 		// Clear history cache if it exceeds the max size
