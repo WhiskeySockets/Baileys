@@ -248,7 +248,7 @@ const generateFallbackWaveform = (audioData: Buffer): Uint8Array => {
 
 	let seed = audioData.length
 	for(let i = 0; i < Math.min(audioData.length, 100); i++) {
-		seed = (seed * 31 + audioData[i]) >>> 0
+		seed = (seed * 31 + (audioData[i] ?? 0)) >>> 0
 	}
 
 	const random = () => {
