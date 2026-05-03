@@ -65,6 +65,7 @@ export class WebSocketClient extends AbstractSocketClient {
 		for (const [event, handler] of this.socketListeners) {
 			this.socket.removeListener(event, handler)
 		}
+
 		this.socketListeners.clear()
 
 		const closePromise = new Promise<void>(resolve => {

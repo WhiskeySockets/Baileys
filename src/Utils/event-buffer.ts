@@ -82,7 +82,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	 * Without this, orphaned timeouts fire after the connection is
 	 * torn down, causing errors or keeping memory alive.
 	 */
-	let activeBufferedTimeouts = new Set<NodeJS.Timeout>()
+	const activeBufferedTimeouts = new Set<NodeJS.Timeout>()
 	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
 	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
 
@@ -268,6 +268,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			for (const t of activeBufferedTimeouts) {
 				clearTimeout(t)
 			}
+
 			activeBufferedTimeouts.clear()
 
 			isBuffering = false

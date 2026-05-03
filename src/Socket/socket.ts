@@ -671,10 +671,7 @@ export const makeSocket = (config: SocketConfig) => {
 		 */
 		if (!ws.isClosed && !ws.isClosing) {
 			try {
-				await Promise.race([
-					ws.close(),
-					new Promise<void>(resolve => setTimeout(resolve, 5000))
-				])
+				await Promise.race([ws.close(), new Promise<void>(resolve => setTimeout(resolve, 5000))])
 			} catch {
 				// Ignore close errors — we're tearing down anyway
 			}
@@ -810,6 +807,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		scheduleNextPing()
 	}
+
 	/** i have no idea why this exists. pls enlighten me */
 	const sendPassiveIq = (tag: 'passive' | 'active') =>
 		query({
