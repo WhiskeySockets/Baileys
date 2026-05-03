@@ -44,8 +44,9 @@ describe('event-buffer chats.delete debounce', () => {
 
 	it('flushes pending chats.delete before another event to preserve order', () => {
 		const ev = makeEventBuffer(createMockLogger())
-		const chatDeleteHandler = jest.fn()
-		const chatUpdateHandler = jest.fn()
+		const order: string[] = []
+		const chatDeleteHandler = jest.fn(() => order.push('delete'))
+		const chatUpdateHandler = jest.fn(() => order.push('update'))
 
 		ev.on('chats.delete', chatDeleteHandler)
 		ev.on('chats.update', chatUpdateHandler)
@@ -56,5 +57,6 @@ describe('event-buffer chats.delete debounce', () => {
 		expect(chatDeleteHandler).toHaveBeenCalledTimes(1)
 		expect(chatDeleteHandler).toHaveBeenCalledWith(['a@s.whatsapp.net'])
 		expect(chatUpdateHandler).toHaveBeenCalledTimes(1)
+		expect(order).toEqual(['delete', 'update'])
 	})
 })
