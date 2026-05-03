@@ -469,6 +469,7 @@ function signalStorage(
 			preKeyCleanupTimer.unref()
 		}
 	}
+
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
@@ -522,9 +523,7 @@ function signalStorage(
 			const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
 
 			const keysMatch =
-				existingKey &&
-				existingKey.length === identityKey.length &&
-				existingKey.every((byte, i) => byte === identityKey[i])
+				existingKey?.length === identityKey.length && existingKey.every((byte, i) => byte === identityKey[i])
 
 			if (existingKey && !keysMatch) {
 				// Identity changed - clear session and update key
