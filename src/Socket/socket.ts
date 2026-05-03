@@ -334,7 +334,9 @@ export const makeSocket = (config: SocketConfig) => {
 		if (usyncQuery.users.length > 0) {
 			const results = await executeUSyncQuery(usyncQuery)
 			if (results) {
-				const mapped = results.list.filter(a => !!a.contact).map(({ contact, id }) => ({ jid: id, exists: contact as boolean }))
+				const mapped = results.list
+					.filter(a => !!a.contact)
+					.map(({ contact, id }) => ({ jid: id, exists: contact as boolean }))
 				output.push(...mapped)
 			}
 		}
