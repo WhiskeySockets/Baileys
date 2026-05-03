@@ -90,6 +90,10 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	})
 
 	function buffer() {
+		if (pendingChatDeletes.size) {
+			flushPendingChatDeletes(true)
+		}
+
 		if (!isBuffering) {
 			logger.debug('Event buffer activated')
 			isBuffering = true
@@ -136,7 +140,9 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			chatDeleteDebounceTimeout = null
 		}
 
-		pendingChatDeletes.clear()
+		if (pendingChatDeletes.size) {
+			flushPendingChatDeletes(true)
+		}
 
 		// Clear history cache if it exceeds the max size
 		if (historyCache.size > MAX_HISTORY_CACHE_SIZE) {

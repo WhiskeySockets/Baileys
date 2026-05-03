@@ -59,4 +59,17 @@ describe('event-buffer chats.delete debounce', () => {
 		expect(chatUpdateHandler).toHaveBeenCalledTimes(1)
 		expect(order).toEqual(['delete', 'update'])
 	})
+
+	it('does not drop pending chats.delete when transitioning into buffer/flush', () => {
+		const ev = makeEventBuffer(createMockLogger())
+		const handler = jest.fn()
+		ev.on('chats.delete', handler)
+
+		ev.emit('chats.delete', ['a@s.whatsapp.net'])
+		ev.buffer()
+		ev.flush()
+
+		expect(handler).toHaveBeenCalledTimes(1)
+		expect(handler).toHaveBeenCalledWith(['a@s.whatsapp.net'])
+	})
 })
