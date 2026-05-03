@@ -369,7 +369,7 @@ export const extractSyncdPatches = async (result: BinaryNode, options: RequestIn
 						content = Buffer.from(Object.values(content))
 					}
 
-					const syncd = proto.SyncdPatch.decode(content as Uint8Array)
+					const syncd = proto.SyncdPatch.decode(content)
 					if (!syncd.version) {
 						syncd.version = { version: +collectionNode.attrs.version! + 1 }
 					}

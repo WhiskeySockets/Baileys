@@ -1354,14 +1354,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						attrs: {
 							polltype: 'creation'
 						}
-					} as BinaryNode)
+					})
 				} else if (isEventMsg) {
 					additionalNodes.push({
 						tag: 'meta',
 						attrs: {
 							event_type: 'creation'
 						}
-					} as BinaryNode)
+					})
 				}
 
 				await relayMessage(jid, fullMsg.message!, {

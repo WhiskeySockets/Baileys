@@ -45,7 +45,7 @@ class TransportState {
 		this.iv[10] = (c >>> 8) & 0xff
 		this.iv[11] = c & 0xff
 
-		return aesDecryptGCM(ciphertext, this.decKey, this.iv, EMPTY_BUFFER) as Buffer
+		return aesDecryptGCM(ciphertext, this.decKey, this.iv, EMPTY_BUFFER)
 	}
 }
 

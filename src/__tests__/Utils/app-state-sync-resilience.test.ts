@@ -18,7 +18,7 @@ describe('App State Sync', () => {
 			const msg: proto.ISyncdPatch = {
 				keyId: { id: Buffer.from('missing-key') },
 				mutations: [],
-				version: { version: 1 as any },
+				version: { version: 1 },
 				snapshotMac: Buffer.alloc(32),
 				patchMac: Buffer.alloc(32)
 			}
@@ -33,7 +33,7 @@ describe('App State Sync', () => {
 
 		it('decodeSyncdSnapshot throws with isMissingKey on missing snapshot key', async () => {
 			const snapshot: proto.ISyncdSnapshot = {
-				version: { version: 1 as any },
+				version: { version: 1 },
 				records: [],
 				keyId: { id: Buffer.from('missing-key') },
 				mac: Buffer.alloc(32)

@@ -308,7 +308,7 @@ export const prepareWAMessageMedia = async (
 			mediaKeyTimestamp: unixTimestampSeconds(),
 			...uploadData,
 			media: undefined
-		} as any)
+		})
 	})
 
 	if (uploadData.ptv) {
