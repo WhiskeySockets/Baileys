@@ -813,6 +813,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				return
 			}
 
+			if(tag === 'remove'){
+				signalRepository.deleteSession([deviceJid])
+			}
+
 			const existingCache: JidWithDevice[] = (await userDevicesCache?.get(user)) || ([] as JidWithDevice[])
 
 			if (!existingCache.length) {
