@@ -618,9 +618,9 @@ export const makeSocket = (config: SocketConfig) => {
 					}
 				}
 			})
-		} catch(error) {
+		} catch (error) {
 			logger.error({ error }, 'error decoding frame')
-			end(new Boom('Decode frame error', { statusCode: DisconnectReason.badSession, data: { error } }))
+			void end(error instanceof Error ? error : new Error(String(error)))
 		}
 	}
 
