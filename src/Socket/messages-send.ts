@@ -1060,14 +1060,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					participantsList.push(...statusJidList)
 				}
 
-				const performGroupOrStatusFanOut = async (): Promise<void> => {
-					const usyncFanOutStarted = Date.now()
-					const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
-					emitSendPathTelemetry('relay.group.fanOut.getUSyncDevices', 'success', {
-						participants: participantsList.length,
-						devices: additionalDevices.length
-					}, { durationMs: Date.now() - usyncFanOutStarted, useUserDevicesCache: !!useUserDevicesCache })
-					devices.push(...additionalDevices)
+					const performGroupOrStatusFanOut = async (): Promise<void> => {
+						const usyncFanOutStarted = Date.now()
+						const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
+						emitSendPathTelemetry('relay.group.fanOut.getUSyncDevices', 'success', {
+							participants: participantsList.length,
+							devices: additionalDevices.length
+						}, { durationMs: Date.now() - usyncFanOutStarted, useUserDevicesCache: !!useUserDevicesCache })
+						devices.push(...additionalDevices)
 
 					if (isGroup) {
 						additionalAttributes = {
@@ -1076,10 +1076,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					const patched = await patchMessageBeforeSending(message)
-					if (Array.isArray(patched)) {
-						throw new Boom('Per-jid patching is not supported in groups')
-					}
+						const patchStarted = Date.now()
+						emitSendPathTelemetry('relay.group.fanOut.patchMessage', 'start', {
+							participants: participantsList.length,
+							devices: devices.length
+						})
+						const patched = await patchMessageBeforeSending(message)
+						if (Array.isArray(patched)) {
+							throw new Boom('Per-jid patching is not supported in groups')
+						}
+						emitSendPathTelemetry('relay.group.fanOut.patchMessage', 'success', {
+							participants: participantsList.length,
+							devices: devices.length
+						}, { durationMs: Date.now() - patchStarted })
 
 					const bytes = encodeWAMessage(patched)
 					reportingMessage = patched
@@ -1109,12 +1118,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
-						group: destinationJid,
-						data: bytes,
-						meId: groupSenderIdentity,
-						createDistributionMessage: senderKeyRecipients.length > 0
-					})
+						const encryptStarted = Date.now()
+						emitSendPathTelemetry('relay.group.fanOut.encryptGroupMessage', 'start', {
+							devices: devices.length
+						}, { senderKeyRecipients: senderKeyRecipients.length })
+						const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
+							group: destinationJid,
+							data: bytes,
+							meId: groupSenderIdentity,
+							createDistributionMessage: senderKeyRecipients.length > 0
+						})
+						emitSendPathTelemetry('relay.group.fanOut.encryptGroupMessage', 'success', {
+							devices: devices.length
+						}, {
+							durationMs: Date.now() - encryptStarted,
+							senderKeyRecipients: senderKeyRecipients.length
+						})
 
 					if (senderKeyRecipients.length) {
 						logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
@@ -1132,17 +1151,29 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						}
 
-						const senderKeySessionTargets = senderKeyRecipients
-						await assertSessions(senderKeySessionTargets)
-						emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'success', {
-							participants: senderKeySessionTargets.length
-						})
+							const senderKeySessionTargets = senderKeyRecipients
+							const senderKeyAssertStarted = Date.now()
+							emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'start', {
+								participants: senderKeySessionTargets.length
+							})
+							await assertSessions(senderKeySessionTargets)
+							emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'success', {
+								participants: senderKeySessionTargets.length
+							}, { durationMs: Date.now() - senderKeyAssertStarted })
 
-						const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
-						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
+							const senderKeyNodesStarted = Date.now()
+							emitSendPathTelemetry('relay.group.senderKey.createParticipantNodes', 'start', {
+								participants: senderKeyRecipients.length
+							})
+							const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
+							emitSendPathTelemetry('relay.group.senderKey.createParticipantNodes', 'success', {
+								participants: senderKeyRecipients.length,
+								devices: result.nodes.length
+							}, { durationMs: Date.now() - senderKeyNodesStarted })
+							shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
-						participants.push(...result.nodes)
-					}
+							participants.push(...result.nodes)
+						}
 
 					binaryNodeContent.push({
 						tag: 'enc',
@@ -1158,11 +1189,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
-				if (isGroup) {
-					await groupParticipantPrepMutex.mutex(jid, performGroupOrStatusFanOut)
-				} else {
-					await performGroupOrStatusFanOut()
-				}
+					if (isGroup) {
+						const mutexWaitStarted = Date.now()
+						emitSendPathTelemetry('relay.group.fanOut.mutex', 'start', {
+							participants: participantsList.length
+						}, { jid })
+						try {
+							await groupParticipantPrepMutex.mutex(jid, async () => {
+								emitSendPathTelemetry('relay.group.fanOut.mutex', 'hit', {
+									participants: participantsList.length
+								}, { jid, waitMs: Date.now() - mutexWaitStarted })
+								return performGroupOrStatusFanOut()
+							})
+							emitSendPathTelemetry('relay.group.fanOut.mutex', 'success', {
+								participants: participantsList.length
+							}, { jid, durationMs: Date.now() - mutexWaitStarted })
+						} catch (error) {
+							emitSendPathTelemetry('relay.group.fanOut.mutex', 'failure', {
+								participants: participantsList.length
+							}, {
+								jid,
+								durationMs: Date.now() - mutexWaitStarted,
+								error: error instanceof Error ? error.message : String(error)
+							})
+							throw error
+						}
+					} else {
+						await performGroupOrStatusFanOut()
+					}
 			} else {
 				// ADDRESSING CONSISTENCY: Match own identity to conversation context
 				// TODO: investigate if this is true
@@ -1775,6 +1829,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						additionalAttributes,
 						statusJidList: options.statusJidList,
 						additionalNodes,
+						useUserDevicesCache: !!userDevicesCache,
 						signal
 					}),
 					signal
