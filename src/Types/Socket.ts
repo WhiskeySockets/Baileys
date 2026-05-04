@@ -2,29 +2,23 @@ import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
+import type {
+	SendInstrumentation,
+	WarmUpGroupParticipantsSummary,
+	WarmUpGroupSendSummary
+} from './Instrumentation'
 import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
 import type { SignalRepositoryWithLIDStore } from './Signal'
+import type { CacheStore, PossiblyExtendedCacheStore } from './cache-store'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
 
-export type CacheStore = {
-	/** get a cached key and change the stats */
-	get<T>(key: string): Promise<T> | T | undefined
-	/** set a key in the cache */
-	set<T>(key: string, value: T): Promise<void> | void | number | boolean
-	/** delete a key from the cache */
-	del(key: string): void | Promise<void> | number | boolean
-	/** flush all data */
-	flushAll(): void | Promise<void>
-}
-
-export type PossiblyExtendedCacheStore = CacheStore & {
-	mget?: <T>(keys: string[]) => Promise<Record<string, T | undefined>>
-	mset?: <T>(entries: { key: string; value: T }[]) => Promise<void> | void | number | boolean
-	mdel?: (keys: string[]) => void | Promise<void> | number | boolean
+export type GroupWarmUpSocketMethods = {
+	warmUpGroupSend(groupJid: string): Promise<WarmUpGroupSendSummary>
+	warmUpGroupParticipants(groupJid: string, participants: string[]): Promise<WarmUpGroupParticipantsSummary>
 }
 
 export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
@@ -84,6 +78,10 @@ export type SocketConfig = {
 	msgRetryCounterCache?: CacheStore
 	/** provide a cache to store a user's device list */
 	userDevicesCache?: PossiblyExtendedCacheStore
+	/** provide a cache to store Signal peer sessions */
+	peerSessionsCache?: CacheStore
+	/** optional metrics hook for send-path telemetry */
+	telemetry?: SendInstrumentation
 	/** cache to store call offers */
 	callOfferCache?: CacheStore
 	/** cache to track placeholder resends */
@@ -148,3 +146,5 @@ export type SocketConfig = {
 		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 	) => SignalRepositoryWithLIDStore
 }
+
+export type { WarmUpGroupParticipantsSummary, WarmUpGroupSendSummary } from './Instrumentation'

@@ -27,6 +27,7 @@ import type {
 import { type BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageIDV2 } from './generics'
+import { measureTelemetry } from './instrumentation'
 import type { ILogger } from './logger'
 
 const getTmpFilesDirectory = () => tmpdir()
@@ -429,11 +430,7 @@ export const encryptedStream = async (
 		for await (const data of stream) {
 			fileLength += data.length
 
-			if (
-				type === 'remote' &&
-				(opts as any)?.maxContentLength &&
-				fileLength > (opts as any).maxContentLength
-			) {
+			if (type === 'remote' && (opts as any)?.maxContentLength && fileLength > (opts as any).maxContentLength) {
 				throw new Boom(`content length exceeded when encrypting "${type}"`, {
 					data: { media, type }
 				})
@@ -857,9 +854,11 @@ const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<Medi
 }
 
 export const getWAUploadToServer = (
-	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
+	config: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
+	const { customUploadHosts, fetchAgent, logger, options, telemetry } = config
+
 	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, signal }) => {
 		if (signal?.aborted) {
 			throw signal.reason ?? new Error('Upload aborted')
@@ -889,24 +888,33 @@ export const getWAUploadToServer = (
 			Origin: DEFAULT_ORIGIN
 		}
 
-		for (const { hostname } of hosts) {
-			logger.debug(`uploading to "${hostname}"`)
+		for (const [attempt, { hostname }] of hosts.entries()) {
+			logger.debug({ hostname, attempt: attempt + 1 }, 'uploading media to host')
 
-			const auth = encodeURIComponent(uploadInfo.auth)
-			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+			const uploadAuth = encodeURIComponent(uploadInfo.auth)
+			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${uploadAuth}&token=${fileEncSha256B64}`
 
 			let result: MediaUploadResult | undefined
 			try {
-				result = await uploadMedia(
+				result = await measureTelemetry(
+					telemetry,
 					{
-						url,
-						filePath,
-						headers,
-						timeoutMs,
-						agent: fetchAgent,
-						signal
+						stage: 'uploadMedia',
+						host: hostname,
+						counts: { attempts: attempt + 1 }
 					},
-					logger
+					() =>
+						uploadMedia(
+							{
+								url,
+								filePath,
+								headers,
+								timeoutMs,
+								agent: fetchAgent,
+								signal
+							},
+							logger
+						)
 				)
 
 				if (result?.url || result?.direct_path) {
@@ -918,13 +926,14 @@ export const getWAUploadToServer = (
 						ts: result.ts
 					}
 					break
-				} else {
-					if (signal?.aborted) {
-						throw signal.reason ?? new Error('Upload aborted')
-					}
-					uploadInfo = await refreshMediaConn(true)
-					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
+
+				if (signal?.aborted) {
+					throw signal.reason ?? new Error('Upload aborted')
+				}
+
+				uploadInfo = await refreshMediaConn(true)
+				throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 			} catch (error: any) {
 				if (signal?.aborted) {
 					throw signal.reason ?? error
@@ -935,7 +944,9 @@ export const getWAUploadToServer = (
 					throw error
 				}
 
-				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
+				const nextHost = hosts[attempt + 1]?.hostname
+				const isLast = !nextHost
+
 				logger.warn(
 					{ trace: error?.stack, uploadResult: result },
 					`Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`

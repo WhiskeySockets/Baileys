@@ -40,6 +40,7 @@ import {
 	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
+import { emitTelemetry } from './instrumentation'
 import { shouldIncludeReportingToken } from './reporting-utils'
 
 type ExtractByKey<T, K extends PropertyKey> = T extends Record<K, any> ? T : never
@@ -121,6 +122,24 @@ const assertColor = async (color: any) => {
 	}
 }
 
+const describeMediaSource = (media: WAMediaUpload) => {
+	if (typeof media !== 'object' || media === null || !('url' in media) || !media.url) {
+		return {}
+	}
+
+	try {
+		const sourceUrl = new URL(media.url.toString())
+		return {
+			sourceHost: sourceUrl.host,
+			sourceKeyHash: sha256(Buffer.from(sourceUrl.toString())).toString('hex').slice(0, 16)
+		}
+	} catch {
+		return {
+			sourceKeyHash: sha256(Buffer.from(media.url.toString())).toString('hex').slice(0, 16)
+		}
+	}
+}
+
 export const prepareWAMessageMedia = async (
 	message: AnyMediaMessageContent,
 	options: MessageContentGenerationOptions
@@ -143,13 +162,13 @@ export const prepareWAMessageMedia = async (
 		media: (message as any)[mediaType]
 	}
 	delete (uploadData as any)[mediaType]
-	// check if cacheable + generate cache key
 	const cacheableKey =
 		typeof uploadData.media === 'object' &&
 		'url' in uploadData.media &&
 		!!uploadData.media.url &&
 		!!options.mediaCache &&
 		mediaType + ':' + uploadData.media.url.toString()
+	const { sourceHost, sourceKeyHash } = describeMediaSource(uploadData.media)
 
 	if (mediaType === 'document' && !uploadData.fileName) {
 		uploadData.fileName = 'file'
@@ -162,7 +181,13 @@ export const prepareWAMessageMedia = async (
 	if (cacheableKey) {
 		const mediaBuff = await options.mediaCache!.get<Buffer>(cacheableKey)
 		if (mediaBuff) {
-			logger?.debug({ cacheableKey }, 'got media cache hit')
+			logger?.debug({ cacheKeyHash: sourceKeyHash, sourceHost }, 'got media cache hit')
+			await emitTelemetry(options.telemetry, {
+				stage: 'prepareWAMessageMedia',
+				status: 'hit',
+				instanceId: options.instanceId,
+				counts: { cacheHits: 1 }
+			})
 
 			const obj = proto.Message.decode(mediaBuff)
 			const key = `${mediaType}Message`
@@ -175,7 +200,13 @@ export const prepareWAMessageMedia = async (
 
 	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
 	if (isNewsletter) {
-		logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter')
+		logger?.info({ cacheKeyHash: sourceKeyHash, sourceHost }, 'Preparing raw media for newsletter')
+		await emitTelemetry(options.telemetry, {
+			stage: 'prepareWAMessageMedia',
+			status: 'start',
+			instanceId: options.instanceId,
+			counts: { attempts: 1 }
+		})
 		const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(
 			uploadData.media,
 			options.mediaTypeOverride || mediaType,
@@ -190,11 +221,16 @@ export const prepareWAMessageMedia = async (
 			timeoutMs: options.mediaUploadTimeoutMs,
 			signal: options.options?.signal ?? undefined
 		})
+		await emitTelemetry(options.telemetry, {
+			stage: 'prepareWAMessageMedia',
+			status: 'success',
+			instanceId: options.instanceId,
+			counts: { attempts: 1 }
+		})
 
 		await fs.unlink(filePath)
 
 		const obj = WAProto.Message.fromObject({
-			// todo: add more support here
 			[`${mediaType}Message`]: (MessageTypeProto as any)[mediaType].fromObject({
 				url: mediaUrl,
 				directPath,
@@ -215,7 +251,7 @@ export const prepareWAMessageMedia = async (
 		}
 
 		if (cacheableKey) {
-			logger?.debug({ cacheableKey }, 'set cache')
+			logger?.debug({ cacheKeyHash: sourceKeyHash, sourceHost }, 'set cache')
 			await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
 		}
 
@@ -248,12 +284,22 @@ export const prepareWAMessageMedia = async (
 				timeoutMs: options.mediaUploadTimeoutMs,
 				signal: options.options?.signal ?? undefined
 			})
-			logger?.debug({ mediaType, cacheableKey }, 'uploaded media')
+			logger?.debug({ mediaType, cacheKeyHash: sourceKeyHash, sourceHost }, 'uploaded media')
+			await emitTelemetry(options.telemetry, {
+				stage: 'prepareWAMessageMedia',
+				status: 'success',
+				instanceId: options.instanceId,
+				counts: { attempts: 1 }
+			})
 			return result
 		})(),
 		(async () => {
-			try {
-				if (requiresThumbnailComputation) {
+			const logFailure = (error: unknown) => {
+				logger?.warn({ trace: (error as any).stack }, 'failed to obtain extra info')
+			}
+
+			if (requiresThumbnailComputation) {
+				try {
 					const { thumbnail, originalImageDimensions } = await generateThumbnail(
 						originalFilePath!,
 						mediaType as 'image' | 'video',
@@ -267,24 +313,36 @@ export const prepareWAMessageMedia = async (
 					}
 
 					logger?.debug('generated thumbnail')
+				} catch (error) {
+					logFailure(error)
 				}
+			}
 
-				if (requiresDurationComputation) {
+			if (requiresDurationComputation) {
+				try {
 					uploadData.seconds = await getAudioDuration(originalFilePath!)
 					logger?.debug('computed audio duration')
+				} catch (error) {
+					logFailure(error)
 				}
+			}
 
-				if (requiresWaveformProcessing) {
+			if (requiresWaveformProcessing) {
+				try {
 					uploadData.waveform = await getAudioWaveform(originalFilePath!, logger)
 					logger?.debug('processed waveform')
+				} catch (error) {
+					logFailure(error)
 				}
+			}
 
-				if (requiresAudioBackground) {
+			if (requiresAudioBackground) {
+				try {
 					uploadData.backgroundArgb = await assertColor(options.backgroundColor)
 					logger?.debug('computed backgroundColor audio status')
+				} catch (error) {
+					logFailure(error)
 				}
-			} catch (error) {
-				logger?.warn({ trace: (error as any).stack }, 'failed to obtain extra info')
 			}
 		})()
 	]).finally(async () => {
@@ -295,7 +353,7 @@ export const prepareWAMessageMedia = async (
 			}
 
 			logger?.debug('removed tmp files')
-		} catch (error) {
+		} catch {
 			logger?.warn('failed to remove tmp file')
 		}
 	})
@@ -319,8 +377,12 @@ export const prepareWAMessageMedia = async (
 		delete obj.videoMessage
 	}
 
+	if (obj.stickerMessage) {
+		obj.stickerMessage.stickerSentTs = Date.now()
+	}
+
 	if (cacheableKey) {
-		logger?.debug({ cacheableKey }, 'set cache')
+		logger?.debug({ cacheKeyHash: sourceKeyHash, sourceHost }, 'set cache')
 		await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
 	}
 

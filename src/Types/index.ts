@@ -1,3 +1,4 @@
+export * from './cache-store'
 export * from './Auth'
 export * from './GroupMetadata'
 export * from './Chat'
@@ -10,11 +11,15 @@ export * from './Product'
 export * from './Call'
 export * from './Signal'
 export * from './Newsletter'
+export * from './Instrumentation'
 
 import type { AuthenticationState } from './Auth'
 import type { SocketConfig } from './Socket'
 
-export type UserFacingSocketConfig = Partial<SocketConfig> & { auth: AuthenticationState }
+/** Everything optional except `auth`. */
+export type UserFacingSocketConfig = Partial<SocketConfig> & {
+	auth: AuthenticationState
+}
 
 export type BrowsersMap = {
 	ubuntu(browser: string): [string, string, string]

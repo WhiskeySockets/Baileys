@@ -1,9 +1,11 @@
+import { jest } from '@jest/globals'
 import * as fs from 'fs'
 import * as http from 'http'
 import * as os from 'os'
 import * as path from 'path'
 import { Readable } from 'stream'
 import { encryptedStream, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import { prepareWAMessageMedia } from '../../Utils/messages'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -282,6 +284,32 @@ describe('uploadWithNodeHttp', () => {
 
 		expect(result).toEqual(expectedResponse)
 		expect(finalReceivedBody).toBe(testFileContent)
+	})
+})
+
+describe('prepareWAMessageMedia', () => {
+	it('sets stickerSentTs for regular sticker messages', async () => {
+		const upload = jest.fn(async () => ({
+			mediaUrl: 'https://example.com/media.webp',
+			directPath: '/media.webp'
+		}))
+
+		const result = await prepareWAMessageMedia(
+			{
+				sticker: Buffer.from('sticker-bytes')
+			},
+			{
+				upload,
+				logger: undefined,
+				options: {},
+				instanceId: 'instance-1'
+			} as any
+		)
+
+		expect(result.stickerMessage).toBeDefined()
+		expect(result.stickerMessage?.stickerSentTs).toBeDefined()
+		expect(typeof result.stickerMessage?.stickerSentTs).toBe('number')
+		expect(upload).toHaveBeenCalledTimes(1)
 	})
 })
 

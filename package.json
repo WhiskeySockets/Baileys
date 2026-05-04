@@ -4,7 +4,7 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "version": "7.0.2",
+  "version": "7.0.3",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
@@ -106,7 +106,6 @@
       "optional": true
     }
   },
-  "packageManager": "yarn@4.9.2",
   "engines": {
     "node": ">=20.0.0"
   }

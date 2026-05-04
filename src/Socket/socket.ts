@@ -37,6 +37,7 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { getPlatformId } from '../Utils/browser-utils'
+import { emitTelemetry } from '../Utils/instrumentation'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -305,9 +306,39 @@ export const makeSocket = (config: SocketConfig) => {
 			]
 		}
 
+		const requestedUsers = validUsers.length
+		const protocolNames = usyncQuery.protocols.map(p => p.name)
+		const startedAt = Date.now()
 		const result = await query(iq)
+		const durationMs = Date.now() - startedAt
+		const parsed = usyncQuery.parseUSyncQueryResult(result)
 
-		return usyncQuery.parseUSyncQueryResult(result)
+		void emitTelemetry(config.telemetry, {
+			stage: 'usync.query',
+			status: 'success',
+			instanceId: authState.creds.me?.id,
+			counts: {
+				participants: requestedUsers,
+				devices: parsed?.list?.reduce((total, entry) => {
+					const deviceList = (entry as { devices?: { deviceList?: unknown[] } })?.devices?.deviceList
+					return total + (deviceList?.length || 0)
+				}, 0)
+			},
+			durationMs,
+			details: {
+				namespace: 'send_path',
+				component: 'socket',
+				schemaVersion: 1,
+				context: usyncQuery.context,
+				mode: usyncQuery.mode,
+				protocols: protocolNames,
+				iqTag: result?.tag,
+				iqType: result?.attrs?.type,
+				parseSucceeded: !!parsed
+			}
+		})
+
+		return parsed
 	}
 
 	const onWhatsApp = async (...phoneNumber: string[]) => {
