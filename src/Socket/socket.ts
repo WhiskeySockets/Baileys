@@ -311,7 +311,30 @@ export const makeSocket = (config: SocketConfig) => {
 		const startedAt = Date.now()
 		const result = await query(iq)
 		const durationMs = Date.now() - startedAt
+		let resultNodeBytes: number | undefined
+		let resultXmlBytes: number | undefined
+		if (result) {
+			try {
+				resultNodeBytes = encodeBinaryNode(result).byteLength
+			} catch (error) {
+				logger.debug({ error }, 'failed to measure usync binary node size')
+			}
+
+			try {
+				resultXmlBytes = Buffer.byteLength(binaryNodeToString(result), 'utf8')
+			} catch (error) {
+				logger.debug({ error }, 'failed to measure usync xml node size')
+			}
+		}
 		const parsed = usyncQuery.parseUSyncQueryResult(result)
+		if (parsed) {
+			parsed.telemetry = {
+				resultNodeBytes,
+				resultNodeMb: resultNodeBytes === undefined ? undefined : resultNodeBytes / 1024 / 1024,
+				resultXmlBytes,
+				resultXmlMb: resultXmlBytes === undefined ? undefined : resultXmlBytes / 1024 / 1024
+			}
+		}
 
 		void emitTelemetry(config.telemetry, {
 			stage: 'usync.query',
@@ -334,7 +357,11 @@ export const makeSocket = (config: SocketConfig) => {
 				protocols: protocolNames,
 				iqTag: result?.tag,
 				iqType: result?.attrs?.type,
-				parseSucceeded: !!parsed
+				parseSucceeded: !!parsed,
+				resultNodeBytes,
+				resultNodeMb: resultNodeBytes === undefined ? undefined : resultNodeBytes / 1024 / 1024,
+				resultXmlBytes,
+				resultXmlMb: resultXmlBytes === undefined ? undefined : resultXmlBytes / 1024 / 1024
 			}
 		})
 

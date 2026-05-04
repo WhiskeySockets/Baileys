@@ -10,6 +10,7 @@ import type {
 	MessageReceiptType,
 	MessageRelayOptions,
 	MiscMessageGenerationOptions,
+	PossiblyExtendedCacheStore,
 	SocketConfig,
 	WAMessage,
 	WAMessageKey,
@@ -149,6 +150,36 @@ export const createPeerSessionsCache = (peerSessionsCache?: CacheStore): CacheSt
 export const readCacheEntry = async <T>(cache: CacheStore, key: string): Promise<T | undefined> =>
 	await cache.get<T>(key)
 
+const readCacheEntries = async <T>(cache: CacheStore, keys: string[]): Promise<Record<string, T | undefined>> => {
+	const extendedCache = cache as PossiblyExtendedCacheStore
+	if (extendedCache.mget) {
+		return extendedCache.mget<T>(keys)
+	}
+
+	const entries: Record<string, T | undefined> = {}
+	for (const key of keys) {
+		entries[key] = await cache.get<T>(key)
+	}
+
+	return entries
+}
+
+const writeCacheEntries = async <T>(cache: CacheStore, entries: { key: string; value: T }[]) => {
+	if (!entries.length) {
+		return
+	}
+
+	const extendedCache = cache as PossiblyExtendedCacheStore
+	if (extendedCache.mset) {
+		await extendedCache.mset(entries)
+		return
+	}
+
+	for (const { key, value } of entries) {
+		await cache.set(key, value)
+	}
+}
+
 export const warmUpGroupParticipants = async (
 	groupJid: string,
 	participants: string[],
@@ -180,8 +211,10 @@ export const warmUpGroupParticipants = async (
 		return runInner()
 	}
 
-	return shareInflightPromise(coordinator.inflightParticipantWarmUps, participantWarmInflightKey(groupJid, participants), () =>
-		coordinator.keyedMutex.mutex(groupJid, runInner)
+	return shareInflightPromise(
+		coordinator.inflightParticipantWarmUps,
+		participantWarmInflightKey(groupJid, participants),
+		() => coordinator.keyedMutex.mutex(groupJid, runInner)
 	)
 }
 
@@ -220,10 +253,7 @@ export const warmUpGroupSend = async (groupJid: string, deps: WarmUpGroupDeps): 
 	}
 }
 
-export const createRefreshMediaConn = (
-	query: (node: BinaryNode) => Promise<BinaryNode>,
-	logger: ILogger
-) => {
+export const createRefreshMediaConn = (query: (node: BinaryNode) => Promise<BinaryNode>, logger: ILogger) => {
 	let mediaConn: Promise<MediaConnInfo> | undefined
 
 	return async (forceGet = false) => {
@@ -301,7 +331,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const emitSendPathTelemetry = (
 		stage: string,
 		status: 'start' | 'success' | 'hit' | 'miss' | 'failure',
-		counts?: { participants?: number; devices?: number; sessionsExisting?: number; sessionsFetched?: number; cacheHits?: number; cacheMisses?: number; cacheSets?: number; attempts?: number },
+		counts?: {
+			participants?: number
+			devices?: number
+			sessionsExisting?: number
+			sessionsFetched?: number
+			cacheHits?: number
+			cacheMisses?: number
+			cacheSets?: number
+			attempts?: number
+		},
 		details?: Record<string, unknown>
 	) => {
 		const normalizedDetails = {
@@ -458,12 +497,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const deviceResults: DeviceWithJid[] = []
 		let explicitDeviceBypassCount = 0
 
-		emitSendPathTelemetry('getUSyncDevices.start', 'start', { participants: jids.length }, {
-			useCache,
-			ignoreZeroDevices,
-			pid: process.pid,
-			uptimeSec: Math.floor(process.uptime())
-		})
+		emitSendPathTelemetry(
+			'getUSyncDevices.start',
+			'start',
+			{ participants: jids.length },
+			{
+				useCache,
+				ignoreZeroDevices,
+				pid: process.pid,
+				uptimeSec: Math.floor(process.uptime())
+			}
+		)
 
 		if (!useCache) {
 			logger.debug('not using cache for devices')
@@ -505,7 +549,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		for (const { jid, user } of jidsWithUser) {
 			if (useCache) {
 				const devices =
-					mgetDevices?.[user!] || (userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as FullJid[]))
+					mgetDevices?.[user!] ||
+					(userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as FullJid[]))
 				if (devices) {
 					const devicesWithJid = devices.map(d => ({
 						...d,
@@ -525,24 +570,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		emitSendPathTelemetry('getUSyncDevices.cachePhase', cacheMissUsers.length ? 'miss' : 'hit', {
-			participants: jidsWithUser.length,
-			cacheHits: cacheHitUsers.length,
-			cacheMisses: cacheMissUsers.length
-		}, {
-			explicitDeviceBypassCount,
-			cacheHitUsers: cacheHitUsers.slice(0, 20),
-			cacheMissUsers: cacheMissUsers.slice(0, 20)
-		})
+		emitSendPathTelemetry(
+			'getUSyncDevices.cachePhase',
+			cacheMissUsers.length ? 'miss' : 'hit',
+			{
+				participants: jidsWithUser.length,
+				cacheHits: cacheHitUsers.length,
+				cacheMisses: cacheMissUsers.length
+			},
+			{
+				explicitDeviceBypassCount,
+				cacheHitUsers: cacheHitUsers.slice(0, 20),
+				cacheMissUsers: cacheMissUsers.slice(0, 20)
+			}
+		)
 
 		if (!toFetch.length) {
 			const summary = summarizeDevicesByUser(deviceResults)
-			emitSendPathTelemetry('getUSyncDevices.complete', 'success', {
-				participants: summary.uniqueUsersReturned,
-				devices: deviceResults.length,
-				cacheHits: cacheHitUsers.length,
-				cacheMisses: cacheMissUsers.length
-			}, { path: 'cache_only', ...summary })
+			emitSendPathTelemetry(
+				'getUSyncDevices.complete',
+				'success',
+				{
+					participants: summary.uniqueUsersReturned,
+					devices: deviceResults.length,
+					cacheHits: cacheHitUsers.length,
+					cacheMisses: cacheMissUsers.length
+				},
+				{ path: 'cache_only', ...summary }
+			)
 			return deviceResults
 		}
 
@@ -561,25 +616,68 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			query.withUser(new USyncUser().withId(jid))
 		}
 
+		const usyncQueryStarted = Date.now()
+		emitSendPathTelemetry('getUSyncDevices.usyncQuery', 'start', { participants: toFetch.length })
 		const result = await sock.executeUSyncQuery(query)
+		emitSendPathTelemetry(
+			'getUSyncDevices.usyncQuery',
+			result ? 'success' : 'miss',
+			{ participants: toFetch.length },
+			{
+				durationMs: Date.now() - usyncQueryStarted,
+				resultNodeBytes: result?.telemetry?.resultNodeBytes,
+				resultNodeMb: result?.telemetry?.resultNodeMb,
+				resultXmlBytes: result?.telemetry?.resultXmlBytes,
+				resultXmlMb: result?.telemetry?.resultXmlMb
+			}
+		)
 
 		if (result) {
 			const lidResults = result.list.filter(a => !!a.lid)
 			if (lidResults.length > 0) {
 				logger.trace('Storing LID maps from device call')
+				const lidStoreStarted = Date.now()
+				emitSendPathTelemetry('getUSyncDevices.storeLIDMappings', 'start', { participants: lidResults.length })
 				await signalRepository.lidMapping.storeLIDPNMappings(lidResults.map(a => ({ lid: a.lid as string, pn: a.id })))
+				emitSendPathTelemetry(
+					'getUSyncDevices.storeLIDMappings',
+					'success',
+					{ participants: lidResults.length, cacheSets: lidResults.length },
+					{ durationMs: Date.now() - lidStoreStarted }
+				)
 
 				try {
 					const lids = lidResults.map(a => a.lid as string)
 					if (lids.length) {
+						const lidAssertStarted = Date.now()
+						emitSendPathTelemetry('getUSyncDevices.assertLidSessions', 'start', { participants: lids.length })
 						await assertSessions(lids, true)
+						emitSendPathTelemetry(
+							'getUSyncDevices.assertLidSessions',
+							'success',
+							{ participants: lids.length },
+							{ durationMs: Date.now() - lidAssertStarted }
+						)
 					}
 				} catch (e) {
+					emitSendPathTelemetry(
+						'getUSyncDevices.assertLidSessions',
+						'failure',
+						{ participants: lidResults.length },
+						{
+							error: e instanceof Error ? e.message : String(e)
+						}
+					)
 					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
 				}
 			}
 
-			const extracted = extractDeviceJids(result?.list, authState.creds.me!.id, authState.creds.me!.lid!, ignoreZeroDevices)
+			const extracted = extractDeviceJids(
+				result?.list,
+				authState.creds.me!.id,
+				authState.creds.me!.lid!,
+				ignoreZeroDevices
+			)
 			const deviceMap: { [_: string]: FullJid[] } = {}
 
 			for (const item of extracted) {
@@ -611,6 +709,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
+			const deviceCacheStarted = Date.now()
 			if (userDevicesCache.mset) {
 				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
 			} else {
@@ -618,6 +717,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
 				}
 			}
+			emitSendPathTelemetry(
+				'getUSyncDevices.cacheDevices',
+				'success',
+				{ cacheSets: Object.keys(deviceMap).length },
+				{ durationMs: Date.now() - deviceCacheStarted, usedBatch: !!userDevicesCache.mset }
+			)
 
 			const userDeviceUpdates: { [userId: string]: string[] } = {}
 			for (const [userId, devices] of Object.entries(deviceMap)) {
@@ -628,29 +733,54 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			if (Object.keys(userDeviceUpdates).length > 0) {
 				try {
+					const deviceListPersistStarted = Date.now()
+					emitSendPathTelemetry('getUSyncDevices.persistDeviceList', 'start', {
+						cacheSets: Object.keys(userDeviceUpdates).length
+					})
 					await authState.keys.set({ 'device-list': userDeviceUpdates })
+					emitSendPathTelemetry(
+						'getUSyncDevices.persistDeviceList',
+						'success',
+						{ cacheSets: Object.keys(userDeviceUpdates).length },
+						{ durationMs: Date.now() - deviceListPersistStarted }
+					)
 					logger.debug(
 						{ userCount: Object.keys(userDeviceUpdates).length },
 						'stored user device lists for bulk migration'
 					)
 				} catch (error) {
+					emitSendPathTelemetry(
+						'getUSyncDevices.persistDeviceList',
+						'failure',
+						{
+							cacheSets: Object.keys(userDeviceUpdates).length
+						},
+						{
+							error: error instanceof Error ? error.message : String(error)
+						}
+					)
 					logger.warn({ error }, 'failed to store user device lists')
 				}
 			}
 		}
 
 		const summary = summarizeDevicesByUser(deviceResults)
-		emitSendPathTelemetry('getUSyncDevices.complete', 'success', {
-			participants: summary.uniqueUsersReturned,
-			devices: deviceResults.length,
-			cacheHits: cacheHitUsers.length,
-			cacheMisses: cacheMissUsers.length
-		}, {
-			path: 'network_usync',
-			networkPhaseMs: Date.now() - networkPhaseStart,
-			usyncFetchUserCount: toFetch.length,
-			...summary
-		})
+		emitSendPathTelemetry(
+			'getUSyncDevices.complete',
+			'success',
+			{
+				participants: summary.uniqueUsersReturned,
+				devices: deviceResults.length,
+				cacheHits: cacheHitUsers.length,
+				cacheMisses: cacheMissUsers.length
+			},
+			{
+				path: 'network_usync',
+				networkPhaseMs: Date.now() - networkPhaseStart,
+				usyncFetchUserCount: toFetch.length,
+				...summary
+			}
+		)
 
 		return deviceResults
 	}
@@ -700,44 +830,109 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		logger.debug({ jids }, 'assertSessions call with jids')
 
-		// Check peerSessionsCache and validate sessions using libsignal loadSession
+		const signalIdsByJid = new Map<string, string>()
 		for (const jid of uniqueJids) {
-			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-			const cachedSession = await readCacheEntry<boolean>(peerSessionsCache, signalId)
+			signalIdsByJid.set(jid, signalRepository.jidToSignalProtocolAddress(jid))
+		}
+
+		const cacheStartedAt = Date.now()
+		const signalIds = [...new Set(signalIdsByJid.values())]
+		const cachedSessions = await readCacheEntries<boolean>(peerSessionsCache, signalIds)
+		const cacheMissJids: string[] = []
+		const cacheHits = signalIds.filter(signalId => cachedSessions[signalId] !== undefined).length
+		emitSendPathTelemetry(
+			'assertSessions.cachePhase',
+			'success',
+			{
+				participants: uniqueJids.length,
+				cacheHits,
+				cacheMisses: signalIds.length - cacheHits
+			},
+			{ durationMs: Date.now() - cacheStartedAt }
+		)
+
+		for (const jid of uniqueJids) {
+			const signalId = signalIdsByJid.get(jid)!
+			const cachedSession = cachedSessions[signalId]
 			if (cachedSession !== undefined) {
 				if (cachedSession) existingCount += 1
 				if (cachedSession && !force) {
-					continue // Session exists in cache
+					continue
 				}
+
+				jidsRequiringFetch.push(jid)
 			} else {
-				const sessionValidation = await signalRepository.validateSession(jid)
-				const hasSession = sessionValidation.exists
+				cacheMissJids.push(jid)
+			}
+		}
+
+		if (cacheMissJids.length) {
+			const validationStartedAt = Date.now()
+			const sessionValidations = await signalRepository.validateSessions(cacheMissJids)
+			const cacheSets: { key: string; value: boolean }[] = []
+
+			for (const jid of cacheMissJids) {
+				const hasSession = !!sessionValidations[jid]?.exists
 				if (hasSession) existingCount += 1
-				await peerSessionsCache.set(signalId, hasSession)
+				cacheSets.push({ key: signalIdsByJid.get(jid)!, value: hasSession })
 				if (hasSession && !force) {
 					continue
 				}
+
+				jidsRequiringFetch.push(jid)
 			}
 
-			jidsRequiringFetch.push(jid)
+			await writeCacheEntries(peerSessionsCache, cacheSets)
+			emitSendPathTelemetry(
+				'assertSessions.validateSessions',
+				'success',
+				{
+					participants: cacheMissJids.length,
+					sessionsExisting: cacheSets.filter(entry => entry.value).length,
+					cacheSets: cacheSets.length
+				},
+				{ durationMs: Date.now() - validationStartedAt }
+			)
 		}
 
 		if (jidsRequiringFetch.length) {
+			const lidMappingStarted = Date.now()
+			const lidInputJids = jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
+			emitSendPathTelemetry(
+				'assertSessions.lidMapping',
+				'start',
+				{ participants: lidInputJids.length },
+				{
+					force: !!force
+				}
+			)
+			const lidMappings = (await signalRepository.lidMapping.getLIDsForPNs(lidInputJids)) || []
+			emitSendPathTelemetry(
+				'assertSessions.lidMapping',
+				'success',
+				{ participants: lidInputJids.length, devices: lidMappings.length },
+				{
+					durationMs: Date.now() - lidMappingStarted,
+					force: !!force
+				}
+			)
 			// LID if mapped, otherwise original
 			const wireJids = [
 				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
-				...(
-					(await signalRepository.lidMapping.getLIDsForPNs(
-						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
-					)) || []
-				).map(a => a.lid)
+				...lidMappings.map(a => a.lid)
 			]
 
 			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
-			emitSendPathTelemetry('assertSessions.fetching', 'start', { participants: jidsRequiringFetch.length }, {
-				wireJids: wireJids.length,
-				force: !!force
-			})
+			emitSendPathTelemetry(
+				'assertSessions.fetching',
+				'start',
+				{ participants: jidsRequiringFetch.length },
+				{
+					wireJids: wireJids.length,
+					force: !!force
+				}
+			)
+			const fetchStartedAt = Date.now()
 			const result = await query({
 				tag: 'iq',
 				attrs: {
@@ -757,25 +952,60 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				]
 			})
+			emitSendPathTelemetry(
+				'assertSessions.fetchQuery',
+				'success',
+				{
+					participants: jidsRequiringFetch.length
+				},
+				{ durationMs: Date.now() - fetchStartedAt, wireJids: wireJids.length }
+			)
+			const injectStartedAt = Date.now()
+			emitSendPathTelemetry('assertSessions.injectSessions', 'start', {
+				participants: wireJids.length
+			})
 			await parseAndInjectE2ESessions(result, signalRepository)
+			emitSendPathTelemetry(
+				'assertSessions.injectSessions',
+				'success',
+				{
+					participants: wireJids.length
+				},
+				{ durationMs: Date.now() - injectStartedAt }
+			)
 			didFetchNewSession = true
 
 			// Cache fetched sessions using wire JIDs
-			for (const wireJid of wireJids) {
-				const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
-				await peerSessionsCache.set(signalId, true)
-			}
+			const fetchedCacheStarted = Date.now()
+			await writeCacheEntries(
+				peerSessionsCache,
+				wireJids.map(wireJid => ({
+					key: signalRepository.jidToSignalProtocolAddress(wireJid),
+					value: true
+				}))
+			)
+			emitSendPathTelemetry(
+				'assertSessions.cacheFetchedSessions',
+				'success',
+				{ cacheSets: wireJids.length },
+				{ durationMs: Date.now() - fetchedCacheStarted }
+			)
 		}
 
 		if (summary) {
 			summary.existingCount = existingCount
 			summary.fetchedCount = jidsRequiringFetch.length
 		}
-		emitSendPathTelemetry('assertSessions.complete', didFetchNewSession ? 'success' : 'hit', {
-			participants: uniqueJids.length,
-			sessionsExisting: existingCount,
-			sessionsFetched: jidsRequiringFetch.length
-		}, { didFetchNewSession, force: !!force })
+		emitSendPathTelemetry(
+			'assertSessions.complete',
+			didFetchNewSession ? 'success' : 'hit',
+			{
+				participants: uniqueJids.length,
+				sessionsExisting: existingCount,
+				sessionsFetched: jidsRequiringFetch.length
+			},
+			{ didFetchNewSession, force: !!force }
+		)
 		return didFetchNewSession
 	}
 
@@ -819,22 +1049,62 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		extraAttrs?: BinaryNode['attrs'],
 		dsmMessage?: proto.IMessage
 	) => {
+		const startedAt = Date.now()
+		emitSendPathTelemetry(
+			'createParticipantNodes.start',
+			'start',
+			{ participants: recipientJids.length },
+			{
+				hasDsmMessage: !!dsmMessage,
+				hasExtraAttrs: !!extraAttrs && Object.keys(extraAttrs).length > 0
+			}
+		)
 		if (!recipientJids.length) {
+			emitSendPathTelemetry(
+				'createParticipantNodes.complete',
+				'hit',
+				{ participants: 0, devices: 0 },
+				{ durationMs: Date.now() - startedAt, path: 'empty' }
+			)
 			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
 		}
 
+		const patchStarted = Date.now()
 		const patched = await patchMessageBeforeSending(message, recipientJids)
+		emitSendPathTelemetry(
+			'createParticipantNodes.patchMessage',
+			'success',
+			{ participants: recipientJids.length },
+			{ durationMs: Date.now() - patchStarted, perRecipientPatch: Array.isArray(patched) }
+		)
 		const patchedMessages = Array.isArray(patched)
 			? patched
 			: recipientJids.map(jid => ({ recipientJid: jid, message: patched }))
+		const encodeStarted = Date.now()
 		const sharedPatchedBytes = Array.isArray(patched) ? undefined : encodeWAMessage(patched)
 		const sharedDsmBytes = dsmMessage ? encodeWAMessage(dsmMessage) : undefined
+		emitSendPathTelemetry(
+			'createParticipantNodes.encodeMessage',
+			'success',
+			{ participants: recipientJids.length },
+			{
+				durationMs: Date.now() - encodeStarted,
+				sharedPatchedBytes: sharedPatchedBytes?.byteLength,
+				sharedDsmBytes: sharedDsmBytes?.byteLength
+			}
+		)
 
 		let shouldIncludeDeviceIdentity = false
+		let encryptionFailures = 0
+		let pkmsgCount = 0
 		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
+		const encryptStarted = Date.now()
+		emitSendPathTelemetry('createParticipantNodes.encryptRecipients', 'start', {
+			participants: recipientJids.length
+		})
 		const encryptionPromises = (patchedMessages as any).map(
 			async ({ recipientJid: jid, message: patchedMessage }: any) => {
 				try {
@@ -874,6 +1144,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						if (type === 'pkmsg') {
 							shouldIncludeDeviceIdentity = true
+							pkmsgCount += 1
 						}
 
 						return {
@@ -891,6 +1162,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					return node
 				} catch (err) {
+					encryptionFailures += 1
 					logger.error({ jid, err }, 'Failed to encrypt for recipient')
 					return null
 				}
@@ -900,8 +1172,35 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 
 		if (recipientJids.length > 0 && nodes.length === 0) {
+			emitSendPathTelemetry(
+				'createParticipantNodes.encryptRecipients',
+				'failure',
+				{ participants: recipientJids.length, devices: 0 },
+				{
+					durationMs: Date.now() - encryptStarted,
+					encryptionFailures,
+					pkmsgCount
+				}
+			)
 			throw new Boom('All encryptions failed', { statusCode: 500 })
 		}
+		emitSendPathTelemetry(
+			'createParticipantNodes.encryptRecipients',
+			'success',
+			{ participants: recipientJids.length, devices: nodes.length },
+			{
+				durationMs: Date.now() - encryptStarted,
+				encryptionFailures,
+				pkmsgCount,
+				shouldIncludeDeviceIdentity
+			}
+		)
+		emitSendPathTelemetry(
+			'createParticipantNodes.complete',
+			'success',
+			{ participants: recipientJids.length, devices: nodes.length },
+			{ durationMs: Date.now() - startedAt, shouldIncludeDeviceIdentity }
+		)
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
@@ -918,6 +1217,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			statusJidList
 		}: MessageRelayOptions
 	) => {
+		const relayStartedAt = Date.now()
 		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
 		const isRetryResend = Boolean(participant?.jid)
@@ -942,6 +1242,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		msgId = msgId || generateMessageIDV2(meId)
 		useUserDevicesCache = useUserDevicesCache !== false
 		useCachedGroupMetadata = useCachedGroupMetadata !== false && !isStatus
+		emitSendPathTelemetry(
+			'relay.start',
+			'start',
+			{ participants: statusJidList?.length },
+			{
+				msgId,
+				jid,
+				isGroup,
+				isStatus,
+				isNewsletter,
+				isRetryResend,
+				useUserDevicesCache,
+				useCachedGroupMetadata
+			}
+		)
 
 		const participants: BinaryNode[] = []
 		const destinationJid = !isStatus ? finalJid : statusJid
@@ -985,8 +1300,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isNewsletter) {
+				const newsletterStarted = Date.now()
 				const patched = patchMessageBeforeSending ? await patchMessageBeforeSending(message, []) : message
 				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
+				emitSendPathTelemetry('relay.newsletter.encode', 'success', undefined, {
+					durationMs: Date.now() - newsletterStarted,
+					bytes: bytes.byteLength
+				})
 				binaryNodeContent.push({
 					tag: 'plaintext',
 					attrs: {},
@@ -1003,7 +1323,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: binaryNodeContent
 				}
 				logger.debug({ msgId }, `sending newsletter message to ${jid}`)
+				const sendStarted = Date.now()
+				emitSendPathTelemetry('relay.sendNode', 'start', { devices: 0 }, { msgId, route: 'newsletter' })
 				await sendNode(stanza)
+				emitSendPathTelemetry(
+					'relay.sendNode',
+					'success',
+					{ devices: 0 },
+					{ msgId, route: 'newsletter', durationMs: Date.now() - sendStarted }
+				)
+				emitSendPathTelemetry(
+					'relay.complete',
+					'success',
+					{ devices: 0 },
+					{ msgId, route: 'newsletter', durationMs: Date.now() - relayStartedAt }
+				)
 				return msgId
 			}
 
@@ -1016,36 +1350,72 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const metadataLoadStarted = Date.now()
 				const [groupData, senderKeyMap] = await Promise.all([
 					(async () => {
+						const groupMetadataStarted = Date.now()
+						emitSendPathTelemetry('relay.group.prep.groupMetadata', 'start', undefined, {
+							jid,
+							useCachedGroupMetadata
+						})
 						let groupData = useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined // todo: should we rely on the cache specially if the cache is outdated and the metadata has new fields?
+						let metadataSource: 'cache' | 'network' | 'missing' = groupData ? 'cache' : 'missing'
 						if (groupData && Array.isArray(groupData?.participants)) {
 							logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
 						} else if (!isStatus) {
 							groupData = await groupMetadata(jid) // TODO: start storing group participant list + addr mode in Signal & stop relying on this
+							metadataSource = groupData ? 'network' : 'missing'
 						}
 
+						emitSendPathTelemetry(
+							'relay.group.prep.groupMetadata',
+							groupData ? 'success' : 'miss',
+							{ participants: groupData?.participants?.length },
+							{
+								jid,
+								source: metadataSource,
+								durationMs: Date.now() - groupMetadataStarted,
+								addressingMode: groupData?.addressingMode
+							}
+						)
 						return groupData
 					})(),
 					(async () => {
 						if (!participant && !isStatus) {
+							const senderKeyStarted = Date.now()
+							emitSendPathTelemetry('relay.group.prep.senderKeyMemory', 'start', undefined, { jid })
 							// what if sender memory is less accurate than the cached metadata
 							// on participant change in group, we should do sender memory manipulation
 							const result = await authState.keys.get('sender-key-memory', [jid]) // TODO: check out what if the sender key memory doesn't include the LID stuff now?
-							return result[jid] || {}
+							const senderKeyMemory = result[jid] || {}
+							emitSendPathTelemetry(
+								'relay.group.prep.senderKeyMemory',
+								'success',
+								{ cacheHits: Object.keys(senderKeyMemory).length },
+								{
+									jid,
+									durationMs: Date.now() - senderKeyStarted,
+									entries: Object.keys(senderKeyMemory).length
+								}
+							)
+							return senderKeyMemory
 						}
 
 						return {}
 					})()
 				])
-				emitSendPathTelemetry('relay.group.prep.metadataAndSenderKey', 'success', {
-					participants: groupData?.participants?.length
-				}, {
-					durationMs: Date.now() - metadataLoadStarted,
-					isGroup,
-					isStatus,
-					useCachedGroupMetadata,
-					hasGroupData: !!groupData,
-					senderKeyMemoryEntries: Object.keys(senderKeyMap || {}).length
-				})
+				emitSendPathTelemetry(
+					'relay.group.prep.metadataAndSenderKey',
+					'success',
+					{
+						participants: groupData?.participants?.length
+					},
+					{
+						durationMs: Date.now() - metadataLoadStarted,
+						isGroup,
+						isStatus,
+						useCachedGroupMetadata,
+						hasGroupData: !!groupData,
+						senderKeyMemoryEntries: Object.keys(senderKeyMap || {}).length
+					}
+				)
 
 				const participantsList = groupData ? groupData.participants.map(p => p.id) : []
 
@@ -1060,14 +1430,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					participantsList.push(...statusJidList)
 				}
 
-					const performGroupOrStatusFanOut = async (): Promise<void> => {
-						const usyncFanOutStarted = Date.now()
-						const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
-						emitSendPathTelemetry('relay.group.fanOut.getUSyncDevices', 'success', {
+				const performGroupOrStatusFanOut = async (): Promise<void> => {
+					const usyncFanOutStarted = Date.now()
+					const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
+					emitSendPathTelemetry(
+						'relay.group.fanOut.getUSyncDevices',
+						'success',
+						{
 							participants: participantsList.length,
 							devices: additionalDevices.length
-						}, { durationMs: Date.now() - usyncFanOutStarted, useUserDevicesCache: !!useUserDevicesCache })
-						devices.push(...additionalDevices)
+						},
+						{ durationMs: Date.now() - usyncFanOutStarted, useUserDevicesCache: !!useUserDevicesCache }
+					)
+					devices.push(...additionalDevices)
 
 					if (isGroup) {
 						additionalAttributes = {
@@ -1076,28 +1451,37 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-						const patchStarted = Date.now()
-						emitSendPathTelemetry('relay.group.fanOut.patchMessage', 'start', {
+					const patchStarted = Date.now()
+					emitSendPathTelemetry('relay.group.fanOut.patchMessage', 'start', {
+						participants: participantsList.length,
+						devices: devices.length
+					})
+					const patched = await patchMessageBeforeSending(message)
+					if (Array.isArray(patched)) {
+						throw new Boom('Per-jid patching is not supported in groups')
+					}
+					emitSendPathTelemetry(
+						'relay.group.fanOut.patchMessage',
+						'success',
+						{
 							participants: participantsList.length,
 							devices: devices.length
-						})
-						const patched = await patchMessageBeforeSending(message)
-						if (Array.isArray(patched)) {
-							throw new Boom('Per-jid patching is not supported in groups')
-						}
-						emitSendPathTelemetry('relay.group.fanOut.patchMessage', 'success', {
-							participants: participantsList.length,
-							devices: devices.length
-						}, { durationMs: Date.now() - patchStarted })
+						},
+						{ durationMs: Date.now() - patchStarted }
+					)
 
 					const bytes = encodeWAMessage(patched)
 					reportingMessage = patched
-					const groupAddressingMode =
-						additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
+					const groupAddressingMode = additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
 					const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
-					emitSendPathTelemetry('relay.group.fanOut.addressing', 'success', {
-						devices: devices.length
-					}, { groupAddressingMode, groupSenderIdentity })
+					emitSendPathTelemetry(
+						'relay.group.fanOut.addressing',
+						'success',
+						{
+							devices: devices.length
+						},
+						{ groupAddressingMode, groupSenderIdentity }
+					)
 
 					const senderKeyRecipients: string[] = []
 					let senderKeyMapChanged = false
@@ -1117,29 +1501,56 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							senderKeyMap[deviceJid] = true
 						}
 					}
+					emitSendPathTelemetry(
+						'relay.group.senderKey.selectRecipients',
+						senderKeyRecipients.length ? 'miss' : 'hit',
+						{
+							devices: devices.length,
+							participants: senderKeyRecipients.length
+						},
+						{
+							senderKeyMapChanged,
+							senderKeyMemoryEntries: Object.keys(senderKeyMap || {}).length
+						}
+					)
 
-						const encryptStarted = Date.now()
-						emitSendPathTelemetry('relay.group.fanOut.encryptGroupMessage', 'start', {
+					const encryptStarted = Date.now()
+					emitSendPathTelemetry(
+						'relay.group.fanOut.encryptGroupMessage',
+						'start',
+						{
 							devices: devices.length
-						}, { senderKeyRecipients: senderKeyRecipients.length })
-						const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
-							group: destinationJid,
-							data: bytes,
-							meId: groupSenderIdentity,
-							createDistributionMessage: senderKeyRecipients.length > 0
-						})
-						emitSendPathTelemetry('relay.group.fanOut.encryptGroupMessage', 'success', {
+						},
+						{ senderKeyRecipients: senderKeyRecipients.length }
+					)
+					const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
+						group: destinationJid,
+						data: bytes,
+						meId: groupSenderIdentity,
+						createDistributionMessage: senderKeyRecipients.length > 0
+					})
+					emitSendPathTelemetry(
+						'relay.group.fanOut.encryptGroupMessage',
+						'success',
+						{
 							devices: devices.length
-						}, {
+						},
+						{
 							durationMs: Date.now() - encryptStarted,
 							senderKeyRecipients: senderKeyRecipients.length
-						})
+						}
+					)
 
 					if (senderKeyRecipients.length) {
 						logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
-						emitSendPathTelemetry('relay.group.senderKey.distribution', 'success', {
-							participants: senderKeyRecipients.length
-						}, { senderKeyMapChanged })
+						emitSendPathTelemetry(
+							'relay.group.senderKey.distribution',
+							'success',
+							{
+								participants: senderKeyRecipients.length
+							},
+							{ senderKeyMapChanged }
+						)
 						if (!senderKeyDistributionMessage) {
 							throw new Boom('Missing sender key distribution message for group fanout', { statusCode: 500 })
 						}
@@ -1151,29 +1562,39 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						}
 
-							const senderKeySessionTargets = senderKeyRecipients
-							const senderKeyAssertStarted = Date.now()
-							emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'start', {
+						const senderKeySessionTargets = senderKeyRecipients
+						const senderKeyAssertStarted = Date.now()
+						emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'start', {
+							participants: senderKeySessionTargets.length
+						})
+						await assertSessions(senderKeySessionTargets)
+						emitSendPathTelemetry(
+							'relay.group.senderKey.assertSessions',
+							'success',
+							{
 								participants: senderKeySessionTargets.length
-							})
-							await assertSessions(senderKeySessionTargets)
-							emitSendPathTelemetry('relay.group.senderKey.assertSessions', 'success', {
-								participants: senderKeySessionTargets.length
-							}, { durationMs: Date.now() - senderKeyAssertStarted })
+							},
+							{ durationMs: Date.now() - senderKeyAssertStarted }
+						)
 
-							const senderKeyNodesStarted = Date.now()
-							emitSendPathTelemetry('relay.group.senderKey.createParticipantNodes', 'start', {
-								participants: senderKeyRecipients.length
-							})
-							const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
-							emitSendPathTelemetry('relay.group.senderKey.createParticipantNodes', 'success', {
+						const senderKeyNodesStarted = Date.now()
+						emitSendPathTelemetry('relay.group.senderKey.createParticipantNodes', 'start', {
+							participants: senderKeyRecipients.length
+						})
+						const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
+						emitSendPathTelemetry(
+							'relay.group.senderKey.createParticipantNodes',
+							'success',
+							{
 								participants: senderKeyRecipients.length,
 								devices: result.nodes.length
-							}, { durationMs: Date.now() - senderKeyNodesStarted })
-							shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
+							},
+							{ durationMs: Date.now() - senderKeyNodesStarted }
+						)
+						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
-							participants.push(...result.nodes)
-						}
+						participants.push(...result.nodes)
+					}
 
 					binaryNodeContent.push({
 						tag: 'enc',
@@ -1182,41 +1603,70 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					})
 
 					if (senderKeyMapChanged) {
-						await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
-						emitSendPathTelemetry('relay.group.senderKey.memoryPersisted', 'success', {
+						const persistStarted = Date.now()
+						emitSendPathTelemetry('relay.group.senderKey.memoryPersisted', 'start', {
 							cacheSets: 1
-						}, { entries: Object.keys(senderKeyMap).length })
+						})
+						await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+						emitSendPathTelemetry(
+							'relay.group.senderKey.memoryPersisted',
+							'success',
+							{
+								cacheSets: 1
+							},
+							{ durationMs: Date.now() - persistStarted, entries: Object.keys(senderKeyMap).length }
+						)
 					}
 				}
 
-					if (isGroup) {
-						const mutexWaitStarted = Date.now()
-						emitSendPathTelemetry('relay.group.fanOut.mutex', 'start', {
+				if (isGroup) {
+					const mutexWaitStarted = Date.now()
+					emitSendPathTelemetry(
+						'relay.group.fanOut.mutex',
+						'start',
+						{
 							participants: participantsList.length
-						}, { jid })
-						try {
-							await groupParticipantPrepMutex.mutex(jid, async () => {
-								emitSendPathTelemetry('relay.group.fanOut.mutex', 'hit', {
+						},
+						{ jid }
+					)
+					try {
+						await groupParticipantPrepMutex.mutex(jid, async () => {
+							emitSendPathTelemetry(
+								'relay.group.fanOut.mutex',
+								'hit',
+								{
 									participants: participantsList.length
-								}, { jid, waitMs: Date.now() - mutexWaitStarted })
-								return performGroupOrStatusFanOut()
-							})
-							emitSendPathTelemetry('relay.group.fanOut.mutex', 'success', {
+								},
+								{ jid, waitMs: Date.now() - mutexWaitStarted }
+							)
+							return performGroupOrStatusFanOut()
+						})
+						emitSendPathTelemetry(
+							'relay.group.fanOut.mutex',
+							'success',
+							{
 								participants: participantsList.length
-							}, { jid, durationMs: Date.now() - mutexWaitStarted })
-						} catch (error) {
-							emitSendPathTelemetry('relay.group.fanOut.mutex', 'failure', {
+							},
+							{ jid, durationMs: Date.now() - mutexWaitStarted }
+						)
+					} catch (error) {
+						emitSendPathTelemetry(
+							'relay.group.fanOut.mutex',
+							'failure',
+							{
 								participants: participantsList.length
-							}, {
+							},
+							{
 								jid,
 								durationMs: Date.now() - mutexWaitStarted,
 								error: error instanceof Error ? error.message : String(error)
-							})
-							throw error
-						}
-					} else {
-						await performGroupOrStatusFanOut()
+							}
+						)
+						throw error
 					}
+				} else {
+					await performGroupOrStatusFanOut()
+				}
 			} else {
 				// ADDRESSING CONSISTENCY: Match own identity to conversation context
 				// TODO: investigate if this is true
@@ -1230,10 +1680,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				const { user: ownUser } = jidDecode(ownId)!
 				if (!participant) {
+					const reportingPatchStarted = Date.now()
+					emitSendPathTelemetry('relay.direct.reportingPatch', 'start', { participants: 1 }, { jid })
 					const patchedForReporting = await patchMessageBeforeSending(message, [jid])
 					reportingMessage = Array.isArray(patchedForReporting)
 						? patchedForReporting.find(item => item.recipientJid === jid) || patchedForReporting[0]
 						: patchedForReporting
+					emitSendPathTelemetry(
+						'relay.direct.reportingPatch',
+						'success',
+						{ participants: 1 },
+						{
+							durationMs: Date.now() - reportingPatchStarted,
+							perRecipientPatch: Array.isArray(patchedForReporting)
+						}
+					)
 				}
 
 				if (!isRetryResend) {
@@ -1266,8 +1727,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								: jidEncode(jidDecode(meId)?.user!, 's.whatsapp.net', undefined)
 
 						// Enumerate devices for sender and target with consistent addressing
+						const directUsyncStarted = Date.now()
+						emitSendPathTelemetry('relay.direct.getUSyncDevices', 'start', { participants: 2 }, { senderIdentity, jid })
 						const sessionDevices = await getUSyncDevices([senderIdentity, jid], true, false)
 						devices.push(...sessionDevices)
+						emitSendPathTelemetry(
+							'relay.direct.getUSyncDevices',
+							'success',
+							{ participants: 2, devices: sessionDevices.length },
+							{ durationMs: Date.now() - directUsyncStarted, senderIdentity }
+						)
 
 						logger.debug(
 							{
@@ -1303,20 +1772,38 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					allRecipients.push(jid)
 				}
-				emitSendPathTelemetry('relay.direct.recipients.split', 'success', {
-					participants: allRecipients.length,
-					devices: devices.length
-				}, {
-					meRecipients: meRecipients.length,
-					otherRecipients: otherRecipients.length,
-					rawDevicesEnumerated: devices.length
-				})
+				emitSendPathTelemetry(
+					'relay.direct.recipients.split',
+					'success',
+					{
+						participants: allRecipients.length,
+						devices: devices.length
+					},
+					{
+						meRecipients: meRecipients.length,
+						otherRecipients: otherRecipients.length,
+						rawDevicesEnumerated: devices.length
+					}
+				)
 
-				await assertSessions(allRecipients)
-				emitSendPathTelemetry('relay.direct.assertSessions', 'success', {
+				const directAssertStarted = Date.now()
+				emitSendPathTelemetry('relay.direct.assertSessions', 'start', {
 					participants: allRecipients.length
 				})
+				await assertSessions(allRecipients)
+				emitSendPathTelemetry(
+					'relay.direct.assertSessions',
+					'success',
+					{
+						participants: allRecipients.length
+					},
+					{ durationMs: Date.now() - directAssertStarted }
+				)
 
+				const directNodesStarted = Date.now()
+				emitSendPathTelemetry('relay.direct.createParticipantNodes', 'start', {
+					participants: allRecipients.length
+				})
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
@@ -1327,6 +1814,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
+				emitSendPathTelemetry(
+					'relay.direct.createParticipantNodes',
+					'success',
+					{
+						participants: allRecipients.length,
+						devices: meNodes.length + otherNodes.length
+					},
+					{
+						durationMs: Date.now() - directNodesStarted,
+						meRecipients: meRecipients.length,
+						otherRecipients: otherRecipients.length
+					}
+				)
 
 				if (meRecipients.length > 0 || otherRecipients.length > 0) {
 					extraAttrs['phash'] = generateParticipantHashV2([...meRecipients, ...otherRecipients])
@@ -1336,6 +1836,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isRetryResend) {
+				const retryEncryptStarted = Date.now()
+				emitSendPathTelemetry(
+					'relay.retry.encryptParticipant',
+					'start',
+					{ participants: 1 },
+					{
+						participant: participant!.jid,
+						count: participant!.count
+					}
+				)
 				const isParticipantLid = isLidUser(participant!.jid)
 				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
 
@@ -1352,6 +1862,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					data: encodedMessageToSend,
 					jid: participant!.jid
 				})
+				emitSendPathTelemetry(
+					'relay.retry.encryptParticipant',
+					'success',
+					{ participants: 1, devices: 1 },
+					{
+						durationMs: Date.now() - retryEncryptStarted,
+						type,
+						isParticipantLid,
+						isMe
+					}
+				)
 
 				binaryNodeContent.push({
 					tag: 'enc',
@@ -1364,6 +1885,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 			}
 
+			const stanzaBuildStarted = Date.now()
+			emitSendPathTelemetry('relay.stanza.build', 'start', {
+				participants: participants.length,
+				devices: devices.length
+			})
 			if (participants.length) {
 				if (additionalAttributes?.['category'] === 'peer') {
 					const peerNode = participants[0]?.content?.[0] as BinaryNode
@@ -1424,6 +1950,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				reportingMessage?.messageContextInfo?.messageSecret &&
 				shouldIncludeReportingToken(reportingMessage)
 			) {
+				const reportingTokenStarted = Date.now()
+				emitSendPathTelemetry('relay.reportingToken', 'start', undefined, { msgId, jid: destinationJid })
 				try {
 					const encoded = encodeWAMessage(reportingMessage)
 					const reportingKey: WAMessageKey = {
@@ -1437,9 +1965,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						;(stanza.content as BinaryNode[]).push(reportingNode)
 						logger.trace({ jid }, 'added reporting token to message')
 					}
+					emitSendPathTelemetry('relay.reportingToken', reportingNode ? 'success' : 'miss', undefined, {
+						msgId,
+						jid: destinationJid,
+						durationMs: Date.now() - reportingTokenStarted
+					})
 				} catch (error: any) {
+					emitSendPathTelemetry('relay.reportingToken', 'failure', undefined, {
+						msgId,
+						jid: destinationJid,
+						durationMs: Date.now() - reportingTokenStarted,
+						error: error instanceof Error ? error.message : String(error)
+					})
 					logger.warn({ jid, trace: error?.stack }, 'failed to attach reporting token')
 				}
+			} else {
+				emitSendPathTelemetry('relay.reportingToken', 'hit', undefined, {
+					msgId,
+					jid: destinationJid,
+					eligible: false
+				})
 			}
 
 			// WA Web never attaches tctoken to peer (AppStateSync) messages — server rejects with 479
@@ -1447,13 +1992,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const is1on1Send = !isGroup && !isRetryResend && !isStatus && !isNewsletter && !isPeerMessage
 
 			// Resolve destination to LID for tctoken storage — matches Signal session key pattern
+			const tcTokenLookupStarted = Date.now()
 			const tcTokenJid = is1on1Send ? await resolveTcTokenJid(destinationJid, getLIDForPN) : destinationJid
 			const contactTcTokenData = is1on1Send ? await authState.keys.get('tctoken', [tcTokenJid]) : {}
+			emitSendPathTelemetry(
+				'relay.tctoken.lookup',
+				is1on1Send ? 'success' : 'hit',
+				{ cacheHits: contactTcTokenData[tcTokenJid]?.token?.length ? 1 : 0 },
+				{
+					msgId,
+					jid: destinationJid,
+					tcTokenJid,
+					is1on1Send,
+					durationMs: Date.now() - tcTokenLookupStarted
+				}
+			)
 			const existingTokenEntry = contactTcTokenData[tcTokenJid]
 			let tcTokenBuffer = existingTokenEntry?.token
 
 			// Treat expired tokens the same as missing — clear from cache
 			if (tcTokenBuffer?.length && isTcTokenExpired(existingTokenEntry?.timestamp)) {
+				const cleanupStarted = Date.now()
 				logger.debug({ jid: destinationJid, timestamp: existingTokenEntry?.timestamp }, 'tctoken expired, clearing')
 				tcTokenBuffer = undefined
 				// Preserve senderTimestamp so the fire-and-forget issuance dedupe survives cleanup.
@@ -1463,7 +2022,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						: null
 				try {
 					await authState.keys.set({ tctoken: { [tcTokenJid]: cleared } })
+					emitSendPathTelemetry(
+						'relay.tctoken.expiryCleanup',
+						'success',
+						{ cacheSets: 1 },
+						{
+							msgId,
+							jid: destinationJid,
+							tcTokenJid,
+							durationMs: Date.now() - cleanupStarted
+						}
+					)
 				} catch (err: any) {
+					emitSendPathTelemetry(
+						'relay.tctoken.expiryCleanup',
+						'failure',
+						{ cacheSets: 1 },
+						{
+							msgId,
+							jid: destinationJid,
+							tcTokenJid,
+							durationMs: Date.now() - cleanupStarted,
+							error: err instanceof Error ? err.message : String(err)
+						}
+					)
 					logger.debug({ jid: destinationJid, err: err?.message }, 'failed to persist tctoken expiry cleanup')
 				}
 			}
@@ -1474,15 +2056,52 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {},
 					content: tcTokenBuffer
 				})
+				emitSendPathTelemetry('relay.tctoken.attach', 'success', undefined, {
+					msgId,
+					jid: destinationJid,
+					tcTokenJid,
+					bytes: tcTokenBuffer.byteLength
+				})
+			} else {
+				emitSendPathTelemetry('relay.tctoken.attach', 'hit', undefined, {
+					msgId,
+					jid: destinationJid,
+					tcTokenJid,
+					hasToken: !!tcTokenBuffer?.length,
+					privacyTokenOn1to1: sock.serverProps.privacyTokenOn1to1
+				})
 			}
 
 			if (additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
+			emitSendPathTelemetry(
+				'relay.stanza.build',
+				'success',
+				{
+					participants: participants.length,
+					devices: devices.length
+				},
+				{
+					msgId,
+					durationMs: Date.now() - stanzaBuildStarted,
+					contentNodes: Array.isArray(stanza.content) ? stanza.content.length : 0,
+					shouldIncludeDeviceIdentity,
+					additionalNodes: additionalNodes?.length || 0
+				}
+			)
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
+			const sendStarted = Date.now()
+			emitSendPathTelemetry('relay.sendNode', 'start', { devices: participants.length }, { msgId, route: 'message' })
 			await sendNode(stanza)
+			emitSendPathTelemetry(
+				'relay.sendNode',
+				'success',
+				{ devices: participants.length },
+				{ msgId, route: 'message', durationMs: Date.now() - sendStarted }
+			)
 
 			// Fire-and-forget: issue our token to the contact AFTER message send.
 			// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)
@@ -1497,6 +2116,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			) {
 				inFlightTcTokenIssuance.add(tcTokenJid)
 				const issueTimestamp = unixTimestampSeconds()
+				const issuanceStarted = Date.now()
+				emitSendPathTelemetry(
+					'relay.tctoken.issue.schedule',
+					'start',
+					{ participants: 1 },
+					{
+						msgId,
+						jid: destinationJid,
+						tcTokenJid,
+						issueTimestamp
+					}
+				)
 				const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 				resolveIssuanceJid(destinationJid, sock.serverProps.lidTrustedTokenIssueToLid, getLIDForPN, getPNForLID)
 					.then(issueJid => issuePrivacyTokens([issueJid], issueTimestamp))
@@ -1521,8 +2152,31 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								...indexWrite
 							}
 						})
+						emitSendPathTelemetry(
+							'relay.tctoken.issue.complete',
+							'success',
+							{ participants: 1, cacheSets: 1 },
+							{
+								msgId,
+								jid: destinationJid,
+								tcTokenJid,
+								durationMs: Date.now() - issuanceStarted
+							}
+						)
 					})
 					.catch(err => {
+						emitSendPathTelemetry(
+							'relay.tctoken.issue.complete',
+							'failure',
+							{ participants: 1 },
+							{
+								msgId,
+								jid: destinationJid,
+								tcTokenJid,
+								durationMs: Date.now() - issuanceStarted,
+								error: err instanceof Error ? err.message : String(err)
+							}
+						)
 						logger.debug({ jid: destinationJid, err: err?.message }, 'fire-and-forget tctoken issuance failed')
 					})
 					.finally(() => {
@@ -1533,9 +2187,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// Add message to retry cache if enabled
 			if (messageRetryManager && !participant) {
 				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
+				emitSendPathTelemetry('relay.retryCache.add', 'success', { cacheSets: 1 }, { msgId, jid: destinationJid })
+			} else {
+				emitSendPathTelemetry('relay.retryCache.add', 'hit', undefined, {
+					msgId,
+					jid: destinationJid,
+					enabled: !!messageRetryManager,
+					isRetryResend
+				})
 			}
 		}
 
+		emitSendPathTelemetry(
+			'relay.complete',
+			'success',
+			{
+				participants: participants.length,
+				devices: devices.length
+			},
+			{
+				msgId,
+				jid: destinationJid,
+				durationMs: Date.now() - relayStartedAt,
+				isGroup,
+				isStatus,
+				isNewsletter,
+				isRetryResend
+			}
+		)
 		return msgId
 	}
 
@@ -1604,31 +2283,49 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const issuePrivacyTokens = async (jids: string[], timestamp?: number) => {
+		const startedAt = Date.now()
+		emitSendPathTelemetry('issuePrivacyTokens.start', 'start', { participants: jids.length })
 		const t = (timestamp ?? unixTimestampSeconds()).toString()
-		const result = await query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'set',
-				xmlns: 'privacy'
-			},
-			content: [
-				{
-					tag: 'tokens',
-					attrs: {},
-					content: jids.map(jid => ({
-						tag: 'token',
-						attrs: {
-							jid: jidNormalizedUser(jid),
-							t,
-							type: 'trusted_contact'
-						}
-					}))
-				}
-			]
-		})
+		try {
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					to: S_WHATSAPP_NET,
+					type: 'set',
+					xmlns: 'privacy'
+				},
+				content: [
+					{
+						tag: 'tokens',
+						attrs: {},
+						content: jids.map(jid => ({
+							tag: 'token',
+							attrs: {
+								jid: jidNormalizedUser(jid),
+								t,
+								type: 'trusted_contact'
+							}
+						}))
+					}
+				]
+			})
 
-		return result
+			emitSendPathTelemetry(
+				'issuePrivacyTokens.complete',
+				'success',
+				{ participants: jids.length },
+				{ durationMs: Date.now() - startedAt }
+			)
+			return result
+		} catch (error) {
+			emitSendPathTelemetry(
+				'issuePrivacyTokens.complete',
+				'failure',
+				{ participants: jids.length },
+				{ durationMs: Date.now() - startedAt, error: error instanceof Error ? error.message : String(error) }
+			)
+			throw error
+		}
 	}
 
 	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
@@ -1717,10 +2414,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				participantPrepCoordination
 			}),
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
+			const sendStartedAt = Date.now()
 			const timeoutMs = options.timeoutMs && options.timeoutMs > 0 ? options.timeoutMs : undefined
 			const timeoutController = timeoutMs ? new AbortController() : undefined
 			let timeoutHandle: NodeJS.Timeout | undefined
 			const signal = timeoutController?.signal
+			const contentType = typeof content === 'object' && content ? Object.keys(content)[0] : typeof content
+			emitSendPathTelemetry('sendMessage.start', 'start', undefined, {
+				jid,
+				contentType,
+				timeoutMs,
+				useCachedGroupMetadata: options.useCachedGroupMetadata,
+				statusJidList: options.statusJidList?.length
+			})
 
 			if (timeoutController) {
 				timeoutHandle = setTimeout(() => {
@@ -1745,10 +2451,28 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								: 0
 							: disappearingMessagesInChat
 
+					const ephemeralStarted = Date.now()
+					emitSendPathTelemetry('sendMessage.groupToggleEphemeral', 'start', undefined, { jid, value })
 					await withAbort(groupToggleEphemeral(jid, value), signal)
+					emitSendPathTelemetry('sendMessage.groupToggleEphemeral', 'success', undefined, {
+						jid,
+						value,
+						durationMs: Date.now() - ephemeralStarted
+					})
+					emitSendPathTelemetry('sendMessage.complete', 'success', undefined, {
+						jid,
+						contentType,
+						durationMs: Date.now() - sendStartedAt,
+						path: 'groupToggleEphemeral'
+					})
 					return
 				}
 
+				const generateStarted = Date.now()
+				emitSendPathTelemetry('sendMessage.generateWAMessage', 'start', undefined, {
+					jid,
+					contentType
+				})
 				const fullMsg = await withAbort(
 					generateWAMessage(jid, content, {
 						logger,
@@ -1784,9 +2508,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}),
 					signal
 				)
+				emitSendPathTelemetry('sendMessage.generateWAMessage', 'success', undefined, {
+					jid,
+					contentType,
+					msgId: fullMsg.key.id,
+					durationMs: Date.now() - generateStarted,
+					hasMedia: !!getMediaType(fullMsg.message || {})
+				})
 
 				if (options.debugDelayBeforeRelayMs && options.debugDelayBeforeRelayMs > 0) {
+					const delayStarted = Date.now()
+					emitSendPathTelemetry('sendMessage.debugDelayBeforeRelay', 'start', undefined, {
+						msgId: fullMsg.key.id,
+						delayMs: options.debugDelayBeforeRelayMs
+					})
 					await withAbort(delay(options.debugDelayBeforeRelayMs), signal)
+					emitSendPathTelemetry('sendMessage.debugDelayBeforeRelay', 'success', undefined, {
+						msgId: fullMsg.key.id,
+						durationMs: Date.now() - delayStarted
+					})
 				}
 
 				const isEventMsg = 'event' in content && !!content.event
@@ -1822,6 +2562,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					} as BinaryNode)
 				}
 
+				const relayStarted = Date.now()
+				emitSendPathTelemetry('sendMessage.relayMessage', 'start', undefined, {
+					jid,
+					msgId: fullMsg.key.id
+				})
 				await withAbort(
 					relayMessage(jid, fullMsg.message!, {
 						messageId: fullMsg.key.id!,
@@ -1834,6 +2579,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}),
 					signal
 				)
+				emitSendPathTelemetry('sendMessage.relayMessage', 'success', undefined, {
+					jid,
+					msgId: fullMsg.key.id,
+					durationMs: Date.now() - relayStarted
+				})
 
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
@@ -1841,8 +2591,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					})
 				}
 
+				emitSendPathTelemetry('sendMessage.complete', 'success', undefined, {
+					jid,
+					contentType,
+					msgId: fullMsg.key.id,
+					durationMs: Date.now() - sendStartedAt
+				})
 				return fullMsg
 			} catch (error) {
+				emitSendPathTelemetry('sendMessage.complete', 'failure', undefined, {
+					jid,
+					contentType,
+					durationMs: Date.now() - sendStartedAt,
+					aborted: !!signal?.aborted,
+					error: error instanceof Error ? error.message : String(error)
+				})
 				if (signal?.aborted) {
 					throw signal.reason ?? makeSendTimeoutError()
 				}

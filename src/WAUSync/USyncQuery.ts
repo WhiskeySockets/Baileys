@@ -16,6 +16,12 @@ export type USyncQueryResultList = { [protocol: string]: unknown; id: string }
 export type USyncQueryResult = {
 	list: USyncQueryResultList[]
 	sideList: USyncQueryResultList[]
+	telemetry?: {
+		resultNodeBytes?: number
+		resultNodeMb?: number
+		resultXmlBytes?: number
+		resultXmlMb?: number
+	}
 }
 
 export class USyncQuery {

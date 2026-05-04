@@ -62,6 +62,94 @@ export function makeLibSignalRepository(
 		updateAgeOnGet: true
 	})
 
+	const validateSessions = async (jids: string[]): Promise<Record<string, { exists: boolean; reason?: string }>> => {
+		const uniqueJids = [...new Set(jids)]
+		const results: Record<string, { exists: boolean; reason?: string }> = {}
+		const addressByJid = new Map<string, string>()
+		const pnJidsByAddress = new Map<string, string>()
+
+		for (const jid of uniqueJids) {
+			try {
+				const decoded = jidDecode(jid)
+				const address = jidToSignalProtocolAddress(jid).toString()
+				addressByJid.set(jid, address)
+
+				if (decoded && (isPnUser(jid) || isHostedPnUser(jid))) {
+					const device = decoded.device || 0
+					const server = decoded.domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'
+					pnJidsByAddress.set(address, `${decoded.user}${device ? `:${device}` : ''}@${server}`)
+				}
+			} catch {
+				results[jid] = { exists: false, reason: 'invalid jid' }
+			}
+		}
+
+		const lidAddressByPnAddress = new Map<string, string>()
+		if (pnJidsByAddress.size) {
+			try {
+				const mappings = await lidMapping.getLIDsForPNs([...pnJidsByAddress.values()])
+				for (const mapping of mappings || []) {
+					try {
+						lidAddressByPnAddress.set(
+							jidToSignalProtocolAddress(mapping.pn).toString(),
+							jidToSignalProtocolAddress(mapping.lid).toString()
+						)
+					} catch {
+						// Ignore a bad mapping and fall back to the original PN address.
+					}
+				}
+			} catch {
+				for (const [jid, address] of addressByJid) {
+					if (pnJidsByAddress.has(address)) {
+						results[jid] = { exists: false, reason: 'validation error' }
+					}
+				}
+			}
+		}
+
+		const wireAddressByJid = new Map<string, string>()
+		for (const [jid, address] of addressByJid) {
+			wireAddressByJid.set(jid, lidAddressByPnAddress.get(address) || address)
+		}
+
+		let sessions: Record<string, Uint8Array> = {}
+		const wireAddresses = [...new Set(wireAddressByJid.values())]
+		if (wireAddresses.length) {
+			try {
+				sessions = await auth.keys.get('session', wireAddresses)
+			} catch {
+				for (const jid of uniqueJids) {
+					if (!results[jid]) {
+						results[jid] = { exists: false, reason: 'validation error' }
+					}
+				}
+				return results
+			}
+		}
+
+		for (const jid of uniqueJids) {
+			if (results[jid]) {
+				continue
+			}
+
+			const wireAddress = wireAddressByJid.get(jid)
+			const serialized = wireAddress ? sessions[wireAddress] : undefined
+			if (!serialized) {
+				results[jid] = { exists: false, reason: 'no session' }
+				continue
+			}
+
+			try {
+				const session = libsignal.SessionRecord.deserialize(serialized)
+				results[jid] = session.haveOpenSession() ? { exists: true } : { exists: false, reason: 'no open session' }
+			} catch {
+				results[jid] = { exists: false, reason: 'validation error' }
+			}
+		}
+
+		return results
+	}
+
 	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
@@ -192,23 +280,9 @@ export function makeLibSignalRepository(
 		lidMapping,
 
 		async validateSession(jid: string) {
-			try {
-				const addr = jidToSignalProtocolAddress(jid)
-				const session = await storage.loadSession(addr.toString())
-
-				if (!session) {
-					return { exists: false, reason: 'no session' }
-				}
-
-				if (!session.haveOpenSession()) {
-					return { exists: false, reason: 'no open session' }
-				}
-
-				return { exists: true }
-			} catch (error) {
-				return { exists: false, reason: 'validation error' }
-			}
+			return (await validateSessions([jid]))[jid] || { exists: false, reason: 'validation error' }
 		},
+		validateSessions,
 
 		async deleteSession(jids: string[]) {
 			if (!jids.length) return

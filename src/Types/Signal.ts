@@ -65,9 +65,9 @@ export type SignalRepository = {
 	}>
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>
 	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
+	validateSessions(jids: string[]): Promise<Record<string, { exists: boolean; reason?: string }>>
 	jidToSignalProtocolAddress(jid: string): string
 	migrateSession(fromJid: string, toJid: string): Promise<{ migrated: number; skipped: number; total: number }>
-	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
 	deleteSession(jids: string[]): Promise<void>
 }
 
