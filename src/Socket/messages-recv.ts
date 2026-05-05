@@ -288,6 +288,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							mappings.push(mapping)
 						}
 					}
+
 					await signalRepository.lidMapping.storeLIDPNMappings(mappings)
 				}
 
