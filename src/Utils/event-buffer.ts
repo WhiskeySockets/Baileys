@@ -243,6 +243,13 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 				bufferTimeout = null
 			}
 
+			// Clear pending debounced flush — otherwise it can fire after
+			// destruction and call flush() on a torn-down buffer (CR review on #2191).
+			if (flushPendingTimeout) {
+				clearTimeout(flushPendingTimeout)
+				flushPendingTimeout = null
+			}
+
 			// Clear history cache
 			historyCache.clear()
 			// Reset buffer data
