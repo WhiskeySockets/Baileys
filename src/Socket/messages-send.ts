@@ -631,7 +631,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			additionalNodes,
 			useUserDevicesCache,
 			useCachedGroupMetadata,
-			statusJidList
+			statusJidList,
+			ai = false
 		}: MessageRelayOptions
 	) => {
 		const meId = assertMeId(authState.creds)
@@ -657,6 +658,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: DeviceWithJid[] = []
 		let reportingMessage: proto.IMessage | undefined
+		let additionalNodesPushed = false
 
 		const meMsg: proto.IMessage = {
 			deviceSentMessage: {
@@ -1071,11 +1073,39 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (!isNewsletter && buttonType) {
-				const buttonsNode = getButtonArgs(normalizedMsg)
-				;(stanza.content as BinaryNode[]).push(buttonsNode)
+				const additionalHasButton = (additionalNodes ?? []).some(
+					n =>
+						['hsm', 'biz'].includes(n?.tag ?? '') ||
+						['interactive', 'buttons', 'list'].includes(
+							((n?.content as BinaryNode[])?.[0]?.tag ?? '')
+						) ||
+						['native_flow'].includes(
+							((n?.content as BinaryNode[])?.[0]?.content as BinaryNode[])?.[0]?.tag ?? ''
+						)
+				)
+				if (additionalHasButton) {
+					;(stanza.content as BinaryNode[]).push(...additionalNodes!)
+					additionalNodesPushed = true
+				} else {
+					;(stanza.content as BinaryNode[]).push(getButtonArgs(normalizedMsg))
+				}
 			}
 
-			if (additionalNodes && additionalNodes.length > 0) {
+			if (ai && !isGroup && !isStatus && !isNewsletter) {
+				const additionalHasBot = (additionalNodes ?? []).some(
+					n => n?.tag === 'bot' && n?.attrs?.['biz_bot'] === '1'
+				)
+				if (additionalHasBot) {
+					if (!additionalNodesPushed) {
+						;(stanza.content as BinaryNode[]).push(...additionalNodes!)
+						additionalNodesPushed = true
+					}
+				} else {
+					;(stanza.content as BinaryNode[]).push({ tag: 'bot', attrs: { biz_bot: '1' } })
+				}
+			}
+
+			if (!additionalNodesPushed && additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
 
@@ -1477,7 +1507,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					useCachedGroupMetadata: options.useCachedGroupMetadata,
 					additionalAttributes,
 					statusJidList: options.statusJidList,
-					additionalNodes
+					additionalNodes,
+					ai: options.ai
 				})
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
