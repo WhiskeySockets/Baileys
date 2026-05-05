@@ -115,12 +115,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
 
+	// Track ownership: only close caches we created ourselves. An externally-provided
+	// cache belongs to the caller's lifecycle (CR review on #2191).
+	const msgRetryCacheOwned = !config.msgRetryCounterCache
 	const msgRetryCache =
 		config.msgRetryCounterCache ||
 		new NodeCache<number>({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		})
+	const callOfferCacheOwned = !config.callOfferCache
 	const callOfferCache =
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
@@ -128,6 +132,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
+	const placeholderResendCacheOwned = !config.placeholderResendCache
 	const placeholderResendCache =
 		config.placeholderResendCache ||
 		new NodeCache({
@@ -1829,15 +1834,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	registerSocketEndHandler(() => {
-		if (!config.msgRetryCounterCache && msgRetryCache.close) {
+		if (msgRetryCacheOwned && msgRetryCache.close) {
 			msgRetryCache.close()
 		}
 
-		if (!config.callOfferCache && callOfferCache.close) {
+		if (callOfferCacheOwned && callOfferCache.close) {
 			callOfferCache.close()
 		}
 
-		if (!config.placeholderResendCache && placeholderResendCache.close) {
+		if (placeholderResendCacheOwned && placeholderResendCache.close) {
 			placeholderResendCache.close()
 		}
 

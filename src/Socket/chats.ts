@@ -130,6 +130,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	// When a key arrives via APP_STATE_SYNC_KEY_SHARE, these are re-synced.
 	const blockedCollections = new Set<WAPatchName>()
 
+	// Track ownership: only close caches we created ourselves. An externally-provided
+	// cache (config.placeholderResendCache) belongs to the caller's lifecycle, and
+	// closing it on socket end would surprise downstream consumers (CR review on #2191).
+	const placeholderResendCacheOwned = !config.placeholderResendCache
 	const placeholderResendCache =
 		config.placeholderResendCache ||
 		(new NodeCache<number>({
@@ -1462,7 +1466,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			awaitingSyncTimeout = undefined
 		}
 
-		if (!config.placeholderResendCache && placeholderResendCache.close) {
+		if (placeholderResendCacheOwned && placeholderResendCache.close) {
 			placeholderResendCache.close()
 		}
 
