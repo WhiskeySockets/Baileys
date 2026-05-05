@@ -1490,14 +1490,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				status
 			}
 
-      if (status === 'relaylatency') {
-        const latencyValue = infoChild.attrs.latency || infoChild.attrs['latency_ms'] || infoChild.attrs['latency-ms']
-        const latencyMs = latencyValue ? Number(latencyValue) : undefined
-        if (Number.isFinite(latencyMs)) {
-          call.latencyMs = latencyMs
-        }
-      }
-      
+			if (status === 'relaylatency') {
+				const latencyValue = infoChild.attrs.latency || infoChild.attrs['latency_ms'] || infoChild.attrs['latency-ms']
+				const latencyMs = latencyValue ? Number(latencyValue) : undefined
+				if (Number.isFinite(latencyMs)) {
+					call.latencyMs = latencyMs
+				}
+			}
+
 			if (status === 'offer') {
 				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
@@ -1625,6 +1625,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			)
 			ignoreJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
 		}
+
 		if (ignoreJid && ignoreJid !== S_WHATSAPP_NET && shouldIgnoreJid(ignoreJid)) {
 			await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
 			return
