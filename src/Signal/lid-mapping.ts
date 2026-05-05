@@ -17,6 +17,10 @@ export class LIDMappingStore {
 	private readonly inflightLIDLookups = new Map<string, Promise<LIDMapping[] | null>>()
 	private readonly inflightPNLookups = new Map<string, Promise<LIDMapping[] | null>>()
 
+	// Set true by close(); checked after every await to skip post-teardown cache writes
+	// and avoid re-populating in-flight maps that were just cleared (CR review on #2191).
+	private closed = false
+
 	constructor(
 		keys: SignalKeyStoreWithTransaction,
 		logger: ILogger,
@@ -62,6 +66,7 @@ export class LIDMappingStore {
 			const cacheMisses = [...cacheMissSet]
 			this.logger.trace(`Batch fetching ${cacheMisses.length} LID mappings from database`)
 			const stored = await this.keys.get('lid-mapping', cacheMisses)
+			if (this.closed) return
 
 			for (const pnUser of cacheMisses) {
 				const existingLidUser = stored[pnUser]
@@ -97,6 +102,7 @@ export class LIDMappingStore {
 		await this.keys.transaction(async () => {
 			await this.keys.set({ 'lid-mapping': batchData })
 		}, 'lid-mapping')
+		if (this.closed) return
 
 		// Update cache after successful DB write
 		for (const [pnUser, lidUser] of Object.entries(pairMap)) {
@@ -111,6 +117,7 @@ export class LIDMappingStore {
 
 	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
 		if (pns.length === 0) return null
+		if (this.closed) return null
 
 		const sortedPns = [...new Set(pns)].sort()
 		const cacheKey = sortedPns.join(',')
@@ -177,6 +184,7 @@ export class LIDMappingStore {
 		if (pending.length) {
 			const pnUsers = [...new Set(pending.map(item => item.pnUser))]
 			const stored = await this.keys.get('lid-mapping', pnUsers)
+			if (this.closed) return null
 			for (const pnUser of pnUsers) {
 				const lidUser = stored[pnUser]
 				if (lidUser && typeof lidUser === 'string') {
@@ -211,8 +219,10 @@ export class LIDMappingStore {
 
 		if (Object.keys(usyncFetch).length > 0) {
 			const result = await this.pnToLIDFunc?.(Object.keys(usyncFetch)) // this function already adds LIDs to mapping
+			if (this.closed) return null
 			if (result && result.length > 0) {
 				await this.storeLIDPNMappings(result)
+				if (this.closed) return null
 				for (const pair of result) {
 					const pnDecoded = jidDecode(pair.pn)
 					const pnUser = pnDecoded?.user
@@ -246,6 +256,7 @@ export class LIDMappingStore {
 
 	async getPNsForLIDs(lids: string[]): Promise<LIDMapping[] | null> {
 		if (lids.length === 0) return null
+		if (this.closed) return null
 
 		const sortedLids = [...new Set(lids)].sort()
 		const cacheKey = sortedLids.join(',')
@@ -304,6 +315,7 @@ export class LIDMappingStore {
 		if (pending.length) {
 			const reverseKeys = [...new Set(pending.map(item => `${item.lidUser}_reverse`))]
 			const stored = await this.keys.get('lid-mapping', reverseKeys)
+			if (this.closed) return null
 
 			for (const { lid, lidUser, decoded } of pending) {
 				let pnUser = this.mappingCache.get(`lid:${lidUser}`)
@@ -327,9 +339,14 @@ export class LIDMappingStore {
 	}
 
 	/**
-	 * Close the cache and release resources
+	 * Close the cache and release resources.
+	 * Marks the store as closed so any in-flight async operation skips
+	 * post-await cache writes and inflight-map registrations.
 	 */
 	close(): void {
+		this.closed = true
 		this.mappingCache.clear()
+		this.inflightLIDLookups.clear()
+		this.inflightPNLookups.clear()
 	}
 }
