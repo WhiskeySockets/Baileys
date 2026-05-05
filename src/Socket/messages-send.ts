@@ -122,9 +122,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
-	let mediaConn: Promise<MediaConnInfo>
-	const refreshMediaConn = async (forceGet = false) => {
-		const media = await mediaConn
+	let mediaConn: Promise<MediaConnInfo> | undefined
+	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
+		const media = mediaConn ? await mediaConn : undefined
 		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
 			mediaConn = (async () => {
 				const result = await query({
@@ -152,7 +152,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})()
 		}
 
-		return mediaConn
+		return mediaConn!
 	}
 
 	/**
@@ -1237,7 +1237,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			peerSessionsCache.close()
 		}
 
-		mediaConn = undefined as any
+		mediaConn = undefined
 		if (messageRetryManager) {
 			messageRetryManager.clear()
 		}
