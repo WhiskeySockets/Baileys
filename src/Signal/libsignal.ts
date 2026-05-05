@@ -61,6 +61,9 @@ export function makeLibSignalRepository(
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
+	// Repository-level closed flag — checked after every await in async methods
+	// to prevent post-teardown writes to migratedSessionCache (CR review on #2191).
+	let closed = false
 
 	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
@@ -224,6 +227,7 @@ export function makeLibSignalRepository(
 		},
 
 		close() {
+			closed = true
 			migratedSessionCache.clear()
 			lidMapping.close()
 		},
@@ -246,6 +250,7 @@ export function makeLibSignalRepository(
 
 			// Get user's device list from storage
 			const { [user]: userDevices } = await parsedKeys.get('device-list', [user])
+			if (closed) return { migrated: 0, skipped: 0, total: 0 }
 			if (!userDevices) {
 				return { migrated: 0, skipped: 0, total: 0 }
 			}
@@ -265,6 +270,7 @@ export function makeLibSignalRepository(
 			// Bulk check session existence only for uncached devices
 			const deviceSessionKeys = uncachedDevices.map(device => `${user}.${device}`)
 			const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
+			if (closed) return { migrated: 0, skipped: 0, total: 0 }
 
 			// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist)
 			const deviceJids: string[] = []
@@ -356,11 +362,13 @@ export function makeLibSignalRepository(
 						await parsedKeys.set({ session: sessionUpdates })
 						logger.debug({ migratedSessions: migratedCount }, 'bulk session migration complete')
 
-						// Cache device-level migrations
-						for (const op of migrationOps) {
-							if (sessionUpdates[op.toAddr.toString()]) {
-								const deviceKey = `${op.pnUser}.${op.deviceId}`
-								migratedSessionCache.set(deviceKey, true)
+						// Cache device-level migrations — skip if repository was closed mid-flight
+						if (!closed) {
+							for (const op of migrationOps) {
+								if (sessionUpdates[op.toAddr.toString()]) {
+									const deviceKey = `${op.pnUser}.${op.deviceId}`
+									migratedSessionCache.set(deviceKey, true)
+								}
 							}
 						}
 					}
