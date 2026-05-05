@@ -1,5 +1,5 @@
 import type { WAMessage } from '../../Types'
-import { cleanMessage } from '../../Utils/process-message'
+import { cleanMessage, getChatId } from '../../Utils/process-message'
 
 const createBaseMessage = (key: Partial<WAMessage['key']>, message?: Partial<WAMessage['message']>): WAMessage => {
 	return {
@@ -134,5 +134,56 @@ describe('cleanMessage', () => {
 			const message = createBaseMessage({}, {})
 			expect(() => cleanMessage(message, meId, meLid)).not.toThrow()
 		})
+	})
+})
+
+describe('getChatId', () => {
+	it('returns remoteJid for a regular 1:1 chat', () => {
+		expect(getChatId({ remoteJid: 'peer@s.whatsapp.net', fromMe: false, id: 'X' })).toBe('peer@s.whatsapp.net')
+	})
+
+	it('returns remoteJid for a group chat (broadcast check is false)', () => {
+		expect(getChatId({ remoteJid: '120363@g.us', fromMe: false, id: 'X' })).toBe('120363@g.us')
+	})
+
+	it('returns remoteJid for status broadcast (status is special-cased to remoteJid)', () => {
+		expect(
+			getChatId({
+				remoteJid: 'status@broadcast',
+				participant: 'someone@s.whatsapp.net',
+				fromMe: false,
+				id: 'X'
+			})
+		).toBe('status@broadcast')
+	})
+
+	it('returns participant for non-status broadcast received from peer', () => {
+		expect(
+			getChatId({
+				remoteJid: '12345@broadcast',
+				participant: 'sender@s.whatsapp.net',
+				fromMe: false,
+				id: 'X'
+			})
+		).toBe('sender@s.whatsapp.net')
+	})
+
+	it('returns remoteJid for non-status broadcast sent by me', () => {
+		expect(
+			getChatId({
+				remoteJid: '12345@broadcast',
+				participant: 'me@s.whatsapp.net',
+				fromMe: true,
+				id: 'X'
+			})
+		).toBe('12345@broadcast')
+	})
+
+	it('throws when remoteJid is missing', () => {
+		expect(() => getChatId({ fromMe: false, id: 'X' })).toThrow(/missing remoteJid/)
+	})
+
+	it('throws when broadcast key has no participant', () => {
+		expect(() => getChatId({ remoteJid: '12345@broadcast', fromMe: false, id: 'X' })).toThrow(/missing participant/)
 	})
 })
