@@ -265,7 +265,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 			const blockStart = blockSize * i // the location of the first sample in the block
 			let sum = 0
 			for (let j = 0; j < blockSize; j++) {
-				sum = sum + Math.abs(rawData[blockStart + j]) // find the sum of all the samples in the block
+				sum = sum + Math.abs(rawData[blockStart + j] ?? 0) // find the sum of all the samples in the block
 			}
 
 			filteredData.push(sum / blockSize) // divide the sum by the block size to get the average
