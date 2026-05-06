@@ -233,7 +233,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (updateNode) {
 			const opName = updateNode.attrs?.op_name
 			if (!opName) {
-				logger.warn({ node: binaryNodeToString(node) }, 'mex notification missing op_name')
+				logger.warn({ node: binaryNodeToString(node) }, 'mex notification missing op_name, fallback to legacy')
+				await handleLegacyMexNewsletterNotification(node)
 				return
 			}
 
@@ -269,6 +270,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				// newsletter ops still use the legacy <mex> child structure
 				case 'NotificationNewsletterUpdate':
+				case 'NotificationLinkedProfilesUpdates':
 				case 'NotificationNewsletterAdminPromote':
 				case 'NotificationNewsletterAdminDemote':
 				case 'NotificationNewsletterUserSettingChange':
