@@ -1229,6 +1229,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		userDevicesCache,
 		issuePrivacyTokens,
 		assertSessions,
 		relayMessage,

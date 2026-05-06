@@ -85,17 +85,11 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const {
-		logger,
-		retryRequestDelayMs,
-		maxMsgRetryCount,
-		userDevicesCache,
-		getMessage,
-		shouldIgnoreJid,
-		enableAutoSessionRecreation
-	} = config
+	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
+		config
 	const sock = makeMessagesSocket(config)
 	const {
+		userDevicesCache,
 		ev,
 		authState,
 		ws,
@@ -296,6 +290,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							mappings.push(mapping)
 						}
 					}
+
 					await signalRepository.lidMapping.storeLIDPNMappings(mappings)
 				}
 
@@ -786,64 +781,90 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const [child] = getAllBinaryNodeChildren(node)
 		const from = jidNormalizedUser(node.attrs.from)
 
+		if (!child) {
+			logger.debug({ from }, 'devices notification missing child, skipping')
+			return
+		}
+
+		const tag = child.tag as 'add' | 'remove' | 'update'
+		const deviceHash = child.attrs.device_hash
 		const devices = getBinaryNodeChildren(child, 'device')
+
 		if (areJidsSameUser(from, authState.creds.me!.id) || areJidsSameUser(from, authState.creds.me!.lid)) {
 			const deviceJids = devices.map(d => d.attrs.jid)
 			logger.info({ deviceJids }, 'got my own devices')
 		}
 
-		if (!devices.length || !devices || !devices?.[0]) {
-			logger.debug({ from }, 'no devices in notification, skipping')
+		if (!devices.length) {
+			logger.debug({ from, tag }, 'no devices in notification, skipping')
 			return
 		}
 
-		const deviceJid = devices[0].attrs.jid
-		const { user, device } = jidDecode(deviceJid)!
-		const tag = child!.tag as 'add' | 'remove' | 'update'
+		type DecodedDevice = { jid: string; user: string; server: string; device?: number }
+		const decoded: DecodedDevice[] = []
+		for (const d of devices) {
+			const jid = d.attrs.jid
+			if (!jid) continue
+			const parts = jidDecode(jid)
+			if (!parts) {
+				logger.debug({ jid }, 'failed to decode device jid, skipping')
+				continue
+			}
 
-		if (!deviceJid) {
-			logger.debug({ tag }, 'no device jid in notification, skipping')
-			return
+			decoded.push({ jid, user: parts.user, server: parts.server, device: parts.device })
 		}
+
+		if (!decoded.length) return
 
 		await devicesMutex.mutex(async () => {
-			if (tag === 'update') {
-				logger.debug({ user }, `${user}'s device list updated, dropping cached devices`)
-				await userDevicesCache?.del(user)
-				return
+			const byUser = new Map<string, DecodedDevice[]>()
+			for (const d of decoded) {
+				const list = byUser.get(d.user) || []
+				list.push(d)
+				byUser.set(d.user, list)
 			}
 
-			if(tag === 'remove'){
-				signalRepository.deleteSession([deviceJid])
-			}
+			for (const [user, entries] of byUser) {
+				if (tag === 'update') {
+					logger.debug({ user }, `${user}'s device list updated, dropping cached devices`)
+					await userDevicesCache?.del(user)
+					continue
+				}
 
-			const existingCache: JidWithDevice[] = (await userDevicesCache?.get(user)) || ([] as JidWithDevice[])
+				if (tag === 'remove') {
+					await signalRepository.deleteSession(entries.map(e => e.jid))
+				}
 
-			if (!existingCache.length) {
-				logger.debug({ user, tag }, 'device list not cached, skipping cache update')
-				return
-			}
+				const existingCache: JidWithDevice[] = (await userDevicesCache?.get<JidWithDevice[]>(user)) || []
+				if (!existingCache.length && tag === 'remove') {
+					logger.debug({ user, tag }, 'device list not cached, nothing to remove')
+					continue
+				}
 
-			const deviceHash = child!.attrs.device_hash
+				const affected = new Set(entries.map(e => e.device))
+				let updatedDevices: JidWithDevice[]
+				switch (tag) {
+					case 'add':
+						logger.info({ deviceHash, count: entries.length }, 'devices added')
+						updatedDevices = [
+							...existingCache.filter(d => !affected.has(d.device)),
+							...entries.map(e => ({ user: e.user, server: e.server, device: e.device }))
+						]
+						break
+					case 'remove':
+						logger.info({ deviceHash, count: entries.length }, 'devices removed')
+						updatedDevices = existingCache.filter(d => !affected.has(d.device))
+						break
+					default:
+						logger.debug({ tag }, 'Unknown device list change tag')
+						continue
+				}
 
-			let updatedDevices: JidWithDevice[] = []
-
-			switch (tag) {
-				case 'add':
-					logger.info({ deviceHash }, 'device added')
-					updatedDevices = [...existingCache.filter(d => d.device !== device), { user, device }]
-					break
-				case 'remove':
-					logger.info({ deviceHash }, 'device removed')
-					updatedDevices = existingCache.filter(d => d.device !== device) || []
-					break
-				default:
-					logger.debug({ tag }, 'Unknown device list change tag')
-					return
-			}
-
-			if (updatedDevices.length > 0) {
-				await userDevicesCache?.set(user, updatedDevices)
+				if (updatedDevices.length === 0) {
+					await userDevicesCache?.del(user)
+				} else {
+					await userDevicesCache?.set(user, updatedDevices)
+				}
 			}
 		})
 	}
@@ -1595,14 +1616,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				status
 			}
 
-      if (status === 'relaylatency') {
-        const latencyValue = infoChild.attrs.latency || infoChild.attrs['latency_ms'] || infoChild.attrs['latency-ms']
-        const latencyMs = latencyValue ? Number(latencyValue) : undefined
-        if (Number.isFinite(latencyMs)) {
-          call.latencyMs = latencyMs
-        }
-      }
-      
+			if (status === 'relaylatency') {
+				const latencyValue = infoChild.attrs.latency || infoChild.attrs['latency_ms'] || infoChild.attrs['latency-ms']
+				const latencyMs = latencyValue ? Number(latencyValue) : undefined
+				if (Number.isFinite(latencyMs)) {
+					call.latencyMs = latencyMs
+				}
+			}
+
 			if (status === 'offer') {
 				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
@@ -1730,6 +1751,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			)
 			ignoreJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
 		}
+
 		if (ignoreJid && ignoreJid !== S_WHATSAPP_NET && shouldIgnoreJid(ignoreJid)) {
 			await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
 			return
