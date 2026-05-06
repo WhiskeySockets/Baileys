@@ -51,6 +51,7 @@ const storeMappingFromEnvelope = async (
 
 export const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
+export const ACCOUNT_RESTRICTED_TEXT = 'Your account has been restricted'
 
 // Retry configuration for failed decryption
 export const DECRYPTION_RETRY_CONFIG = {
@@ -61,6 +62,7 @@ export const DECRYPTION_RETRY_CONFIG = {
 
 /** NACK reason codes we send to the server (client → server) */
 export const NACK_REASONS = {
+	SenderReachoutTimelocked: 463,
 	ParsingError: 487,
 	UnrecognizedStanza: 488,
 	UnrecognizedStanzaClass: 489,
@@ -82,8 +84,12 @@ export const NACK_REASONS = {
  * Distinct from the client-side NackReason enum (WAWebCreateNackFromStanza).
  */
 export const SERVER_ERROR_CODES = {
-	/** 1:1 message missing privacy token (tctoken) */
-	MissingTcToken: '463',
+	/**
+	 * 1:1 message missing privacy token (tctoken). Usually means the account is
+	 * restricted: WhatsApp blocks starting new chats but preserves existing ones,
+	 * since established chats already carry a tctoken.
+	 */
+	MessageAccountRestriction: '463',
 	/** Stanza validation failure (SMAX_INVALID) — likely stale device session */
 	SmaxInvalid: '479'
 } as const
