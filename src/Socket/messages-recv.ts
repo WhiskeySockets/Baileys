@@ -1601,7 +1601,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				)
 			} else if (isReachoutTimelocked) {
 				// user is temporarily restricted, fetch current restriction details
-				await fetchAccountReachoutTimelock()
+				await fetchAccountReachoutTimelock().catch(err => logger.warn({ err }, 'failed to fetch reachout timelock'))
 				logger.warn({ attrs }, 'received error in ack')
 			} else {
 				logger.warn({ attrs }, 'received error in ack')
