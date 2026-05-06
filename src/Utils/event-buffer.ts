@@ -317,6 +317,7 @@ function append<E extends BufferableEvent>(
 				]
 			}
 			data.historySets.progress = eventData.progress
+			data.historySets.chunkOrder = eventData.chunkOrder
 			data.historySets.peerDataRequestSessionId = eventData.peerDataRequestSessionId
 			data.historySets.isLatest = eventData.isLatest || data.historySets.isLatest
 
@@ -607,6 +608,7 @@ function consolidateEvents(data: BufferedEventData) {
 			syncType: data.historySets.syncType,
 			progress: data.historySets.progress,
 			isLatest: data.historySets.isLatest,
+			chunkOrder: data.historySets.chunkOrder,
 			peerDataRequestSessionId: data.historySets.peerDataRequestSessionId
 		}
 	}

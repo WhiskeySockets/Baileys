@@ -14,7 +14,7 @@ import type {
 import type { Label } from './Label'
 import type { LabelAssociation } from './LabelAssociation'
 import type { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
-import type { ConnectionState } from './State'
+import type { ConnectionState, NewChatMessageCapInfo } from './State'
 
 // TODO: refactor this mess
 export type BaileysEventMap = {
@@ -32,7 +32,20 @@ export type BaileysEventMap = {
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType | null
 		pastParticipants?: proto.IPastParticipants[] | null
+		chunkOrder?: number | null
 		peerDataRequestSessionId?: string | null
+	}
+	/** signals history sync milestones (completion or stall) per sync type */
+	'messaging-history.status': {
+		/** which sync phase this status refers to */
+		syncType: proto.HistorySync.HistorySyncType
+		/** the status of this sync phase */
+		status: 'complete' | 'paused'
+		/**
+		 * progress === 100 was received from the server.
+		 * when false, completion was inferred via timeout (no more chunks arriving).
+		 */
+		explicit: boolean
 	}
 	/** upsert chats */
 	'chats.upsert': Chat[]
@@ -68,6 +81,7 @@ export type BaileysEventMap = {
 		id: string
 		author: string
 		authorPn?: string
+		authorUsername?: string
 		participants: GroupParticipant[]
 		action: ParticipantAction
 	}
@@ -75,6 +89,7 @@ export type BaileysEventMap = {
 		id: string
 		author: string
 		authorPn?: string
+		authorUsername?: string
 		participant: string
 		participantPn?: string
 		action: RequestJoinAction
@@ -107,6 +122,8 @@ export type BaileysEventMap = {
 	'newsletter-participants.update': { id: string; author: string; user: string; new_role: string; action: string }
 	'newsletter-settings.update': { id: string; update: any }
 
+	'message-capping.update': NewChatMessageCapInfo
+
 	/** Settings and actions sync events */
 	'chats.lock': { id: string; locked: boolean }
 	'settings.update':
@@ -136,6 +153,7 @@ export type BufferedEventData = {
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType
 		pastParticipants?: proto.IPastParticipants[]
+		chunkOrder?: number | null
 		peerDataRequestSessionId?: string
 	}
 	chatUpserts: { [jid: string]: Chat }
