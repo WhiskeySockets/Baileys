@@ -1795,6 +1795,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					{ msgId: attrs.id, from: attrs.from },
 					'error 463: account restricted or missing tctoken for contact'
 				)
+
+				const ackFrom = attrs.from
+				if (ackFrom && !inFlight463Recoveries.has(ackFrom)) {
+					inFlight463Recoveries.add(ackFrom)
+					void (async() => {
+						try {
+							const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
+							const tcStorageJid = await resolveTcTokenJid(ackFrom, getLIDForPN)
+							const issueJid = await resolveIssuanceJid(
+								ackFrom,
+								sock.serverProps.lidTrustedTokenIssueToLid,
+								getLIDForPN,
+								getPNForLID
+							)
+							const result = await issuePrivacyTokens([issueJid], unixTimestampSeconds())
+							await storeTcTokensFromIqResult({
+								result,
+								fallbackJid: tcStorageJid,
+								keys: authState.keys,
+								getLIDForPN,
+								onNewJidStored: trackTcTokenJid
+							})
+							logger.debug({ from: ackFrom }, 'completed 463 token recovery issuance')
+						} catch (err: any) {
+							logger.debug({ from: ackFrom, err: err?.message }, 'failed 463 token recovery issuance')
+						} finally {
+							inFlight463Recoveries.delete(ackFrom)
+						}
+					})()
+				}
 			} else if (attrs.error === SERVER_ERROR_CODES.SmaxInvalid) {
 				logger.warn(
 					{ msgId: attrs.id, from: attrs.from },
@@ -1937,6 +1967,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	/** timestamp of last tctoken prune run — throttles to once per 24h */
 	let lastTcTokenPruneTs = 0
+	/** dedupe in-flight 463 recovery token issuance by target JID */
+	const inFlight463Recoveries = new Set<string>()
 
 	ev.on('connection.update', ({ isOnline, connection }) => {
 		if (typeof isOnline !== 'undefined') {
