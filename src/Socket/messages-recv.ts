@@ -1799,7 +1799,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const ackFrom = attrs.from
 				if (ackFrom && !inFlight463Recoveries.has(ackFrom)) {
 					inFlight463Recoveries.add(ackFrom)
-					void (async() => {
+					void (async () => {
 						try {
 							const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 							const tcStorageJid = await resolveTcTokenJid(ackFrom, getLIDForPN)
