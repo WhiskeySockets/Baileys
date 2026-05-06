@@ -18,14 +18,18 @@ try {
     '\tif (typeof value === "number") {\n' +
     '\t\treturn String(value);\n' +
     '\t}\n' +
-    '\tif (!$util.Long) {\n' +
-    '\t\treturn String(value);\n' +
+    '\t// Fast path: convert Long {low, high} directly via native BigInt\n' +
+    '\t// BigInt.toString() is a native C++ operation, much faster than Long\'s pure JS division loops\n' +
+    '\tif (value && typeof value.low === "number" && typeof value.high === "number") {\n' +
+    '\t\tconst lo = BigInt(value.low >>> 0);\n' +
+    '\t\tconst hi = BigInt(value.high >>> 0);\n' +
+    '\t\tconst combined = (hi << 32n) | lo;\n' +
+    '\t\tif (!unsigned && value.high < 0) {\n' +
+    '\t\t\treturn (combined - (1n << 64n)).toString();\n' +
+    '\t\t}\n' +
+    '\t\treturn combined.toString();\n' +
     '\t}\n' +
-    '\tconst normalized = $util.Long.fromValue(value);\n' +
-    '\tconst prepared = unsigned && normalized && typeof normalized.toUnsigned === "function"\n' +
-    '\t\t? normalized.toUnsigned()\n' +
-    '\t\t: normalized;\n' +
-    '\treturn prepared.toString();\n' +
+    '\treturn String(value);\n' +
     '}\n\n'
   const longToNumberHelper =
     'function longToNumber(value, unsigned) {\n' +
@@ -33,19 +37,19 @@ try {
     '\t\treturn value;\n' +
     '\t}\n' +
     '\tif (typeof value === "string") {\n' +
-    '\t\tconst numeric = Number(value);\n' +
-    '\t\treturn numeric;\n' +
-    '\t}\n' +
-    '\tif (!$util.Long) {\n' +
     '\t\treturn Number(value);\n' +
     '\t}\n' +
-    '\tconst normalized = $util.Long.fromValue(value);\n' +
-    '\tconst prepared = unsigned && normalized && typeof normalized.toUnsigned === "function"\n' +
-    '\t\t? normalized.toUnsigned()\n' +
-    '\t\t: typeof normalized.toSigned === "function"\n' +
-    '\t\t\t? normalized.toSigned()\n' +
-    '\t\t\t: normalized;\n' +
-    '\treturn prepared.toNumber();\n' +
+    '\t// Fast path: convert Long {low, high} directly via native BigInt\n' +
+    '\tif (value && typeof value.low === "number" && typeof value.high === "number") {\n' +
+    '\t\tconst lo = BigInt(value.low >>> 0);\n' +
+    '\t\tconst hi = BigInt(value.high >>> 0);\n' +
+    '\t\tconst combined = (hi << 32n) | lo;\n' +
+    '\t\tif (!unsigned && value.high < 0) {\n' +
+    '\t\t\treturn Number(combined - (1n << 64n));\n' +
+    '\t\t}\n' +
+    '\t\treturn Number(combined);\n' +
+    '\t}\n' +
+    '\treturn Number(value);\n' +
     '}\n\n'
 
   if (!content.includes('function longToString(')) {
