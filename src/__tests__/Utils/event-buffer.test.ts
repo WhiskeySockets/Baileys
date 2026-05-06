@@ -101,9 +101,6 @@ describe('event-buffer', () => {
 			await new Promise(resolve => setTimeout(resolve, 100))
 
 			expect(receivedEvents).toHaveLength(1)
-			// BUG: Currently this fails because pastParticipants is overwritten
-			// instead of accumulated. Only batch2 survives.
-			// After the fix, both batches should be present:
 			expect(receivedEvents[0]!.pastParticipants).toHaveLength(2)
 			expect(receivedEvents[0]!.pastParticipants).toContainEqual(batch1[0])
 			expect(receivedEvents[0]!.pastParticipants).toContainEqual(batch2[0])
@@ -151,8 +148,6 @@ describe('event-buffer', () => {
 			await new Promise(resolve => setTimeout(resolve, 100))
 
 			expect(receivedEvents).toHaveLength(1)
-			// BUG: Currently this fails because the second event overwrites
-			// pastParticipants with undefined, losing batch1.
 			expect(receivedEvents[0]!.pastParticipants).toEqual(batch1)
 		})
 	})

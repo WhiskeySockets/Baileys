@@ -1,4 +1,5 @@
 import EventEmitter from 'events'
+import type { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEvent,
 	BaileysEventEmitter,
@@ -311,10 +312,17 @@ function append<E extends BufferableEvent>(
 			data.historySets.empty = false
 			data.historySets.syncType = eventData.syncType
 			if (eventData.pastParticipants?.length) {
-				data.historySets.pastParticipants = [
-					...(data.historySets.pastParticipants || []),
-					...eventData.pastParticipants
-				]
+				const merged = new Map<string, proto.IPastParticipants>()
+				for (const entry of data.historySets.pastParticipants || []) {
+					merged.set(entry.groupJid ?? JSON.stringify(entry), entry)
+				}
+
+				for (const entry of eventData.pastParticipants) {
+					const key = entry.groupJid ?? JSON.stringify(entry)
+					if (!merged.has(key)) merged.set(key, entry)
+				}
+
+				data.historySets.pastParticipants = [...merged.values()]
 			}
 
 			data.historySets.progress = eventData.progress
