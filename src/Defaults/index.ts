@@ -135,7 +135,6 @@ export const MIN_PREKEY_COUNT = 5
 export const INITIAL_PREKEY_COUNT = 812
 
 export const UPLOAD_TIMEOUT = 30000 // 30 seconds
-export const MIN_UPLOAD_INTERVAL = 5000 // 5 seconds minimum between uploads
 
 export const DEFAULT_CACHE_TTLS = {
 	SIGNAL_STORE: 5 * 60, // 5 minutes
