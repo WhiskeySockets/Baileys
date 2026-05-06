@@ -24,6 +24,7 @@ import type {
 } from '../Types'
 import { ReachoutTimelockEnforcementType, WAMessageStatus, WAMessageStubType } from '../Types'
 import {
+	ACCOUNT_RESTRICTED_TEXT,
 	aesDecryptCTR,
 	aesEncryptGCM,
 	cleanMessage,
@@ -126,7 +127,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager,
-		issuePrivacyTokens
+		issuePrivacyTokens,
+		fetchAccountReachoutTimelock
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -1722,6 +1724,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
+			const isReachoutTimelocked = attrs.error === String(NACK_REASONS.SenderReachoutTimelocked)
+
 			if (attrs.error === SERVER_ERROR_CODES.MissingTcToken) {
 				// 463 = account restricted + no tctoken for this contact.
 				// WA Web prevents this client-side (disables compose bar).
@@ -1736,6 +1740,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					{ msgId: attrs.id, from: attrs.from },
 					'smax-invalid (479): stanza rejected by server — likely stale device session or malformed addressing'
 				)
+			} else if (isReachoutTimelocked) {
+				// user is temporarily restricted, fetch current restriction details
+				await fetchAccountReachoutTimelock().catch(err => logger.warn({ err }, 'failed to fetch reachout timelock'))
+				logger.warn({ attrs }, 'received error in ack')
 			} else {
 				logger.warn({ attrs }, 'received error in ack')
 			}
@@ -1745,7 +1753,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					key,
 					update: {
 						status: WAMessageStatus.ERROR,
-						messageStubParameters: [attrs.error]
+						messageStubParameters: isReachoutTimelocked ? [attrs.error, ACCOUNT_RESTRICTED_TEXT] : [attrs.error]
 					}
 				}
 			])
