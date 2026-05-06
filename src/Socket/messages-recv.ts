@@ -82,6 +82,7 @@ import {
 	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
+	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { extractGroupMetadata } from './groups'
@@ -111,6 +112,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		config
 	const sock = makeMessagesSocket(config)
 	const {
+		userDevicesCache,
+		devicesMutex,
 		ev,
 		authState,
 		ws,
@@ -934,6 +937,101 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const handleDevicesNotification = async (node: BinaryNode) => {
+		const [child] = getAllBinaryNodeChildren(node)
+		const from = jidNormalizedUser(node.attrs.from)
+
+		if (!child) {
+			logger.debug({ from }, 'devices notification missing child, skipping')
+			return
+		}
+
+		const tag = child.tag as 'add' | 'remove' | 'update'
+		const deviceHash = child.attrs.device_hash
+		const devices = getBinaryNodeChildren(child, 'device')
+
+		if (areJidsSameUser(from, authState.creds.me!.id) || areJidsSameUser(from, authState.creds.me!.lid)) {
+			const deviceJids = devices.map(d => d.attrs.jid)
+			logger.info({ deviceJids }, 'got my own devices')
+		}
+
+		if (!devices.length) {
+			logger.debug({ from, tag }, 'no devices in notification, skipping')
+			return
+		}
+
+		type DecodedDevice = { jid: string; user: string; server: string; device?: number }
+		const decoded: DecodedDevice[] = []
+		for (const d of devices) {
+			const jid = d.attrs.jid
+			if (!jid) continue
+			const parts = jidDecode(jid)
+			if (!parts) {
+				logger.debug({ jid }, 'failed to decode device jid, skipping')
+				continue
+			}
+
+			decoded.push({ jid, user: parts.user, server: parts.server, device: parts.device })
+		}
+
+		if (!decoded.length) return
+
+		await devicesMutex.mutex(async () => {
+			const byUser = new Map<string, DecodedDevice[]>()
+			for (const d of decoded) {
+				const list = byUser.get(d.user) || []
+				list.push(d)
+				byUser.set(d.user, list)
+			}
+
+			for (const [user, entries] of byUser) {
+				if (tag === 'update') {
+					logger.debug({ user }, `${user}'s device list updated, dropping cached devices`)
+					await userDevicesCache?.del(user)
+					continue
+				}
+
+				if (tag === 'remove') {
+					await signalRepository.deleteSession(entries.map(e => e.jid))
+				}
+
+				const existingCache: JidWithDevice[] = (await userDevicesCache?.get<JidWithDevice[]>(user)) || []
+				if (!existingCache.length) {
+					// No baseline yet; skip applying the delta so getUSyncDevices can
+					// later fetch the full device list. Caching just the notification
+					// entries would make a partial list look authoritative.
+					logger.debug({ user, tag }, 'device list not cached, deferring to USync refresh')
+					continue
+				}
+
+				const affected = new Set(entries.map(e => e.device))
+				let updatedDevices: JidWithDevice[]
+				switch (tag) {
+					case 'add':
+						logger.info({ deviceHash, count: entries.length }, 'devices added')
+						updatedDevices = [
+							...existingCache.filter(d => !affected.has(d.device)),
+							...entries.map(e => ({ user: e.user, server: e.server, device: e.device }))
+						]
+						break
+					case 'remove':
+						logger.info({ deviceHash, count: entries.length }, 'devices removed')
+						updatedDevices = existingCache.filter(d => !affected.has(d.device))
+						break
+					default:
+						logger.debug({ tag }, 'Unknown device list change tag')
+						continue
+				}
+
+				if (updatedDevices.length === 0) {
+					await userDevicesCache?.del(user)
+				} else {
+					await userDevicesCache?.set(user, updatedDevices)
+				}
+			}
+		})
+	}
+
 	const processNotification = async (node: BinaryNode) => {
 		const result: Partial<WAMessage> = {}
 		const [child] = getAllBinaryNodeChildren(node)
@@ -959,16 +1057,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleEncryptNotification(node)
 				break
 			case 'devices':
-				const devices = getBinaryNodeChildren(child, 'device')
-				if (
-					areJidsSameUser(child!.attrs.jid, authState.creds.me!.id) ||
-					areJidsSameUser(child!.attrs.lid, authState.creds.me!.lid)
-				) {
-					const deviceData = devices.map(d => ({ id: d.attrs.jid, lid: d.attrs.lid }))
-					logger.info({ deviceData }, 'my own devices changed')
+				try {
+					await handleDevicesNotification(node)
+				} catch (error) {
+					logger.error({ error, node }, 'failed to handle devices notification')
 				}
-
-				//TODO: drop a new event, add hashes
 
 				break
 			case 'server_sync':
