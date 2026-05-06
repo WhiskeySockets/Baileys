@@ -1607,7 +1607,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				logger.warn({ attrs }, 'received error in ack')
 			}
 
-
 			ev.emit('messages.update', [
 				{
 					key,
