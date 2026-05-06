@@ -204,4 +204,49 @@ describe('Identity Change Handling', () => {
 			expect(result.action).toBe('session_refreshed')
 		})
 	})
+
+	describe('onBeforeSessionRefresh callback', () => {
+		it('fires before assertSessions when a session refresh is about to run', async () => {
+			mockValidateSession.mockResolvedValue({ exists: true })
+			const callOrder: string[] = []
+			mockAssertSessions.mockImplementation(async () => {
+				callOrder.push('assertSessions')
+				return true
+			})
+			const onBeforeSessionRefresh = jest.fn((jid: string) => {
+				callOrder.push(`before:${jid}`)
+			})
+
+			const node = createIdentityChangeNode('user@s.whatsapp.net')
+			const ctx = { ...createContext(), onBeforeSessionRefresh }
+			const result = await handleIdentityChange(node, ctx)
+
+			expect(result.action).toBe('session_refreshed')
+			expect(callOrder).toEqual(['before:user@s.whatsapp.net', 'assertSessions'])
+		})
+
+		it('does not fire when the refresh is skipped (no session / offline / self)', async () => {
+			const onBeforeSessionRefresh = jest.fn()
+
+			// no session
+			mockValidateSession.mockResolvedValue({ exists: false })
+			await handleIdentityChange(createIdentityChangeNode('a@s.whatsapp.net'), {
+				...createContext(),
+				onBeforeSessionRefresh
+			})
+			// offline
+			mockValidateSession.mockResolvedValue({ exists: true })
+			await handleIdentityChange(createIdentityChangeNode('b@s.whatsapp.net', '0'), {
+				...createContext(),
+				onBeforeSessionRefresh
+			})
+			// self-primary
+			await handleIdentityChange(createIdentityChangeNode(mockMeId), {
+				...createContext(),
+				onBeforeSessionRefresh
+			})
+
+			expect(onBeforeSessionRefresh).not.toHaveBeenCalled()
+		})
+	})
 })
