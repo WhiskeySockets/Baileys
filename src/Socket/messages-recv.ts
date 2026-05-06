@@ -90,6 +90,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const sock = makeMessagesSocket(config)
 	const {
 		userDevicesCache,
+		devicesMutex,
 		ev,
 		authState,
 		ws,
@@ -775,8 +776,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const devicesMutex = makeMutex()
-
 	const handleDevicesNotification = async (node: BinaryNode) => {
 		const [child] = getAllBinaryNodeChildren(node)
 		const from = jidNormalizedUser(node.attrs.from)
@@ -836,8 +835,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				const existingCache: JidWithDevice[] = (await userDevicesCache?.get<JidWithDevice[]>(user)) || []
-				if (!existingCache.length && tag === 'remove') {
-					logger.debug({ user, tag }, 'device list not cached, nothing to remove')
+				if (!existingCache.length) {
+					// No baseline yet; skip applying the delta so getUSyncDevices can
+					// later fetch the full device list. Caching just the notification
+					// entries would make a partial list look authoritative.
+					logger.debug({ user, tag }, 'device list not cached, deferring to USync refresh')
 					continue
 				}
 
