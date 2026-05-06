@@ -129,8 +129,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager,
+		registerSocketEndHandler,
 		issuePrivacyTokens,
-		fetchAccountReachoutTimelock
+		fetchAccountReachoutTimelock,
+		placeholderResendCache
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -148,13 +150,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
 			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
-			useClones: false
-		})
-
-	const placeholderResendCache =
-		config.placeholderResendCache ||
-		new NodeCache({
-			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		})
 
@@ -1972,6 +1967,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				void pruneExpiredTcTokens()
 			}
 		}
+	})
+
+	registerSocketEndHandler(() => {
+		if (!config.msgRetryCounterCache && msgRetryCache.close) {
+			msgRetryCache.close()
+		}
+
+		if (!config.callOfferCache && callOfferCache.close) {
+			callOfferCache.close()
+		}
+
+		identityAssertDebounce.close()
+		sendActiveReceipts = false
 	})
 
 	async function pruneExpiredTcTokens() {

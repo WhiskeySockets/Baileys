@@ -387,6 +387,8 @@ export const makeSocket = (config: SocketConfig) => {
 	let qrTimer: NodeJS.Timeout
 	let closed = false
 
+	const socketEndHandlers: Array<(error: Error | undefined) => void | Promise<void>> = []
+
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
 		logger.error({ err }, `unexpected error in '${msg}'`)
@@ -644,10 +646,20 @@ export const makeSocket = (config: SocketConfig) => {
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')
 
+		signalRepository.close?.()
+
 		if (!ws.isClosed && !ws.isClosing) {
 			try {
 				await ws.close()
 			} catch {}
+		}
+
+		for (const handler of socketEndHandlers) {
+			try {
+				await handler(error)
+			} catch (err) {
+				logger.error({ err }, 'error in socket end handler')
+			}
 		}
 
 		ev.emit('connection.update', {
@@ -658,6 +670,7 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		})
 		ev.removeAllListeners('connection.update')
+		ev.destroy()
 	}
 
 	const waitForSocketOpen = async () => {
@@ -1105,6 +1118,10 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const registerSocketEndHandler = (handler: (error: Error | undefined) => void | Promise<void>) => {
+		socketEndHandlers.push(handler)
+	}
+
 	/**
 	 * Fetches your account's standing when it comes to restrictions.
 	 * @returns Returns the state of the restrictions.
@@ -1158,6 +1175,7 @@ export const makeSocket = (config: SocketConfig) => {
 		sendNode,
 		logout,
 		end,
+		registerSocketEndHandler,
 		onUnexpectedError,
 		uploadPreKeys,
 		uploadPreKeysToServerIfRequired,

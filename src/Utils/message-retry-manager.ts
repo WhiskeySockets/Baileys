@@ -284,6 +284,26 @@ export class MessageRetryManager {
 		}
 	}
 
+	clear(): void {
+		this.recentMessagesMap.clear()
+		this.messageKeyIndex.clear()
+		this.sessionRecreateHistory.clear()
+		this.retryCounters.clear()
+		this.baseKeys.clear()
+		for (const messageId of Object.keys(this.pendingPhoneRequests)) {
+			this.cancelPendingPhoneRequest(messageId)
+		}
+
+		this.statistics = {
+			totalRetries: 0,
+			successfulRetries: 0,
+			failedRetries: 0,
+			mediaRetries: 0,
+			sessionRecreations: 0,
+			phoneRequests: 0
+		}
+	}
+
 	saveBaseKey(addr: string, msgId: string, baseKey: Uint8Array): void {
 		this.baseKeys.set(`${addr}:${msgId}`, baseKey)
 	}

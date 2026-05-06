@@ -81,4 +81,5 @@ export type SignalRepository = {
 // Optimized repository with pre-loaded LID mapping store
 export interface SignalRepositoryWithLIDStore extends SignalRepository {
 	lidMapping: LIDMappingStore
+	close?: () => void
 }
