@@ -1,4 +1,5 @@
 import EventEmitter from 'events'
+import type { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEvent,
 	BaileysEventEmitter,
@@ -334,6 +335,33 @@ function append<E extends BufferableEvent>(
 
 			data.historySets.empty = false
 			data.historySets.syncType = eventData.syncType
+			if (eventData.pastParticipants?.length) {
+				const merged = new Map<string, proto.IPastParticipants>()
+				const sigOf = (p: proto.IPastParticipant) => `${p.userJid || ''}:${p.leaveTs || ''}:${p.leaveReason || ''}`
+				const ingest = (entry: proto.IPastParticipants) => {
+					const key = entry.groupJid ?? JSON.stringify(entry)
+					const existing = merged.get(key)
+					if (!existing) {
+						merged.set(key, { ...entry, pastParticipants: [...(entry.pastParticipants || [])] })
+						return
+					}
+
+					const seen = new Set((existing.pastParticipants || []).map(sigOf))
+					for (const p of entry.pastParticipants || []) {
+						const sig = sigOf(p)
+						if (!seen.has(sig)) {
+							existing.pastParticipants!.push(p)
+							seen.add(sig)
+						}
+					}
+				}
+
+				for (const entry of data.historySets.pastParticipants || []) ingest(entry)
+				for (const entry of eventData.pastParticipants) ingest(entry)
+
+				data.historySets.pastParticipants = [...merged.values()]
+			}
+
 			data.historySets.progress = eventData.progress
 			data.historySets.chunkOrder = eventData.chunkOrder
 			data.historySets.peerDataRequestSessionId = eventData.peerDataRequestSessionId
@@ -622,6 +650,7 @@ function consolidateEvents(data: BufferedEventData) {
 			chats: Object.values(data.historySets.chats),
 			messages: Object.values(data.historySets.messages),
 			contacts: Object.values(data.historySets.contacts),
+			pastParticipants: data.historySets.pastParticipants,
 			syncType: data.historySets.syncType,
 			progress: data.historySets.progress,
 			isLatest: data.historySets.isLatest,

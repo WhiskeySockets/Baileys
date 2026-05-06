@@ -37,6 +37,7 @@ import {
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
 	extractAddressingContext,
+	extractE2ESessionFromRetryReceipt,
 	getCallStatusFromNode,
 	getHistoryMsg,
 	getNextPreKeys,
@@ -73,6 +74,7 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
+	getBinaryNodeChildUInt,
 	isJidGroup,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -442,92 +444,99 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// Handles newsletter notifications
 	const handleNewsletterNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from!
-		const child = getAllBinaryNodeChildren(node)[0]!
+		const children = getAllBinaryNodeChildren(node)
 		const author = node.attrs.participant!
 
-		logger.info({ from, child }, 'got newsletter notification')
+		for (const child of children) {
+			logger.debug({ from, child }, 'got newsletter notification')
 
-		switch (child.tag) {
-			case 'reaction':
-				const reactionUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					reaction: {
-						code: getBinaryNodeChildString(child, 'reaction'),
-						count: 1
-					}
-				}
-				ev.emit('newsletter.reaction', reactionUpdate)
-				break
-
-			case 'view':
-				const viewUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					count: parseInt(child.content?.toString() || '0', 10)
-				}
-				ev.emit('newsletter.view', viewUpdate)
-				break
-
-			case 'participant':
-				const participantUpdate = {
-					id: from,
-					author,
-					user: child.attrs.jid!,
-					action: child.attrs.action!,
-					new_role: child.attrs.role!
-				}
-				ev.emit('newsletter-participants.update', participantUpdate)
-				break
-
-			case 'update':
-				const settingsNode = getBinaryNodeChild(child, 'settings')
-				if (settingsNode) {
-					const update: Record<string, any> = {}
-					const nameNode = getBinaryNodeChild(settingsNode, 'name')
-					if (nameNode?.content) update.name = nameNode.content.toString()
-
-					const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
-					if (descriptionNode?.content) update.description = descriptionNode.content.toString()
-
-					ev.emit('newsletter-settings.update', {
+			switch (child.tag) {
+				case 'reaction': {
+					const reactionUpdate = {
 						id: from,
-						update
-					})
-				}
-
-				break
-
-			case 'message':
-				const plaintextNode = getBinaryNodeChild(child, 'plaintext')
-				if (plaintextNode?.content) {
-					try {
-						const contentBuf =
-							typeof plaintextNode.content === 'string'
-								? Buffer.from(plaintextNode.content, 'binary')
-								: Buffer.from(plaintextNode.content as Uint8Array)
-						const messageProto = proto.Message.decode(contentBuf).toJSON()
-						const fullMessage = proto.WebMessageInfo.fromObject({
-							key: {
-								remoteJid: from,
-								id: child.attrs.message_id || child.attrs.server_id,
-								fromMe: false // TODO: is this really true though
-							},
-							message: messageProto,
-							messageTimestamp: +child.attrs.t!
-						}).toJSON() as WAMessage
-						await upsertMessage(fullMessage, 'append')
-						logger.info('Processed plaintext newsletter message')
-					} catch (error) {
-						logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						server_id: child.attrs.message_id!,
+						reaction: {
+							code: getBinaryNodeChildString(child, 'reaction'),
+							count: 1
+						}
 					}
+					ev.emit('newsletter.reaction', reactionUpdate)
+					break
 				}
 
-				break
+				case 'view': {
+					const viewUpdate = {
+						id: from,
+						server_id: child.attrs.message_id!,
+						count: parseInt(child.content?.toString() || '0', 10)
+					}
+					ev.emit('newsletter.view', viewUpdate)
+					break
+				}
 
-			default:
-				logger.warn({ node }, 'Unknown newsletter notification')
-				break
+				case 'participant': {
+					const participantUpdate = {
+						id: from,
+						author,
+						user: child.attrs.jid!,
+						action: child.attrs.action!,
+						new_role: child.attrs.role!
+					}
+					ev.emit('newsletter-participants.update', participantUpdate)
+					break
+				}
+
+				case 'update': {
+					const settingsNode = getBinaryNodeChild(child, 'settings')
+					if (settingsNode) {
+						const update: Record<string, any> = {}
+						const nameNode = getBinaryNodeChild(settingsNode, 'name')
+						if (nameNode?.content) update.name = nameNode.content.toString()
+
+						const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
+						if (descriptionNode?.content) update.description = descriptionNode.content.toString()
+
+						ev.emit('newsletter-settings.update', {
+							id: from,
+							update
+						})
+					}
+
+					break
+				}
+
+				case 'message': {
+					const plaintextNode = getBinaryNodeChild(child, 'plaintext')
+					if (plaintextNode?.content) {
+						try {
+							const contentBuf =
+								typeof plaintextNode.content === 'string'
+									? Buffer.from(plaintextNode.content, 'binary')
+									: Buffer.from(plaintextNode.content as Uint8Array)
+							const messageProto = proto.Message.decode(contentBuf).toJSON()
+							const fullMessage = proto.WebMessageInfo.fromObject({
+								key: {
+									remoteJid: from,
+									id: child.attrs.message_id || child.attrs.server_id,
+									fromMe: false // TODO: is this really true though
+								},
+								message: messageProto,
+								messageTimestamp: +child.attrs.t!
+							}).toJSON() as WAMessage
+							await upsertMessage(fullMessage, 'append')
+							logger.debug('Processed plaintext newsletter message')
+						} catch (error) {
+							logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						}
+					}
+
+					break
+				}
+
+				default:
+					logger.warn({ node, child }, 'Unknown newsletter notification child')
+					break
+			}
 		}
 	}
 
@@ -1196,11 +1205,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
-	const sendMessagesAgain = async (key: WAMessageKey, ids: string[], retryNode: BinaryNode) => {
+	const sendMessagesAgain = async (
+		key: WAMessageKey,
+		ids: string[],
+		retryNode: BinaryNode,
+		receiptNode: BinaryNode
+	) => {
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 
 		const retryCount = +retryNode.attrs.count! || 1
+		const msgId = ids[0]
 
 		// Try to get messages from cache first, then fallback to getMessage
 		const msgs: (proto.IMessage | undefined)[] = []
@@ -1239,14 +1254,56 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// prevents the first message decryption failure
 		const sendToAll = !jidDecode(participant)?.device
 
-		// Check if we should recreate session for this retry
+		const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
+		let injectedFromBundle = false
+
+		const bundle = extractE2ESessionFromRetryReceipt(receiptNode)
+		if (bundle) {
+			try {
+				await signalRepository.injectE2ESession({ jid: participant, session: bundle })
+				injectedFromBundle = true
+				logger.debug({ participant, retryCount }, 'injected session from retry receipt key bundle')
+			} catch (error) {
+				logger.warn({ error, participant }, 'failed to inject session from retry receipt')
+			}
+		}
+
+		if (!injectedFromBundle) {
+			const receivedRegId = getBinaryNodeChildUInt(receiptNode, 'registration', 4)
+			if (typeof receivedRegId === 'number' && Number.isInteger(receivedRegId)) {
+				const info = await signalRepository.getSessionInfo(participant)
+				if (info && info.registrationId !== 0 && info.registrationId !== receivedRegId) {
+					logger.info(
+						{ participant, stored: info.registrationId, received: receivedRegId },
+						'reg id mismatch on retry without bundle, deleting session'
+					)
+					await authState.keys.set({ session: { [sessionId]: null } })
+				}
+			}
+		}
+
+		const BASE_KEY_CHECK_RETRY = 2
+		if (msgId && messageRetryManager) {
+			const info = await signalRepository.getSessionInfo(participant)
+			if (info) {
+				if (retryCount === BASE_KEY_CHECK_RETRY) {
+					messageRetryManager.saveBaseKey(sessionId, msgId, info.baseKey)
+				} else if (retryCount > BASE_KEY_CHECK_RETRY) {
+					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
+						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
+						await authState.keys.set({ session: { [sessionId]: null } })
+					}
+
+					messageRetryManager.deleteBaseKey(sessionId, msgId)
+				}
+			}
+		}
+
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1 && !injectedFromBundle) {
 			try {
-				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
-
 				const hasSession = await signalRepository.validateSession(participant)
 				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
 				shouldRecreateSession = result.recreate
@@ -1261,13 +1318,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		await assertSessions([participant], true)
+		if (!injectedFromBundle) {
+			await assertSessions([participant], true)
+		}
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
-		logger.debug({ participant, sendToAll, shouldRecreateSession, recreateReason }, 'forced new session for retry recp')
+		logger.debug(
+			{ participant, sendToAll, shouldRecreateSession, recreateReason, injectedFromBundle },
+			'prepared session for retry resend'
+		)
 
 		for (const [i, msg] of msgs.entries()) {
 			if (!ids[i]) continue
@@ -1360,7 +1422,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								try {
 									await updateSendMessageAgainCount(ids[0], key.participant)
 									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!)
+									await sendMessagesAgain(key, ids, retryNode!, node)
 								} catch (error: unknown) {
 									logger.error(
 										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
