@@ -313,14 +313,27 @@ function append<E extends BufferableEvent>(
 			data.historySets.syncType = eventData.syncType
 			if (eventData.pastParticipants?.length) {
 				const merged = new Map<string, proto.IPastParticipants>()
-				for (const entry of data.historySets.pastParticipants || []) {
-					merged.set(entry.groupJid ?? JSON.stringify(entry), entry)
+				const sigOf = (p: proto.IPastParticipant) => `${p.userJid || ''}:${p.leaveTs || ''}:${p.leaveReason || ''}`
+				const ingest = (entry: proto.IPastParticipants) => {
+					const key = entry.groupJid ?? JSON.stringify(entry)
+					const existing = merged.get(key)
+					if (!existing) {
+						merged.set(key, { ...entry, pastParticipants: [...(entry.pastParticipants || [])] })
+						return
+					}
+
+					const seen = new Set((existing.pastParticipants || []).map(sigOf))
+					for (const p of entry.pastParticipants || []) {
+						const sig = sigOf(p)
+						if (!seen.has(sig)) {
+							existing.pastParticipants!.push(p)
+							seen.add(sig)
+						}
+					}
 				}
 
-				for (const entry of eventData.pastParticipants) {
-					const key = entry.groupJid ?? JSON.stringify(entry)
-					if (!merged.has(key)) merged.set(key, entry)
-				}
+				for (const entry of data.historySets.pastParticipants || []) ingest(entry)
+				for (const entry of eventData.pastParticipants) ingest(entry)
 
 				data.historySets.pastParticipants = [...merged.values()]
 			}
