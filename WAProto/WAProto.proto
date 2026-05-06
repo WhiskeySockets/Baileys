@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1038684444
+/// WhatsApp Version: 2.3000.1038839325
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -1703,11 +1703,21 @@ message Conversation {
     optional bool isSenderNewAccount = 56;
     optional uint32 afterReadDuration = 57;
     optional bool isSenderSuspicious = 58;
+    optional GroupAppealStatus appealStatus = 59;
+    optional uint64 appealUpdateTime = 60;
+    optional string authAgentParentCompanyName = 61;
+    optional string authAgentObaPhoneNumber = 62;
     enum EndOfHistoryTransferType {
         COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
         COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
         COMPLETE_ON_DEMAND_SYNC_BUT_MORE_MSG_REMAIN_ON_PRIMARY = 2;
         COMPLETE_ON_DEMAND_SYNC_WITH_MORE_MSG_ON_PRIMARY_BUT_NO_ACCESS = 3;
+    }
+    enum GroupAppealStatus {
+        NO_APPEAL = 0;
+        APPEAL_IN_REVIEW = 1;
+        APPEAL_APPROVED = 2;
+        APPEAL_REJECTED = 3;
     }
 }
 

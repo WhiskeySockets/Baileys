@@ -4056,6 +4056,10 @@ export namespace proto {
         isSenderNewAccount?: (boolean|null);
         afterReadDuration?: (number|null);
         isSenderSuspicious?: (boolean|null);
+        appealStatus?: (proto.Conversation.GroupAppealStatus|null);
+        appealUpdateTime?: (number|Long|null);
+        authAgentParentCompanyName?: (string|null);
+        authAgentObaPhoneNumber?: (string|null);
     }
 
     class Conversation implements IConversation {
@@ -4118,6 +4122,10 @@ export namespace proto {
         public isSenderNewAccount?: (boolean|null);
         public afterReadDuration?: (number|null);
         public isSenderSuspicious?: (boolean|null);
+        public appealStatus?: (proto.Conversation.GroupAppealStatus|null);
+        public appealUpdateTime?: (number|Long|null);
+        public authAgentParentCompanyName?: (string|null);
+        public authAgentObaPhoneNumber?: (string|null);
         public static create(properties?: proto.IConversation): proto.Conversation;
         public static encode(m: proto.IConversation, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Conversation;
@@ -4134,6 +4142,13 @@ export namespace proto {
             COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1,
             COMPLETE_ON_DEMAND_SYNC_BUT_MORE_MSG_REMAIN_ON_PRIMARY = 2,
             COMPLETE_ON_DEMAND_SYNC_WITH_MORE_MSG_ON_PRIMARY_BUT_NO_ACCESS = 3
+        }
+
+        enum GroupAppealStatus {
+            NO_APPEAL = 0,
+            APPEAL_IN_REVIEW = 1,
+            APPEAL_APPROVED = 2,
+            APPEAL_REJECTED = 3
         }
     }
 
