@@ -325,4 +325,11 @@ export class LIDMappingStore {
 
 		return Object.values(successfulPairs).length ? Object.values(successfulPairs) : null
 	}
+
+	/**
+	 * Close the cache and release resources
+	 */
+	close(): void {
+		this.mappingCache.clear()
+	}
 }
