@@ -129,7 +129,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		messageRetryManager,
 		registerSocketEndHandler,
 		issuePrivacyTokens,
-		fetchAccountReachoutTimelock
+		fetchAccountReachoutTimelock,
+		placeholderResendCache
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -147,13 +148,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
 			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
-			useClones: false
-		})
-
-	const placeholderResendCache =
-		config.placeholderResendCache ||
-		new NodeCache({
-			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		})
 
@@ -1919,10 +1913,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		if (!config.callOfferCache && callOfferCache.close) {
 			callOfferCache.close()
-		}
-
-		if (!config.placeholderResendCache && placeholderResendCache.close) {
-			placeholderResendCache.close()
 		}
 
 		identityAssertDebounce.close()

@@ -243,6 +243,11 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 				bufferTimeout = null
 			}
 
+			if (flushPendingTimeout) {
+				clearTimeout(flushPendingTimeout)
+				flushPendingTimeout = null
+			}
+
 			// Clear history cache
 			historyCache.clear()
 			// Reset buffer data

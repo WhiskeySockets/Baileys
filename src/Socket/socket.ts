@@ -387,7 +387,7 @@ export const makeSocket = (config: SocketConfig) => {
 	let qrTimer: NodeJS.Timeout
 	let closed = false
 
-	const socketEndHandlers: Array<(error: Error | undefined) => void> = []
+	const socketEndHandlers: Array<(error: Error | undefined) => void | Promise<void>> = []
 
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
@@ -656,7 +656,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		for (const handler of socketEndHandlers) {
 			try {
-				handler(error)
+				await handler(error)
 			} catch (err) {
 				logger.error({ err }, 'error in socket end handler')
 			}
@@ -1118,7 +1118,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const registerSocketEndHandler = (handler: (error: Error | undefined) => void) => {
+	const registerSocketEndHandler = (handler: (error: Error | undefined) => void | Promise<void>) => {
 		socketEndHandlers.push(handler)
 	}
 

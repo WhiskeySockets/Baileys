@@ -1509,6 +1509,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		cleanDirtyBits,
 		addOrEditContact,
 		removeContact,
+		placeholderResendCache,
 		addLabel,
 		addChatLabel,
 		removeChatLabel,
