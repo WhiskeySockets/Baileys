@@ -84,8 +84,12 @@ export const NACK_REASONS = {
  * Distinct from the client-side NackReason enum (WAWebCreateNackFromStanza).
  */
 export const SERVER_ERROR_CODES = {
-	/** 1:1 message missing privacy token (tctoken) */
-	MissingTcToken: '463',
+	/**
+	 * 1:1 message missing privacy token (tctoken). Usually means the account is
+	 * restricted: WhatsApp blocks starting new chats but preserves existing ones,
+	 * since established chats already carry a tctoken.
+	 */
+	MessageAccountRestriction: '463',
 	/** Stanza validation failure (SMAX_INVALID) — likely stale device session */
 	SmaxInvalid: '479'
 } as const
