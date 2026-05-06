@@ -355,7 +355,7 @@ describe('processHistoryMessage', () => {
 
 			const result = processHistoryMessage(historySync)
 
- 		// Should not create a LID->LID mapping
+			// Should not create a LID->LID mapping
 			expect(result.lidPnMappings).toHaveLength(0)
 		})
 	})
@@ -410,15 +410,11 @@ describe('processHistoryMessage', () => {
 			const pastParticipants = [
 				{
 					groupJid: '111111111111111111@g.us',
-					pastParticipants: [
-						{ userJid: '1111111111111@s.whatsapp.net', leaveReason: 1, leaveTs: 1700000000 }
-					]
+					pastParticipants: [{ userJid: '1111111111111@s.whatsapp.net', leaveReason: 1, leaveTs: 1700000000 }]
 				},
 				{
 					groupJid: '222222222222222222@g.us',
-					pastParticipants: [
-						{ userJid: '2222222222222@s.whatsapp.net', leaveReason: 2, leaveTs: 1700000001 }
-					]
+					pastParticipants: [{ userJid: '2222222222222@s.whatsapp.net', leaveReason: 2, leaveTs: 1700000001 }]
 				}
 			]
 
