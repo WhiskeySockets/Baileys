@@ -85,6 +85,11 @@ export class MessageRetryManager {
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	}) // 15 minutes TTL
+	private baseKeys = new LRUCache<string, Uint8Array>({
+		max: 1024,
+		ttl: 15 * 60 * 1000,
+		ttlAutopurge: true
+	})
 	private pendingPhoneRequests: PendingPhoneRequest = {}
 	private readonly maxMsgRetryCount: number = 5
 	private statistics: RetryStatistics = {
@@ -277,6 +282,27 @@ export class MessageRetryManager {
 			delete this.pendingPhoneRequests[messageId]
 			this.logger.debug(`Cancelled pending phone request for message ${messageId}`)
 		}
+	}
+
+	saveBaseKey(addr: string, msgId: string, baseKey: Uint8Array): void {
+		this.baseKeys.set(`${addr}:${msgId}`, baseKey)
+	}
+
+	hasSameBaseKey(addr: string, msgId: string, baseKey: Uint8Array): boolean {
+		const stored = this.baseKeys.get(`${addr}:${msgId}`)
+		if (!stored || stored.length !== baseKey.length) {
+			return false
+		}
+
+		for (let i = 0; i < stored.length; i++) {
+			if (stored[i] !== baseKey[i]) return false
+		}
+
+		return true
+	}
+
+	deleteBaseKey(addr: string, msgId: string): void {
+		this.baseKeys.delete(`${addr}:${msgId}`)
 	}
 
 	private keyToString(key: RecentMessageKey): string {
