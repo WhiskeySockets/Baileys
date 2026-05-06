@@ -47,7 +47,7 @@ export class USyncQuery {
 	}
 
 	parseUSyncQueryResult(result: BinaryNode | undefined): USyncQueryResult | undefined {
-		if (!result || result.attrs.type !== 'result') {
+		if (result?.attrs.type !== 'result') {
 			return
 		}
 
