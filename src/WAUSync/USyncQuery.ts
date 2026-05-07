@@ -6,7 +6,8 @@ import {
 	USyncContactProtocol,
 	USyncDeviceProtocol,
 	USyncDisappearingModeProtocol,
-	USyncStatusProtocol
+	USyncStatusProtocol,
+	USyncUsernameProtocol
 } from './Protocols'
 import { USyncUser } from './USyncUser'
 
@@ -46,7 +47,7 @@ export class USyncQuery {
 	}
 
 	parseUSyncQueryResult(result: BinaryNode | undefined): USyncQueryResult | undefined {
-		if (!result || result.attrs.type !== 'result') {
+		if (result?.attrs.type !== 'result') {
 			return
 		}
 
@@ -128,6 +129,11 @@ export class USyncQuery {
 
 	withLIDProtocol() {
 		this.protocols.push(new USyncLIDProtocol())
+		return this
+	}
+
+	withUsernameProtocol() {
+		this.protocols.push(new USyncUsernameProtocol())
 		return this
 	}
 }

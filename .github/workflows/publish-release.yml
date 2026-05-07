@@ -5,14 +5,16 @@ on:
     tags:
       - 'v*'
 
-permissions: write-all
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
   publish-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -20,12 +22,13 @@ jobs:
         run: git fetch --tags -f || true
 
       - name: Setup Node
-        uses: actions/setup-node@v3.6.0
+        uses: actions/setup-node@v4
         with:
           node-version: 20.x
           registry-url: 'https://registry.npmjs.org'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Upgrade npm to a version that supports Trusted Publishers
+        run: npm install -g npm@latest
 
       - name: Enable Corepack and Set Yarn Version
         run: |
@@ -33,7 +36,7 @@ jobs:
           corepack prepare yarn@4.x --activate
 
       - name: Restore Yarn Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: yarn-cache
         with:
           path: .yarn/cache
@@ -43,21 +46,23 @@ jobs:
 
       - name: Install Dependencies
         run: yarn install --immutable
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # rc / beta / alpha → that dist-tag; stable → latest. Avoids clobbering `latest` with a prerelease.
+      - name: Resolve npm dist-tag from version
+        id: dist_tag
+        run: |
+          tag=$(node -p "const v=require('./package.json').version; const m=v.match(/-([a-zA-Z]+)/); m?m[1]:'latest';")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing with dist-tag: $tag"
 
       - name: Publish in NPM (as `baileys`)
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
 
       - name: Publish in NPM (whiskeysockets scope)
         run: |
           npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
-          npm publish --access public --//registry.npmjs.org/:_authToken=$NPM_TOKEN
+          npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
           npx json -I -f package.json -e "this.name='baileys'"
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate Changelog
         id: generate_changelog

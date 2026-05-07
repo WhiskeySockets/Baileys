@@ -15,14 +15,16 @@ import type {
 	MessageReceiptType,
 	MessageRelayOptions,
 	MessageUserReceipt,
+	NewChatMessageCapInfo,
 	SocketConfig,
 	WACallEvent,
 	WAMessage,
 	WAMessageKey,
 	WAPatchName
 } from '../Types'
-import { WAMessageStatus, WAMessageStubType } from '../Types'
+import { ReachoutTimelockEnforcementType, WAMessageStatus, WAMessageStubType } from '../Types'
 import {
+	ACCOUNT_RESTRICTED_TEXT,
 	aesDecryptCTR,
 	aesEncryptGCM,
 	cleanMessage,
@@ -35,6 +37,7 @@ import {
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
 	extractAddressingContext,
+	extractE2ESessionFromRetryReceipt,
 	getCallStatusFromNode,
 	getHistoryMsg,
 	getNextPreKeys,
@@ -44,6 +47,7 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	SERVER_ERROR_CODES,
 	toNumber,
 	unixTimestampSeconds,
 	xmppPreKey,
@@ -53,6 +57,15 @@ import { makeMutex } from '../Utils/make-mutex'
 import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
 import {
+	buildMergedTcTokenIndexWrite,
+	isTcTokenExpired,
+	readTcTokenIndex,
+	resolveIssuanceJid,
+	resolveTcTokenJid,
+	storeTcTokensFromIqResult,
+	TC_TOKEN_INDEX_KEY
+} from '../Utils/tc-token-utils'
+import {
 	areJidsSameUser,
 	type BinaryNode,
 	binaryNodeToString,
@@ -61,6 +74,7 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
+	getBinaryNodeChildUInt,
 	isJidGroup,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -68,16 +82,38 @@ import {
 	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
+	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
+
+type MexGqlData = Record<string, unknown>
+
+type MexGqlResponse = {
+	data?: MexGqlData
+	errors?: unknown[]
+}
+
+type ReachoutTimelockNotificationPayload = {
+	is_active?: boolean
+	enforcement_type?: string
+	time_enforcement_ends?: string
+}
+
+const ENFORCEMENT_TYPE_VALUES = new Set<string>(Object.values(ReachoutTimelockEnforcementType))
+
+function isValidEnforcementType(value: string | undefined): value is ReachoutTimelockEnforcementType {
+	return typeof value === 'string' && ENFORCEMENT_TYPE_VALUES.has(value)
+}
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
 		config
 	const sock = makeMessagesSocket(config)
 	const {
+		userDevicesCache,
+		devicesMutex,
 		ev,
 		authState,
 		ws,
@@ -95,8 +131,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
-		messageRetryManager
+		messageRetryManager,
+		registerSocketEndHandler,
+		issuePrivacyTokens,
+		fetchAccountReachoutTimelock,
+		placeholderResendCache
 	} = sock
+
+	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
@@ -111,13 +153,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
 			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
-			useClones: false
-		})
-
-	const placeholderResendCache =
-		config.placeholderResendCache ||
-		new NodeCache({
-			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		})
 
@@ -192,27 +227,165 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
 
-	// Handles mex newsletter notifications
-	const handleMexNewsletterNotification = async (node: BinaryNode) => {
+	const handleMexNotification = async (node: BinaryNode) => {
+		const updateNode = getBinaryNodeChild(node, 'update')
+
+		if (updateNode) {
+			const opName = updateNode.attrs?.op_name
+			if (!opName) {
+				logger.warn({ node: binaryNodeToString(node) }, 'mex notification missing op_name, fallback to legacy')
+				await handleLegacyMexNewsletterNotification(node)
+				return
+			}
+
+			let mexResponse: MexGqlResponse
+			try {
+				mexResponse = JSON.parse(updateNode.content!.toString())
+			} catch (error) {
+				logger.error({ err: error, opName }, 'failed to parse mex notification JSON')
+				return
+			}
+
+			if (mexResponse.errors?.length) {
+				logger.warn({ errors: mexResponse.errors, opName }, 'mex notification has GQL errors')
+				return
+			}
+
+			const data = mexResponse.data
+			if (!data) {
+				logger.warn({ opName }, 'mex notification has null data')
+				return
+			}
+
+			logger.debug({ opName }, 'processing mex notification')
+
+			switch (opName) {
+				case 'NotificationUserReachoutTimelockUpdate':
+					handleReachoutTimelockNotification(data)
+					break
+
+				case 'MessageCappingInfoNotification':
+					handleMessageCappingNotification(data)
+					break
+
+				// newsletter ops still use the legacy <mex> child structure
+				case 'NotificationNewsletterUpdate':
+				case 'NotificationLinkedProfilesUpdates':
+				case 'NotificationNewsletterAdminPromote':
+				case 'NotificationNewsletterAdminDemote':
+				case 'NotificationNewsletterUserSettingChange':
+				case 'NotificationNewsletterJoin':
+				case 'NotificationNewsletterLeave':
+				case 'NotificationNewsletterStateChange':
+				case 'NotificationNewsletterAdminMetadataUpdate':
+				case 'NotificationNewsletterOwnerUpdate':
+				case 'NotificationNewsletterAdminInviteRevoke':
+				case 'NotificationNewsletterWamoSubStatusChange':
+				case 'NotificationNewsletterBlockUser':
+				case 'NotificationNewsletterPaidPartnership':
+				case 'NotificationNewsletterMilestone':
+				case 'NewsletterResponseStateUpdate':
+					await handleLegacyMexNewsletterNotification(node)
+					break
+
+				default:
+					logger.debug({ opName }, 'unhandled mex notification')
+					break
+			}
+
+			return
+		}
+
+		await handleLegacyMexNewsletterNotification(node)
+	}
+
+	const handleReachoutTimelockNotification = (data: MexGqlData) => {
+		const payload = data.xwa2_notify_account_reachout_timelock as ReachoutTimelockNotificationPayload | undefined
+
+		if (!payload) {
+			logger.warn('reachout timelock notification missing payload')
+			return
+		}
+
+		if (!payload.is_active) {
+			logger.info('reachout timelock restriction lifted')
+			ev.emit('connection.update', {
+				reachoutTimeLock: {
+					isActive: false,
+					enforcementType: ReachoutTimelockEnforcementType.DEFAULT
+				}
+			})
+			return
+		}
+
+		// WA Web defaults to now+60s when the server omits the expiry
+		const timeEnforcementEnds = payload.time_enforcement_ends
+			? new Date(parseInt(payload.time_enforcement_ends, 10) * 1000)
+			: new Date(Date.now() + 60_000)
+
+		const enforcementType = isValidEnforcementType(payload.enforcement_type)
+			? payload.enforcement_type
+			: ReachoutTimelockEnforcementType.DEFAULT
+
+		logger.info({ enforcementType, timeEnforcementEnds }, 'reachout timelock restriction set')
+
+		ev.emit('connection.update', {
+			reachoutTimeLock: {
+				isActive: true,
+				timeEnforcementEnds,
+				enforcementType
+			}
+		})
+	}
+
+	const handleMessageCappingNotification = (data: MexGqlData) => {
+		const payload = data.xwa2_notify_new_chat_messages_capping_info_update as NewChatMessageCapInfo | undefined
+
+		if (!payload) {
+			logger.warn('message capping notification missing payload')
+			return
+		}
+
+		logger.info({ payload }, 'received message capping update')
+		ev.emit('message-capping.update', payload)
+	}
+
+	const handleLegacyMexNewsletterNotification = async (node: BinaryNode) => {
 		const mexNode = getBinaryNodeChild(node, 'mex')
-		if (!mexNode?.content) {
-			logger.warn({ node }, 'Invalid mex newsletter notification')
+		const updateNode = mexNode?.content ? null : getBinaryNodeChild(node, 'update') || getAllBinaryNodeChildren(node)[0]
+		const payloadNode = mexNode?.content ? mexNode : updateNode
+		if (!payloadNode?.content) {
+			logger.warn({ node: binaryNodeToString(node) }, 'invalid mex newsletter notification')
 			return
 		}
 
 		let data: any
 		try {
-			data = JSON.parse(mexNode.content.toString())
+			const payloadContent = payloadNode.content
+			if (Array.isArray(payloadContent)) {
+				logger.warn({ payloadNode }, 'invalid mex newsletter notification payload format')
+				return
+			}
+
+			const contentBuf =
+				typeof payloadContent === 'string' ? Buffer.from(payloadContent, 'binary') : Buffer.from(payloadContent)
+			data = JSON.parse(contentBuf.toString())
 		} catch (error) {
-			logger.error({ err: error, node }, 'Failed to parse mex newsletter notification')
+			logger.error({ err: error, node: binaryNodeToString(node) }, 'failed to parse mex newsletter notification')
 			return
 		}
 
-		const operation = data?.operation
-		const updates = data?.updates
+		const operation = data?.operation ?? payloadNode?.attrs?.op_name
+		let updates = data?.updates
+		if (!updates) {
+			const linkedProfiles = data?.data?.xwa2_notify_linked_profiles
+			if (linkedProfiles) {
+				updates = [linkedProfiles]
+			}
+		}
 
 		if (!updates || !operation) {
-			logger.warn({ data }, 'Invalid mex newsletter notification content')
+			logger.warn({ data }, 'invalid mex newsletter notification content')
 			return
 		}
 
@@ -246,8 +419,27 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				break
 
+			case 'NotificationLinkedProfilesUpdates':
+				for (const update of updates) {
+					const lid = update?.jid
+					const addedProfiles = Array.isArray(update?.added_profiles) ? update.added_profiles : []
+					const mappings = []
+					for (const profile of addedProfiles) {
+						const pn = typeof profile === 'string' ? profile : (profile?.pn ?? profile?.jid ?? null)
+						if (lid && pn) {
+							const mapping = { lid, pn }
+							ev.emit('lid-mapping.update', mapping)
+							mappings.push(mapping)
+						}
+					}
+
+					await signalRepository.lidMapping.storeLIDPNMappings(mappings)
+				}
+
+				break
+
 			default:
-				logger.info({ operation, data }, 'Unhandled mex newsletter notification')
+				logger.info({ operation, data }, 'unhandled mex newsletter notification')
 				break
 		}
 	}
@@ -255,92 +447,99 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// Handles newsletter notifications
 	const handleNewsletterNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from!
-		const child = getAllBinaryNodeChildren(node)[0]!
+		const children = getAllBinaryNodeChildren(node)
 		const author = node.attrs.participant!
 
-		logger.info({ from, child }, 'got newsletter notification')
+		for (const child of children) {
+			logger.debug({ from, child }, 'got newsletter notification')
 
-		switch (child.tag) {
-			case 'reaction':
-				const reactionUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					reaction: {
-						code: getBinaryNodeChildString(child, 'reaction'),
-						count: 1
-					}
-				}
-				ev.emit('newsletter.reaction', reactionUpdate)
-				break
-
-			case 'view':
-				const viewUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					count: parseInt(child.content?.toString() || '0', 10)
-				}
-				ev.emit('newsletter.view', viewUpdate)
-				break
-
-			case 'participant':
-				const participantUpdate = {
-					id: from,
-					author,
-					user: child.attrs.jid!,
-					action: child.attrs.action!,
-					new_role: child.attrs.role!
-				}
-				ev.emit('newsletter-participants.update', participantUpdate)
-				break
-
-			case 'update':
-				const settingsNode = getBinaryNodeChild(child, 'settings')
-				if (settingsNode) {
-					const update: Record<string, any> = {}
-					const nameNode = getBinaryNodeChild(settingsNode, 'name')
-					if (nameNode?.content) update.name = nameNode.content.toString()
-
-					const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
-					if (descriptionNode?.content) update.description = descriptionNode.content.toString()
-
-					ev.emit('newsletter-settings.update', {
+			switch (child.tag) {
+				case 'reaction': {
+					const reactionUpdate = {
 						id: from,
-						update
-					})
-				}
-
-				break
-
-			case 'message':
-				const plaintextNode = getBinaryNodeChild(child, 'plaintext')
-				if (plaintextNode?.content) {
-					try {
-						const contentBuf =
-							typeof plaintextNode.content === 'string'
-								? Buffer.from(plaintextNode.content, 'binary')
-								: Buffer.from(plaintextNode.content as Uint8Array)
-						const messageProto = proto.Message.decode(contentBuf).toJSON()
-						const fullMessage = proto.WebMessageInfo.fromObject({
-							key: {
-								remoteJid: from,
-								id: child.attrs.message_id || child.attrs.server_id,
-								fromMe: false // TODO: is this really true though
-							},
-							message: messageProto,
-							messageTimestamp: +child.attrs.t!
-						}).toJSON() as WAMessage
-						await upsertMessage(fullMessage, 'append')
-						logger.info('Processed plaintext newsletter message')
-					} catch (error) {
-						logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						server_id: child.attrs.message_id!,
+						reaction: {
+							code: getBinaryNodeChildString(child, 'reaction'),
+							count: 1
+						}
 					}
+					ev.emit('newsletter.reaction', reactionUpdate)
+					break
 				}
 
-				break
+				case 'view': {
+					const viewUpdate = {
+						id: from,
+						server_id: child.attrs.message_id!,
+						count: parseInt(child.content?.toString() || '0', 10)
+					}
+					ev.emit('newsletter.view', viewUpdate)
+					break
+				}
 
-			default:
-				logger.warn({ node }, 'Unknown newsletter notification')
-				break
+				case 'participant': {
+					const participantUpdate = {
+						id: from,
+						author,
+						user: child.attrs.jid!,
+						action: child.attrs.action!,
+						new_role: child.attrs.role!
+					}
+					ev.emit('newsletter-participants.update', participantUpdate)
+					break
+				}
+
+				case 'update': {
+					const settingsNode = getBinaryNodeChild(child, 'settings')
+					if (settingsNode) {
+						const update: Record<string, any> = {}
+						const nameNode = getBinaryNodeChild(settingsNode, 'name')
+						if (nameNode?.content) update.name = nameNode.content.toString()
+
+						const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
+						if (descriptionNode?.content) update.description = descriptionNode.content.toString()
+
+						ev.emit('newsletter-settings.update', {
+							id: from,
+							update
+						})
+					}
+
+					break
+				}
+
+				case 'message': {
+					const plaintextNode = getBinaryNodeChild(child, 'plaintext')
+					if (plaintextNode?.content) {
+						try {
+							const contentBuf =
+								typeof plaintextNode.content === 'string'
+									? Buffer.from(plaintextNode.content, 'binary')
+									: Buffer.from(plaintextNode.content as Uint8Array)
+							const messageProto = proto.Message.decode(contentBuf).toJSON()
+							const fullMessage = proto.WebMessageInfo.fromObject({
+								key: {
+									remoteJid: from,
+									id: child.attrs.message_id || child.attrs.server_id,
+									fromMe: false // TODO: is this really true though
+								},
+								message: messageProto,
+								messageTimestamp: +child.attrs.t!
+							}).toJSON() as WAMessage
+							await upsertMessage(fullMessage, 'append')
+							logger.debug('Processed plaintext newsletter message')
+						} catch (error) {
+							logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						}
+					}
+
+					break
+				}
+
+				default:
+					logger.warn({ node, child }, 'Unknown newsletter notification child')
+					break
+			}
 		}
 	}
 
@@ -521,16 +720,66 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}, authState?.creds?.me?.id || 'sendRetryRequest')
 	}
 
+	// Mirrors WAWeb/Handle/PreKeyLow.js: skip a re-issued notification with the same stanza id.
+	const inFlightPreKeyLow = new Set<string>()
+
+	/**
+	 * Fire-and-forget tctoken re-issuance after a peer's device identity changed.
+	 * Mirrors WAWebSendTcTokenWhenDeviceIdentityChange — runs in parallel with
+	 * the session refresh (not after it).
+	 */
+	const reissueTcTokenAfterIdentityChange = (from: string): void => {
+		void (async () => {
+			const normalizedJid = jidNormalizedUser(from)
+			const tcJid = await resolveTcTokenJid(normalizedJid, getLIDForPN)
+			const tcTokenData = await authState.keys.get('tctoken', [tcJid])
+			const senderTs = tcTokenData?.[tcJid]?.senderTimestamp
+
+			if (senderTs === null || senderTs === undefined || isTcTokenExpired(senderTs)) {
+				return
+			}
+
+			logger.debug({ jid: normalizedJid, senderTimestamp: senderTs }, 'identity changed, re-issuing tctoken')
+			const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
+			const issueJid = await resolveIssuanceJid(
+				normalizedJid,
+				sock.serverProps.lidTrustedTokenIssueToLid,
+				getLIDForPN,
+				getPNForLID
+			)
+			const result = await issuePrivacyTokens([issueJid], senderTs)
+			await storeTcTokensFromIqResult({
+				result,
+				fallbackJid: tcJid,
+				keys: authState.keys,
+				getLIDForPN,
+				onNewJidStored: trackTcTokenJid
+			})
+		})().catch(err => {
+			logger.debug({ jid: from, err: err?.message }, 'failed to re-issue tctoken after identity change')
+		})
+	}
+
 	const handleEncryptNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from
 		if (from === S_WHATSAPP_NET) {
+			const stanzaId = node.attrs.id
+			if (stanzaId && inFlightPreKeyLow.has(stanzaId)) {
+				return
+			}
+
 			const countChild = getBinaryNodeChild(node, 'count')
 			const count = +countChild!.attrs.value!
 			const shouldUploadMorePreKeys = count < MIN_PREKEY_COUNT
 
 			logger.debug({ count, shouldUploadMorePreKeys }, 'recv pre-key count')
 			if (shouldUploadMorePreKeys) {
-				await uploadPreKeys()
+				if (stanzaId) inFlightPreKeyLow.add(stanzaId)
+				try {
+					await uploadPreKeys()
+				} finally {
+					if (stanzaId) inFlightPreKeyLow.delete(stanzaId)
+				}
 			}
 		} else {
 			const result = await handleIdentityChange(node, {
@@ -539,7 +788,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				validateSession: signalRepository.validateSession,
 				assertSessions,
 				debounceCache: identityAssertDebounce,
-				logger
+				logger,
+				onBeforeSessionRefresh: reissueTcTokenAfterIdentityChange
 			})
 
 			if (result.action === 'no_identity_node') {
@@ -553,6 +803,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const actingParticipantLid = fullNode.attrs.participant
 		const actingParticipantPn = fullNode.attrs.participant_pn
+		const actingParticipantUsername = fullNode.attrs.participant_username
 
 		const affectedParticipantLid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || actingParticipantLid!
 		const affectedParticipantPn = getBinaryNodeChild(child, 'participant')?.attrs?.phone_number || actingParticipantPn!
@@ -576,7 +827,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					{
 						...metadata,
 						author: actingParticipantLid,
-						authorPn: actingParticipantPn
+						authorPn: actingParticipantPn,
+						authorUsername: actingParticipantUsername
 					}
 				])
 				break
@@ -608,6 +860,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						id: attrs.jid!,
 						phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
 						lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
+						username: attrs.participant_username || attrs.username || undefined,
 						admin: (attrs.type || null) as GroupParticipant['admin']
 					}
 				})
@@ -684,6 +937,101 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const handleDevicesNotification = async (node: BinaryNode) => {
+		const [child] = getAllBinaryNodeChildren(node)
+		const from = jidNormalizedUser(node.attrs.from)
+
+		if (!child) {
+			logger.debug({ from }, 'devices notification missing child, skipping')
+			return
+		}
+
+		const tag = child.tag as 'add' | 'remove' | 'update'
+		const deviceHash = child.attrs.device_hash
+		const devices = getBinaryNodeChildren(child, 'device')
+
+		if (areJidsSameUser(from, authState.creds.me!.id) || areJidsSameUser(from, authState.creds.me!.lid)) {
+			const deviceJids = devices.map(d => d.attrs.jid)
+			logger.info({ deviceJids }, 'got my own devices')
+		}
+
+		if (!devices.length) {
+			logger.debug({ from, tag }, 'no devices in notification, skipping')
+			return
+		}
+
+		type DecodedDevice = { jid: string; user: string; server: string; device?: number }
+		const decoded: DecodedDevice[] = []
+		for (const d of devices) {
+			const jid = d.attrs.jid
+			if (!jid) continue
+			const parts = jidDecode(jid)
+			if (!parts) {
+				logger.debug({ jid }, 'failed to decode device jid, skipping')
+				continue
+			}
+
+			decoded.push({ jid, user: parts.user, server: parts.server, device: parts.device })
+		}
+
+		if (!decoded.length) return
+
+		await devicesMutex.mutex(async () => {
+			const byUser = new Map<string, DecodedDevice[]>()
+			for (const d of decoded) {
+				const list = byUser.get(d.user) || []
+				list.push(d)
+				byUser.set(d.user, list)
+			}
+
+			for (const [user, entries] of byUser) {
+				if (tag === 'update') {
+					logger.debug({ user }, `${user}'s device list updated, dropping cached devices`)
+					await userDevicesCache?.del(user)
+					continue
+				}
+
+				if (tag === 'remove') {
+					await signalRepository.deleteSession(entries.map(e => e.jid))
+				}
+
+				const existingCache: JidWithDevice[] = (await userDevicesCache?.get<JidWithDevice[]>(user)) || []
+				if (!existingCache.length) {
+					// No baseline yet; skip applying the delta so getUSyncDevices can
+					// later fetch the full device list. Caching just the notification
+					// entries would make a partial list look authoritative.
+					logger.debug({ user, tag }, 'device list not cached, deferring to USync refresh')
+					continue
+				}
+
+				const affected = new Set(entries.map(e => e.device))
+				let updatedDevices: JidWithDevice[]
+				switch (tag) {
+					case 'add':
+						logger.info({ deviceHash, count: entries.length }, 'devices added')
+						updatedDevices = [
+							...existingCache.filter(d => !affected.has(d.device)),
+							...entries.map(e => ({ user: e.user, server: e.server, device: e.device }))
+						]
+						break
+					case 'remove':
+						logger.info({ deviceHash, count: entries.length }, 'devices removed')
+						updatedDevices = existingCache.filter(d => !affected.has(d.device))
+						break
+					default:
+						logger.debug({ tag }, 'Unknown device list change tag')
+						continue
+				}
+
+				if (updatedDevices.length === 0) {
+					await userDevicesCache?.del(user)
+				} else {
+					await userDevicesCache?.set(user, updatedDevices)
+				}
+			}
+		})
+	}
+
 	const processNotification = async (node: BinaryNode) => {
 		const result: Partial<WAMessage> = {}
 		const [child] = getAllBinaryNodeChildren(node)
@@ -695,7 +1043,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleNewsletterNotification(node)
 				break
 			case 'mex':
-				await handleMexNewsletterNotification(node)
+				await handleMexNotification(node)
 				break
 			case 'w:gp2':
 				// TODO: HANDLE PARTICIPANT_PN
@@ -709,16 +1057,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleEncryptNotification(node)
 				break
 			case 'devices':
-				const devices = getBinaryNodeChildren(child, 'device')
-				if (
-					areJidsSameUser(child!.attrs.jid, authState.creds.me!.id) ||
-					areJidsSameUser(child!.attrs.lid, authState.creds.me!.lid)
-				) {
-					const deviceData = devices.map(d => ({ id: d.attrs.jid, lid: d.attrs.lid }))
-					logger.info({ deviceData }, 'my own devices changed')
+				try {
+					await handleDevicesNotification(node)
+				} catch (error) {
+					logger.error({ error, node }, 'failed to handle devices notification')
 				}
-
-				//TODO: drop a new event, add hashes
 
 				break
 			case 'server_sync':
@@ -863,34 +1206,80 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	/**
+	 * In-memory cache of storage JIDs with stored tctokens, seeded from the persisted index.
+	 * Used to coalesce writes during a session; pruning always re-reads the persisted index
+	 * to cover writes made by other layers (e.g. history sync).
+	 */
+	const tcTokenKnownJids = new Set<string>()
+
+	const tcTokenIndexLoaded = (async () => {
+		try {
+			const jids = await readTcTokenIndex(authState.keys)
+			for (const jid of jids) tcTokenKnownJids.add(jid)
+			logger.debug({ count: tcTokenKnownJids.size }, 'loaded tctoken index')
+		} catch (err: any) {
+			logger.warn({ err: err?.message }, 'failed to load tctoken index')
+		}
+	})()
+
+	let tcTokenIndexTimer: ReturnType<typeof setTimeout> | undefined
+
+	async function flushTcTokenIndex() {
+		if (tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+			tcTokenIndexTimer = undefined
+		}
+
+		// Merge with whatever is already persisted so we don't clobber writes from other
+		// paths (history sync, concurrent sessions on the same store).
+		const write = await buildMergedTcTokenIndexWrite(authState.keys, tcTokenKnownJids)
+		return authState.keys.set({ tctoken: write })
+	}
+
+	function scheduleTcTokenIndexSave() {
+		if (tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+		}
+
+		tcTokenIndexTimer = setTimeout(() => {
+			tcTokenIndexTimer = undefined
+			flushTcTokenIndex().catch(err => {
+				logger.warn({ err: err?.message }, 'failed to save tctoken index')
+			})
+		}, 5000)
+	}
+
+	function trackTcTokenJid(jid: string) {
+		if (jid && jid !== TC_TOKEN_INDEX_KEY && !tcTokenKnownJids.has(jid)) {
+			tcTokenKnownJids.add(jid)
+			scheduleTcTokenIndexSave()
+		}
+	}
+
 	const handlePrivacyTokenNotification = async (node: BinaryNode) => {
 		const tokensNode = getBinaryNodeChild(node, 'tokens')
-		const from = jidNormalizedUser(node.attrs.from)
-
 		if (!tokensNode) return
 
-		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
+		const from = jidNormalizedUser(node.attrs.from)
 
-		for (const tokenNode of tokenNodes) {
-			const { attrs, content } = tokenNode
-			const type = attrs.type
-			const timestamp = attrs.t
+		// WA Web uses: senderLid ?? toLid(from) for the storage key
+		// The sender_lid attribute provides the LID directly when available
+		const senderLid =
+			node.attrs.sender_lid && isLidUser(jidNormalizedUser(node.attrs.sender_lid))
+				? jidNormalizedUser(node.attrs.sender_lid)
+				: undefined
+		const fallbackJid = senderLid ?? (await resolveTcTokenJid(from, getLIDForPN))
 
-			if (type === 'trusted_contact' && content instanceof Buffer) {
-				logger.debug(
-					{
-						from,
-						timestamp,
-						tcToken: content
-					},
-					'received trusted contact token'
-				)
+		logger.debug({ from, storageJid: fallbackJid }, 'processing privacy token notification')
 
-				await authState.keys.set({
-					tctoken: { [from]: { token: content, timestamp } }
-				})
-			}
-		}
+		await storeTcTokensFromIqResult({
+			result: node,
+			fallbackJid,
+			keys: authState.keys,
+			getLIDForPN,
+			onNewJidStored: trackTcTokenJid
+		})
 	}
 
 	async function decipherLinkPublicKey(data: Uint8Array | Buffer) {
@@ -922,11 +1311,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
-	const sendMessagesAgain = async (key: WAMessageKey, ids: string[], retryNode: BinaryNode) => {
+	const sendMessagesAgain = async (
+		key: WAMessageKey,
+		ids: string[],
+		retryNode: BinaryNode,
+		receiptNode: BinaryNode
+	) => {
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 
 		const retryCount = +retryNode.attrs.count! || 1
+		const msgId = ids[0]
 
 		// Try to get messages from cache first, then fallback to getMessage
 		const msgs: (proto.IMessage | undefined)[] = []
@@ -965,14 +1360,56 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// prevents the first message decryption failure
 		const sendToAll = !jidDecode(participant)?.device
 
-		// Check if we should recreate session for this retry
+		const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
+		let injectedFromBundle = false
+
+		const bundle = extractE2ESessionFromRetryReceipt(receiptNode)
+		if (bundle) {
+			try {
+				await signalRepository.injectE2ESession({ jid: participant, session: bundle })
+				injectedFromBundle = true
+				logger.debug({ participant, retryCount }, 'injected session from retry receipt key bundle')
+			} catch (error) {
+				logger.warn({ error, participant }, 'failed to inject session from retry receipt')
+			}
+		}
+
+		if (!injectedFromBundle) {
+			const receivedRegId = getBinaryNodeChildUInt(receiptNode, 'registration', 4)
+			if (typeof receivedRegId === 'number' && Number.isInteger(receivedRegId)) {
+				const info = await signalRepository.getSessionInfo(participant)
+				if (info && info.registrationId !== 0 && info.registrationId !== receivedRegId) {
+					logger.info(
+						{ participant, stored: info.registrationId, received: receivedRegId },
+						'reg id mismatch on retry without bundle, deleting session'
+					)
+					await authState.keys.set({ session: { [sessionId]: null } })
+				}
+			}
+		}
+
+		const BASE_KEY_CHECK_RETRY = 2
+		if (msgId && messageRetryManager) {
+			const info = await signalRepository.getSessionInfo(participant)
+			if (info) {
+				if (retryCount === BASE_KEY_CHECK_RETRY) {
+					messageRetryManager.saveBaseKey(sessionId, msgId, info.baseKey)
+				} else if (retryCount > BASE_KEY_CHECK_RETRY) {
+					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
+						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
+						await authState.keys.set({ session: { [sessionId]: null } })
+					}
+
+					messageRetryManager.deleteBaseKey(sessionId, msgId)
+				}
+			}
+		}
+
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1 && !injectedFromBundle) {
 			try {
-				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
-
 				const hasSession = await signalRepository.validateSession(participant)
 				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
 				shouldRecreateSession = result.recreate
@@ -987,13 +1424,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		await assertSessions([participant], true)
+		if (!injectedFromBundle) {
+			await assertSessions([participant], true)
+		}
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
-		logger.debug({ participant, sendToAll, shouldRecreateSession, recreateReason }, 'forced new session for retry recp')
+		logger.debug(
+			{ participant, sendToAll, shouldRecreateSession, recreateReason, injectedFromBundle },
+			'prepared session for retry resend'
+		)
 
 		for (const [i, msg] of msgs.entries()) {
 			if (!ids[i]) continue
@@ -1033,12 +1475,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			id: '',
 			fromMe,
 			participant: attrs.participant
-		}
-
-		if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
-			logger.debug({ remoteJid }, 'ignoring receipt from jid')
-			await sendMessageAck(node)
-			return
 		}
 
 		const ids = [attrs.id!]
@@ -1092,7 +1528,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								try {
 									await updateSendMessageAgainCount(ids[0], key.participant)
 									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!)
+									await sendMessagesAgain(key, ids, retryNode!, node)
 								} catch (error: unknown) {
 									logger.error(
 										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
@@ -1115,11 +1551,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async (node: BinaryNode) => {
 		const remoteJid = node.attrs.from
-		if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
-			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
-			await sendMessageAck(node)
-			return
-		}
 
 		try {
 			await Promise.all([
@@ -1133,6 +1564,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							fromMe,
 							participant: node.attrs.participant,
 							participantAlt,
+							participantUsername: node.attrs.participant_username,
 							addressingMode,
 							id: node.attrs.id,
 							...(msg.key || {})
@@ -1151,12 +1583,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
-		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
-			logger.debug({ key: node.attrs.key }, 'ignored message')
-			await sendMessageAck(node, NACK_REASONS.UnhandledError)
-			return
-		}
-
 		const encNode = getBinaryNodeChild(node, 'enc')
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 		if (encNode?.attrs.type === 'msmsg') {
@@ -1281,31 +1707,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							}
 						}
 
-						const errorMessage = msg?.messageStubParameters?.[0] || ''
-						const isPreKeyError = errorMessage.includes('PreKey')
+						logger.debug('[handleMessage] Attempting retry request for failed decryption')
 
-						logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
-
-						// Handle both pre-key and normal retries in single mutex
+						// WAWeb only retry-receipts here; server emits PreKeyLow if prekeys run low.
 						await retryMutex.mutex(async () => {
 							try {
 								if (!ws.isOpen) {
 									logger.debug({ node }, 'Connection closed, skipping retry')
 									return
-								}
-
-								// Handle pre-key errors with upload and delay
-								if (isPreKeyError) {
-									logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
-
-									try {
-										logger.debug('Uploading pre-keys for error recovery')
-										await uploadPreKeys(5)
-										logger.debug('Waiting for server to process new pre-keys')
-										await delay(1000)
-									} catch (uploadErr) {
-										logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
-									}
 								}
 
 								const encNode = getBinaryNodeChild(node, 'enc')
@@ -1314,14 +1723,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									await delay(retryRequestDelayMs)
 								}
 							} catch (err) {
-								logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
-								// Still attempt retry even if pre-key upload failed
-								try {
-									const encNode = getBinaryNodeChild(node, 'enc')
-									await sendRetryRequest(node, !encNode)
-								} catch (retryErr) {
-									logger.error({ retryErr }, 'Failed to send retry after error handling')
-								}
+								logger.error({ err }, 'Failed to send retry')
 							}
 
 							acked = true
@@ -1406,6 +1808,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				status
 			}
 
+			if (status === 'relaylatency') {
+				const latencyValue = infoChild.attrs.latency || infoChild.attrs['latency_ms'] || infoChild.attrs['latency-ms']
+				const latencyMs = latencyValue ? Number(latencyValue) : undefined
+				if (Number.isFinite(latencyMs)) {
+					call.latencyMs = latencyMs
+				}
+			}
+
 			if (status === 'offer') {
 				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
@@ -1455,30 +1865,70 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
-			logger.warn({ attrs }, 'received error in ack')
+			const isReachoutTimelocked = attrs.error === String(NACK_REASONS.SenderReachoutTimelocked)
+
+			if (attrs.error === SERVER_ERROR_CODES.MessageAccountRestriction) {
+				// 463 = 1:1 message missing privacy token (tctoken). Usually means the
+				// account is restricted: WhatsApp blocks starting new chats but preserves
+				// existing ones, since established chats already carry a tctoken.
+				// WA Web prevents this client-side (disables the compose bar).
+				// No retry — retrying counts as another "reach out" and worsens the restriction.
+				logger.warn(
+					{ msgId: attrs.id, from: attrs.from },
+					'error 463: account restricted or missing tctoken for contact'
+				)
+
+				const ackFrom = attrs.from
+				if (ackFrom && !inFlight463Recoveries.has(ackFrom)) {
+					inFlight463Recoveries.add(ackFrom)
+					void (async () => {
+						try {
+							const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
+							const tcStorageJid = await resolveTcTokenJid(ackFrom, getLIDForPN)
+							const issueJid = await resolveIssuanceJid(
+								ackFrom,
+								sock.serverProps.lidTrustedTokenIssueToLid,
+								getLIDForPN,
+								getPNForLID
+							)
+							const result = await issuePrivacyTokens([issueJid], unixTimestampSeconds())
+							await storeTcTokensFromIqResult({
+								result,
+								fallbackJid: tcStorageJid,
+								keys: authState.keys,
+								getLIDForPN,
+								onNewJidStored: trackTcTokenJid
+							})
+							logger.debug({ from: ackFrom }, 'completed 463 token recovery issuance')
+						} catch (err: any) {
+							logger.debug({ from: ackFrom, err: err?.message }, 'failed 463 token recovery issuance')
+						} finally {
+							inFlight463Recoveries.delete(ackFrom)
+						}
+					})()
+				}
+			} else if (attrs.error === SERVER_ERROR_CODES.SmaxInvalid) {
+				logger.warn(
+					{ msgId: attrs.id, from: attrs.from },
+					'smax-invalid (479): stanza rejected by server — likely stale device session or malformed addressing'
+				)
+			} else if (isReachoutTimelocked) {
+				// user is temporarily restricted, fetch current restriction details
+				await fetchAccountReachoutTimelock().catch(err => logger.warn({ err }, 'failed to fetch reachout timelock'))
+				logger.warn({ attrs }, 'received error in ack')
+			} else {
+				logger.warn({ attrs }, 'received error in ack')
+			}
+
 			ev.emit('messages.update', [
 				{
 					key,
 					update: {
 						status: WAMessageStatus.ERROR,
-						messageStubParameters: [attrs.error]
+						messageStubParameters: isReachoutTimelocked ? [attrs.error, ACCOUNT_RESTRICTED_TEXT] : [attrs.error]
 					}
 				}
 			])
-
-			// resend the message with device_fanout=false, use at your own risk
-			// if (attrs.error === '475') {
-			// 	const msg = await getMessage(key)
-			// 	if (msg) {
-			// 		await relayMessage(key.remoteJid!, msg, {
-			// 			messageId: key.id!,
-			// 			useUserDevicesCache: false,
-			// 			additionalAttributes: {
-			// 				device_fanout: 'false'
-			// 			}
-			// 		})
-			// 	}
-			// }
 		}
 	}
 
@@ -1518,6 +1968,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		identifier: string,
 		exec: (node: BinaryNode) => Promise<void>
 	) => {
+		// Fast path: ack and drop ignored JIDs before entering the buffer/queue
+		const from = node.attrs.from
+		let ignoreJid = from
+		if (type === 'receipt' && from) {
+			const attrs = node.attrs
+			const isLid = attrs.from!.includes('lid')
+			const isNodeFromMe = areJidsSameUser(
+				attrs.participant || attrs.from,
+				isLid ? authState.creds.me?.lid : authState.creds.me?.id
+			)
+			ignoreJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
+		}
+
+		if (ignoreJid && ignoreJid !== S_WHATSAPP_NET && shouldIgnoreJid(ignoreJid)) {
+			await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
+			return
+		}
+
 		const isOffline = !!node.attrs.offline
 
 		if (isOffline) {
@@ -1579,12 +2047,120 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ isOnline }) => {
+	/** timestamp of last tctoken prune run — throttles to once per 24h */
+	let lastTcTokenPruneTs = 0
+	/** dedupe in-flight 463 recovery token issuance by target JID */
+	const inFlight463Recoveries = new Set<string>()
+
+	ev.on('connection.update', ({ isOnline, connection }) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
 		}
+
+		// Flush pending tctoken index save on disconnect to avoid writing after close
+		if (connection === 'close' && tcTokenIndexTimer) {
+			clearTimeout(tcTokenIndexTimer)
+			tcTokenIndexTimer = undefined
+			// Best-effort flush — may fail if store is already closed
+			try {
+				void Promise.resolve(flushTcTokenIndex()).catch(() => {})
+			} catch {
+				/* ignore sync errors */
+			}
+		}
+
+		// Prune expired tctokens when coming online, at most once per 24 hours
+		// Matches WA Web's CLEAN_TC_TOKENS task
+		// Note: don't gate on tcTokenKnownJids.size — the index may still be loading
+		if (isOnline) {
+			const now = Date.now()
+			const DAY_MS = 24 * 60 * 60 * 1000
+			if (now - lastTcTokenPruneTs >= DAY_MS) {
+				lastTcTokenPruneTs = now
+				void pruneExpiredTcTokens()
+			}
+		}
 	})
+
+	registerSocketEndHandler(() => {
+		if (!config.msgRetryCounterCache && msgRetryCache.close) {
+			msgRetryCache.close()
+		}
+
+		if (!config.callOfferCache && callOfferCache.close) {
+			callOfferCache.close()
+		}
+
+		identityAssertDebounce.close()
+		sendActiveReceipts = false
+	})
+
+	async function pruneExpiredTcTokens() {
+		try {
+			await tcTokenIndexLoaded
+
+			// Union with the persisted index picks up JIDs added by other layers
+			// (history sync) without needing inter-module wiring.
+			const persisted = await readTcTokenIndex(authState.keys)
+			const allJids = new Set<string>(tcTokenKnownJids)
+			for (const jid of persisted) allJids.add(jid)
+			if (!allJids.size) return
+
+			const jids = [...allJids]
+			const allTokens = await authState.keys.get('tctoken', jids)
+
+			type TcTokenWriteValue = null | { token: Buffer; timestamp?: string; senderTimestamp?: number }
+			const writes: { [jid: string]: TcTokenWriteValue } = {}
+			const survivors = new Set<string>()
+			let mutated = 0
+
+			for (const jid of jids) {
+				const entry = allTokens[jid]
+				if (!entry) {
+					// Tracked but nothing in store — drop from index.
+					mutated++
+					continue
+				}
+
+				const hasPeerToken = !!entry.token?.length
+				const peerTokenExpired = hasPeerToken && isTcTokenExpired(entry.timestamp)
+				const hasSenderTs = entry.senderTimestamp !== undefined
+				const senderTsExpired = hasSenderTs && isTcTokenExpired(entry.senderTimestamp)
+				const keepPeerToken = hasPeerToken && !peerTokenExpired
+				const keepSenderTs = hasSenderTs && !senderTsExpired
+
+				if (!keepPeerToken && !keepSenderTs) {
+					writes[jid] = null
+					mutated++
+				} else if (peerTokenExpired && keepSenderTs) {
+					writes[jid] = { token: Buffer.alloc(0), senderTimestamp: entry.senderTimestamp }
+					survivors.add(jid)
+					mutated++
+				} else {
+					survivors.add(jid)
+				}
+			}
+
+			if (mutated === 0) return
+
+			await authState.keys.set({
+				tctoken: {
+					...writes,
+					[TC_TOKEN_INDEX_KEY]: {
+						token: Buffer.from(JSON.stringify([...survivors]))
+					}
+				}
+			})
+
+			tcTokenKnownJids.clear()
+			for (const jid of survivors) tcTokenKnownJids.add(jid)
+
+			logger.debug({ mutated, remaining: survivors.size }, 'pruned expired tctokens')
+		} catch (err: any) {
+			logger.warn({ err: err?.message }, 'failed to prune expired tctokens')
+		}
+	}
 
 	return {
 		...sock,

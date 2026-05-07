@@ -37,6 +37,7 @@ export type CacheStore = {
 	del(key: string): void | Promise<void> | number | boolean
 	/** flush all data */
 	flushAll(): void | Promise<void>
+	close?: () => void
 }
 
 export type PossiblyExtendedCacheStore = CacheStore & {
@@ -68,12 +69,15 @@ export type SocketConfig = {
 	version: WAVersion
 	/** override browser config */
 	browser: WABrowserDescription
+	/** Initial pushName carried in the registration ClientPayload (used by mock servers for deterministic phone assignment). */
+	pushName?: string
 	/**
-	 * A dispatcher for all HTTP requests (media uploads/downloads, etc.).
-	 * Provide an `undici` dispatcher, such as `ProxyAgent`.
+	 * Agent or undici dispatcher for HTTP requests (media uploads/downloads, etc.).
+	 * Pass an `https.Agent` for plain TLS customisation, or an undici dispatcher
+	 * such as `ProxyAgent` for proxying.
 	 * @deprecated Use `options.dispatcher` instead for consistency across all HTTP operations
 	 */
-	fetchAgent?: FetchDispatcher
+	fetchAgent?: Agent | FetchDispatcher
 	/** should the QR be printed in the terminal
 	 * @deprecated This feature has been removed
 	 */
