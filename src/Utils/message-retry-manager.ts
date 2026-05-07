@@ -329,7 +329,12 @@ export class MessageRetryManager {
 		return `${key.to}${MESSAGE_KEY_SEPARATOR}${key.id}`
 	}
 
-	private removeRecentMessage(messageId: string): void {
+	/**
+	 * Remove a message from the retry cache. Public so the socket can drop the
+	 * entry on revoke/edit and avoid re-sending stale payloads on a late retry
+	 * receipt.
+	 */
+	removeRecentMessage(messageId: string): void {
 		const keyStr = this.messageKeyIndex.get(messageId)
 		if (!keyStr) {
 			return
