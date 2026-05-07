@@ -1,6 +1,8 @@
+import type { LookupAddress } from 'dns'
 import { lookup } from 'dns/promises'
+import * as http from 'http'
+import * as https from 'https'
 import { isIP } from 'net'
-import { Readable } from 'stream'
 import type { WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import type { ILogger } from './logger'
 import { prepareWAMessageMedia } from './messages'
@@ -69,6 +71,18 @@ const getMetaContent = (html: string, names: string[]) => {
 	for (const name of normalizedNames) {
 		if (name in found) {
 			return found[name]
+		}
+	}
+}
+
+const getCanonicalLinkHref = (html: string) => {
+	const linkTagRegex = /<link\b[^>]*>/gi
+	let tagMatch: RegExpExecArray | null
+	while ((tagMatch = linkTagRegex.exec(html))) {
+		const attrs = parseTagAttributes(tagMatch[0])
+		const rels = (attrs.rel || '').toLowerCase().split(/\s+/)
+		if (rels.includes('canonical') && attrs.href) {
+			return decodeEntities(attrs.href)
 		}
 	}
 }
@@ -170,18 +184,23 @@ const isPrivateIpAddress = (ip: string) => {
 	return true
 }
 
-const assertSafeHostname = async (hostname: string) => {
+/**
+ * Resolves the hostname once, rejects private/loopback addresses, and returns the vetted
+ * addresses so callers can pin the connection to them and avoid a TOCTOU DNS rebinding.
+ */
+const assertSafeHostname = async (hostname: string): Promise<LookupAddress[]> => {
 	const normalizedHost = hostname.toLowerCase().replace(/\.$/, '')
 	if (LOCALHOST_HOSTS.has(normalizedHost) || normalizedHost.endsWith('.localhost')) {
 		throw new Error(`blocked host "${hostname}"`)
 	}
 
-	if (isIP(normalizedHost) > 0) {
+	const family = isIP(normalizedHost)
+	if (family > 0) {
 		if (isPrivateIpAddress(normalizedHost)) {
 			throw new Error(`blocked private ip "${hostname}"`)
 		}
 
-		return
+		return [{ address: normalizedHost, family }]
 	}
 
 	const addresses = await lookup(normalizedHost, { all: true, verbatim: true })
@@ -194,23 +213,69 @@ const assertSafeHostname = async (hostname: string) => {
 			throw new Error(`blocked private ip resolution "${hostname}" -> "${address}"`)
 		}
 	}
+
+	return addresses
 }
 
-const assertSafeUrl = async (url: URL) => {
+const assertSafeUrl = async (url: URL): Promise<LookupAddress[]> => {
 	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
 		throw new Error(`unsupported protocol "${url.protocol}"`)
 	}
 
-	await assertSafeHostname(url.hostname)
+	return assertSafeHostname(url.hostname)
 }
 
-const toNodeStream = (stream: ReadableStream<Uint8Array>) => {
-	// @ts-ignore Node18+ Readable.fromWeb exists
-	return Readable.fromWeb(stream)
+const headersToOutgoingMap = (headers: HeadersInit | undefined): Record<string, string> => {
+	const out: Record<string, string> = {}
+	if (!headers) return out
+	if (headers instanceof Headers) {
+		headers.forEach((v, k) => {
+			out[k] = v
+		})
+		return out
+	}
+
+	if (Array.isArray(headers)) {
+		for (const [k, v] of headers) out[k] = v
+		return out
+	}
+
+	for (const k of Object.keys(headers)) out[k] = (headers as Record<string, string>)[k]!
+	return out
 }
 
-const assertContentLengthWithinLimit = (response: Response, maxBytes: number) => {
-	const contentLengthHeader = response.headers.get('content-length')
+/**
+ * Issues an HTTP(S) GET that connects only to a pre-vetted address. The custom
+ * `lookup` returns the address that {@link assertSafeHostname} already validated,
+ * so the OS resolver is not consulted again — this closes the DNS-rebinding TOCTOU
+ * window while preserving the original hostname for the Host header and TLS SNI.
+ */
+const requestPinned = (
+	url: URL,
+	addresses: LookupAddress[],
+	headers: Record<string, string>,
+	signal: AbortSignal
+): Promise<http.IncomingMessage> => {
+	const protoModule = url.protocol === 'https:' ? https : http
+	const pinned = addresses[0]!
+	return new Promise((resolve, reject) => {
+		const req = protoModule.request(
+			url,
+			{
+				method: 'GET',
+				headers,
+				lookup: (_hostname, _options, cb) => cb(null, pinned.address, pinned.family),
+				signal
+			},
+			res => resolve(res)
+		)
+		req.on('error', reject)
+		req.end()
+	})
+}
+
+const assertContentLengthWithinLimit = (response: http.IncomingMessage, maxBytes: number) => {
+	const contentLengthHeader = response.headers['content-length']
 	if (!contentLengthHeader) {
 		return
 	}
@@ -225,10 +290,10 @@ const assertContentLengthWithinLimit = (response: Response, maxBytes: number) =>
 	}
 }
 
-const assertHtmlContentType = async (response: Response) => {
-	const contentType = (response.headers.get('content-type') || '').toLowerCase()
+const assertHtmlContentType = (response: http.IncomingMessage) => {
+	const contentType = (response.headers['content-type'] || '').toLowerCase()
 	if (contentType && !contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
-		await response.body?.cancel()
+		response.destroy()
 		throw new Error(`unsupported content-type "${contentType}"`)
 	}
 }
@@ -236,31 +301,24 @@ const assertHtmlContentType = async (response: Response) => {
 const HEAD_MARKERS = ['</head>', '<body']
 const MARKER_OVERLAP = Math.max(...HEAD_MARKERS.map(m => m.length)) - 1
 
-const readResponseBody = async (response: Response, maxBytes: number, abortController: AbortController) => {
-	if (!response.body) {
-		return Buffer.alloc(0)
-	}
-
-	const stream = toNodeStream(response.body)
+const readResponseBody = async (response: http.IncomingMessage, maxBytes: number) => {
 	const chunks: Buffer[] = []
 	let totalBytes = 0
 	let tailStr = ''
 
-	for await (const chunk of stream) {
+	for await (const chunk of response) {
 		const buff = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
 		totalBytes += buff.length
 		chunks.push(buff)
 
 		if (totalBytes > maxBytes) {
-			abortController.abort('response limit exceeded')
-			stream.destroy()
+			response.destroy()
 			throw new Error(`response exceeded ${maxBytes} bytes`)
 		}
 
 		const window = tailStr + buff.toString('utf8')
 		if (HEAD_MARKERS.some(m => window.includes(m))) {
-			abortController.abort('head section complete')
-			stream.destroy()
+			response.destroy()
 			break
 		}
 
@@ -275,25 +333,27 @@ const fetchWithGuards = async (
 	fetchOpts: NormalizedFetchOptions,
 	opts: { requireHtml?: boolean } = {}
 ): Promise<{ body: Buffer; contentType: string; finalUrl: string }> => {
-	let currentUrl = new URL(input)
+	if (fetchOpts.proxyUrl) {
+		// Pinning the DNS lookup is meaningless when a proxy is in front — the proxy
+		// resolves the target itself. Refuse rather than silently falling back to a
+		// vulnerable path.
+		throw new Error('proxyUrl is not supported for link previews')
+	}
 
+	let currentUrl = new URL(input)
 	const timeoutSignal = AbortSignal.timeout(fetchOpts.timeout)
+	const headers = headersToOutgoingMap(fetchOpts.headers)
 
 	for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
-		await assertSafeUrl(currentUrl)
-		const abortController = new AbortController()
+		const vettedAddresses = await assertSafeUrl(currentUrl)
+		const response = await requestPinned(currentUrl, vettedAddresses, headers, timeoutSignal)
+		const status = response.statusCode ?? 0
 
-		const fetchUrl = fetchOpts.proxyUrl ? fetchOpts.proxyUrl.concat(currentUrl.toString()) : currentUrl.toString()
-
-		const response = await fetch(fetchUrl, {
-			method: 'GET',
-			redirect: 'manual',
-			headers: fetchOpts.headers,
-			signal: AbortSignal.any([timeoutSignal, abortController.signal])
-		})
-
-		if (response.status >= 300 && response.status < 400) {
-			const location = response.headers.get('location')
+		if (status >= 300 && status < 400) {
+			const location = response.headers.location
+			// Drain/destroy the 3xx body so the underlying socket is released before we follow.
+			response.resume()
+			response.destroy()
 			if (!location) {
 				throw new Error(`redirect from "${currentUrl}" missing location header`)
 			}
@@ -302,19 +362,20 @@ const fetchWithGuards = async (
 			continue
 		}
 
-		if (!response.ok) {
-			throw new Error(`failed to fetch "${currentUrl}" with status ${response.status}`)
+		if (status < 200 || status >= 300) {
+			response.destroy()
+			throw new Error(`failed to fetch "${currentUrl}" with status ${status}`)
 		}
 
 		if (opts.requireHtml) {
-			await assertHtmlContentType(response)
+			assertHtmlContentType(response)
 		}
 
 		assertContentLengthWithinLimit(response, fetchOpts.maxContentLength)
 
 		return {
-			body: await readResponseBody(response, fetchOpts.maxContentLength, abortController),
-			contentType: response.headers.get('content-type') || '',
+			body: await readResponseBody(response, fetchOpts.maxContentLength),
+			contentType: response.headers['content-type'] || '',
 			finalUrl: currentUrl.toString()
 		}
 	}
@@ -381,8 +442,9 @@ export const getUrlInfo = async (
 		const description = getMetaContent(html, ['og:description', 'twitter:description', 'description']) || undefined
 		const imageFromMeta = getMetaContent(html, ['og:image', 'twitter:image', 'twitter:image:src'])
 		const image = imageFromMeta ? toAbsoluteUrl(imageFromMeta, finalUrl) : undefined
-		const canonicalUrl =
-			toAbsoluteUrl(getMetaContent(html, ['og:url', 'twitter:url', 'canonical']) || '', finalUrl) || finalUrl
+		const canonicalCandidate =
+			getMetaContent(html, ['og:url', 'twitter:url', 'canonical']) || getCanonicalLinkHref(html) || ''
+		const canonicalUrl = toAbsoluteUrl(canonicalCandidate, finalUrl) || finalUrl
 
 		const urlInfo: WAUrlInfo = {
 			'canonical-url': canonicalUrl,
@@ -400,10 +462,7 @@ export const getUrlInfo = async (
 				{
 					upload: opts.uploadImage,
 					mediaTypeOverride: 'thumbnail-link',
-					options: {
-						...opts.fetchOpts,
-						maxContentLength: normalizedFetchOpts.maxContentLength
-					} as RequestInit & { maxContentLength: number }
+					options: normalizedFetchOpts as RequestInit & { maxContentLength: number }
 				}
 			)
 			urlInfo.jpegThumbnail = imageMessage?.jpegThumbnail ? Buffer.from(imageMessage.jpegThumbnail) : undefined
