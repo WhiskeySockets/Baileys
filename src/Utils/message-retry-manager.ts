@@ -1,5 +1,7 @@
 import { LRUCache } from 'lru-cache'
 import type { proto } from '../../WAProto/index.js'
+import type { WAMessageUpdate } from '../Types/Message'
+import { WAMessageStubType } from '../Types/Message'
 import type { ILogger } from './logger'
 
 /** Number of sent messages to cache in memory for handling retry receipts */
@@ -343,4 +345,34 @@ export class MessageRetryManager {
 		this.recentMessagesMap.delete(keyStr)
 		this.messageKeyIndex.delete(messageId)
 	}
+}
+
+/**
+ * Drop the recent-message cache entry for a single `messages.update` payload
+ * when it represents a revoke or edit of a message we sent.
+ *
+ * Extracted from the `messages.update` listener in `makeMessagesSocket` so the
+ * exact predicate that decides whether to invalidate is unit-testable in
+ * isolation — without bootstrapping the full socket — and so the listener and
+ * the tests can never drift apart.
+ *
+ * Returns `true` when the cache entry was dropped (or would have been if
+ * present), `false` otherwise. Useful for test assertions.
+ */
+export const invalidateRecentMessageOnUpdate = (
+	manager: MessageRetryManager,
+	{ key, update }: WAMessageUpdate
+): boolean => {
+	if (!key?.id || !key.fromMe) {
+		return false
+	}
+
+	const isRevoke = update?.messageStubType === WAMessageStubType.REVOKE
+	const isEdit = !!(update as { message?: { editedMessage?: unknown } } | undefined)?.message?.editedMessage
+	if (!isRevoke && !isEdit) {
+		return false
+	}
+
+	manager.removeRecentMessage(key.id)
+	return true
 }
