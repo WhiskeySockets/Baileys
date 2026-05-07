@@ -1088,6 +1088,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 			}
 
+			const normalizedContent = normalizeMessageContent(message)
+			const isProtocolMsg = !!normalizedContent?.protocolMessage
+			const hasBizNode = additionalNodes?.some(node => node.tag === 'biz')
+
+			if (!isProtocolMsg && !isNewsletter && !isStatus && !isGroup) {
+				;(stanza.content as BinaryNode[]).push({ tag: 'bot', attrs: { biz_bot: '1' } })
+				if (!hasBizNode) {
+					;(stanza.content as BinaryNode[]).push({ tag: 'biz', attrs: {} })
+				}
+			}
+
 			if (additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
@@ -1098,7 +1109,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Fire-and-forget: issue our token to the contact AFTER message send.
 			// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)
-			const isProtocolMsg = !!normalizeMessageContent(message)?.protocolMessage
 			const isBotOrPSA = destinationJid === PSA_WID || isJidBot(destinationJid) || isJidMetaAI(destinationJid)
 			if (
 				is1on1Send &&
