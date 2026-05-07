@@ -12,6 +12,7 @@ import type {
 	WAMessage,
 	WAMessageKey
 } from '../Types'
+import { WAMessageStubType } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
@@ -116,6 +117,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
+
+	// Invalidate the recent-messages cache when a sent message is revoked or edited.
+	//
+	// Without this, a late `<receipt type="retry">` (commonly produced by the
+	// recipient's other devices after a revoke/edit, or by transient delivery
+	// failures) causes `sendMessagesAgain` to re-send the original payload —
+	// "ghosting" deleted messages and breaking interactive flows where the
+	// consumer relies on the user editing the bot's own message.
+	//
+	// process-message.ts emits `messages.update` with `messageStubType=REVOKE`
+	// on revoke and with `update.message.editedMessage` on edit; both cases
+	// must drop the cache entry so the retry path falls through cleanly.
+	if (messageRetryManager) {
+		ev.on('messages.update', updates => {
+			for (const { key, update } of updates) {
+				if (!key?.id || !key.fromMe) continue
+				const isRevoke = update?.messageStubType === WAMessageStubType.REVOKE
+				const isEdit = !!(update as { message?: { editedMessage?: unknown } } | undefined)?.message?.editedMessage
+				if (isRevoke || isEdit) {
+					messageRetryManager.removeRecentMessage(key.id)
+				}
+			}
+		})
+	}
 
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
