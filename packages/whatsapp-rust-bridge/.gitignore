@@ -1,0 +1,8 @@
+/target
+dist
+node_modules
+pkg
+assets/wasm
+*.tgz
+*.xml
+docs

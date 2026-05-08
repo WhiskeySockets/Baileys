@@ -1,0 +1,48 @@
+{
+    "name": "whatsapp-rust-bridge",
+    "version": "0.5.4",
+    "description": "A high-performance utilities for WhatsApp, powered by Rust and WebAssembly.",
+    "author": "João Lucas <jlucaso@hotmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/WhiskeySockets/Baileys.git",
+        "directory": "packages/whatsapp-rust-bridge"
+    },
+    "type": "module",
+    "files": [
+        "dist/index.js",
+        "dist/index.d.ts",
+        "pkg/whatsapp_rust_bridge.d.ts"
+    ],
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "fetch-prebuilt": "node scripts/fetch-prebuilt.mjs",
+        "postinstall": "node scripts/fetch-prebuilt.mjs",
+        "bench": "bun run build && bun run benches/binary.ts && bun run benches/signal.ts && bun run benches/curve.ts && bun run benches/crypto.ts",
+        "bench:node": "bun run build && node --expose-gc benches/binary.ts && node --expose-gc benches/signal.ts && node --expose-gc benches/curve.ts && node --expose-gc benches/crypto.ts",
+        "build:wasm": "node scripts/build-wasm.mjs",
+        "build:ts": "bun build ts/index.ts --outfile dist/index.js",
+        "prebuild": "rm -rf dist",
+        "postbuild": "tsc -p tsconfig.json --outDir dist",
+        "build": "bun run prebuild && bun run build:wasm && bun run build:ts && bun run postbuild",
+        "prepublishOnly": "bun run build"
+    },
+    "devDependencies": {
+        "@mitata/counters": "^0.0.8",
+        "@types/bun": "^1.3.2",
+        "@types/node": "^24.10.1",
+        "@whiskeysockets/libsignal-node": "git+https://github.com/whiskeysockets/libsignal-node",
+        "audio-decode": "^2.1.3",
+        "baileys": "workspace:*",
+        "mitata": "^1.0.34",
+        "sharp": "^0.34.5",
+        "typescript": "^5.9.3"
+    },
+    "private": false
+}
