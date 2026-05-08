@@ -1,5 +1,5 @@
 use js_sys::{TypeError, Uint8Array};
-use rand::{TryRngCore as _, rngs::OsRng};
+use rand::{Rng, rngs::StdRng};
 use serde::Serialize;
 use tsify_next::Tsify;
 use wacore_libsignal::core::curve::{KeyPair as CoreKeyPair, PrivateKey as CorePrivateKey};
@@ -32,8 +32,8 @@ fn map_err(err: impl std::fmt::Display) -> JsValue {
     TypeError::new(&err.to_string()).into()
 }
 
-fn rng() -> impl rand::CryptoRng + rand::TryRngCore {
-    OsRng.unwrap_err()
+fn rng() -> impl rand::CryptoRng {
+    rand::make_rng::<StdRng>()
 }
 
 fn core_key_pair_to_key_pair(pair: CoreKeyPair) -> KeyPair {
@@ -51,7 +51,7 @@ pub fn generate_identity_key_pair() -> KeyPair {
 #[wasm_bindgen(js_name = generateRegistrationId)]
 pub fn generate_registration_id() -> u32 {
     let mut bytes = [0u8; 2];
-    rng().try_fill_bytes(&mut bytes).unwrap();
+    rng().fill_bytes(&mut bytes);
     (u16::from_le_bytes(bytes) & 0x3FFF) as u32
 }
 
@@ -67,11 +67,12 @@ pub fn generate_signed_pre_key(
     let identity_private_key =
         CorePrivateKey::deserialize(&identity_key_pair.priv_key).map_err(map_err)?;
 
-    let pre_key_pair = CoreKeyPair::generate(&mut rng());
+    let mut rng = rng();
+    let pre_key_pair = CoreKeyPair::generate(&mut rng);
     let pre_key_public_bytes = pre_key_pair.public_key.serialize();
 
     let signature = identity_private_key
-        .calculate_signature(&pre_key_public_bytes, &mut rng())
+        .calculate_signature(&pre_key_public_bytes, &mut rng)
         .map_err(map_err)?;
 
     Ok(SignedPreKey {

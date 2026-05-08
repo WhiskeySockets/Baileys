@@ -95,114 +95,104 @@ class LibsignalStore implements SignalStorage {
 }
 
 // ============================================================================
-// Setup for Rust WASM benchmarks
+// Setup helpers — each bench group gets its own fresh session pair so the
+// ratchet doesn't drift past libsignal's MAX_FORWARD_JUMPS (25_000) when one
+// bench advances the chain solo (e.g. an Encrypt-only bench) before Decrypt
+// has a chance to catch up.
 // ============================================================================
-const aliceStorage = new FakeStorage();
-const bobStorage = new FakeStorage();
 
-const wasmBobAddress = new ProtocolAddress("bob", 1);
-const wasmAliceAddress = new ProtocolAddress("alice", 1);
-
-// Trust each other's identities
-aliceStorage.trustIdentity("bob", bobStorage.ourIdentityKeyPair.pubKey);
-bobStorage.trustIdentity("alice", aliceStorage.ourIdentityKeyPair.pubKey);
-
-// Generate Bob's pre-keys for WASM
-const bobSignedPreKeyId = 1;
-const bobSignedPreKey = generateSignedPreKey(
-  bobStorage.ourIdentityKeyPair,
-  bobSignedPreKeyId,
-);
-const bobOneTimePreKey = generatePreKey(100);
-
-bobStorage.storeSignedPreKey(bobSignedPreKey.keyId, bobSignedPreKey);
-bobStorage.storePreKey(bobOneTimePreKey.keyId, bobOneTimePreKey.keyPair);
-
-const bobBundle = {
-  registrationId: bobStorage.ourRegistrationId,
-  identityKey: bobStorage.ourIdentityKeyPair.pubKey,
-  signedPreKey: {
-    keyId: bobSignedPreKey.keyId,
-    publicKey: bobSignedPreKey.keyPair.pubKey,
-    signature: bobSignedPreKey.signature,
-  },
-  preKey: {
-    keyId: bobOneTimePreKey.keyId,
-    publicKey: bobOneTimePreKey.keyPair.pubKey,
-  },
+type WasmPair = {
+  alice: SessionCipher;
+  bob: SessionCipher;
 };
 
-// Alice processes Bob's bundle and establishes session
-const aliceSessionBuilder = new SessionBuilder(aliceStorage, wasmBobAddress);
-await aliceSessionBuilder.processPreKeyBundle(bobBundle);
+async function makeWasmPair(): Promise<WasmPair> {
+  const aliceStorage = new FakeStorage();
+  const bobStorage = new FakeStorage();
+  const bobAddr = new ProtocolAddress("bob", 1);
+  const aliceAddr = new ProtocolAddress("alice", 1);
 
-const aliceCipher = new SessionCipher(aliceStorage, wasmBobAddress);
-const bobCipher = new SessionCipher(bobStorage, wasmAliceAddress);
+  aliceStorage.trustIdentity("bob", bobStorage.ourIdentityKeyPair.pubKey);
+  bobStorage.trustIdentity("alice", aliceStorage.ourIdentityKeyPair.pubKey);
 
-// ============================================================================
-// Setup for libsignal-node benchmarks
-// ============================================================================
-const aliceLibsignalStorage = new LibsignalStore();
-const bobLibsignalStorage = new LibsignalStore();
+  const sk = generateSignedPreKey(bobStorage.ourIdentityKeyPair, 1);
+  const pk = generatePreKey(100);
+  bobStorage.storeSignedPreKey(sk.keyId, sk);
+  bobStorage.storePreKey(pk.keyId, pk.keyPair);
 
-const libsignalBobAddress = new libsignalNode.ProtocolAddress("bob", 1);
-const libsignalAliceAddress = new libsignalNode.ProtocolAddress("alice", 1);
+  await new SessionBuilder(aliceStorage, bobAddr).processPreKeyBundle({
+    registrationId: bobStorage.ourRegistrationId,
+    identityKey: bobStorage.ourIdentityKeyPair.pubKey,
+    signedPreKey: {
+      keyId: sk.keyId,
+      publicKey: sk.keyPair.pubKey,
+      signature: sk.signature,
+    },
+    preKey: { keyId: pk.keyId, publicKey: pk.keyPair.pubKey },
+  });
 
-// Trust each other's identities
-aliceLibsignalStorage.trustIdentity(
-  "bob",
-  Buffer.from(bobLibsignalStorage.ourIdentityKeyPair.pubKey),
-);
-bobLibsignalStorage.trustIdentity(
-  "alice",
-  Buffer.from(aliceLibsignalStorage.ourIdentityKeyPair.pubKey),
-);
+  const alice = new SessionCipher(aliceStorage, bobAddr);
+  const bob = new SessionCipher(bobStorage, aliceAddr);
 
-// Generate Bob's pre-keys for libsignal-node
-const bobLibSignedPreKey = libsignalKeyHelper.generateSignedPreKey(
-  bobLibsignalStorage.ourIdentityKeyPair,
-  bobSignedPreKeyId,
-);
-const bobLibOneTimePreKey = libsignalKeyHelper.generatePreKey(100);
+  // PreKey handshake + reply so both sides have established sessions
+  const first = await alice.encrypt(Buffer.from("hi"));
+  await bob.decryptPreKeyWhisperMessage(first.body);
+  const reply = await bob.encrypt(Buffer.from("ack"));
+  await alice.decryptWhisperMessage(reply.body);
 
-bobLibsignalStorage.storeSignedPreKey(
-  bobLibSignedPreKey.keyId,
-  bobLibSignedPreKey,
-);
-bobLibsignalStorage.storePreKey(
-  bobLibOneTimePreKey.keyId,
-  bobLibOneTimePreKey.keyPair,
-);
+  return { alice, bob };
+}
 
-const bobLibsignalBundle = {
-  registrationId: bobLibsignalStorage.ourRegistrationId,
-  identityKey: bobLibsignalStorage.ourIdentityKeyPair.pubKey,
-  signedPreKey: {
-    keyId: bobLibSignedPreKey.keyId,
-    publicKey: bobLibSignedPreKey.keyPair.pubKey,
-    signature: bobLibSignedPreKey.signature,
-  },
-  preKey: {
-    keyId: bobLibOneTimePreKey.keyId,
-    publicKey: bobLibOneTimePreKey.keyPair.pubKey,
-  },
+type LibPair = {
+  alice: InstanceType<typeof libsignalNode.SessionCipher>;
+  bob: InstanceType<typeof libsignalNode.SessionCipher>;
 };
 
-// Alice processes Bob's bundle and establishes session
-const aliceLibsignalBuilder = new libsignalNode.SessionBuilder(
-  aliceLibsignalStorage,
-  libsignalBobAddress,
-);
-await aliceLibsignalBuilder.initOutgoing(bobLibsignalBundle);
+async function makeLibPair(): Promise<LibPair> {
+  const aliceStorage = new LibsignalStore();
+  const bobStorage = new LibsignalStore();
+  const bobAddr = new libsignalNode.ProtocolAddress("bob", 1);
+  const aliceAddr = new libsignalNode.ProtocolAddress("alice", 1);
 
-const aliceLibsignalCipher = new libsignalNode.SessionCipher(
-  aliceLibsignalStorage,
-  libsignalBobAddress,
-);
-const bobLibsignalCipher = new libsignalNode.SessionCipher(
-  bobLibsignalStorage,
-  libsignalAliceAddress,
-);
+  aliceStorage.trustIdentity(
+    "bob",
+    Buffer.from(bobStorage.ourIdentityKeyPair.pubKey),
+  );
+  bobStorage.trustIdentity(
+    "alice",
+    Buffer.from(aliceStorage.ourIdentityKeyPair.pubKey),
+  );
+
+  const sk = libsignalKeyHelper.generateSignedPreKey(
+    bobStorage.ourIdentityKeyPair,
+    1,
+  );
+  const pk = libsignalKeyHelper.generatePreKey(100);
+  bobStorage.storeSignedPreKey(sk.keyId, sk);
+  bobStorage.storePreKey(pk.keyId, pk.keyPair);
+
+  const builder = new libsignalNode.SessionBuilder(aliceStorage, bobAddr);
+  await builder.initOutgoing({
+    registrationId: bobStorage.ourRegistrationId,
+    identityKey: bobStorage.ourIdentityKeyPair.pubKey,
+    signedPreKey: {
+      keyId: sk.keyId,
+      publicKey: sk.keyPair.pubKey,
+      signature: sk.signature,
+    },
+    preKey: { keyId: pk.keyId, publicKey: pk.keyPair.pubKey },
+  });
+
+  const alice = new libsignalNode.SessionCipher(aliceStorage, bobAddr);
+  const bob = new libsignalNode.SessionCipher(bobStorage, aliceAddr);
+
+  const first = await alice.encrypt(Buffer.from("hi"));
+  await bob.decryptPreKeyWhisperMessage(first.body as unknown as Uint8Array);
+  const reply = await bob.encrypt(Buffer.from("ack"));
+  await alice.decryptWhisperMessage(reply.body as unknown as Uint8Array);
+
+  return { alice, bob };
+}
 
 // ============================================================================
 // Test Messages
@@ -215,80 +205,79 @@ const typicalMessage = Buffer.from(
   ),
 );
 
-// ============================================================================
-// Establish bidirectional sessions (required for decrypt benchmarks)
-// ============================================================================
-
-// WASM: Alice sends first message (PreKeyWhisperMessage)
-const wasmFirstEncrypted = await aliceCipher.encrypt(typicalMessage);
-// Bob decrypts first message - this establishes Bob's session with Alice
-await bobCipher.decryptPreKeyWhisperMessage(wasmFirstEncrypted.body);
-// Bob replies to Alice - this completes the ratchet setup
-const wasmBobReply = await bobCipher.encrypt(typicalMessage);
-// Alice decrypts Bob's reply - now both sides have established sessions
-await aliceCipher.decryptWhisperMessage(wasmBobReply.body);
-
-// libsignal-node: Same pattern
-const libsignalFirstEncrypted =
-  await aliceLibsignalCipher.encrypt(typicalMessage);
-await bobLibsignalCipher.decryptPreKeyWhisperMessage(
-  libsignalFirstEncrypted.body as unknown as Uint8Array,
-);
-const libsignalBobReply = await bobLibsignalCipher.encrypt(typicalMessage);
-await aliceLibsignalCipher.decryptWhisperMessage(
-  libsignalBobReply.body as unknown as Uint8Array,
-);
-
-// Now both Alice and Bob have fully established sessions in both libraries
+// Each bench group below gets its own fresh session pair. This prevents one
+// bench (e.g. Encrypt) from advancing the ratchet past the
+// MAX_FORWARD_JUMPS=25_000 threshold and breaking subsequent Decrypt benches.
 
 // ============================================================================
-// Benchmarks
+// Encrypt benchmarks
 // ============================================================================
+const encWasm = await makeWasmPair();
+const encLib = await makeLibPair();
 
 boxplot(() => {
   summary(() => {
     bench("Encrypt typical message (Rust WASM)", async () => {
-      const result = await aliceCipher.encrypt(typicalMessage);
+      const result = await encWasm.alice.encrypt(typicalMessage);
       do_not_optimize(result);
     }).gc("inner");
 
     bench("Encrypt typical message (libsignal-node)", async () => {
-      const result = await aliceLibsignalCipher.encrypt(typicalMessage);
+      const result = await encLib.alice.encrypt(typicalMessage);
       do_not_optimize(result);
     }).gc("inner");
   });
+});
 
+// ============================================================================
+// Decrypt benchmarks (fresh sessions — independent of Encrypt above)
+// ============================================================================
+const decWasm = await makeWasmPair();
+const decLib = await makeLibPair();
+
+// Use mitata's generator form so the encrypt setup runs outside the timed
+// section (the [0] callback is invoked per-iteration before t0). The bench
+// body only measures Bob's decrypt. Each iteration consumes a fresh
+// ciphertext because both ratchets advance on every encrypt/decrypt.
+boxplot(() => {
   summary(() => {
-    // Decrypt benchmarks - Alice encrypts, Bob decrypts
-    // Both sides now have established sessions, so these are WhisperMessages (type 1)
-    bench("Decrypt WhisperMessage (Rust WASM)", async () => {
-      // Alice encrypts a fresh message to Bob
-      const encrypted = await aliceCipher.encrypt(typicalMessage);
-      // Bob decrypts it - this advances the ratchet
-      const result = await bobCipher.decryptWhisperMessage(encrypted.body);
-      do_not_optimize(result);
+    bench("Decrypt WhisperMessage (Rust WASM)", function* () {
+      yield {
+        [0]: async () => await decWasm.alice.encrypt(typicalMessage),
+        bench: async (encrypted: { body: Uint8Array }) => {
+          const result = await decWasm.bob.decryptWhisperMessage(encrypted.body);
+          do_not_optimize(result);
+        },
+      };
     }).gc("inner");
 
-    bench("Decrypt WhisperMessage (libsignal-node)", async () => {
-      // Alice encrypts a fresh message to Bob
-      const encrypted = await aliceLibsignalCipher.encrypt(typicalMessage);
-      // Bob decrypts it - this advances the ratchet
-      const result = await bobLibsignalCipher.decryptWhisperMessage(
-        encrypted.body as unknown as Uint8Array,
-      );
-      do_not_optimize(result);
+    bench("Decrypt WhisperMessage (libsignal-node)", function* () {
+      yield {
+        [0]: async () => await decLib.alice.encrypt(typicalMessage),
+        bench: async (encrypted: { body: unknown }) => {
+          const result = await decLib.bob.decryptWhisperMessage(
+            encrypted.body as unknown as Uint8Array,
+          );
+          do_not_optimize(result);
+        },
+      };
     }).gc("inner");
   });
+});
 
+// ============================================================================
+// Full round-trip benchmarks (fresh sessions)
+// ============================================================================
+const rtWasm = await makeWasmPair();
+const rtLib = await makeLibPair();
+
+boxplot(() => {
   summary(() => {
-    // Full round-trip: Alice -> Bob -> Alice
     bench("Full round-trip encrypt+decrypt (Rust WASM)", async () => {
-      // Alice sends to Bob
-      const toBob = await aliceCipher.encrypt(typicalMessage);
-      const decryptedByBob = await bobCipher.decryptWhisperMessage(toBob.body);
-      // Bob replies to Alice
-      const toAlice = await bobCipher.encrypt(typicalMessage);
-      const decryptedByAlice = await aliceCipher.decryptWhisperMessage(
+      const toBob = await rtWasm.alice.encrypt(typicalMessage);
+      const decryptedByBob = await rtWasm.bob.decryptWhisperMessage(toBob.body);
+      const toAlice = await rtWasm.bob.encrypt(typicalMessage);
+      const decryptedByAlice = await rtWasm.alice.decryptWhisperMessage(
         toAlice.body,
       );
       do_not_optimize(decryptedByBob);
@@ -296,14 +285,12 @@ boxplot(() => {
     }).gc("inner");
 
     bench("Full round-trip encrypt+decrypt (libsignal-node)", async () => {
-      // Alice sends to Bob
-      const toBob = await aliceLibsignalCipher.encrypt(typicalMessage);
-      const decryptedByBob = await bobLibsignalCipher.decryptWhisperMessage(
+      const toBob = await rtLib.alice.encrypt(typicalMessage);
+      const decryptedByBob = await rtLib.bob.decryptWhisperMessage(
         toBob.body as unknown as Uint8Array,
       );
-      // Bob replies to Alice
-      const toAlice = await bobLibsignalCipher.encrypt(typicalMessage);
-      const decryptedByAlice = await aliceLibsignalCipher.decryptWhisperMessage(
+      const toAlice = await rtLib.bob.encrypt(typicalMessage);
+      const decryptedByAlice = await rtLib.alice.decryptWhisperMessage(
         toAlice.body as unknown as Uint8Array,
       );
       do_not_optimize(decryptedByBob);

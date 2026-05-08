@@ -1,5 +1,5 @@
 use js_sys::Uint8Array;
-use wacore_binary::consts::NOISE_START_PATTERN as NOISE_MODE;
+use wacore_binary::consts::NOISE_PATTERN_XX as NOISE_MODE;
 use wacore_binary::marshal::marshal_ref;
 use wacore_noise::framing::{FrameDecoder, encode_frame_into};
 use wacore_noise::{NoiseCipher, NoiseHandshake, build_handshake_header};
@@ -87,9 +87,11 @@ impl NoiseSession {
                 .ok_or_else(|| JsValue::from_str("Decryption cipher not initialized"))?;
             let counter = self.read_counter;
             self.read_counter += 1;
+            let mut buf = ciphertext.to_vec();
             cipher
-                .decrypt_with_counter(counter, ciphertext)
-                .map_err(|e| JsValue::from_str(&format!("Decryption failed: {}", e)))
+                .decrypt_in_place_with_counter(counter, &mut buf)
+                .map_err(|e| JsValue::from_str(&format!("Decryption failed: {}", e)))?;
+            Ok(buf)
         } else {
             self.handshake
                 .as_mut()

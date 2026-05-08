@@ -1,5 +1,5 @@
 use js_sys::Uint8Array;
-use rand::{TryRngCore, rngs::OsRng};
+use rand::rngs::StdRng;
 use wasm_bindgen::prelude::*;
 
 use crate::group_types::SenderKeyDistributionMessage;
@@ -36,7 +36,7 @@ impl GroupCipher {
             &mut self.storage_adapter,
             &self.sender_key_name.0,
             plaintext,
-            &mut OsRng.unwrap_err(),
+            &mut rand::make_rng::<StdRng>(),
         )
         .await
         .map_err(map_err)?;
@@ -93,7 +93,7 @@ impl GroupSessionBuilder {
         let core_skdm = create_sender_key_distribution_message(
             &sender_key_name.0,
             &mut self.storage_adapter,
-            &mut OsRng.unwrap_err(),
+            &mut rand::make_rng::<StdRng>(),
         )
         .await
         .map_err(map_err)?;

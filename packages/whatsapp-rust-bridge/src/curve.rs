@@ -1,6 +1,6 @@
 use curve25519_dalek::{Scalar, constants::ED25519_BASEPOINT_TABLE};
 use js_sys::Uint8Array;
-use rand::{TryRngCore, rngs::OsRng};
+use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 use wacore_libsignal::{
@@ -26,7 +26,7 @@ pub struct KeyPair {
 
 #[wasm_bindgen(js_name = generateKeyPair)]
 pub fn generate_key_pair() -> KeyPair {
-    let pair = CoreKeyPair::generate(&mut OsRng.unwrap_err());
+    let pair = CoreKeyPair::generate(&mut rand::make_rng::<StdRng>());
 
     KeyPair {
         pub_key: pair.public_key.serialize().to_vec(),
@@ -103,7 +103,7 @@ pub fn calculate_signature(
 
     let priv_key = parse_private_key(private_key_bytes)?;
     let signature = priv_key
-        .calculate_signature(message, &mut OsRng.unwrap_err())
+        .calculate_signature(message, &mut rand::make_rng::<StdRng>())
         .map_err(map_err)?;
 
     let result = Uint8Array::new_with_length(signature.len() as u32);

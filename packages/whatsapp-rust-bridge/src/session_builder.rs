@@ -1,4 +1,4 @@
-use rand::{TryRngCore, rngs::OsRng};
+use rand::rngs::StdRng;
 use serde::Deserialize;
 use tsify_next::Tsify;
 use wasm_bindgen::{JsValue, prelude::*};
@@ -113,7 +113,7 @@ impl SessionBuilder {
             &mut session_store,
             &mut identity_store,
             &bundle,
-            &mut OsRng.unwrap_err(),
+            &mut rand::make_rng::<StdRng>(),
             UsePQRatchet::No,
         )
         .await

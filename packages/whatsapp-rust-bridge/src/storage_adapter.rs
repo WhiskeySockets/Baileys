@@ -786,18 +786,22 @@ impl SessionStore for JsStorageAdapter {
         }
     }
 
+    async fn has_session(&self, address: &libsignal::ProtocolAddress) -> SignalResult<bool> {
+        Ok(SessionStore::load_session(self, address).await?.is_some())
+    }
+
     async fn store_session(
         &mut self,
         address: &libsignal::ProtocolAddress,
-        record: &CoreSessionRecord,
+        record: CoreSessionRecord,
     ) -> SignalResult<()> {
         let address_str = self.get_address_string(address);
 
+        let bytes = record.serialize()?;
+
         self.cached_sessions
             .borrow_mut()
-            .insert(address_str.clone(), record.clone());
-
-        let bytes = record.serialize()?;
+            .insert(address_str.clone(), record);
 
         let result = if self.has_store_session_raw() {
             let uint8 = Uint8Array::from(bytes.as_slice());
@@ -1008,7 +1012,7 @@ impl SignedPreKeyStore for JsStorageAdapter {
 #[async_trait(?Send)]
 impl SenderKeyStore for JsStorageAdapter {
     async fn load_sender_key(
-        &mut self,
+        &self,
         sender_key_name: &CoreSenderKeyName,
     ) -> SignalResult<Option<CoreSenderKeyRecord>> {
         let key_id = self.get_sender_key_id(sender_key_name);
@@ -1059,15 +1063,15 @@ impl SenderKeyStore for JsStorageAdapter {
     async fn store_sender_key(
         &mut self,
         sender_key_name: &CoreSenderKeyName,
-        record: &CoreSenderKeyRecord,
+        record: CoreSenderKeyRecord,
     ) -> SignalResult<()> {
         let key_id = self.get_sender_key_id(sender_key_name);
 
+        let bytes = record.serialize()?;
+
         self.cached_sender_keys
             .borrow_mut()
-            .insert(key_id.clone(), record.clone());
-
-        let bytes = record.serialize()?;
+            .insert(key_id.clone(), record);
         let uint8 = Uint8Array::from(bytes.as_slice());
 
         let result = self
