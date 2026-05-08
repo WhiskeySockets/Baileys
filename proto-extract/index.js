@@ -500,7 +500,7 @@ async function findAppModules() {
   const sortedStr = decodedProto.map((d) => decodedProtoMap[d]).join('\n');
 
   const decodedProtoStr = `syntax = "proto3";\npackage proto;\n\n/// WhatsApp Version: ${whatsAppVersion}\n\n${sortedStr}`;
-  const destinationPath = '../WAProto/WAProto.proto';
+  const destinationPath = '../packages/baileys/WAProto/WAProto.proto';
   await fs.writeFile(destinationPath, decodedProtoStr);
 
   console.log(`Extracted protobuf schema to "${destinationPath}"`);

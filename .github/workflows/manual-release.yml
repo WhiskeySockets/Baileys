@@ -36,4 +36,5 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Release
-        run: pnpm dlx release-it --increment ${{ github.event.inputs.increment }}
+        working-directory: packages/baileys
+        run: pnpm exec release-it --increment ${{ github.event.inputs.increment }}

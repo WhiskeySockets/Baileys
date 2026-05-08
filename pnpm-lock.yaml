@@ -35,7 +35,9 @@ overrides:
 
 importers:
 
-  .:
+  .: {}
+
+  packages/baileys:
     dependencies:
       '@cacheable/node-cache':
         specifier: ^1.4.0

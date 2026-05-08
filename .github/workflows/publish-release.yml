@@ -41,14 +41,19 @@ jobs:
       - name: Resolve npm dist-tag from version
         id: dist_tag
         run: |
-          tag=$(node -p "const v=require('./package.json').version; const m=v.match(/-([a-zA-Z]+)/); m?m[1]:'latest';")
+          tag=$(node -p "const v=require('./packages/baileys/package.json').version; const m=v.match(/-([a-zA-Z]+)/); m?m[1]:'latest';")
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Publishing with dist-tag: $tag"
 
+      - name: Build baileys
+        run: pnpm --filter baileys build
+
       - name: Publish in NPM (as `baileys`)
+        working-directory: packages/baileys
         run: npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
 
       - name: Publish in NPM (whiskeysockets scope)
+        working-directory: packages/baileys
         run: |
           npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
           npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
@@ -56,6 +61,7 @@ jobs:
 
       - name: Generate Changelog
         id: generate_changelog
+        working-directory: packages/baileys
         run: |
           changelog=$(npm run changelog:last --silent)
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
@@ -63,9 +69,11 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Make Package
+        working-directory: packages/baileys
         run: pnpm pack
 
       - name: Rename Pack
+        working-directory: packages/baileys
         run: mv *.tgz baileys.tgz
 
       - name: Create Release
@@ -81,6 +89,6 @@ jobs:
           draft: false
           prerelease: false
           files: >
-            baileys.tgz
+            packages/baileys/baileys.tgz
           gzip: folders
           allow_override: true

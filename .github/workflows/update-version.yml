@@ -32,7 +32,7 @@ jobs:
 
       - name: Update WhatsApp Web Version
         id: update_version
-        run: pnpm update:version
+        run: pnpm --filter baileys update:version
 
       - name: Check for changes
         id: check_changes
@@ -59,7 +59,7 @@ jobs:
 
           # Create new branch, commit, and push
           git checkout -b "$BRANCH_NAME"
-          git add src/Defaults/baileys-version.json src/Defaults/index.ts src/Utils/generics.ts
+          git add packages/baileys/src/Defaults/baileys-version.json packages/baileys/src/Defaults/index.ts packages/baileys/src/Utils/generics.ts
           git commit -m "chore: update WhatsApp Web version"
           git push origin "$BRANCH_NAME"
 
@@ -71,8 +71,8 @@ jobs:
           This PR updates the WhatsApp Web client revision to the latest version fetched from \`web.whatsapp.com\`.
 
           **Files updated:**
-          - \`src/Defaults/baileys-version.json\`
-          - \`src/Defaults/index.ts\`
-          - \`src/Utils/generics.ts\`" \
+          - \`packages/baileys/src/Defaults/baileys-version.json\`
+          - \`packages/baileys/src/Defaults/index.ts\`
+          - \`packages/baileys/src/Utils/generics.ts\`" \
             --base master \
             --head "$BRANCH_NAME" || echo "PR already exists or could not be created"
