@@ -1,12 +1,15 @@
-# WhatsApp Rust Bridge - AI Coding Guidelines
+# WhatsApp Rust Bridge — AI Coding Guidelines
 
-Quick orientation for AI agents and contributors: this repo is a Rust → WebAssembly bridge that provides binary encoding/decoding utilities for WhatsApp protocols and a small LibSignal helper layer with JS bindings and TS types.
+> **Note**: this package lives inside the [Baileys monorepo](../../AGENTS.md) as `packages/whatsapp-rust-bridge/`. For monorepo-wide setup (pnpm, lockfile, lint/test commands, release flow) read the root `AGENTS.md` first; this file only covers what's specific to the Rust crate.
+
+Quick orientation: this package is a Rust → WebAssembly bridge that provides binary encoding/decoding utilities for WhatsApp protocols and a small LibSignal helper layer with JS bindings and TS types. It is consumed by `packages/baileys` via `workspace:^`.
 
 Core summary
 
 - Rust WASM core (`src/`) exposes functions (via `wasm_bindgen`) consumed in JS/TS.
-- TypeScript wrapper (`ts/binary.ts`) bundles wasm + lightweight entry API and exposes the `dist/` exports.
+- TypeScript wrapper (`ts/index.ts`, `ts/macro.ts`) bundles wasm inline (base64) and exposes the `dist/` exports.
 - Tests are in `test/` (Bun) and benches in `benches/` (Mitata).
+- A fresh monorepo `pnpm install` does **not** rebuild the WASM. Instead, `scripts/fetch-prebuilt.mjs` runs as the package's `postinstall` and pulls the published tarball straight from npm, so contributors who don't touch Rust never need `cargo`/`wasm-pack`/`wasm-opt`/`bun`. Set `WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1` to opt out and use your local build instead.
 
 Key files to review
 

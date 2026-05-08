@@ -55,6 +55,8 @@ pnpm --filter whatsapp-rust-bridge build   # needs cargo, wasm-pack, wasm-opt, b
 
 A new bridge release goes out by tagging `whatsapp-rust-bridge@<version>` — the `bridge-release.yml` workflow builds, publishes to npm, and opens a follow-up PR refreshing `dist.sha256`.
 
+> **Path convention in this document**: unless otherwise prefixed, paths like `src/Utils/foo.ts`, `WAProto/`, `Example/`, and `__tests__/` refer to files inside `packages/baileys/`. References to the bridge always use the full `packages/whatsapp-rust-bridge/` prefix.
+
 ## Setup
 
 This repo uses **pnpm 10** (pinned via `packageManager` in `package.json`). Corepack will pick the right version; you can also install pnpm globally.

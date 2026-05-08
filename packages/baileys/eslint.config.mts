@@ -16,16 +16,14 @@ const compat = new FlatCompat({
 });
 
 export default defineConfig([globalIgnores([
-    "src/Tests/*",
     "**/lib",
     "**/coverage",
     "**/*.lock",
     "**/.eslintrc.json",
     "src/WABinary/index.ts",
     "**/WAProto",
-    "Example/Example.ts",
+    "Example/example.ts",
     "**/docs",
-    "**/proto-extract",
 ]),
 ...base,
 {

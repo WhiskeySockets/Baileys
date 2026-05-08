@@ -6,7 +6,7 @@
  * - src/Defaults/index.ts
  * - src/Utils/generics.ts
  *
- * Usage: yarn update:version
+ * Usage: pnpm --filter baileys update:version
  */
 
 import { readFileSync, writeFileSync } from 'fs'
