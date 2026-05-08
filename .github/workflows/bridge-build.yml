@@ -1,0 +1,87 @@
+name: Bridge WASM Build
+
+# Builds whatsapp-rust-bridge from source on every PR that touches the
+# Rust crate or its TS wrapper. Confirms the source still compiles to a
+# usable bundle, even though postinstall normally pulls a prebuilt
+# tarball from npm.
+#
+# A separate job (release-bridge.yml) handles tagged releases and the
+# actual npm publish.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/whatsapp-rust-bridge/**'
+  pull_request:
+    paths:
+      - 'packages/whatsapp-rust-bridge/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: packages/whatsapp-rust-bridge
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust toolchain (pinned via rust-toolchain.toml)
+        run: rustup show
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Install binaryen (wasm-opt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/whatsapp-rust-bridge/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/whatsapp-rust-bridge/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Skip postinstall download
+        working-directory: ${{ github.workspace }}
+        run: echo "WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1" >> "$GITHUB_ENV"
+
+      - name: Install workspace dependencies
+        working-directory: ${{ github.workspace }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build bridge from source
+        run: pnpm build
+
+      - name: Sanity-check the freshly built bundle loads
+        run: |
+          node -e "import('./dist/index.js').then(m => { if (!m) { process.exit(1); } console.log('bridge module exports OK'); });"
+
+      - name: Run bridge tests
+        run: bun test

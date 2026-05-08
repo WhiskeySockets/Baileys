@@ -1,0 +1,118 @@
+name: Publish whatsapp-rust-bridge
+
+# Triggered by tags shaped like `whatsapp-rust-bridge@<version>`.
+# Builds the WASM bridge from source, publishes the resulting npm
+# tarball, then updates packages/whatsapp-rust-bridge/dist.sha256 so the
+# baileys workspace's postinstall can verify integrity from then on.
+
+on:
+  push:
+    tags:
+      - 'whatsapp-rust-bridge@*'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: packages/whatsapp-rust-bridge
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust toolchain
+        run: rustup show
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Install binaryen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/whatsapp-rust-bridge/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/whatsapp-rust-bridge/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Skip postinstall download
+        working-directory: ${{ github.workspace }}
+        run: echo "WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1" >> "$GITHUB_ENV"
+
+      - name: Install workspace dependencies
+        working-directory: ${{ github.workspace }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches package version
+        run: |
+          tag_version="${GITHUB_REF_NAME#whatsapp-rust-bridge@}"
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "Tag version ($tag_version) does not match package.json version ($pkg_version)" >&2
+            exit 1
+          fi
+
+      - name: Build from source
+        run: pnpm build
+
+      - name: Publish to npm
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Refresh dist.sha256 against the published tarball
+        run: |
+          mkdir -p /tmp/bridge-pack
+          # Wait briefly so the registry serves the just-published version.
+          for i in 1 2 3 4 5; do
+            if npm view "whatsapp-rust-bridge@${GITHUB_REF_NAME#whatsapp-rust-bridge@}" version >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
+          npm pack "whatsapp-rust-bridge@${GITHUB_REF_NAME#whatsapp-rust-bridge@}" \
+            --silent --pack-destination /tmp/bridge-pack
+          tarball=$(ls /tmp/bridge-pack/*.tgz)
+          sha=$(sha256sum "$tarball" | awk '{print $1}')
+          echo "$sha  $(basename "$tarball")" > dist.sha256
+          cat dist.sha256
+
+      - name: Open PR with updated checksum
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore(bridge): refresh dist.sha256 for ${{ github.ref_name }}"
+          title: "chore(bridge): refresh dist.sha256 for ${{ github.ref_name }}"
+          branch: bridge/checksum-${{ github.ref_name }}
+          delete-branch: true
+          add-paths: packages/whatsapp-rust-bridge/dist.sha256
+          body: |
+            Locks the SHA-256 of the npm tarball just published as
+            `${{ github.ref_name }}` so that fresh clones of the monorepo
+            can verify the prebuilt artifact downloaded by
+            `packages/whatsapp-rust-bridge/scripts/fetch-prebuilt.mjs`.
