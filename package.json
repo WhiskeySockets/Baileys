@@ -9,8 +9,7 @@
   },
   "license": "MIT",
   "scripts": {
-    "build": "pnpm -r build",
-    "build:baileys": "pnpm --filter baileys build",
+    "build": "pnpm --filter baileys build",
     "build:bridge": "pnpm --filter whatsapp-rust-bridge build",
     "test": "pnpm --filter baileys test",
     "test:e2e": "pnpm --filter baileys test:e2e",
