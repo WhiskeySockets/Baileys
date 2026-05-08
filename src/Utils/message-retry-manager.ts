@@ -199,7 +199,7 @@ export class MessageRetryManager {
 
 		// Validate it's a known RetryReason
 		if (code >= RetryReason.UnknownError && code <= RetryReason.StatusRevokeDelay) {
-			return code as RetryReason
+			return code
 		}
 
 		return RetryReason.UnknownError
@@ -310,7 +310,7 @@ export class MessageRetryManager {
 
 	hasSameBaseKey(addr: string, msgId: string, baseKey: Uint8Array): boolean {
 		const stored = this.baseKeys.get(`${addr}:${msgId}`)
-		if (!stored || stored.length !== baseKey.length) {
+		if (stored?.length !== baseKey.length) {
 			return false
 		}
 

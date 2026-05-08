@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PERSONAL_TOKEN }}
 
@@ -23,27 +23,17 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Setup Node
-        uses: actions/setup-node@v3.6.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
-
-      - name: Enable Corepack and Set Yarn Version
-        run: |
-          corepack enable
-          corepack prepare yarn@4.x --activate
-
-      - name: Restore Yarn Cache
-        uses: actions/cache@v3
-        id: yarn-cache
-        with:
-          path: .yarn/cache
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          cache: 'pnpm'
 
       - name: Install Dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
 
       - name: Release
-        run: npx release-it --increment ${{ github.event.inputs.increment }}
+        run: pnpm dlx release-it --increment ${{ github.event.inputs.increment }}

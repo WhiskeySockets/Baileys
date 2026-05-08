@@ -11,7 +11,7 @@ describe('processContactAction', () => {
 		trace: jest.fn(),
 		child: jest.fn(() => mockLogger),
 		level: 'silent'
-	} as unknown as ILogger
+	}
 
 	beforeEach(() => {
 		jest.clearAllMocks()

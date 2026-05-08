@@ -1,6 +1,5 @@
 .DS_Store
 .env
-.yarn/
 *.tgz
 */.DS_Store
 auth_info*.json

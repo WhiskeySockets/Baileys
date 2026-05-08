@@ -30,22 +30,12 @@ jobs:
       - name: Upgrade npm to a version that supports Trusted Publishers
         run: npm install -g npm@latest
 
-      - name: Enable Corepack and Set Yarn Version
-        run: |
-          corepack enable
-          corepack prepare yarn@4.x --activate
-
-      - name: Restore Yarn Cache
-        uses: actions/cache@v4
-        id: yarn-cache
+      - uses: pnpm/action-setup@v4
         with:
-          path: .yarn/cache
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          version: 10.28.2
 
       - name: Install Dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
 
       # rc / beta / alpha → that dist-tag; stable → latest. Avoids clobbering `latest` with a prerelease.
       - name: Resolve npm dist-tag from version
@@ -73,7 +63,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Make Package
-        run: yarn pack
+        run: pnpm pack
 
       - name: Rename Pack
         run: mv *.tgz baileys.tgz

@@ -94,11 +94,11 @@ export const extractE2ESessionFromRetryReceipt = (receipt: BinaryNode) => {
 	if (!keysNode) return null
 
 	const typeBuf = getBinaryNodeChildBuffer(keysNode, 'type')
-	if (!typeBuf || typeBuf.length !== 1 || typeBuf[0] !== KEY_BUNDLE_TYPE[0]) return null
+	if (typeBuf?.length !== 1 || typeBuf[0] !== KEY_BUNDLE_TYPE[0]) return null
 
 	const identity = getBinaryNodeChildBuffer(keysNode, 'identity')
 	const skey = getBinaryNodeChild(keysNode, 'skey')
-	if (!identity || identity.length !== 32 || !skey) return null
+	if (identity?.length !== 32 || !skey) return null
 
 	const registrationId = getBinaryNodeChildUInt(receipt, 'registration', 4)
 	if (!isValidUInt(registrationId)) return null
@@ -106,7 +106,7 @@ export const extractE2ESessionFromRetryReceipt = (receipt: BinaryNode) => {
 	const signedPubKey = getBinaryNodeChildBuffer(skey, 'value')
 	const signedSig = getBinaryNodeChildBuffer(skey, 'signature')
 	const signedKeyId = getBinaryNodeChildUInt(skey, 'id', 3)
-	if (!signedPubKey || signedPubKey.length !== 32 || !signedSig || !isValidUInt(signedKeyId)) {
+	if (signedPubKey?.length !== 32 || !signedSig || !isValidUInt(signedKeyId)) {
 		return null
 	}
 
@@ -115,7 +115,7 @@ export const extractE2ESessionFromRetryReceipt = (receipt: BinaryNode) => {
 	if (preKeyNode) {
 		const preKeyPub = getBinaryNodeChildBuffer(preKeyNode, 'value')
 		const preKeyId = getBinaryNodeChildUInt(preKeyNode, 'id', 3)
-		if (!preKeyPub || preKeyPub.length !== 32 || !isValidUInt(preKeyId)) {
+		if (preKeyPub?.length !== 32 || !isValidUInt(preKeyId)) {
 			return null
 		}
 

@@ -117,7 +117,7 @@ export const jidNormalizedUser = (jid: string | undefined) => {
 	}
 
 	const { user, server } = result
-	return jidEncode(user, server === 'c.us' ? 's.whatsapp.net' : (server as JidServer))
+	return jidEncode(user, server === 'c.us' ? 's.whatsapp.net' : server)
 }
 
 export const transferDevice = (fromJid: string, toJid: string) => {
