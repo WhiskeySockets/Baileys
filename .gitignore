@@ -8,12 +8,14 @@ baileys_store*.json
 browser-messages.json
 browser-token.json
 decoded-ws.json
-docs
-!docs/
-docs/*
-!docs/index.html
-!docs/404.html
-!docs/.nojekyll
+# Root /docs is checked-in (design notes, gh-pages assets) — only let
+# the specific landing files through and ignore typedoc-style API dumps.
+/docs/*
+!/docs/index.html
+!/docs/404.html
+!/docs/.nojekyll
+# typedoc output for any package
+packages/*/docs/api/
 lib
 messages*.json
 node_modules

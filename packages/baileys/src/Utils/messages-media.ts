@@ -989,6 +989,7 @@ export const decryptMediaRetryData = (
 }
 
 export const getStatusCodeForMediaRetry = (code: number) =>
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- the cast is required at runtime; eslint disagrees with tsc here
 	MEDIA_RETRY_STATUS_MAP[code as proto.MediaRetryNotification.ResultType]
 
 const MEDIA_RETRY_STATUS_MAP = {
