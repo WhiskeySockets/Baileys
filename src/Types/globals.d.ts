@@ -1,6 +1,8 @@
+import type { FetchDispatcher } from './Socket'
+
 declare global {
 	interface RequestInit {
-		dispatcher?: any
+		dispatcher?: FetchDispatcher
 		duplex?: 'half' | 'full'
 	}
 }

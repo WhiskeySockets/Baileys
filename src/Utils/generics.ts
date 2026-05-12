@@ -6,6 +6,7 @@ import type {
 	BaileysEventEmitter,
 	BaileysEventMap,
 	ConnectionState,
+	CustomRequestInit,
 	WACallUpdateType,
 	WAMessageKey,
 	WAVersion
@@ -235,7 +236,7 @@ export const bindWaitForConnectionUpdate = (ev: BaileysEventEmitter) => bindWait
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
+export const fetchLatestBaileysVersion = async (options: CustomRequestInit = {}) => {
 	const URL = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/index.ts'
 	try {
 		const response = await fetch(URL, {

@@ -7,6 +7,24 @@ import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
 import type { SignalRepositoryWithLIDStore } from './Signal'
 
+/**
+ * Structural type for an undici-compatible dispatcher (e.g. `Agent`, `ProxyAgent`).
+ * Defined structurally so consumers don't need `undici` as a peer dep, while still
+ * preventing values that lack the dispatcher contract (such as `https.Agent`).
+ */
+export interface FetchDispatcher {
+	dispatch(options: object, handler: object): boolean
+	close(): Promise<void>
+	destroy(): Promise<void>
+}
+
+/**
+ * Extended RequestInit that includes undici's dispatcher property for Node.js environments.
+ */
+export interface CustomRequestInit extends RequestInit {
+	dispatcher?: FetchDispatcher
+}
+
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
 
@@ -53,8 +71,13 @@ export type SocketConfig = {
 	browser: WABrowserDescription
 	/** Initial pushName carried in the registration ClientPayload (used by mock servers for deterministic phone assignment). */
 	pushName?: string
-	/** agent used for fetch requests -- uploading/downloading media */
-	fetchAgent?: Agent
+	/**
+	 * Agent or undici dispatcher for HTTP requests (media uploads/downloads, etc.).
+	 * Pass an `https.Agent` for plain TLS customisation, or an undici dispatcher
+	 * such as `ProxyAgent` for proxying.
+	 * @deprecated Use `options.dispatcher` instead for consistency across all HTTP operations
+	 */
+	fetchAgent?: Agent | FetchDispatcher
 	/** should the QR be printed in the terminal
 	 * @deprecated This feature has been removed
 	 */
@@ -134,7 +157,7 @@ export type SocketConfig = {
 	}
 
 	/** options for HTTP fetch requests */
-	options: RequestInit
+	options: CustomRequestInit
 	/**
 	 * fetch a message from your store
 	 * implement this so that messages failed to send
