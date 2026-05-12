@@ -874,7 +874,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		if (tag === 'presence') {
 			presence = {
 				lastKnownPresence: attrs.type === 'unavailable' ? 'unavailable' : 'available',
-				lastSeen: attrs.last && attrs.last !== 'deny' ? +attrs.last : undefined
+				lastSeen: attrs.last && attrs.last !== 'deny' ? +attrs.last : undefined,
+				groupOnlineCount: attrs.count ? +attrs.count : undefined
 			}
 		} else if (Array.isArray(content)) {
 			const [firstChild] = content
