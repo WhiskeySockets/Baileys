@@ -373,6 +373,8 @@ export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getProfilePicUrl?: (jid: string, type: 'image' | 'preview') => Promise<string | undefined>
 	getCallLink?: (type: 'audio' | 'video', event?: { startTime: number }) => Promise<string | undefined>
 	jid?: string
+	/** 32-byte secret forwarded from MiscMessageGenerationOptions so generateWAMessageContent can honor it */
+	messageSecret?: Uint8Array
 }
 export type MessageGenerationOptions = MessageContentGenerationOptions & MessageGenerationOptionsFromContent
 
