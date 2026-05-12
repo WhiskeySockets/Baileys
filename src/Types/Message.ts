@@ -341,6 +341,8 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
 	font?: number
 	/** if it is broadcast */
 	broadcast?: boolean
+	/** 32-byte secret for messageContextInfo.messageSecret; overrides Baileys' default per-type random bytes. Per-type slots (poll, event) keep precedence. */
+	messageSecret?: Uint8Array
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string
