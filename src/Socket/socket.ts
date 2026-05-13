@@ -44,6 +44,7 @@ import {
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
+import { getPassiveModeIqTag } from '../Utils/passive-mode.js'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -931,7 +932,7 @@ export const makeSocket = (config: SocketConfig) => {
 		try {
 			updateServerTimeOffset(node)
 			await uploadPreKeysToServerIfRequired()
-			await sendPassiveIq('active')
+			await sendPassiveIq(getPassiveModeIqTag(config.markOnlineOnConnect))
 
 			// After successful login, validate our key-bundle against server
 			try {
