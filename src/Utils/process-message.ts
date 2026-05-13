@@ -180,6 +180,7 @@ export const cleanMessage = (message: WAMessage, meId: string, meLid: string) =>
 
 export const decryptSecretEncryptedMessage = async (
 	message: WAMessage,
+	messageSecret: Uint8Array,
 	meId: string,
 	meLid: string,
 	logger?: ILogger
@@ -212,17 +213,11 @@ export const decryptSecretEncryptedMessage = async (
 		return
 	}
 
-	const messageSecret = message.messageSecret
 	const ownSender = message.key.addressingMode === 'lid' && meLid ? meLid : meId
 	const originalSender = targetMessageKey.fromMe
 		? ownSender
 		: targetMessageKey.participant || targetMessageKey.remoteJid
 	const modificationSender = message.key.fromMe ? ownSender : message.key.participant || message.key.remoteJid
-
-	if (!messageSecret?.length) {
-		logger?.warn({ targetMessageKey }, 'missing original message secret for encrypted edit')
-		return
-	}
 
 	if (!originalSender || !modificationSender) {
 		logger?.warn({ targetMessageKey, messageKey: message.key }, 'missing sender for secret encrypted message')
