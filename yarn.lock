@@ -2008,7 +2008,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@protobufjs/codegen@npm:^2.0.4, @protobufjs/codegen@npm:^2.0.5":
+"@protobufjs/codegen@npm:^2.0.5":
   version: 2.0.5
   resolution: "@protobufjs/codegen@npm:2.0.5"
   checksum: 10c0/1b8a2ae56ee60a56e9d205cd4b6072a1503c5069b8ebb905710f974ff0098a0d0700641c137e0a8d98dedf14423156a106a9433695cbf52574810f55000fdcab
@@ -2067,7 +2067,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@protobufjs/utf8@npm:^1.1.0, @protobufjs/utf8@npm:^1.1.1":
+"@protobufjs/utf8@npm:^1.1.1":
   version: 1.1.1
   resolution: "@protobufjs/utf8@npm:1.1.1"
   checksum: 10c0/641fc145f00626405e8984b6e90b9edcbcc072ffc82d0647ca3176e09c730b2d022f988e65f011a7a17e2e4d77cde7733643aa10d8ac2bfa30f134dbcad553fd
@@ -2286,13 +2286,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/long@npm:^4.0.0":
-  version: 4.0.2
-  resolution: "@types/long@npm:4.0.2"
-  checksum: 10c0/42ec66ade1f72ff9d143c5a519a65efc7c1c77be7b1ac5455c530ae9acd87baba065542f8847522af2e3ace2cc999f3ad464ef86e6b7352eece34daf88f8c924
-  languageName: node
-  linkType: hard
-
 "@types/markdown-it@npm:^14.1.1":
   version: 14.1.2
   resolution: "@types/markdown-it@npm:14.1.2"
@@ -2323,13 +2316,6 @@ __metadata:
   version: 16.9.1
   resolution: "@types/node@npm:16.9.1"
   checksum: 10c0/17877153b2fe748e85dd85432c7d6776cfaced7fd69f1998d005812d4865ac02e192a3adde7869ba8f449550f0a80ea6e3369e449a07c587e71222c56478e7d4
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^10.1.0":
-  version: 10.17.60
-  resolution: "@types/node@npm:10.17.60"
-  checksum: 10c0/0742294912a6e79786cdee9ed77cff6ee8ff007b55d8e21170fc3e5994ad3a8101fea741898091876f8dc32b0a5ae3d64537b7176799e92da56346028d2cbcd2
   languageName: node
   linkType: hard
 
@@ -3129,7 +3115,7 @@ __metadata:
     jimp: "npm:^1.6.1"
     jiti: "npm:^2.4.2"
     json: "npm:^11.0.0"
-    libsignal: "git+https://github.com/whiskeysockets/libsignal-node"
+    libsignal: "npm:^6.0.0"
     link-preview-js: "npm:^3.0.0"
     lru-cache: "npm:^11.1.0"
     music-metadata: "npm:^11.12.3"
@@ -6132,13 +6118,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libsignal@git+https://github.com/whiskeysockets/libsignal-node":
-  version: 2.0.1
-  resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
+"libsignal@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "libsignal@npm:6.0.0"
   dependencies:
     curve25519-js: "npm:^0.0.4"
-    protobufjs: "npm:6.8.8"
-  checksum: 10c0/d1ae7d8a5fadd6bb1c486d1b2ebc388967fee57c13f52b473127c1cbd9cd647b44545ff07c2b9cc49b3dea4e25ccfcfece31c526fdbdbf065837c85d189e97a0
+    protobufjs: "npm:^7.5.5"
+  checksum: 10c0/111675e3834641f4c4635c7ad4a6a03a92d24a3a8e9b1c517479de9d3a6ae68abe71af16c25a9d669a3c71b5b6c5cc30d5d45df160beb0010505118dcc3f966c
   languageName: node
   linkType: hard
 
@@ -6249,13 +6235,6 @@ __metadata:
     is-unicode-supported: "npm:^2.0.0"
     yoctocolors: "npm:^2.1.1"
   checksum: 10c0/71d30f9a44b8604b14df5e7c9b579d739997253db7385339d493ece41ee2cc74c1f96c5b4c0b2c1e0829b05348d4f287e68faab495b7a094a80f51351c816075
-  languageName: node
-  linkType: hard
-
-"long@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "long@npm:4.0.0"
-  checksum: 10c0/50a6417d15b06104dbe4e3d4a667c39b137f130a9108ea8752b352a4cfae047531a3ac351c181792f3f8768fe17cca6b0f406674a541a86fb638aaac560d83ed
   languageName: node
   linkType: hard
 
@@ -7392,27 +7371,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"protobufjs@npm:6.8.8":
-  version: 6.8.8
-  resolution: "protobufjs@npm:6.8.8"
+"protobufjs@npm:^7.5.5":
+  version: 7.5.8
+  resolution: "protobufjs@npm:7.5.8"
   dependencies:
     "@protobufjs/aspromise": "npm:^1.1.2"
     "@protobufjs/base64": "npm:^1.1.2"
-    "@protobufjs/codegen": "npm:^2.0.4"
+    "@protobufjs/codegen": "npm:^2.0.5"
     "@protobufjs/eventemitter": "npm:^1.1.0"
     "@protobufjs/fetch": "npm:^1.1.0"
     "@protobufjs/float": "npm:^1.0.2"
-    "@protobufjs/inquire": "npm:^1.1.0"
+    "@protobufjs/inquire": "npm:^1.1.1"
     "@protobufjs/path": "npm:^1.1.2"
     "@protobufjs/pool": "npm:^1.1.0"
-    "@protobufjs/utf8": "npm:^1.1.0"
-    "@types/long": "npm:^4.0.0"
-    "@types/node": "npm:^10.1.0"
-    long: "npm:^4.0.0"
-  bin:
-    pbjs: bin/pbjs
-    pbts: bin/pbts
-  checksum: 10c0/2511ed6089245b2102c333ac56190b104f8d8227972c00f041def8387abf841fded7b2cb7130063666b7bca84597a43005ea05c5f674132a0ddd5eb94a6e7916
+    "@protobufjs/utf8": "npm:^1.1.1"
+    "@types/node": "npm:>=13.7.0"
+    long: "npm:^5.0.0"
+  checksum: 10c0/25968259084a634e035f865febd5a31f75bdaee4fda6fba4e14c57019024e7cada859b470eb69350f430fbd0d509c805249b9fe8a6c44a57a0b484a1ef685751
   languageName: node
   linkType: hard
 

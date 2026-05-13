@@ -47,21 +47,13 @@ jobs:
       - name: Install Dependencies
         run: yarn install --immutable
 
-      # rc / beta / alpha → that dist-tag; stable → latest. Avoids clobbering `latest` with a prerelease.
-      - name: Resolve npm dist-tag from version
-        id: dist_tag
-        run: |
-          tag=$(node -p "const v=require('./package.json').version; const m=v.match(/-([a-zA-Z]+)/); m?m[1]:'latest';")
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Publishing with dist-tag: $tag"
-
       - name: Publish in NPM (as `baileys`)
-        run: npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
+        run: npm publish --access public --provenance --tag latest
 
       - name: Publish in NPM (whiskeysockets scope)
         run: |
           npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
-          npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
+          npm publish --access public --provenance --tag latest
           npx json -I -f package.json -e "this.name='baileys'"
 
       - name: Generate Changelog
