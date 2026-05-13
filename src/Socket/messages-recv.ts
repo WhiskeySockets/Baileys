@@ -1785,19 +1785,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							})))
 						: undefined
 
-						const messageSecret = normalizeMessageContent(originalMessage)?.messageContextInfo?.messageSecret
-						if (messageSecret?.length) {
-							await decryptSecretEncryptedMessage(
-								msg,
-								messageSecret,
-								authState.creds.me!.id,
-								authState.creds.me!.lid!,
-								logger
-							)
-						} else {
-							logger.warn({ targetMessageKey }, 'missing original message secret for encrypted edit')
-						}
+					const messageSecret = normalizeMessageContent(originalMessage)?.messageContextInfo?.messageSecret
+					if (messageSecret?.length) {
+						await decryptSecretEncryptedMessage(
+							msg,
+							messageSecret,
+							authState.creds.me!.id,
+							authState.creds.me!.lid!,
+							logger
+						)
+					} else {
+						logger.warn({ targetMessageKey }, 'missing original message secret for encrypted edit')
 					}
+				}
 
 				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 			})
