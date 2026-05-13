@@ -872,6 +872,11 @@ export const getWAUploadToServer = (
 
 			const auth = encodeURIComponent(uploadInfo.auth)
 			const mediaPath = (newsletter ? NEWSLETTER_MEDIA_PATH_MAP[mediaType] : undefined) || MEDIA_PATH_MAP[mediaType]
+			if (!mediaPath) {
+				// Fail fast — building a URL with `undefined` in the path would
+				// produce a 404 retry loop on every host.
+				throw new Boom(`No media upload path for type: ${mediaType}`, { statusCode: 400 })
+			}
 			let url = `https://${hostname}${mediaPath}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 			if (newsletter) {
 				url += '&server_thumb_gen=1'

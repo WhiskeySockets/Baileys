@@ -1,3 +1,4 @@
+import { Boom } from '@hapi/boom'
 import type { NewsletterCreateResponse, SocketConfig, WAMediaUpload } from '../Types'
 import type { NewsletterMetadata, NewsletterUpdate } from '../Types'
 import { QueryIds, XWAPaths } from '../Types'
@@ -6,9 +7,12 @@ import { getBinaryNodeChild } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
-const parseNewsletterCreateResponse = (response: NewsletterCreateResponse | null | undefined): NewsletterMetadata => {
+// executeWMexQuery throws Boom on missing data, so a populated response is
+// the only non-throwing path. Keep a defensive guard but use Boom for
+// consistency with the rest of the protocol layer.
+const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
 	if (!response) {
-		throw new Error('newsletterCreate: server returned an empty response')
+		throw new Boom('newsletterCreate: server returned an empty response', { statusCode: 400 })
 	}
 
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response

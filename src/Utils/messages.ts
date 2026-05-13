@@ -183,14 +183,20 @@ export const prepareWAMessageMedia = async (
 		)
 
 		const fileSha256B64 = fileSha256.toString('base64')
-		const { directPath, thumbnailDirectPath, thumbnailSha256 } = await options.upload(filePath, {
-			fileEncSha256B64: fileSha256B64,
-			mediaType: mediaType,
-			timeoutMs: options.mediaUploadTimeoutMs,
-			newsletter: true
-		})
-
-		await fs.unlink(filePath)
+		let directPath: string | undefined
+		let thumbnailDirectPath: string | undefined
+		let thumbnailSha256: string | undefined
+		try {
+			;({ directPath, thumbnailDirectPath, thumbnailSha256 } = await options.upload(filePath, {
+				fileEncSha256B64: fileSha256B64,
+				mediaType: mediaType,
+				timeoutMs: options.mediaUploadTimeoutMs,
+				newsletter: true
+			}))
+		} finally {
+			// Cleanup the temp file whether upload succeeded or threw.
+			await fs.unlink(filePath).catch(() => {})
+		}
 
 		const obj = WAProto.Message.fromObject({
 			// todo: add more support here
