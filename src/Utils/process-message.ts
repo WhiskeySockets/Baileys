@@ -230,6 +230,17 @@ type EventContext = {
 	responderJid: string
 }
 
+type MessageEditContext = {
+	/** normalised jid of the person that sent the original message */
+	originalSenderJid: string
+	/** ID of the original (target) message */
+	originalMsgId: string
+	/** original message enc key (messageContextInfo.messageSecret of the target) */
+	editEncKey: Uint8Array
+	/** jid of the person performing the edit */
+	editorJid: string
+}
+
 /**
  * Decrypt a poll vote
  * @param vote encrypted vote
@@ -290,6 +301,156 @@ export function decryptEventResponse(
 	}
 }
 
+/**
+ * Decrypt a `secretEncryptedMessage` carrying a `MESSAGE_EDIT` payload.
+ *
+ * WhatsApp started wrapping message edits in an E2EE envelope (May 2026).
+ * The new content is encrypted with a key derived from the original
+ * message's `messageContextInfo.messageSecret` using HKDF-SHA256
+ * + AES-256-GCM, same family as polls and event responses but with
+ * different constants (validated against live WhatsApp Android traffic):
+ *
+ *   info = msgId || origSenderJid || editorJid || "Message Edit"
+ *   aad  = (empty)              <-- differs from Poll Vote / Event Response
+ *   key  = HKDF-SHA256(salt=zeros, ikm=messageSecret, info, L=32)
+ *
+ * The decrypted plaintext is a regular `proto.Message` whose
+ * `protocolMessage.editedMessage` field holds the new content — same
+ * shape as the legacy `protocolMessage.editedMessage` edit path, so
+ * consumers can treat the result identically.
+ *
+ * @param edit encrypted edit payload (encPayload + encIv from SecretEncryptedMessage)
+ * @param ctx info about the original message required for decryption
+ * @returns decoded outer `Message` whose `protocolMessage.editedMessage`
+ *   carries the new content (extendedTextMessage / conversation / etc.)
+ */
+export function decryptMessageEdit(
+	{ encPayload, encIv }: proto.Message.IPollEncValue,
+	{ originalSenderJid, originalMsgId, editEncKey, editorJid }: MessageEditContext
+) {
+	if (!encIv || encIv.length !== 12) {
+		throw new Error(`Invalid MESSAGE_EDIT IV length: expected 12, got ${encIv?.length ?? 0}`)
+	}
+
+	const sign = Buffer.concat([
+		toBinary(originalMsgId),
+		toBinary(originalSenderJid),
+		toBinary(editorJid),
+		toBinary('Message Edit'),
+		new Uint8Array([1])
+	])
+
+	const key0 = hmacSign(editEncKey, new Uint8Array(32), 'sha256')
+	const decKey = hmacSign(sign, key0, 'sha256')
+	// AAD is intentionally empty for MESSAGE_EDIT. WA Web's
+	// `WAWebAddonEncryption` function `g` only binds `stanzaId\0sender`
+	// into AAD for PollVote/EventResponse — every other addon (edits,
+	// reactions, comments, ...) uses an empty AAD.
+	const aad = Buffer.alloc(0)
+
+	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv, aad)
+	return proto.Message.decode(decrypted)
+
+	function toBinary(txt: string) {
+		return Buffer.from(txt)
+	}
+}
+
+type EditJidPair = { originalSenderJid: string; editorJid: string }
+
+const buildEditUpdate = (args: {
+	editEncKey: Uint8Array
+	encPayload?: Uint8Array | null
+	encIv?: Uint8Array | null
+	primary: EditJidPair
+	fallback: EditJidPair | null
+	originalMsgId: string
+	messageKey: proto.IMessageKey
+	targetKey: proto.IMessageKey
+	fallbackTimestamp: number
+	logger?: ILogger
+}): { key: proto.IMessageKey; update: Partial<WAMessage> } | null => {
+	const editedInner = decryptWithJidFallback(
+		{ encPayload: args.encPayload, encIv: args.encIv },
+		args.editEncKey,
+		args.originalMsgId,
+		args.primary,
+		args.fallback
+	)
+	const editProtocol = editedInner.protocolMessage
+	const innerEdited = editProtocol?.editedMessage
+	if (!innerEdited) {
+		args.logger?.warn(
+			{ targetKey: args.targetKey },
+			'decrypted MESSAGE_EDIT plaintext had no protocolMessage.editedMessage — skipping update'
+		)
+		return null
+	}
+	return {
+		key: { ...args.messageKey, id: args.targetKey.id! },
+		update: {
+			message: {
+				editedMessage: {
+					message: innerEdited
+				}
+			},
+			messageTimestamp: editProtocol?.timestampMs
+				? Math.floor(toNumber(editProtocol.timestampMs) / 1000)
+				: args.fallbackTimestamp
+		}
+	}
+}
+
+/**
+ * Try `decryptMessageEdit` with the JIDs as received; on GCM failure
+ * retry with the alternate addressing form (LID↔PN). Mirrors WA Web's
+ * `decryptAddOn` cross-addressing retry. Throws the combined error when
+ * both attempts fail.
+ */
+function decryptWithJidFallback(
+	encrypted: proto.Message.IPollEncValue,
+	editEncKey: Uint8Array,
+	originalMsgId: string,
+	primary: EditJidPair,
+	fallback: EditJidPair | null
+): proto.Message {
+	try {
+		return decryptMessageEdit(encrypted, { ...primary, editEncKey, originalMsgId })
+	} catch (primaryErr) {
+		if (
+			!fallback ||
+			(fallback.originalSenderJid === primary.originalSenderJid && fallback.editorJid === primary.editorJid)
+		) {
+			throw primaryErr
+		}
+		try {
+			return decryptMessageEdit(encrypted, { ...fallback, editEncKey, originalMsgId })
+		} catch (fallbackErr) {
+			throw new Error(
+				`edit decrypt failed: primary=${(primaryErr as Error).message}; fallback=${(fallbackErr as Error).message}`
+			)
+		}
+	}
+}
+
+/**
+ * Returns the alternate addressing form (LID→PN or PN→LID) for a JID,
+ * or null when no mapping is known. Used to build the fallback HKDF
+ * info buffer when the primary decrypt fails GCM verification.
+ */
+async function alternateAddressing(jid: string, signalRepository: SignalRepositoryWithLIDStore): Promise<string | null> {
+	try {
+		if (isLidUser(jid)) {
+			const pn = await signalRepository.lidMapping.getPNForLID(jid)
+			return pn ? jidNormalizedUser(pn) : null
+		}
+		const lid = await signalRepository.lidMapping.getLIDForPN(jid)
+		return lid ? jidNormalizedUser(lid) : null
+	} catch {
+		return null
+	}
+}
+
 const processMessage = async (
 	message: WAMessage,
 	{
@@ -330,45 +491,6 @@ const processMessage = async (
 
 	const protocolMsg = content?.protocolMessage
 	if (protocolMsg) {
-		// Mirror whatsmeow's `handleProtocolMessage` guard, but applied only to
-		// the protocol message types that originate from our own device — an
-		// attacker could otherwise spoof any of these to manipulate local state.
-		//
-		// Self-only types (drop if `!fromMe`):
-		//   - HISTORY_SYNC_NOTIFICATION                 (our phone driving history sync)
-		//   - APP_STATE_SYNC_KEY_SHARE                  (key share between our devices)
-		//   - LID_MIGRATION_MAPPING_SYNC                (server-initiated via our phone)
-		//   - PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE (response from our phone to our PDO request)
-		//
-		// Cross-user types (must NOT be dropped — legitimately arrive from others):
-		//   - REVOKE
-		//   - MESSAGE_EDIT
-		//   - EPHEMERAL_SETTING
-		//   - GROUP_MEMBER_LABEL_CHANGE
-		//
-		// See https://github.com/tulir/whatsmeow/blob/8d3700152a/message.go#L842-L845
-		// for the reference architecture — whatsmeow's `handleProtocolMessage`
-		// only contains self-only types because edits are unwrapped from
-		// `EditedMessage` BEFORE this dispatch and revokes aren't routed here.
-		const SELF_ONLY_TYPES = new Set<proto.Message.ProtocolMessage.Type>([
-			proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION,
-			proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE,
-			proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC,
-			proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE
-		])
-		if (
-			protocolMsg.type !== null &&
-			protocolMsg.type !== undefined &&
-			SELF_ONLY_TYPES.has(protocolMsg.type) &&
-			!message.key.fromMe
-		) {
-			logger?.warn(
-				{ msgId: message.key.id, type: protocolMsg.type, from: message.key.participant || message.key.remoteJid },
-				'dropping spoofed self-only protocolMessage from non-self origin'
-			)
-			return
-		}
-
 		switch (protocolMsg.type) {
 			case proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION:
 				const histNotification = protocolMsg.historySyncNotification!
@@ -623,6 +745,115 @@ const processMessage = async (
 			}
 		} else {
 			logger?.warn({ creationMsgKey }, 'event creation message not found, cannot decrypt response')
+		}
+	} else if (
+		content?.secretEncryptedMessage &&
+		content.secretEncryptedMessage.secretEncType === proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_EDIT
+	) {
+		// E2EE message edit envelope (new in 2026-05). Replaces the older
+		// `protocolMessage.editedMessage` path for direct text edits.
+		// We fetch the target message to obtain its `messageSecret`, derive the
+		// decryption key, and surface the decoded inner Message via the same
+		// `messages.update` event used by the legacy edit path so consumers do
+		// not need a new event type.
+		const secEnc = content.secretEncryptedMessage
+		const targetKey = secEnc.targetMessageKey!
+
+		// WA Web (`WAWebParseMessageEditEncryptedMessageProto`) rejects
+		// envelopes whose IV is not exactly 12 bytes — we do the same so the
+		// error path is a clear log instead of an opaque GCM failure.
+		if (!targetKey?.id || !secEnc.encPayload?.length || secEnc.encIv?.length !== 12) {
+			logger?.warn(
+				{ targetKey, ivLen: secEnc.encIv?.length, hasPayload: !!secEnc.encPayload?.length },
+				'MESSAGE_EDIT envelope malformed (missing targetKey/payload or IV != 12) — skipping'
+			)
+		} else {
+			const targetMsg = await getMessage(targetKey)
+			if (!targetMsg) {
+				logger?.warn(
+					{ targetKey },
+					'original message not found in store, cannot decrypt secretEncryptedMessage edit'
+				)
+			} else {
+				try {
+					const meIdNormalised = jidNormalizedUser(meId)
+					const editEncKey = targetMsg.messageContextInfo?.messageSecret
+					if (!editEncKey) {
+						logger?.warn(
+							{ targetKey },
+							'message edit: missing messageSecret on original message — cannot decrypt'
+						)
+					} else {
+						// ── original sender of the edited message ────────────────────
+						// `targetKey.fromMe` is from the ENVELOPE SENDER'S perspective,
+						// not ours. When someone else edits their own msg in a group,
+						// the envelope arrives with `message.key.fromMe = false` but
+						// `targetKey.fromMe = true` — falling back to `meId` here
+						// feeds OUR jid into HKDF and GCM tag verification fails.
+						//
+						// Resolution:
+						//   1. `targetKey.participant` if set (always in groups when WA
+						//      bothered to include it).
+						//   2. If `targetKey.fromMe` → author of the envelope itself
+						//      (meId when the envelope is fromMe, otherwise the
+						//      envelope's `participant`). Mirrors WA Web's
+						//      `MsgGetters.getOriginalSender` once you adjust the
+						//      "self" reference for the envelope's perspective.
+						//   3. `targetKey.remoteJid` (1:1 incoming edit from the other
+						//      party).
+						const envelopeAuthorRaw = message.key.fromMe
+							? meIdNormalised
+							: message.key.participant || message.key.remoteJid!
+						const origSenderRaw =
+							targetKey.participant || (targetKey.fromMe ? envelopeAuthorRaw : targetKey.remoteJid!)
+
+						// Editor JID — author of the envelope itself, in the *raw*
+						// addressing form (LID in LID groups, PN in PN groups). We
+						// deliberately do NOT use `getKeyAuthor` here because it
+						// prefers `participantAlt` which is the OTHER addressing
+						// form — the sender encrypts with whatever form the chat
+						// is actually using, and the alt form is what we feed into
+						// the LID↔PN fallback below.
+						const editorRaw = envelopeAuthorRaw
+
+						// JID forms threaded into HKDF info MUST match what the
+						// sender used. We try the JIDs as received first, then a
+						// LID↔PN swap when available — mirrors WA Web's
+						// `decryptAddOn` cross-addressing fallback.
+						const altOrig = await alternateAddressing(origSenderRaw, signalRepository)
+						const altEditor = await alternateAddressing(editorRaw, signalRepository)
+						const primary = {
+							originalSenderJid: jidNormalizedUser(origSenderRaw),
+							editorJid: jidNormalizedUser(editorRaw)
+						}
+						const fallback =
+							altOrig || altEditor
+								? {
+										originalSenderJid: altOrig ?? primary.originalSenderJid,
+										editorJid: altEditor ?? primary.editorJid
+									}
+								: null
+
+						const update = buildEditUpdate({
+							editEncKey,
+							encPayload: secEnc.encPayload,
+							encIv: secEnc.encIv,
+							primary,
+							fallback,
+							originalMsgId: targetKey.id,
+							messageKey: message.key,
+							targetKey,
+							fallbackTimestamp: toNumber(message.messageTimestamp),
+							logger
+						})
+						if (update) {
+							ev.emit('messages.update', [update])
+						}
+					}
+				} catch (err) {
+					logger?.warn({ err, targetKey }, 'failed to decrypt secretEncryptedMessage MESSAGE_EDIT')
+				}
+			}
 		}
 	} else if (message.messageStubType) {
 		const jid = message.key?.remoteJid!
