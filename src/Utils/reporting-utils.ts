@@ -102,7 +102,7 @@ export const shouldIncludeReportingToken = (message: proto.IMessage): boolean =>
 	!message.encEventResponseMessage &&
 	!message.pollUpdateMessage
 
-const generateMsgSecretKey = (
+export const generateMsgSecretKey = (
 	modificationType: string,
 	origMsgId: string,
 	origMsgSender: string,

@@ -34,6 +34,7 @@ import { aesDecryptGCM, hmacSign } from './crypto'
 import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
+import { generateMsgSecretKey } from './reporting-utils'
 import { buildMergedTcTokenIndexWrite, resolveTcTokenJid } from './tc-token-utils'
 
 type ProcessMessageContext = {
@@ -56,6 +57,7 @@ const REAL_MSG_STUB_TYPES = new Set([
 ])
 
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
+const ENC_SECRET_MESSAGE_EDIT = 'Message Edit'
 
 async function storeTcTokensFromHistorySync(
 	chats: Chat[],
@@ -146,6 +148,15 @@ export const cleanMessage = (message: WAMessage, meId: string, meLid: string) =>
 		normaliseKey(content.pollUpdateMessage.pollCreationMessageKey!)
 	}
 
+	if (content?.secretEncryptedMessage?.targetMessageKey) {
+		const targetMessageKey = content.secretEncryptedMessage.targetMessageKey as WAMessageKey
+		normaliseKey(targetMessageKey)
+		if (!message.key.fromMe) {
+			targetMessageKey.remoteJidAlt = message.key.remoteJidAlt
+			targetMessageKey.participantAlt = targetMessageKey.participantAlt || message.key.participantAlt
+		}
+	}
+
 	function normaliseKey(msgKey: WAMessageKey) {
 		// if the reaction is from another user
 		// we've to correctly map the key to this user's perspective
@@ -167,6 +178,101 @@ export const cleanMessage = (message: WAMessage, meId: string, meLid: string) =>
 	}
 }
 
+export const decryptSecretEncryptedMessage = async (
+	message: WAMessage,
+	meId: string,
+	meLid: string,
+	logger?: ILogger
+) => {
+	const content = normalizeMessageContent(message.message)
+	const secretEncryptedMessage = content?.secretEncryptedMessage
+	if (!secretEncryptedMessage) {
+		return
+	}
+
+	const targetMessageKey = secretEncryptedMessage.targetMessageKey as WAMessageKey | undefined
+	let editedMessage: proto.IMessage | undefined
+
+	if (
+		secretEncryptedMessage.secretEncType !== proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_EDIT ||
+		!targetMessageKey?.id
+	) {
+		logger?.warn(
+			{
+				secretEncType: secretEncryptedMessage.secretEncType,
+				targetMessageKey: secretEncryptedMessage.targetMessageKey
+			},
+			'unsupported secret encrypted message type'
+		)
+		return
+	}
+
+	if (!secretEncryptedMessage.encPayload?.length || !secretEncryptedMessage.encIv?.length) {
+		logger?.warn({ targetMessageKey }, 'missing encrypted edit payload')
+		return
+	}
+
+	const messageSecret = message.messageSecret
+	const ownSender = message.key.addressingMode === 'lid' && meLid ? meLid : meId
+	const originalSender = targetMessageKey.fromMe
+		? ownSender
+		: targetMessageKey.participant || targetMessageKey.remoteJid
+	const modificationSender = message.key.fromMe ? ownSender : message.key.participant || message.key.remoteJid
+
+	if (!messageSecret?.length) {
+		logger?.warn({ targetMessageKey }, 'missing original message secret for encrypted edit')
+		return
+	}
+
+	if (!originalSender || !modificationSender) {
+		logger?.warn({ targetMessageKey, messageKey: message.key }, 'missing sender for secret encrypted message')
+		return
+	}
+
+	try {
+		const decryptKey = generateMsgSecretKey(
+			ENC_SECRET_MESSAGE_EDIT,
+			targetMessageKey.id,
+			originalSender,
+			modificationSender,
+			messageSecret
+		)
+		const decrypted = aesDecryptGCM(
+			secretEncryptedMessage.encPayload,
+			decryptKey,
+			secretEncryptedMessage.encIv,
+			Buffer.alloc(0)
+		)
+		editedMessage = proto.Message.decode(decrypted)
+	} catch (err) {
+		logger?.warn(
+			{
+				err,
+				targetMessageKey,
+				messageKey: message.key,
+				originalSender,
+				modificationSender
+			},
+			'failed to decrypt secret encrypted message'
+		)
+	}
+
+	if (editedMessage) {
+		if (message.message?.messageContextInfo && !editedMessage.messageContextInfo) {
+			editedMessage.messageContextInfo = message.message.messageContextInfo
+		}
+
+		message.message = {
+			protocolMessage: {
+				key: targetMessageKey,
+				type: proto.Message.ProtocolMessage.Type.MESSAGE_EDIT,
+				editedMessage,
+				timestampMs: toNumber(message.messageTimestamp) * 1000
+			}
+		}
+	}
+}
+
 // TODO: target:audit AUDIT THIS FUNCTION AGAIN
 export const isRealMessage = (message: WAMessage) => {
 	const normalizedContent = normalizeMessageContent(message.message)
@@ -177,6 +283,7 @@ export const isRealMessage = (message: WAMessage) => {
 			REAL_MSG_REQ_ME_STUB_TYPES.has(message.messageStubType!)) &&
 		hasSomeContent &&
 		!normalizedContent?.protocolMessage &&
+		!normalizedContent?.secretEncryptedMessage &&
 		!normalizedContent?.reactionMessage &&
 		!normalizedContent?.pollUpdateMessage
 	)
