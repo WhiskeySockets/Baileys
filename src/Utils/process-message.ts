@@ -358,6 +358,27 @@ export function decryptMessageEdit(
 
 type EditJidPair = { originalSenderJid: string; editorJid: string }
 
+/**
+ * Decrypt a MESSAGE_EDIT envelope and rewrap the decoded inner message
+ * into the legacy `messages.update` shape so consumers that already
+ * handle `protocolMessage.editedMessage` keep working without changes.
+ *
+ * The emitted payload is:
+ * ```
+ * {
+ *   key: <messageKey with id swapped for the target msg id>,
+ *   update: {
+ *     message: { editedMessage: { message: <inner edited content> } },
+ *     messageTimestamp: <protocolMessage.timestampMs / 1000, or envelope ts>
+ *   }
+ * }
+ * ```
+ *
+ * Returns `null` (with a `logger?.warn` for visibility) when decryption
+ * succeeds but the inner plaintext lacks a `protocolMessage.editedMessage`
+ * — defensive guard for malformed envelopes the wire schema technically
+ * allows.
+ */
 const buildEditUpdate = (args: {
 	editEncKey: Uint8Array
 	encPayload?: Uint8Array | null
