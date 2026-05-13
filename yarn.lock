@@ -7349,8 +7349,8 @@ __metadata:
   linkType: hard
 
 "protobufjs-cli@npm:^1.1.3":
-  version: 1.2.0
-  resolution: "protobufjs-cli@npm:1.2.0"
+  version: 1.2.2
+  resolution: "protobufjs-cli@npm:1.2.2"
   dependencies:
     chalk: "npm:^4.0.0"
     escodegen: "npm:^1.13.0"
@@ -7363,11 +7363,11 @@ __metadata:
     tmp: "npm:^0.2.1"
     uglify-js: "npm:^3.7.7"
   peerDependencies:
-    protobufjs: ^7.0.0
+    protobufjs: ">=7.5.6 <8"
   bin:
     pbjs: bin/pbjs
     pbts: bin/pbts
-  checksum: 10c0/23bff21695e34d92d19cb7f8115e157327af59b7a9154effd916aafefd8633d39e0ea8566c4f0d812193c5a83077448c20d4074aebb5924e0c96f2022a970aa5
+  checksum: 10c0/87de7e0598083fde3a437160ea3d0463faeaaf1c4eede87de1a7b12072e901c0cdb3082a3b29e8408624ea404d13f598f332d0ead0ab59c576bd1f07c182fad2
   languageName: node
   linkType: hard
 
