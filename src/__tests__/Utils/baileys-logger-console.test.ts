@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import {
 	logAuth,
 	logBufferMetrics,
-	logCircuitBreaker,
 	logConnection,
 	logError,
 	logEventBuffer,
@@ -182,23 +181,6 @@ describe('Baileys Console Logging Functions', () => {
 		it('should log logout with 🚪 emoji', () => {
 			logAuth('logout')
 			expect(consoleSpy).toHaveBeenCalledWith('[BAILEYS] 🚪 Logged out')
-		})
-	})
-
-	describe('logCircuitBreaker', () => {
-		it('should log open state with ⚡ emoji', () => {
-			logCircuitBreaker('open', { failures: 5 })
-			expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[BAILEYS] ⚡ Circuit breaker OPEN'))
-		})
-
-		it('should log closed state with ✅ emoji', () => {
-			logCircuitBreaker('closed')
-			expect(consoleSpy).toHaveBeenCalledWith('[BAILEYS] ✅ Circuit breaker CLOSED')
-		})
-
-		it('should log half_open state with 🔶 emoji', () => {
-			logCircuitBreaker('half_open')
-			expect(consoleSpy).toHaveBeenCalledWith('[BAILEYS] 🔶 Circuit breaker HALF-OPEN')
 		})
 	})
 

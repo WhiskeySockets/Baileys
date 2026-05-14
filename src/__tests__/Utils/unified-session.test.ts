@@ -29,8 +29,7 @@ const TimeMs = {
 jest.mock('../../Utils/prometheus-metrics.js', () => ({
 	metrics: {
 		socketEvents: { inc: jest.fn() },
-		errors: { inc: jest.fn() },
-		circuitBreakerTrips: { inc: jest.fn() }
+		errors: { inc: jest.fn() }
 	}
 }))
 
@@ -59,7 +58,6 @@ describe('UnifiedSessionManager', () => {
 		manager = createUnifiedSessionManager({
 			enabled: true,
 			logger: mockLogger as any,
-			enableCircuitBreaker: false, // Disable for simpler testing
 			sendNode: mockSendNode
 		})
 	})
@@ -356,7 +354,7 @@ describe('shouldEnableUnifiedSession', () => {
 	})
 })
 
-describe('UnifiedSessionManager with CircuitBreaker', () => {
+describe('UnifiedSessionManager error handling', () => {
 	let manager: UnifiedSessionManager
 	let mockSendNode: MockSendNode
 
@@ -366,7 +364,6 @@ describe('UnifiedSessionManager with CircuitBreaker', () => {
 		manager = createUnifiedSessionManager({
 			enabled: true,
 			logger: createMockLogger() as any,
-			enableCircuitBreaker: true,
 			sendNode: mockSendNode
 		})
 	})
@@ -375,13 +372,12 @@ describe('UnifiedSessionManager with CircuitBreaker', () => {
 		manager.destroy()
 	})
 
-	it('should work with circuit breaker enabled', async () => {
+	it('should send unified_session successfully', async () => {
 		await manager.send('login')
 		expect(mockSendNode).toHaveBeenCalledTimes(1)
 	})
 
-	it('should handle circuit breaker failures gracefully', async () => {
-		// Make send fail multiple times to trigger circuit breaker
+	it('should swallow send failures (non-critical telemetry)', async () => {
 		let callCount = 0
 		mockSendNode.mockImplementation(async () => {
 			callCount++

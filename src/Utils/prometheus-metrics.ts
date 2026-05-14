@@ -17,7 +17,7 @@
  * - Baileys events integration
  * - Event buffer metrics
  * - System metrics (memory, CPU, uptime)
- * - Circuit breaker metrics
+ * - Retry metrics
  * - Environment variable configuration
  *
  * Configuration via environment variables (supports BAILEYS_PROMETHEUS_* and METRICS_* prefixes):
@@ -1570,26 +1570,6 @@ export const metrics = {
 		new Counter('socket_reconnects_total', 'Total socket reconnection attempts', ['reason'])
 	),
 
-	// ========== Circuit Breaker Metrics ==========
-	circuitBreakerState: baileysMetrics.register(
-		new Gauge('circuit_breaker_state', 'Circuit breaker state (0=closed, 1=open, 2=half-open)', ['name'])
-	),
-	circuitBreakerTrips: baileysMetrics.register(
-		new Counter('circuit_breaker_trips_total', 'Total circuit breaker trips', ['name'])
-	),
-	circuitBreakerRecoveries: baileysMetrics.register(
-		new Counter('circuit_breaker_recoveries_total', 'Total circuit breaker recoveries', ['name'])
-	),
-	circuitBreakerRejections: baileysMetrics.register(
-		new Counter('circuit_breaker_rejections_total', 'Total requests rejected by circuit breaker', ['name'])
-	),
-	circuitBreakerSuccesses: baileysMetrics.register(
-		new Counter('circuit_breaker_successes_total', 'Total successful requests through circuit breaker', ['name'])
-	),
-	circuitBreakerFailures: baileysMetrics.register(
-		new Counter('circuit_breaker_failures_total', 'Total failed requests through circuit breaker', ['name'])
-	),
-
 	// ========== Encryption Metrics ==========
 	encryptionOperations: baileysMetrics.register(
 		new Counter('encryption_operations_total', 'Total encryption operations', ['operation'])
@@ -2166,9 +2146,6 @@ function initializeMetricsWithLabels(): void {
 		metrics.messageRetries?.inc({ type: 'other' }, 0)
 		metrics.messageFailures?.inc({ type: 'text', reason: 'max_retries' }, 0)
 		metrics.messageFailures?.inc({ type: 'other', reason: 'max_retries' }, 0)
-
-		// Circuit breaker metric
-		metrics.circuitBreakerTrips?.inc({ name: 'main' }, 0)
 
 		console.log('[Prometheus] Initialized metrics with labels')
 	} catch (error) {

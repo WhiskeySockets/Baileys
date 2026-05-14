@@ -6,7 +6,6 @@ import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from 
 import type { BaileysEventEmitter } from '../Types/Events'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
-import { CircuitBreaker } from '../Utils/circuit-breaker.js'
 import type { ILogger } from '../Utils/logger'
 import { metrics } from '../Utils/prometheus-metrics.js'
 import { isAnyLidUser, isAnyPnUser, jidDecode, transferDevice, WAJIDDomains } from '../WABinary'
@@ -67,8 +66,6 @@ export interface IdentitySaveResult {
 export interface LibSignalRepositoryOptions {
 	/** Event emitter for broadcasting identity changes */
 	ev?: BaileysEventEmitter
-	/** Circuit breaker for prekey operations (optional) */
-	preKeyCircuitBreaker?: CircuitBreaker
 }
 
 // ============================================
@@ -256,7 +253,7 @@ export function makeLibSignalRepository(
 	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>,
 	options?: LibSignalRepositoryOptions
 ): SignalRepositoryWithLIDStore {
-	const { ev, preKeyCircuitBreaker } = options || {}
+	const { ev } = options || {}
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 
 	// Identity key cache to avoid repeated storage reads
@@ -277,7 +274,7 @@ export function makeLibSignalRepository(
 		cacheMetricsInterval.unref()
 	}
 
-	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, preKeyCircuitBreaker, logger)
+	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, logger)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
@@ -384,14 +381,6 @@ export function makeLibSignalRepository(
 									},
 									'Identity key changed - contact may have reinstalled WhatsApp, session will be re-established'
 								)
-
-								// Reset prekey circuit breaker since we identified the cause
-								// Reset regardless of state (could be open, half-open, or closed with accumulated failures)
-								// eslint-disable-next-line max-depth
-								if (preKeyCircuitBreaker) {
-									preKeyCircuitBreaker.reset()
-									logger.debug({ jid }, 'Reset prekey circuit breaker after identity key change detection')
-								}
 							} else if (saveResult.isNew) {
 								logger.debug(
 									{ jid, addr: addrStr, fingerprint: saveResult.currentFingerprint },
@@ -769,7 +758,6 @@ function signalStorage(
 	lidMapping: LIDMappingStore,
 	identityKeyCache: LRUCache<string, Uint8Array>,
 	ev?: BaileysEventEmitter,
-	preKeyCircuitBreaker?: CircuitBreaker,
 	logger?: ILogger
 ): ExtendedSignalStorage {
 	// Shared function to resolve PN signal address to LID if mapping exists

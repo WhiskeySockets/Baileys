@@ -34,7 +34,6 @@ export * from './prometheus-metrics'
 
 // Resilience and performance
 export * from './cache-utils'
-export * from './circuit-breaker'
 export * from './retry-utils'
 
 // Telemetry and detection mitigation

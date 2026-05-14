@@ -821,36 +821,6 @@ export function logAuth(
 }
 
 /**
- * Log circuit breaker event
- *
- * @example
- * logCircuitBreaker('open', { failures: 5 })
- * // Output: [BAILEYS] ⚡ Circuit breaker OPEN { failures: 5 }
- */
-export function logCircuitBreaker(
-	state: 'open' | 'closed' | 'half_open',
-	details?: Record<string, unknown>,
-	sessionName?: string
-): void {
-	if (!isBaileysLogEnabled()) return
-
-	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
-	const dataStr = details ? ' ' + formatLogData(details) : ''
-
-	switch (state) {
-		case 'open':
-			console.log(`${prefix} ⚡ Circuit breaker OPEN${dataStr}`)
-			break
-		case 'closed':
-			console.log(`${prefix} ✅ Circuit breaker CLOSED${dataStr}`)
-			break
-		case 'half_open':
-			console.log(`${prefix} 🔶 Circuit breaker HALF-OPEN${dataStr}`)
-			break
-	}
-}
-
-/**
  * Log retry event
  *
  * @example
