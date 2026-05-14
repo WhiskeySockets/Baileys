@@ -189,14 +189,10 @@ export const makeSocket = (config: SocketConfig) => {
 
 	// Initialize Unified Session Manager now that sendNode is defined
 	if (enableUnifiedSession) {
-		const sendNodeForSession = async (node: BinaryNode): Promise<void> => {
-			await sendNode(node)
-		}
-
 		unifiedSessionManager = createUnifiedSessionManager({
 			enabled: true,
 			logger,
-			sendNode: sendNodeForSession
+			sendNode
 		})
 		logger.info('Unified session manager initialized')
 	}

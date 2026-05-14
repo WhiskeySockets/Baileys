@@ -649,10 +649,9 @@ export const retryConfigs = {
 	 * RSocket-style retry with stepped delays
 	 * Uses fixed delay array: 1s, 2s, 5s, 10s, 20s (with ±15% jitter)
 	 *
-	 * NOTE: Values are hardcoded instead of referencing RETRY_BACKOFF_DELAYS/RETRY_JITTER_FACTOR
-	 * to prevent "Cannot access before initialization" errors in ESM environments
-	 * caused by indirect circular imports through prometheus-metrics.ts.
-	 * Keep these values in sync with the constants above (lines 25, 31).
+	 * NOTE: Values are hardcoded instead of referencing RETRY_BACKOFF_DELAYS /
+	 * RETRY_JITTER_FACTOR to avoid ESM TDZ ("Cannot access before initialization")
+	 * issues. Keep in sync with the constants above (lines 25, 31).
 	 */
 	rsocket: {
 		maxAttempts: 5, // = RETRY_BACKOFF_DELAYS.length
