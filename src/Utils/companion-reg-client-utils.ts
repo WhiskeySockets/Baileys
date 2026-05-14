@@ -22,6 +22,24 @@ const BROWSER_TO_COMPANION_WEB_CLIENT: Record<string, CompanionWebClientType> = 
 	Safari: CompanionWebClientType.SAFARI
 }
 
+const DEFAULT_PAIRING_CODE_BROWSER_PLATFORM = { id: '1', displayName: 'Chrome' }
+
+const PAIRING_CODE_BROWSER_PLATFORM: Record<string, { id: string; displayName: string }> = {
+	Chrome: DEFAULT_PAIRING_CODE_BROWSER_PLATFORM,
+	Firefox: { id: '2', displayName: 'Firefox' },
+	IE: { id: '3', displayName: 'IE' },
+	Opera: { id: '4', displayName: 'Opera' },
+	Safari: { id: '5', displayName: 'Safari' },
+	Edge: { id: '6', displayName: 'Edge' }
+}
+
+const PAIRING_CODE_OS_DISPLAY = new Set(['Mac OS', 'Windows', 'Ubuntu'])
+
+export type PairingCodePlatform = {
+	id: string
+	display: string
+}
+
 export const getCompanionWebClientType = ([os, browserName]: WABrowserDescription): CompanionWebClientType => {
 	if (browserName === 'Desktop') {
 		return os === 'Windows' ? CompanionWebClientType.UWP : CompanionWebClientType.ELECTRON
@@ -32,6 +50,16 @@ export const getCompanionWebClientType = ([os, browserName]: WABrowserDescriptio
 
 export const getCompanionPlatformId = (browser: WABrowserDescription): string => {
 	return getCompanionWebClientType(browser).toString()
+}
+
+export const getPairingCodePlatform = ([os, browserName]: WABrowserDescription): PairingCodePlatform => {
+	const browser = PAIRING_CODE_BROWSER_PLATFORM[browserName] || DEFAULT_PAIRING_CODE_BROWSER_PLATFORM
+	const osDisplay = PAIRING_CODE_OS_DISPLAY.has(os) ? os : 'Mac OS'
+
+	return {
+		id: browser.id,
+		display: `${browser.displayName} (${osDisplay})`
+	}
 }
 
 export const buildPairingQRData = (
