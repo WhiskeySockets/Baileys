@@ -17,6 +17,7 @@ export * from './event-buffer'
 export * from './process-message'
 export * from './message-retry-manager'
 export * from './browser-utils'
+export * from './companion-reg-client-utils'
 
 // === Identity and Session Management ===
 export * from './identity-change-handler'

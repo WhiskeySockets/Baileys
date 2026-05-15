@@ -1,9 +1,12 @@
 import * as fs from 'fs'
 import * as http from 'http'
+import { Agent } from 'https'
 import * as os from 'os'
 import * as path from 'path'
 import { Readable } from 'stream'
-import { encryptedStream, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import type { MediaConnInfo, SocketConfig } from '../../Types'
+import type { ILogger } from '../../Utils/logger'
+import { encryptedStream, getWAUploadToServer, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -15,6 +18,19 @@ const cleanupTempFile = async (filePath: string): Promise<void> => {
 	try {
 		await fs.promises.unlink(filePath)
 	} catch {}
+}
+
+const createLogger = (): ILogger => {
+	const logger: ILogger = {
+		level: 'silent',
+		child: () => logger,
+		trace: () => {},
+		debug: () => {},
+		info: () => {},
+		warn: () => {},
+		error: () => {}
+	}
+	return logger
 }
 
 describe('uploadWithNodeHttp', () => {
@@ -282,6 +298,73 @@ describe('uploadWithNodeHttp', () => {
 
 		expect(result).toEqual(expectedResponse)
 		expect(finalReceivedBody).toBe(testFileContent)
+	})
+})
+
+describe('getWAUploadToServer', () => {
+	let tempFilePath: string
+	let originalFetch: typeof globalThis.fetch
+	let originalBunDescriptor: PropertyDescriptor | undefined
+
+	beforeAll(async () => {
+		tempFilePath = await createTempFile('fetch upload content')
+	})
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch
+		originalBunDescriptor = Object.getOwnPropertyDescriptor(process.versions, 'bun')
+		Object.defineProperty(process.versions, 'bun', {
+			value: 'test-runtime',
+			configurable: true
+		})
+	})
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch
+		if (originalBunDescriptor) {
+			Object.defineProperty(process.versions, 'bun', originalBunDescriptor)
+		} else {
+			delete (process.versions as { bun?: string }).bun
+		}
+	})
+
+	afterAll(async () => {
+		await cleanupTempFile(tempFilePath)
+	})
+
+	it('does not pass a generic https Agent as a fetch dispatcher', async () => {
+		let fetchInit: RequestInit | undefined
+		globalThis.fetch = (async (_input, init) => {
+			fetchInit = init
+			return new Response(JSON.stringify({ url: 'https://example.com/media', direct_path: '/media' }), {
+				headers: { 'Content-Type': 'application/json' }
+			})
+		}) as typeof fetch
+
+		const mediaConn: MediaConnInfo = {
+			auth: 'auth-token',
+			ttl: 60,
+			hosts: [{ hostname: 'upload.example.com', maxContentLengthBytes: 1024 }],
+			fetchDate: new Date()
+		}
+		const upload = getWAUploadToServer(
+			{
+				customUploadHosts: [],
+				fetchAgent: new Agent(),
+				logger: createLogger(),
+				options: {}
+			} as Partial<SocketConfig> as SocketConfig,
+			async () => mediaConn
+		)
+
+		await expect(upload(tempFilePath, { fileEncSha256B64: 'abc123', mediaType: 'image' })).resolves.toEqual({
+			mediaUrl: 'https://example.com/media',
+			directPath: '/media',
+			meta_hmac: undefined,
+			fbid: undefined,
+			ts: undefined
+		})
+		expect((fetchInit as (RequestInit & { dispatcher?: unknown }) | undefined)?.dispatcher).toBeUndefined()
 	})
 })
 

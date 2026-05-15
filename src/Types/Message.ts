@@ -19,7 +19,9 @@ export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey & {
 	remoteJidAlt?: string
+	remoteJidUsername?: string
 	participantAlt?: string
+	participantUsername?: string
 	server_id?: string
 	addressingMode?: string
 	isViewOnce?: boolean // TODO: remove out of the message key, place in WebMessageInfo
@@ -178,6 +180,8 @@ export interface WAUrlInfo {
 type Mentionable = {
 	/** list of jids that are mentioned in the accompanying text */
 	mentions?: string[]
+	/** mention all */
+	mentionAll?: boolean
 }
 type Contextable = {
 	/** add contextInfo to the message */
@@ -249,6 +253,12 @@ export type AnyMediaMessageContent = (
 			ptt?: boolean
 			/** optionally tell the duration of the audio */
 			seconds?: number
+			/**
+			 * Optional pre-computed PTT waveform (64 bytes, values 0-100).
+			 * When provided, the library skips waveform extraction; otherwise it
+			 * extracts the waveform from the source audio automatically.
+			 */
+			waveform?: Uint8Array
 	  }
 	| ({
 			sticker: WAMediaUpload
@@ -262,7 +272,10 @@ export type AnyMediaMessageContent = (
 	  } & Contextable)
 ) & { mimetype?: string } & Editable &
 	Partial<Buttonable> &
-	Partial<Templatable>
+	Partial<Templatable> & {
+		/** key of the parent albumMessage to associate this media with */
+		albumParentKey?: WAMessageKey
+	}
 
 export type ButtonReplyInfo = {
 	displayText: string

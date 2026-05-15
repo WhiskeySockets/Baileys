@@ -236,9 +236,26 @@ export const prepareWAMessageMedia = async (
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
 	const requiresThumbnailComputation =
 		(mediaType === 'image' || mediaType === 'video') && typeof uploadData['jpegThumbnail'] === 'undefined'
-	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
+	// WhatsApp PTT waveforms are 64 unsigned bytes (0-100 each). When the caller
+	// provides a malformed waveform (wrong length or out-of-range values), we
+	// regenerate it from the original audio instead of sending bogus metadata.
+	const isValidWaveform = (w: unknown): boolean => {
+		if (!(w instanceof Uint8Array) || w.length !== 64) return false
+		for (let i = 0; i < 64; i++) {
+			const v = w[i]!
+			if (v > 100) return false
+		}
+
+		return true
+	}
+
+	const requiresWaveformProcessing =
+		mediaType === 'audio' &&
+		uploadData.ptt === true &&
+		(typeof uploadData.waveform === 'undefined' || !isValidWaveform(uploadData.waveform))
 	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true
-	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
+	const requiresOriginalForSomeProcessing =
+		requiresDurationComputation || requiresThumbnailComputation || requiresWaveformProcessing
 	const { mediaKey, encFilePath, originalFilePath, fileEncSha256, fileSha256, fileLength } = await encryptedStream(
 		uploadData.media,
 		options.mediaTypeOverride || mediaType,
@@ -1754,16 +1771,31 @@ export const generateWAMessageContent = async (
 		m = { viewOnceMessage: { message: m } }
 	}
 
-	if (hasOptionalProperty(message, 'mentions') && message.mentions?.length) {
-		const messageType = Object.keys(m)[0] as Extract<keyof proto.IMessage, MessageWithContextInfo>
+	if (
+		(hasOptionalProperty(message, 'mentions') && message.mentions?.length) ||
+		(hasOptionalProperty(message, 'mentionAll') && message.mentionAll)
+	) {
+		// Unwrap viewOnceMessage to reach the actual content node that carries contextInfo.
+		// Object.keys(m)[0] would otherwise resolve to 'viewOnceMessage' (or 'messageContextInfo'
+		// if reporting tokens were attached first), and mentions would be lost on the wrapper.
+		const target =
+			'viewOnceMessage' in m && m.viewOnceMessage?.message ? m.viewOnceMessage.message : m
+		const messageType = (Object.keys(target).find(
+			k => k !== 'messageContextInfo'
+		) || Object.keys(target)[0]) as Extract<keyof proto.IMessage, MessageWithContextInfo>
 		if (messageType) {
-			const key = m[messageType]
-			if (key && 'contextInfo' in key && !!key.contextInfo) {
-				key.contextInfo.mentionedJid = message.mentions
-			} else if (key) {
-				key.contextInfo = {
-					mentionedJid: message.mentions
+			const key = target[messageType]
+			if (key) {
+				const contextInfo = ('contextInfo' in key && key.contextInfo) || {}
+				if (message.mentions?.length) {
+					contextInfo.mentionedJid = message.mentions
 				}
+
+				if (message.mentionAll) {
+					contextInfo.nonJidMentions = 1
+				}
+
+				;(key as { contextInfo?: proto.IContextInfo }).contextInfo = contextInfo
 			}
 		}
 	}
@@ -1787,6 +1819,16 @@ export const generateWAMessageContent = async (
 				key.contextInfo = { ...key.contextInfo, ...message.contextInfo }
 			} else if (key) {
 				key.contextInfo = message.contextInfo
+			}
+		}
+	}
+
+	if (hasOptionalProperty(message, 'albumParentKey') && !!message.albumParentKey) {
+		m.messageContextInfo = {
+			...m.messageContextInfo,
+			messageAssociation: {
+				associationType: WAProto.MessageAssociation.AssociationType.MEDIA_ALBUM,
+				parentMessageKey: message.albumParentKey
 			}
 		}
 	}
