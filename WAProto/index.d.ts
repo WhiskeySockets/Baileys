@@ -13430,11 +13430,13 @@ export namespace proto {
 
         interface ILabelAssociationAction {
             labeled?: (boolean|null);
+            modelMetaData?: (proto.SyncActionValue.IModelMetadata[]|null);
         }
 
         class LabelAssociationAction implements ILabelAssociationAction {
             constructor(p?: proto.SyncActionValue.ILabelAssociationAction);
             public labeled?: (boolean|null);
+            public modelMetaData: proto.SyncActionValue.IModelMetadata[];
             public static create(properties?: proto.SyncActionValue.ILabelAssociationAction): proto.SyncActionValue.LabelAssociationAction;
             public static encode(m: proto.SyncActionValue.ILabelAssociationAction, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.LabelAssociationAction;
@@ -13684,6 +13686,26 @@ export namespace proto {
                 ACTIVE = 0,
                 INACTIVE = 1
             }
+        }
+
+        interface IModelMetadata {
+            modelName?: (string|null);
+            isLatestModel?: (boolean|null);
+            isDetected?: (boolean|null);
+        }
+
+        class ModelMetadata implements IModelMetadata {
+            constructor(p?: proto.SyncActionValue.IModelMetadata);
+            public modelName?: (string|null);
+            public isLatestModel?: (boolean|null);
+            public isDetected?: (boolean|null);
+            public static create(properties?: proto.SyncActionValue.IModelMetadata): proto.SyncActionValue.ModelMetadata;
+            public static encode(m: proto.SyncActionValue.IModelMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ModelMetadata;
+            public static fromObject(d: { [k: string]: any }): proto.SyncActionValue.ModelMetadata;
+            public static toObject(m: proto.SyncActionValue.ModelMetadata, o?: $protobuf.IConversionOptions): { [k: string]: any };
+            public toJSON(): { [k: string]: any };
+            public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
         interface IMusicUserIdAction {

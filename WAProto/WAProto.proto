@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1039183767
+/// WhatsApp Version: 2.3000.1039568566
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -5237,6 +5237,7 @@ message SyncActionValue {
     
     message LabelAssociationAction {
         optional bool labeled = 1;
+        repeated SyncActionValue.ModelMetadata modelMetaData = 2;
     }
     
     message LabelEditAction {
@@ -5323,6 +5324,12 @@ message SyncActionValue {
             ACTIVE = 0;
             INACTIVE = 1;
         }
+    }
+    
+    message ModelMetadata {
+        optional string modelName = 1;
+        optional bool isLatestModel = 2;
+        optional bool isDetected = 3;
     }
     
     message MusicUserIdAction {
