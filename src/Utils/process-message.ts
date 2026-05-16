@@ -1,4 +1,5 @@
 import { Boom } from '@hapi/boom'
+import type Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import type {
 	AuthenticationCreds,
