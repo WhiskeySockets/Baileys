@@ -676,6 +676,24 @@ export const generateWAMessageContent = async (
 		}
 	}
 
+	// Lottie animated stickers (.was) must be sent via lottieStickerMessage,
+	// a FutureProofMessage wrapping the inner stickerMessage at proto field 74.
+	// Mobile WhatsApp clients silently drop Lottie payloads delivered inside a
+	// plain stickerMessage (field 26), even when isLottie is set; Web tolerates
+	// it. The wrap below makes mobile render correctly.
+	if (
+		m.stickerMessage &&
+		(m.stickerMessage.mimetype === 'application/was' || m.stickerMessage.isLottie)
+	) {
+		m.stickerMessage.isAnimated = true
+		m.stickerMessage.isLottie = true
+		const { stickerMessage, messageContextInfo } = m
+		m = { lottieStickerMessage: { message: { stickerMessage } } }
+		if (messageContextInfo) {
+			m.messageContextInfo = messageContextInfo
+		}
+	}
+
 	return WAProto.Message.create(m)
 }
 
@@ -812,7 +830,12 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			message?.editedMessage ||
 			message?.associatedChildMessage ||
 			message?.groupStatusMessage ||
-			message?.groupStatusMessageV2
+			message?.groupStatusMessageV2 ||
+			// Lottie animated stickers (.was) arrive wrapped in lottieStickerMessage
+			// (FutureProofMessage at proto field 74). Unwrapping here lets the rest
+			// of the pipeline (downloadMediaMessage, assertMediaContent, etc.) treat
+			// it as a normal stickerMessage with isLottie:true.
+			message?.lottieStickerMessage
 		)
 	}
 }
