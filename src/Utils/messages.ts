@@ -681,10 +681,7 @@ export const generateWAMessageContent = async (
 	// Mobile WhatsApp clients silently drop Lottie payloads delivered inside a
 	// plain stickerMessage (field 26), even when isLottie is set; Web tolerates
 	// it. The wrap below makes mobile render correctly.
-	if (
-		m.stickerMessage &&
-		(m.stickerMessage.mimetype === 'application/was' || m.stickerMessage.isLottie)
-	) {
+	if (m.stickerMessage && (m.stickerMessage.mimetype === 'application/was' || m.stickerMessage.isLottie)) {
 		m.stickerMessage.isAnimated = true
 		m.stickerMessage.isLottie = true
 		const { stickerMessage, messageContextInfo } = m
