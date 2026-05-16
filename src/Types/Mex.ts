@@ -12,8 +12,11 @@ export enum XWAPaths {
 	xwa2_newsletter_leave_v2 = 'xwa2_newsletter_leave_v2',
 	xwa2_newsletter_change_owner = 'xwa2_newsletter_change_owner',
 	xwa2_newsletter_demote = 'xwa2_newsletter_demote',
-	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2'
+	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2',
+	xwa2_fetch_account_reachout_timelock = 'xwa2_fetch_account_reachout_timelock',
+	xwa2_message_capping_info = 'xwa2_message_capping_info'
 }
+
 export enum QueryIds {
 	CREATE = '8823471724422422',
 	UPDATE_METADATA = '24250201037901610',
@@ -26,7 +29,9 @@ export enum QueryIds {
 	ADMIN_COUNT = '7130823597031706',
 	CHANGE_OWNER = '7341777602580933',
 	DEMOTE = '6551828931592903',
-	DELETE = '30062808666639665'
+	DELETE = '30062808666639665',
+	REACHOUT_TIMELOCK = '23983697327930364',
+	MESSAGE_CAPPING_INFO = '24503548349331633'
 }
 export type NewsletterUpdate = {
 	name?: string

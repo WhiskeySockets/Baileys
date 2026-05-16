@@ -84,7 +84,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		query,
 		signalRepository,
 		onUnexpectedError,
-		sendUnifiedSession
+		sendUnifiedSession,
+		registerSocketEndHandler
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -135,10 +136,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		}) as CacheStore)
-
-	if (!config.placeholderResendCache) {
-		config.placeholderResendCache = placeholderResendCache
-	}
 
 	/** helper function to fetch the given app state sync key */
 	const getAppStateSyncKey = async (keyId: string) => {
@@ -646,7 +643,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									snapshot,
 									getCachedAppStateSyncKey,
 									initialVersionMap[name],
-									appStateMacVerification.snapshot
+									appStateMacVerification.snapshot,
+									logger
 								)
 								states[name] = newState
 								Object.assign(globalMutationMap, mutationMap)
@@ -876,7 +874,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		if (tag === 'presence') {
 			presence = {
 				lastKnownPresence: attrs.type === 'unavailable' ? 'unavailable' : 'available',
-				lastSeen: attrs.last && attrs.last !== 'deny' ? +attrs.last : undefined
+				lastSeen: attrs.last && attrs.last !== 'deny' ? +attrs.last : undefined,
+				groupOnlineCount: attrs.count ? +attrs.count : undefined
 			}
 		} else if (Array.isArray(content)) {
 			const [firstChild] = content
@@ -1459,6 +1458,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
+	registerSocketEndHandler(() => {
+		if (awaitingSyncTimeout) {
+			clearTimeout(awaitingSyncTimeout)
+			awaitingSyncTimeout = undefined
+		}
+
+		if (!config.placeholderResendCache && placeholderResendCache.close) {
+			placeholderResendCache.close()
+		}
+
+		syncState = SyncState.Connecting
+		privacySettings = undefined
+	})
+
 	return {
 		...sock,
 		serverProps,
@@ -1498,6 +1511,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		cleanDirtyBits,
 		addOrEditContact,
 		removeContact,
+		placeholderResendCache,
 		addLabel,
 		addChatLabel,
 		removeChatLabel,
