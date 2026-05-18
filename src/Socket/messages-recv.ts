@@ -14,6 +14,7 @@ import {
 } from '../Defaults'
 import type {
 	GroupParticipant,
+	LIDMapping,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MessageUserReceipt,
@@ -343,14 +344,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		let data: any
 		try {
-			data = JSON.parse(mexNode.content.toString())
+			// Narrow payload content type before JSON.parse:
+			// content can be string (UTF-16 internally), Uint8Array, Buffer, or
+			// (defensively) an unexpected array of BinaryNodes.
+			//
+			// IMPORTANT: when content is already a JS string, parse it directly.
+			// `Buffer.from(str, 'binary')` would treat it as latin1, corrupting any
+			// non-ASCII payload (newsletter names with accents/emojis, etc.).
+			const payloadContent = mexNode.content
+			if (Array.isArray(payloadContent)) {
+				logger.warn({ mexNode }, 'Invalid mex newsletter notification payload format')
+				return
+			}
+
+			const jsonText =
+				typeof payloadContent === 'string' ? payloadContent : Buffer.from(payloadContent).toString('utf8')
+			data = JSON.parse(jsonText)
 		} catch (error) {
 			logger.error({ err: error, node }, 'Failed to parse mex newsletter notification')
 			return
 		}
 
-		const operation = data?.operation
-		const updates = data?.updates
+		// Some mex payloads (e.g. xwa2_notify_linked_profiles) declare the operation
+		// in the node `op_name` attribute rather than inside the JSON body. Without
+		// this fallback the `!operation` guard below would silently drop them.
+		const operation = data?.operation ?? mexNode.attrs?.op_name
+		let updates = data?.updates
+		// xwa2_notify_linked_profiles payloads arrive with a different shape; normalize
+		// into the same `updates` array consumed by the switch below.
+		if (!updates) {
+			const linkedProfiles = data?.data?.xwa2_notify_linked_profiles
+			if (linkedProfiles) {
+				updates = [linkedProfiles]
+			}
+		}
 
 		if (!updates || !operation) {
 			logger.warn({ data }, 'Invalid mex newsletter notification content')
@@ -390,6 +417,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				break
+
+			case 'NotificationLinkedProfilesUpdates': {
+				// Collect LID→PN mappings from added_profiles into a single batched emit —
+				// matches InfiniteAPI's centralized pattern (process-message.ts:441) so the
+				// chats.ts:1560 listener performs one storeLIDPNMappings call per notification.
+				const mappings: LIDMapping[] = []
+				for (const update of updates) {
+					const lid = update?.jid
+					const addedProfiles = Array.isArray(update?.added_profiles) ? update.added_profiles : []
+					for (const profile of addedProfiles) {
+						const pn = typeof profile === 'string' ? profile : (profile?.pn ?? profile?.jid ?? null)
+						if (lid && pn) {
+							mappings.push({ lid, pn })
+						}
+					}
+				}
+
+				if (mappings.length > 0) {
+					ev.emit('lid-mapping.update', mappings)
+				}
+
+				break
+			}
 
 			default:
 				logger.info({ operation, data }, 'Unhandled mex newsletter notification')
