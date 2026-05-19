@@ -14,6 +14,7 @@ import {
 } from '../Defaults'
 import type {
 	GroupParticipant,
+	LIDMapping,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MessageUserReceipt,
@@ -41,6 +42,7 @@ import {
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
 	extractAddressingContext,
+	extractE2ESessionFromRetryReceipt,
 	getCallStatusFromNode,
 	getDecryptionJid,
 	getHistoryMsg,
@@ -79,6 +81,7 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
+	getBinaryNodeChildUInt,
 	isJidGroup,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -343,14 +346,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		let data: any
 		try {
-			data = JSON.parse(mexNode.content.toString())
+			// Narrow payload content type before JSON.parse:
+			// content can be string (UTF-16 internally), Uint8Array, Buffer, or
+			// (defensively) an unexpected array of BinaryNodes.
+			//
+			// IMPORTANT: when content is already a JS string, parse it directly.
+			// `Buffer.from(str, 'binary')` would treat it as latin1, corrupting any
+			// non-ASCII payload (newsletter names with accents/emojis, etc.).
+			const payloadContent = mexNode.content
+			if (Array.isArray(payloadContent)) {
+				logger.warn({ mexNode }, 'Invalid mex newsletter notification payload format')
+				return
+			}
+
+			const jsonText =
+				typeof payloadContent === 'string' ? payloadContent : Buffer.from(payloadContent).toString('utf8')
+			data = JSON.parse(jsonText)
 		} catch (error) {
 			logger.error({ err: error, node }, 'Failed to parse mex newsletter notification')
 			return
 		}
 
-		const operation = data?.operation
-		const updates = data?.updates
+		// Some mex payloads (e.g. xwa2_notify_linked_profiles) declare the operation
+		// in the node `op_name` attribute rather than inside the JSON body. Without
+		// this fallback the `!operation` guard below would silently drop them.
+		const operation = data?.operation ?? mexNode.attrs?.op_name
+		let updates = data?.updates
+		// xwa2_notify_linked_profiles payloads arrive with a different shape; normalize
+		// into the same `updates` array consumed by the switch below.
+		if (!updates) {
+			const linkedProfiles = data?.data?.xwa2_notify_linked_profiles
+			if (linkedProfiles) {
+				updates = [linkedProfiles]
+			}
+		}
 
 		if (!updates || !operation) {
 			logger.warn({ data }, 'Invalid mex newsletter notification content')
@@ -391,6 +420,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				break
 
+			case 'NotificationLinkedProfilesUpdates': {
+				// Collect LID→PN mappings from added_profiles into a single batched emit —
+				// matches InfiniteAPI's centralized pattern (process-message.ts:441) so the
+				// chats.ts:1560 listener performs one storeLIDPNMappings call per notification.
+				const mappings: LIDMapping[] = []
+				for (const update of updates) {
+					const lid = update?.jid
+					const addedProfiles = Array.isArray(update?.added_profiles) ? update.added_profiles : []
+					for (const profile of addedProfiles) {
+						const pn = typeof profile === 'string' ? profile : (profile?.pn ?? profile?.jid ?? null)
+						if (lid && pn) {
+							mappings.push({ lid, pn })
+						}
+					}
+				}
+
+				if (mappings.length > 0) {
+					ev.emit('lid-mapping.update', mappings)
+				}
+
+				break
+			}
+
 			default:
 				logger.info({ operation, data }, 'Unhandled mex newsletter notification')
 				break
@@ -400,95 +452,103 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// Handles newsletter notifications
 	const handleNewsletterNotification = async (node: BinaryNode) => {
 		const from = node.attrs.from!
-		const child = getAllBinaryNodeChildren(node)[0]!
+		const children = getAllBinaryNodeChildren(node)
 		const rawAuthor = node.attrs.participant!
 		// Resolve author LID→PN (participant is a user JID that could be LID)
 		const author = await resolveLidToPn(rawAuthor, signalRepository.lidMapping, logger) || rawAuthor
 
-		logger.info({ from, child }, 'got newsletter notification')
+		for (const child of children) {
+			logger.debug({ from, child }, 'got newsletter notification')
 
-		switch (child.tag) {
-			case 'reaction':
-				const reactionUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					reaction: {
-						code: getBinaryNodeChildString(child, 'reaction'),
-						count: 1
-					}
-				}
-				ev.emit('newsletter.reaction', reactionUpdate)
-				break
-
-			case 'view':
-				const viewUpdate = {
-					id: from,
-					server_id: child.attrs.message_id!,
-					count: parseInt(child.content?.toString() || '0', 10)
-				}
-				ev.emit('newsletter.view', viewUpdate)
-				break
-
-			case 'participant':
-				const resolvedParticipantUser = await resolveLidToPn(child.attrs.jid!, signalRepository.lidMapping, logger) || child.attrs.jid!
-				const participantUpdate = {
-					id: from,
-					author,
-					user: resolvedParticipantUser,
-					action: child.attrs.action!,
-					new_role: child.attrs.role!
-				}
-				ev.emit('newsletter-participants.update', participantUpdate)
-				break
-
-			case 'update':
-				const settingsNode = getBinaryNodeChild(child, 'settings')
-				if (settingsNode) {
-					const update: Record<string, any> = {}
-					const nameNode = getBinaryNodeChild(settingsNode, 'name')
-					if (nameNode?.content) update.name = nameNode.content.toString()
-
-					const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
-					if (descriptionNode?.content) update.description = descriptionNode.content.toString()
-
-					ev.emit('newsletter-settings.update', {
+			switch (child.tag) {
+				case 'reaction': {
+					const reactionUpdate = {
 						id: from,
-						update
-					})
-				}
-
-				break
-
-			case 'message':
-				const plaintextNode = getBinaryNodeChild(child, 'plaintext')
-				if (plaintextNode?.content) {
-					try {
-						const contentBuf =
-							typeof plaintextNode.content === 'string'
-								? Buffer.from(plaintextNode.content, 'binary')
-								: Buffer.from(plaintextNode.content as Uint8Array)
-						const messageProto = proto.Message.decode(contentBuf).toJSON()
-						const fullMessage = proto.WebMessageInfo.fromObject({
-							key: {
-								remoteJid: from,
-								id: child.attrs.message_id || child.attrs.server_id,
-								fromMe: false // TODO: is this really true though
-							},
-							message: messageProto,
-							messageTimestamp: +child.attrs.t!
-						}).toJSON() as WAMessage
-						await upsertMessage(fullMessage, 'append')
-						logger.info('Processed plaintext newsletter message')
-					} catch (error) {
-						logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						server_id: child.attrs.message_id!,
+						reaction: {
+							code: getBinaryNodeChildString(child, 'reaction'),
+							count: 1
+						}
 					}
+					ev.emit('newsletter.reaction', reactionUpdate)
+					break
 				}
 
-				break
+				case 'view': {
+					const viewUpdate = {
+						id: from,
+						server_id: child.attrs.message_id!,
+						count: parseInt(child.content?.toString() || '0', 10)
+					}
+					ev.emit('newsletter.view', viewUpdate)
+					break
+				}
 
-			default:
-				logger.warn({ node }, 'Unknown newsletter notification')
-				break
+				case 'participant': {
+					const resolvedParticipantUser =
+						(await resolveLidToPn(child.attrs.jid!, signalRepository.lidMapping, logger)) || child.attrs.jid!
+					const participantUpdate = {
+						id: from,
+						author,
+						user: resolvedParticipantUser,
+						action: child.attrs.action!,
+						new_role: child.attrs.role!
+					}
+					ev.emit('newsletter-participants.update', participantUpdate)
+					break
+				}
+
+				case 'update': {
+					const settingsNode = getBinaryNodeChild(child, 'settings')
+					if (settingsNode) {
+						const update: Record<string, any> = {}
+						const nameNode = getBinaryNodeChild(settingsNode, 'name')
+						if (nameNode?.content) update.name = nameNode.content.toString()
+
+						const descriptionNode = getBinaryNodeChild(settingsNode, 'description')
+						if (descriptionNode?.content) update.description = descriptionNode.content.toString()
+
+						ev.emit('newsletter-settings.update', {
+							id: from,
+							update
+						})
+					}
+
+					break
+				}
+
+				case 'message': {
+					const plaintextNode = getBinaryNodeChild(child, 'plaintext')
+					if (plaintextNode?.content) {
+						try {
+							const contentBuf =
+								typeof plaintextNode.content === 'string'
+									? Buffer.from(plaintextNode.content, 'binary')
+									: Buffer.from(plaintextNode.content as Uint8Array)
+							const messageProto = proto.Message.decode(contentBuf).toJSON()
+							const fullMessage = proto.WebMessageInfo.fromObject({
+								key: {
+									remoteJid: from,
+									id: child.attrs.message_id || child.attrs.server_id,
+									fromMe: false // TODO: is this really true though
+								},
+								message: messageProto,
+								messageTimestamp: +child.attrs.t!
+							}).toJSON() as WAMessage
+							await upsertMessage(fullMessage, 'append')
+							logger.debug('Processed plaintext newsletter message')
+						} catch (error) {
+							logger.error({ error }, 'Failed to decode plaintext newsletter message')
+						}
+					}
+
+					break
+				}
+
+				default:
+					logger.warn({ node, child }, 'Unknown newsletter notification child')
+					break
+			}
 		}
 	}
 
@@ -1511,6 +1571,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const actingParticipantLid = fullNode.attrs.participant
 		const actingParticipantPn = fullNode.attrs.participant_pn
+		const actingParticipantUsername = fullNode.attrs.participant_username || fullNode.attrs.username
 
 		const affectedParticipantLid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || actingParticipantLid!
 		const affectedParticipantPn = getBinaryNodeChild(child, 'participant')?.attrs?.phone_number || actingParticipantPn!
@@ -1572,7 +1633,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				ev.emit('groups.upsert', [
 					{
 						...metadata,
-						author: actingParticipant
+						author: actingParticipant,
+						authorPn: actingParticipantPn,
+						authorUsername: actingParticipantUsername
 					}
 				])
 				break
@@ -1634,6 +1697,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							id,
 							phoneNumber,
 							lid,
+							username: attrs.participant_username || attrs.username || undefined,
 							admin: (attrs.type || null) as GroupParticipant['admin']
 						}
 					})
@@ -1986,11 +2050,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
-	const sendMessagesAgain = async (key: WAMessageKey, ids: string[], retryNode: BinaryNode) => {
+	const sendMessagesAgain = async (
+		key: WAMessageKey,
+		ids: string[],
+		retryNode: BinaryNode,
+		receiptNode: BinaryNode
+	) => {
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 
 		const retryCount = +retryNode.attrs.count! || 1
+		const msgId = ids[0]
+		const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
+
+		// Helper: delete the session at BOTH the PN- and LID-addressed keys.
+		// InfiniteAPI's signal storage (`signalStorage.loadSession`) canonicalizes
+		// a PN signal-address to its LID counterpart when a `lidMapping` entry
+		// exists — so the session that `getSessionInfo()` reads can live under
+		// the LID key while `sessionId` is computed from the PN participant.
+		// Clearing only `sessionId` would leave the canonical session intact.
+		// Always clear both, wrap in the same transaction (meId) used elsewhere
+		// to keep ordering vs sendMessage's session ops (race-prevention from a3dd21c9).
+		const deleteCanonicalSession = async () => {
+			const updates: { [key: string]: null } = { [sessionId]: null }
+			if (!isLidUser(participant)) {
+				const lid = await signalRepository.lidMapping.getLIDForPN(participant)
+				if (lid) {
+					updates[signalRepository.jidToSignalProtocolAddress(lid)] = null
+				}
+			}
+
+			await authState.keys.transaction(async () => {
+				await authState.keys.set({ session: updates })
+			}, authState.creds.me?.id || 'session-operation')
+		}
 
 		// Try to get messages from cache first, then fallback to getMessage
 		const msgs: (proto.IMessage | undefined)[] = []
@@ -2029,14 +2122,88 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// prevents the first message decryption failure
 		const sendToAll = !jidDecode(participant)?.device
 
-		// Check if we should recreate session for this retry
+		// --- 1b168592: process <keys> bundle from retry receipt (when present) ---
+		// WA may attach a fresh prekey bundle so the resend lands on a usable session
+		// without an extra IQ round-trip. If injection succeeds we SKIP the
+		// session-recreation + assertSessions path below — the bundle already supplies
+		// a valid outgoing session.
+		let injectedFromBundle = false
+		const bundle = extractE2ESessionFromRetryReceipt(receiptNode)
+		if (bundle) {
+			try {
+				// Pass the CANONICAL JID (LID when PN has a mapping) so the SessionBuilder
+				// transaction locks on the same key that `encryptMessage` uses. Without this,
+				// a concurrent retry-inject and send/encrypt for the same logical peer would
+				// hold different `parsedKeys.transaction` mutex keys (`PN` vs the resolved
+				// LID), letting them mutate the same canonical session record concurrently.
+				const lid = !isLidUser(participant)
+					? await signalRepository.lidMapping.getLIDForPN(participant)
+					: null
+				const canonicalJid = lid || participant
+				await signalRepository.injectE2ESession({ jid: canonicalJid, session: bundle })
+				injectedFromBundle = true
+				logger.debug(
+					{ participant, canonicalJid, retryCount },
+					'injected session from retry receipt key bundle'
+				)
+			} catch (error) {
+				logger.warn({ error, participant }, 'failed to inject session from retry receipt')
+			}
+		}
+
+		if (!injectedFromBundle) {
+			// No usable bundle — if the receipt's registration id no longer matches our
+			// stored session's, the peer rotated their identity. Delete the stale session
+			// so the next encryptMessage forces a fresh pkmsg. Use deleteCanonicalSession
+			// so both PN and LID-keyed copies are cleared (signal storage resolves PN→LID).
+			// Validate `<registration>` is exactly 4 bytes (same strictness as the bundle
+			// parser) before trusting the decoded uint — overlong buffers would otherwise
+			// silently pass the first-4-bytes decode.
+			const regBuf = getBinaryNodeChildBuffer(receiptNode, 'registration')
+			const receivedRegId =
+				regBuf && regBuf.length === 4 ? getBinaryNodeChildUInt(receiptNode, 'registration', 4) : undefined
+			if (typeof receivedRegId === 'number' && Number.isInteger(receivedRegId)) {
+				const info = await signalRepository.getSessionInfo(participant)
+				if (info && info.registrationId !== 0 && info.registrationId !== receivedRegId) {
+					logger.info(
+						{ participant, stored: info.registrationId, received: receivedRegId },
+						'reg id mismatch on retry without bundle, deleting session'
+					)
+					await deleteCanonicalSession()
+				}
+			}
+		}
+
+		// Base-key collision detection (WA Web RetryMsgJob):
+		// retry==2 records the open-session base key for this (sessionId, msgId).
+		// retry>2 with the same base key still in place means neither side rotated
+		// — force a fresh session before resending so the peer can decrypt.
+		const BASE_KEY_CHECK_RETRY = 2
+		if (msgId && messageRetryManager) {
+			const info = await signalRepository.getSessionInfo(participant)
+			if (info) {
+				if (retryCount === BASE_KEY_CHECK_RETRY) {
+					messageRetryManager.saveBaseKey(sessionId, msgId, info.baseKey)
+				} else if (retryCount > BASE_KEY_CHECK_RETRY) {
+					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
+						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
+						await deleteCanonicalSession()
+					}
+
+					messageRetryManager.deleteBaseKey(sessionId, msgId)
+				}
+			}
+		}
+
+		// --- InfiniteAPI session-recreation + MAC-error detection ---
+		// Only runs when we did NOT inject a fresh session from the bundle.
+		// Preserves the parseRetryErrorCode / shouldRecreateSession heuristics
+		// added by 52aa6402 (WABA Android alignment) and a3dd21c9 (Bad MAC loop break).
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager && retryCount >= 1) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount >= 1 && !injectedFromBundle) {
 			try {
-				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
-
 				const hasSession = await signalRepository.validateSession(participant)
 
 				// Extract error code from retry node if present (for MAC error detection)
@@ -2052,24 +2219,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{ participant, retryCount, reason: recreateReason, errorCode },
 						'recreating session for outgoing retry'
 					)
-					// CRITICAL: Use same transaction key as encrypt/decrypt operations to prevent race
-					// Using meId ensures this delete serializes with sendMessage() and other session operations
-					await authState.keys.transaction(async () => {
-						await authState.keys.set({ session: { [sessionId]: null } })
-					}, authState.creds.me?.id || 'session-operation')
+					// Use deleteCanonicalSession so the LID-keyed copy is also cleared
+					// (signalStorage.loadSession resolves PN→LID — see helper above).
+					// The race-prevention via me?.id transaction key is preserved inside
+					// the helper, matching the original a3dd21c9 / 52aa6402 contract.
+					await deleteCanonicalSession()
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
 			}
 		}
 
-		await assertSessions([participant], true)
+		if (!injectedFromBundle) {
+			await assertSessions([participant], true)
+		}
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
-		logger.debug({ participant, sendToAll, shouldRecreateSession, recreateReason }, 'forced new session for retry recp')
+		logger.debug(
+			{ participant, sendToAll, shouldRecreateSession, recreateReason, injectedFromBundle },
+			'prepared session for retry resend'
+		)
 
 		for (const [i, msg] of msgs.entries()) {
 			if (!ids[i]) continue
@@ -2178,7 +2350,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								try {
 									await updateSendMessageAgainCount(ids[0], key.participant)
 									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!)
+									await sendMessagesAgain(key, ids, retryNode!, node)
 								} catch (error: unknown) {
 									logger.error(
 										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
@@ -2214,19 +2386,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
 						const { senderAlt: participantAlt, addressingMode } = extractAddressingContext(node)
-						msg.key = {
+						const extendedKey: WAMessageKey = {
 							remoteJid,
 							fromMe,
 							participant: node.attrs.participant,
 							participantAlt,
+							participantUsername: node.attrs.participant_username || node.attrs.username,
 							addressingMode,
 							id: node.attrs.id,
 							...(msg.key || {})
 						}
+						msg.key = extendedKey
 						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t!
 
+						// proto.WebMessageInfo.fromObject only copies the WAProto schema
+						// fields (remoteJid, fromMe, id, participant) and drops our TS-only
+						// extensions (participantAlt, participantUsername, addressingMode,
+						// remoteJidUsername, etc.). Reattach the full key after conversion.
 						const fullMsg = proto.WebMessageInfo.fromObject(msg) as WAMessage
+						fullMsg.key = { ...fullMsg.key, ...extendedKey }
 						await upsertMessage(fullMsg, 'append')
 					}
 				})
@@ -2707,6 +2886,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				date: new Date(+attrs.t! * 1000),
 				offline: !!attrs.offline,
 				status
+			}
+
+			if (status === 'relaylatency') {
+				const latencyValue = infoChild.attrs.latency || infoChild.attrs['latency_ms'] || infoChild.attrs['latency-ms']
+				const latencyMs = latencyValue ? Number(latencyValue) : undefined
+				if (Number.isFinite(latencyMs)) {
+					call.latencyMs = latencyMs
+				}
 			}
 
 			if (status === 'offer') {

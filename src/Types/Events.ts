@@ -30,6 +30,7 @@ export type BaileysEventMap = {
 		isLatest?: boolean
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType | null
+		pastParticipants?: proto.IPastParticipants[] | null
 		chunkOrder?: number | null
 		peerDataRequestSessionId?: string | null
 	}
@@ -79,6 +80,7 @@ export type BaileysEventMap = {
 		id: string
 		author: string
 		authorPn?: string
+		authorUsername?: string
 		participants: GroupParticipant[]
 		action: ParticipantAction
 	}
@@ -86,6 +88,7 @@ export type BaileysEventMap = {
 		id: string
 		author: string
 		authorPn?: string
+		authorUsername?: string
 		participant: string
 		participantPn?: string
 		action: RequestJoinAction
@@ -189,6 +192,7 @@ export type BufferedEventData = {
 		isLatest: boolean
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType
+		pastParticipants?: proto.IPastParticipants[]
 		chunkOrder?: number | null
 		peerDataRequestSessionId?: string
 	}

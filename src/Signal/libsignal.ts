@@ -6,7 +6,6 @@ import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from 
 import type { BaileysEventEmitter } from '../Types/Events'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
-import { CircuitBreaker } from '../Utils/circuit-breaker.js'
 import type { ILogger } from '../Utils/logger'
 import { metrics } from '../Utils/prometheus-metrics.js'
 import { isAnyLidUser, isAnyPnUser, jidDecode, transferDevice, WAJIDDomains } from '../WABinary'
@@ -67,8 +66,6 @@ export interface IdentitySaveResult {
 export interface LibSignalRepositoryOptions {
 	/** Event emitter for broadcasting identity changes */
 	ev?: BaileysEventEmitter
-	/** Circuit breaker for prekey operations (optional) */
-	preKeyCircuitBreaker?: CircuitBreaker
 }
 
 // ============================================
@@ -256,7 +253,7 @@ export function makeLibSignalRepository(
 	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>,
 	options?: LibSignalRepositoryOptions
 ): SignalRepositoryWithLIDStore {
-	const { ev, preKeyCircuitBreaker } = options || {}
+	const { ev } = options || {}
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 
 	// Identity key cache to avoid repeated storage reads
@@ -277,7 +274,7 @@ export function makeLibSignalRepository(
 		cacheMetricsInterval.unref()
 	}
 
-	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, preKeyCircuitBreaker, logger)
+	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, logger)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
@@ -319,6 +316,23 @@ export function makeLibSignalRepository(
 		}
 
 		return jid
+	}
+
+	/**
+	 * Shared by `encryptGroupMessage` and `getSenderKeyDistributionMessage`:
+	 * ensure a SenderKeyRecord exists for `(group, meId)` and build the SKDM.
+	 * Avoids the previous duplication between encrypt and retry-resend paths.
+	 */
+	const ensureSenderKeyAndCreateSkdm = async (group: string, meId: string) => {
+		const senderName = jidToSignalSenderKeyName(group, meId)
+		const senderNameStr = senderName.toString()
+		const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
+		if (!senderKey) {
+			await storage.storeSenderKey(senderName, new SenderKeyRecord())
+		}
+
+		const skdm = await new GroupSessionBuilder(storage).create(senderName)
+		return { senderName, skdm }
 	}
 
 	const repository: SignalRepositoryWithLIDStore = {
@@ -384,14 +398,6 @@ export function makeLibSignalRepository(
 									},
 									'Identity key changed - contact may have reinstalled WhatsApp, session will be re-established'
 								)
-
-								// Reset prekey circuit breaker since we identified the cause
-								// Reset regardless of state (could be open, half-open, or closed with accumulated failures)
-								// eslint-disable-next-line max-depth
-								if (preKeyCircuitBreaker) {
-									preKeyCircuitBreaker.reset()
-									logger.debug({ jid }, 'Reset prekey circuit breaker after identity key change detection')
-								}
 							} else if (saveResult.isNew) {
 								logger.debug(
 									{ jid, addr: addrStr, fingerprint: saveResult.currentFingerprint },
@@ -436,33 +442,53 @@ export function makeLibSignalRepository(
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
-			const senderName = jidToSignalSenderKeyName(group, meId)
-			const builder = new GroupSessionBuilder(storage)
-
-			const senderNameStr = senderName.toString()
-
 			return parsedKeys.transaction(async () => {
-				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-				if (!senderKey) {
-					await storage.storeSenderKey(senderName, new SenderKeyRecord())
-				}
-
-				const senderKeyDistributionMessage = await builder.create(senderName)
-				const session = new GroupCipher(storage, senderName)
-				const ciphertext = await session.encrypt(data)
-
-				return {
-					ciphertext,
-					senderKeyDistributionMessage: senderKeyDistributionMessage.serialize()
-				}
+				const { senderName, skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
+				const ciphertext = await new GroupCipher(storage, senderName).encrypt(data)
+				return { ciphertext, senderKeyDistributionMessage: skdm.serialize() }
 			}, group)
+		},
+
+		async getSenderKeyDistributionMessage({ group, meId }) {
+			return parsedKeys.transaction(async () => {
+				const { skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
+				return skdm.serialize()
+			}, group)
+		},
+
+		async hasSenderKey({ group, meId }) {
+			const senderName = jidToSignalSenderKeyName(group, meId).toString()
+			const { [senderName]: key } = await auth.keys.get('sender-key', [senderName])
+			return !!key
+		},
+
+		async getSessionInfo(jid) {
+			const addr = jidToSignalProtocolAddress(jid).toString()
+			const session = (await storage.loadSession(addr)) as {
+				getOpenSession?: () => { indexInfo?: { baseKey?: Buffer }; registrationId?: number } | undefined
+			} | null
+			if (!session) {
+				return null
+			}
+
+			const open = session.getOpenSession?.()
+			const baseKey = open?.indexInfo?.baseKey
+			const registrationId = open?.registrationId
+			if (!baseKey || typeof registrationId !== 'number') {
+				return null
+			}
+
+			return { baseKey: new Uint8Array(baseKey), registrationId }
 		},
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			return parsedKeys.transaction(async () => {
-				await cipher.initOutgoing(session)
+				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
+				// but the bundled .d.ts marks it required. Retry-receipt bundles can legitimately
+				// omit the one-time key — cast through unknown so TS lets us pass session through.
+				await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
 			}, jid)
 		},
 		jidToSignalProtocolAddress(jid) {
@@ -769,7 +795,6 @@ function signalStorage(
 	lidMapping: LIDMappingStore,
 	identityKeyCache: LRUCache<string, Uint8Array>,
 	ev?: BaileysEventEmitter,
-	preKeyCircuitBreaker?: CircuitBreaker,
 	logger?: ILogger
 ): ExtendedSignalStorage {
 	// Shared function to resolve PN signal address to LID if mapping exists

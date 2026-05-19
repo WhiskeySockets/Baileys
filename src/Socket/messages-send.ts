@@ -1276,16 +1276,53 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const isParticipantLid = isLidUser(participant.jid)
 				const isMe = areJidsSameUser(participant.jid, isParticipantLid ? meLid : meId)
 
+				// For group/status retry resends, attach a SenderKeyDistributionMessage so
+				// the recipient can decrypt our group ciphertext even when their local
+				// SenderKeyRecord is empty (the bug #2506 fixed upstream).
+				// We pick the sender identity that already has a sender key — LID if
+				// present, otherwise PN — and skip silently when neither exists. The
+				// SKDM is added as an inner-message field; the outer DSM wrap (when
+				// `usesDSM`) is unchanged so carousel/interactive flows that rely on
+				// DSM-for-own-devices keep working identically.
+				let messageToSend = message
+				if (isGroupOrStatus) {
+					let groupSenderIdentity: string | undefined
+					if (meLid && (await signalRepository.hasSenderKey({ group: destinationJid, meId: meLid }))) {
+						groupSenderIdentity = meLid
+					} else if (await signalRepository.hasSenderKey({ group: destinationJid, meId })) {
+						groupSenderIdentity = meId
+					}
+
+					if (groupSenderIdentity) {
+						try {
+							const skdm = await signalRepository.getSenderKeyDistributionMessage({
+								group: destinationJid,
+								meId: groupSenderIdentity
+							})
+							messageToSend = {
+								...message,
+								senderKeyDistributionMessage: {
+									groupId: destinationJid,
+									axolotlSenderKeyDistributionMessage: skdm
+								}
+							}
+						} catch (err) {
+							// Best-effort: log and resend without SKDM rather than abort the retry
+							logger.warn({ err, jid: destinationJid }, 'failed to build SKDM for retry, sending without it')
+						}
+					}
+				}
+
 				// Send DSM for all message types including carousel
 				const usesDSM = isMe
 				const encodedMessageToSend = usesDSM
 					? encodeWAMessage({
 							deviceSentMessage: {
 								destinationJid,
-								message
+								message: messageToSend
 							}
 						})
-					: encodeWAMessage(message)
+					: encodeWAMessage(messageToSend)
 
 				const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
 					data: encodedMessageToSend,

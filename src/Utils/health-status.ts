@@ -6,19 +6,7 @@
  * @module Utils/health-status
  */
 
-import { globalCircuitRegistry } from './circuit-breaker.js'
 import { getVersionCacheStatus } from './version-cache.js'
-
-/**
- * Circuit breaker health information
- */
-export interface CircuitBreakerHealth {
-	name: string
-	state: 'closed' | 'open' | 'half-open'
-	failures: number
-	successes: number
-	totalCalls: number
-}
 
 /**
  * Cache health information
@@ -40,7 +28,6 @@ export interface HealthStatus {
 	timestamp: number
 	uptime: number
 	version: string
-	circuitBreakers: CircuitBreakerHealth[]
 	cache: CacheHealth
 	checks: {
 		name: string
@@ -105,46 +92,7 @@ export function getHealthStatus(): HealthStatus {
 		})
 	}
 
-	// 2. Check circuit breakers
-	const circuitBreakers: CircuitBreakerHealth[] = []
-	let openCircuits = 0
-
-	for (const [name, breaker] of globalCircuitRegistry.getAll()) {
-		const stats = breaker.getStats()
-		const state = breaker.getState()
-
-		circuitBreakers.push({
-			name,
-			state,
-			failures: stats.totalFailures,
-			successes: stats.totalSuccesses,
-			totalCalls: stats.totalCalls
-		})
-
-		if (state === 'open') {
-			openCircuits++
-		}
-	}
-
-	if (openCircuits > 0) {
-		checks.push({
-			name: 'circuit_breakers',
-			status: openCircuits > 2 ? 'fail' : 'warn',
-			message: `${openCircuits} circuit breaker(s) are open`
-		})
-		if (openCircuits > 2) {
-			overallStatus = 'unhealthy'
-		} else if (overallStatus === 'healthy') {
-			overallStatus = 'degraded'
-		}
-	} else {
-		checks.push({
-			name: 'circuit_breakers',
-			status: 'pass'
-		})
-	}
-
-	// 3. Check memory usage (warn if > 90%)
+	// 2. Check memory usage (warn if > 90%)
 	const memUsage = process.memoryUsage()
 	const heapUsedPercent = (memUsage.heapUsed / memUsage.heapTotal) * 100
 
@@ -167,7 +115,6 @@ export function getHealthStatus(): HealthStatus {
 		timestamp: Date.now(),
 		uptime: process.uptime(),
 		version: process.env.npm_package_version || 'unknown',
-		circuitBreakers,
 		cache: {
 			versionCache: {
 				hasCache: versionCacheStatus.hasCache,

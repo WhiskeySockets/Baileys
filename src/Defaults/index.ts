@@ -125,8 +125,6 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	getMessage: async () => undefined,
 	cachedGroupMetadata: async () => undefined,
 	makeSignalRepository: makeLibSignalRepository,
-	// Circuit breaker configuration
-	enableCircuitBreaker: true,
 	// Listener limits (memory leak prevention)
 	// WebSocket: 8 core events (open, close, error, message, ping, pong, upgrade, unexpected-response)
 	//          + 10 dynamic listeners (reconnect handlers, custom events)

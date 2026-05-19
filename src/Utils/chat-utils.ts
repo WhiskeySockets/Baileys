@@ -270,18 +270,39 @@ export const decodeSyncdMutations = async (
 			throw new Boom('Missing index blob in record', { statusCode: 500 })
 		}
 
+		// Let getKey() errors propagate normally. The two expected throws are:
+		//   1. `isMissingKey: true` — orchestrator parks the collection (Blocked)
+		//      and retries when APP_STATE_SYNC_KEY_SHARE arrives.
+		//   2. Anything else (auth-store I/O, malformed keyData) — must NOT be
+		//      silently swallowed as record corruption; the orchestrator's
+		//      MAX_SYNC_ATTEMPTS + reset-to-null path handles persistent failures.
 		const key = await getKey(keyIdBuf)
+
 		const content = Buffer.from(recordBlob)
 		const encContent = content.slice(0, -32)
 		const ogValueMac = content.slice(-32)
 		if (validateMacs) {
 			const contentHmac = generateMac(operation, encContent, keyIdBuf, key.valueMacKey)
 			if (Buffer.compare(contentHmac, ogValueMac) !== 0) {
-				throw new Boom('HMAC content verification failed')
+				// HMAC verification failed — skip this record instead of aborting
+				continue
 			}
 		}
 
-		const result = aesDecrypt(encContent, key.valueEncryptionKey)
+		let result: Buffer
+		try {
+			result = aesDecrypt(encContent, key.valueEncryptionKey)
+		} catch (err) {
+			// AES decrypt failed. Skipping is only safe when validateMacs is on:
+			// the outer LTHash MAC verify (decodeSyncdSnapshot / decodePatches)
+			// will then catch the aggregate divergence and trigger orchestrator
+			// recovery. With validateMacs=false (InfiniteAPI default), no outer
+			// verify runs — silently skipping would persist a divergent state
+			// that cannot be recovered, so rethrow.
+			if (!validateMacs) throw err
+			continue
+		}
+
 		const syncAction = proto.SyncActionData.decode(result)
 
 		const syncActionIndex = syncAction.index
@@ -532,6 +553,11 @@ export const decodeSyncdSnapshot = async (
 		}
 
 		if (Buffer.compare(snapshotMac, computedSnapshotMac) !== 0) {
+			// Throw so the resyncAppState orchestrator catches this, treats it as
+			// `isAppStateSyncIrrecoverable` (after MAX_SYNC_ATTEMPTS), and either
+			// forces a fresh snapshot retry or resets the persisted version to
+			// null. Returning partial state with a diverged hash would silently
+			// persist an unverifiable high-water mark and break subsequent patches.
 			throw new Boom(`failed to verify LTHash at ${newState.version} of ${name} from snapshot`)
 		}
 	}
@@ -578,6 +604,13 @@ export const decodePatches = async (
 		newState.version = patchVersion
 		const shouldMutate = typeof minimumVersionNumber === 'undefined' || patchVersion > minimumVersionNumber
 
+		// Let decodeSyncdPatch errors propagate. The outer resyncAppState
+		// orchestrator (Socket/chats.ts) catches them and routes to:
+		//   - isMissingKeyError → forceSnapshot retry (or Blocked after MAX attempts)
+		//   - isAppStateSyncIrrecoverable → reset version to null + give up
+		//   - else → forceSnapshot retry
+		// Soft-failing here would advance newState.version and persist a state
+		// the orchestrator never gets to retry from.
 		const decodeResult = await decodeSyncdPatch(
 			syncd,
 			name,
@@ -589,7 +622,7 @@ export const decodePatches = async (
 						mutationMap[index!] = mutation
 					}
 				: () => {},
-			true
+			validateMacs
 		)
 
 		newState.hash = decodeResult.hash
@@ -620,6 +653,9 @@ export const decodePatches = async (
 			}
 
 			if (Buffer.compare(snapshotMac, computedSnapshotMac) !== 0) {
+				// Same rationale as the snapshot MAC verify above — throw so the
+				// orchestrator triggers forceSnapshot retry instead of persisting
+				// a known-divergent hash.
 				throw new Boom(`failed to verify LTHash at ${newState.version} of ${name}`)
 			}
 		}
@@ -1083,6 +1119,7 @@ export const processSyncAction = (
 					action.lidContactAction.firstName ||
 					action.lidContactAction.username ||
 					undefined,
+				username: action.lidContactAction.username || undefined,
 				lid: id!,
 				phoneNumber: undefined
 			}

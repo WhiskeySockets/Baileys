@@ -6,7 +6,7 @@
  * - Configurable log levels (trace, debug, info, warn, error, fatal)
  * - JSON formatting for log analysis
  * - Hierarchical context with child loggers
- * - External system integration via hooks with circuit breaker
+ * - External system integration via hooks
  * - Logging metrics with Prometheus integration
  * - Sensitive data sanitization
  * - Log buffering for batch writes
@@ -73,10 +73,6 @@ export interface StructuredLoggerConfig {
 	maxLogsPerSecond?: number
 	/** Enable async logging queue (default: false) */
 	enableAsyncQueue?: boolean
-	/** Circuit breaker failure threshold for external hooks (default: 5) */
-	circuitBreakerThreshold?: number
-	/** Circuit breaker reset timeout in ms (default: 30000) */
-	circuitBreakerResetMs?: number
 	/** Enable Prometheus metrics integration (default: false) */
 	enableMetrics?: boolean
 }
@@ -155,8 +151,6 @@ export interface LoggerMetrics {
 	bufferFlushes: number
 	/** External hook failures */
 	hookFailures: number
-	/** Circuit breaker trips */
-	circuitBreakerTrips: number
 	/** Average log processing time in ms */
 	avgProcessingTimeMs: number
 }
@@ -169,8 +163,6 @@ export interface LoggerStatistics extends LoggerMetrics {
 	bufferSize: number
 	/** Rate limiter tokens available */
 	rateLimiterTokens: number
-	/** Circuit breaker state */
-	circuitBreakerState: 'closed' | 'open' | 'half-open'
 	/** Queue size (if async enabled) */
 	queueSize: number
 	/** Created timestamp */
@@ -243,69 +235,6 @@ class RateLimiter {
 }
 
 // ============================================================================
-// CIRCUIT BREAKER
-// ============================================================================
-
-/**
- * Circuit breaker for external hook protection
- */
-class CircuitBreaker {
-	private failures = 0
-	private lastFailure = 0
-	private state: 'closed' | 'open' | 'half-open' = 'closed'
-
-	constructor(
-		private readonly threshold: number,
-		private readonly resetTimeoutMs: number
-	) {}
-
-	async execute<T>(operation: () => Promise<T>): Promise<T | null> {
-		if (this.state === 'open') {
-			if (Date.now() - this.lastFailure > this.resetTimeoutMs) {
-				this.state = 'half-open'
-			} else {
-				return null // Circuit is open, skip
-			}
-		}
-
-		try {
-			const result = await operation()
-			this.onSuccess()
-			return result
-		} catch (error) {
-			this.onFailure()
-			throw error
-		}
-	}
-
-	private onSuccess(): void {
-		this.failures = 0
-		this.state = 'closed'
-	}
-
-	private onFailure(): void {
-		this.failures++
-		this.lastFailure = Date.now()
-		if (this.failures >= this.threshold) {
-			this.state = 'open'
-		}
-	}
-
-	getState(): 'closed' | 'open' | 'half-open' {
-		// Check if should transition from open to half-open
-		if (this.state === 'open' && Date.now() - this.lastFailure > this.resetTimeoutMs) {
-			this.state = 'half-open'
-		}
-
-		return this.state
-	}
-
-	getFailures(): number {
-		return this.failures
-	}
-}
-
-// ============================================================================
 // ASYNC LOG QUEUE
 // ============================================================================
 
@@ -368,7 +297,7 @@ class AsyncLogQueue {
  * - Log buffering for batch writes
  * - Rate limiting to prevent flooding
  * - Async logging queue
- * - Circuit breaker for external hooks
+ * - External hooks for integrations
  * - Prometheus metrics integration
  *
  * @example
@@ -402,9 +331,6 @@ export class StructuredLogger implements ILogger {
 	// Rate limiter
 	private rateLimiter: RateLimiter | null = null
 
-	// Circuit breaker for external hook
-	private circuitBreaker: CircuitBreaker | null = null
-
 	// Async queue
 	private asyncQueue: AsyncLogQueue | null = null
 
@@ -435,8 +361,6 @@ export class StructuredLogger implements ILogger {
 			enableRateLimiting: config.enableRateLimiting ?? envConfig.enableRateLimiting ?? false,
 			maxLogsPerSecond: config.maxLogsPerSecond ?? envConfig.maxLogsPerSecond ?? 1000,
 			enableAsyncQueue: config.enableAsyncQueue ?? envConfig.enableAsyncQueue ?? false,
-			circuitBreakerThreshold: config.circuitBreakerThreshold ?? 5,
-			circuitBreakerResetMs: config.circuitBreakerResetMs ?? 30000,
 			enableMetrics: config.enableMetrics ?? envConfig.enableMetrics ?? false
 		}
 
@@ -455,18 +379,12 @@ export class StructuredLogger implements ILogger {
 			droppedLogs: 0,
 			bufferFlushes: 0,
 			hookFailures: 0,
-			circuitBreakerTrips: 0,
 			avgProcessingTimeMs: 0
 		}
 
 		// Initialize rate limiter
 		if (this.config.enableRateLimiting) {
 			this.rateLimiter = new RateLimiter(this.config.maxLogsPerSecond)
-		}
-
-		// Initialize circuit breaker for external hook
-		if (this.config.externalHook) {
-			this.circuitBreaker = new CircuitBreaker(this.config.circuitBreakerThreshold, this.config.circuitBreakerResetMs)
 		}
 
 		// Initialize async queue
@@ -569,18 +487,13 @@ export class StructuredLogger implements ILogger {
 				this.output(entry)
 			}
 
-			// External hook with circuit breaker
+			// External hook (fire-and-forget; failures don't impact log flow)
 			const externalHook = this.config.externalHook
-			if (externalHook && this.circuitBreaker) {
-				this.circuitBreaker
-					.execute(async () => {
-						await Promise.resolve(externalHook(entry))
-					})
+			if (externalHook) {
+				Promise.resolve()
+					.then(() => externalHook(entry))
 					.catch(() => {
 						this.metrics.hookFailures++
-						if (this.circuitBreaker?.getState() === 'open') {
-							this.metrics.circuitBreakerTrips++
-						}
 					})
 			}
 
@@ -834,7 +747,6 @@ export class StructuredLogger implements ILogger {
 			...this.metrics,
 			bufferSize: this.buffer.length,
 			rateLimiterTokens: this.rateLimiter?.getTokens() ?? 0,
-			circuitBreakerState: this.circuitBreaker?.getState() ?? 'closed',
 			queueSize: this.asyncQueue?.getSize() ?? 0,
 			createdAt: this.createdAt,
 			uptimeMs: Date.now() - this.createdAt
@@ -860,7 +772,6 @@ export class StructuredLogger implements ILogger {
 			droppedLogs: 0,
 			bufferFlushes: 0,
 			hookFailures: 0,
-			circuitBreakerTrips: 0,
 			avgProcessingTimeMs: 0
 		}
 		this.totalProcessingTime = 0
@@ -893,7 +804,6 @@ export class StructuredLogger implements ILogger {
 
 		// Clear references
 		this.rateLimiter = null
-		this.circuitBreaker = null
 		this.metricsModule = null
 	}
 }

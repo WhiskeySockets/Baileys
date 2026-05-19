@@ -17,6 +17,7 @@ export * from './event-buffer'
 export * from './process-message'
 export * from './message-retry-manager'
 export * from './browser-utils'
+export * from './companion-reg-client-utils'
 
 // === Identity and Session Management ===
 export * from './identity-change-handler'
@@ -34,7 +35,6 @@ export * from './prometheus-metrics'
 
 // Resilience and performance
 export * from './cache-utils'
-export * from './circuit-breaker'
 export * from './retry-utils'
 
 // Telemetry and detection mitigation

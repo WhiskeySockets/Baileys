@@ -314,6 +314,7 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 				contacts.push({
 					id: chatId,
 					name: chat.displayName || chat.name || chat.username || undefined,
+					username: chat.username || undefined,
 					lid: chat.lidJid || chat.accountLid || undefined,
 					phoneNumber: chat.pnJid || undefined
 				})
@@ -379,6 +380,7 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 		contacts,
 		messages,
 		lidPnMappings,
+		pastParticipants: item.pastParticipants,
 		syncType: item.syncType,
 		progress: item.progress
 	}

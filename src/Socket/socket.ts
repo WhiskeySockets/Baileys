@@ -22,6 +22,7 @@ import {
 	addTransactionCapability,
 	aesEncryptCTR,
 	bindWaitForConnectionUpdate,
+	buildPairingQRData,
 	bytesToCrockford,
 	configureSuccessfulPairing,
 	Curve,
@@ -39,12 +40,6 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { getPlatformId, isAndroidBrowser } from '../Utils/browser-utils'
-import {
-	CircuitBreaker,
-	CircuitOpenError,
-	createConnectionCircuitBreaker,
-	createPreKeyCircuitBreaker
-} from '../Utils/circuit-breaker'
 import {
 	decrementActiveConnections,
 	incrementActiveConnections,
@@ -94,10 +89,6 @@ export const makeSocket = (config: SocketConfig) => {
 		transactionOpts,
 		qrTimeout,
 		makeSignalRepository,
-		enableCircuitBreaker = true,
-		queryCircuitBreaker: queryCircuitBreakerConfig,
-		connectionCircuitBreaker: connectionCircuitBreakerConfig,
-		preKeyCircuitBreaker: preKeyCircuitBreakerConfig,
 		// If enableUnifiedSession is explicitly set (true/false), use it
 		// Otherwise (undefined), check env var, then default to true
 		enableUnifiedSession: enableUnifiedSessionConfig
@@ -106,68 +97,6 @@ export const makeSocket = (config: SocketConfig) => {
 	// Resolve enableUnifiedSession: explicit config > env var > default (true)
 	const enableUnifiedSession =
 		enableUnifiedSessionConfig !== undefined ? enableUnifiedSessionConfig : shouldEnableUnifiedSession()
-
-	// Initialize circuit breakers if enabled.
-	//
-	// Env var override: BAILEYS_DISABLE_CIRCUIT_BREAKER=true completely disables
-	// all three circuit breakers without requiring a code change. Useful when the
-	// query CB is opening on slow `init queries` after a fresh QR pairing — those
-	// initial USync / device-list / app-state queries can legitimately take longer
-	// than the per-call timeout when the auth state is fresh and the server has
-	// no warm caches for this client.
-	const envDisableCB = process.env.BAILEYS_DISABLE_CIRCUIT_BREAKER === 'true'
-	let queryCircuitBreaker: CircuitBreaker | undefined
-	let connectionCircuitBreaker: CircuitBreaker | undefined
-	let preKeyCircuitBreaker: CircuitBreaker | undefined
-
-	if (enableCircuitBreaker && !envDisableCB) {
-		// Circuit breaker for query operations (most critical).
-		// timeout=120s gives `init queries` (USync, device-list, app-state-sync)
-		// enough room on fresh QR pairings; the per-query timeout in waitForMessage
-		// already enforces a tighter bound for individual operations.
-		queryCircuitBreaker = createConnectionCircuitBreaker({
-			name: 'socket-query',
-			failureThreshold: 5,
-			failureWindow: 60000,
-			resetTimeout: 30000,
-			successThreshold: 2,
-			timeout: Math.max(defaultQueryTimeoutMs || 0, 120_000),
-			onStateChange: (from, to) => {
-				logger.info({ from, to }, 'Query circuit breaker state changed')
-			},
-			onOpen: () => {
-				logger.warn('Query circuit breaker OPENED - blocking requests')
-			},
-			onClose: () => {
-				logger.info('Query circuit breaker CLOSED - resuming normal operation')
-			},
-			...queryCircuitBreakerConfig
-		})
-
-		// Circuit breaker for connection operations
-		connectionCircuitBreaker = createConnectionCircuitBreaker({
-			name: 'socket-connection',
-			failureThreshold: 3,
-			failureWindow: 30000,
-			resetTimeout: 60000,
-			successThreshold: 1,
-			onStateChange: (from, to) => {
-				logger.info({ from, to }, 'Connection circuit breaker state changed')
-			},
-			...connectionCircuitBreakerConfig
-		})
-
-		// Circuit breaker for pre-key operations
-		preKeyCircuitBreaker = createPreKeyCircuitBreaker({
-			name: 'socket-prekey',
-			onStateChange: (from, to) => {
-				logger.info({ from, to }, 'PreKey circuit breaker state changed')
-			},
-			...preKeyCircuitBreakerConfig
-		})
-
-		logger.info('Circuit breakers initialized for socket operations')
-	}
 
 	// Unified Session Manager will be initialized after sendNode is defined
 	let unifiedSessionManager: UnifiedSessionManager | undefined
@@ -232,8 +161,8 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.connect()
 
 	const sendPromise = promisify(ws.send)
-	/** send a raw buffer (internal implementation) */
-	const sendRawMessageInternal = async (data: Uint8Array | Buffer) => {
+	/** send a raw buffer */
+	const sendRawMessage = async (data: Uint8Array | Buffer) => {
 		if (!ws.isOpen) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
@@ -249,23 +178,6 @@ export const makeSocket = (config: SocketConfig) => {
 		})
 	}
 
-	/** send a raw buffer with circuit breaker protection */
-	const sendRawMessage = async (data: Uint8Array | Buffer) => {
-		if (connectionCircuitBreaker) {
-			try {
-				return await connectionCircuitBreaker.execute(() => sendRawMessageInternal(data))
-			} catch (error) {
-				if (error instanceof CircuitOpenError) {
-					logger.warn({ circuitName: error.circuitName }, 'Send blocked by connection circuit breaker')
-				}
-
-				throw error
-			}
-		}
-
-		return sendRawMessageInternal(data)
-	}
-
 	/** send a binary node */
 	const sendNode = (frame: BinaryNode) => {
 		if (logger.level === 'trace') {
@@ -277,17 +189,11 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	// Initialize Unified Session Manager now that sendNode is defined
-	// (single initialization to avoid duplicating circuit breakers and state)
 	if (enableUnifiedSession) {
-		const sendNodeForSession = async (node: BinaryNode): Promise<void> => {
-			await sendNode(node)
-		}
-
 		unifiedSessionManager = createUnifiedSessionManager({
 			enabled: true,
 			logger,
-			enableCircuitBreaker,
-			sendNode: sendNodeForSession
+			sendNode
 		})
 		logger.info('Unified session manager initialized')
 	}
@@ -347,7 +253,7 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** send a query, and wait for its response. auto-generates message ID if not provided */
-	const queryInternal = async (node: BinaryNode, timeoutMs?: number) => {
+	const query = async (node: BinaryNode, timeoutMs?: number) => {
 		if (!node.attrs.id) {
 			node.attrs.id = generateMessageTag()
 		}
@@ -355,13 +261,8 @@ export const makeSocket = (config: SocketConfig) => {
 		const msgId = node.attrs.id
 
 		// Register the response listener BEFORE sending — avoids a race where the server
-		// responds before we start listening.  waitForMessage already handles its own
-		// timeout (returns undefined) and connection-close errors (throws), so we do NOT
-		// wrap it in a second promiseTimeout.  The outer wrapper caused a race condition
-		// where both timers fired at ~the same deadline: the outer one threw
-		// Boom('Timed Out') while sendNode was still pending, producing a spurious error
-		// whose message contained "socket-query" → matched the circuit-breaker's
-		// "socket" pattern → incorrectly tripped the breaker after 5 timeouts.
+		// responds before we start listening. waitForMessage already handles its own
+		// timeout (returns undefined) and connection-close errors (throws).
 		const responsePromise = waitForMessage<any>(msgId, timeoutMs)
 		// Prevent unhandled-rejection if sendNode throws before we reach
 		// `await responsePromise` below. The error from sendNode still propagates
@@ -381,26 +282,6 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		return result
-	}
-
-	/** send a query with circuit breaker protection */
-	const query = async (node: BinaryNode, timeoutMs?: number) => {
-		// If circuit breaker is enabled, wrap the query
-		if (queryCircuitBreaker) {
-			try {
-				return await queryCircuitBreaker.execute(() => queryInternal(node, timeoutMs))
-			} catch (error) {
-				// If circuit is open, log and rethrow with context
-				if (error instanceof CircuitOpenError) {
-					logger.warn({ circuitName: error.circuitName, state: error.state }, 'Query blocked by circuit breaker')
-				}
-
-				throw error
-			}
-		}
-
-		// Fallback to direct query if circuit breaker is disabled
-		return queryInternal(node, timeoutMs)
 	}
 
 	// Validate current key-bundle on server; on failure, trigger pre-key upload and rethrow
@@ -697,12 +578,6 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/** generates and uploads a set of pre-keys to the server */
 	const uploadPreKeys = async (count = MIN_PREKEY_COUNT, retryCount = 0) => {
-		// Check if pre-key circuit breaker is open
-		if (preKeyCircuitBreaker?.isOpen()) {
-			logger.warn('PreKey circuit breaker is open, skipping upload')
-			throw new CircuitOpenError('socket-prekey', 'open')
-		}
-
 		// Check minimum interval (except for retries)
 		if (retryCount === 0) {
 			const timeSinceLastUpload = Date.now() - lastUploadTime
@@ -730,27 +605,12 @@ export const makeSocket = (config: SocketConfig) => {
 				return node // Only return node since update is already used
 			}, creds?.me?.id || 'upload-pre-keys')
 
-			// Upload to server with circuit breaker protection
-			const uploadToServer = async () => {
+			try {
 				await query(node)
 				logger.info({ count }, 'uploaded pre-keys successfully')
 				lastUploadTime = Date.now()
-			}
-
-			try {
-				// Use circuit breaker if available
-				if (preKeyCircuitBreaker) {
-					await preKeyCircuitBreaker.execute(uploadToServer)
-				} else {
-					await uploadToServer()
-				}
 			} catch (uploadError) {
 				logger.error({ uploadError: (uploadError as Error).toString(), count }, 'Failed to upload pre-keys to server')
-
-				// Don't retry if circuit breaker is open
-				if (uploadError instanceof CircuitOpenError) {
-					throw uploadError
-				}
 
 				// Exponential backoff retry (max 3 retries)
 				if (retryCount < 3) {
@@ -1239,12 +1099,6 @@ export const makeSocket = (config: SocketConfig) => {
 		cleanupPreKeyAutoSync()
 		cleanupSessionTTL()
 
-		// CRITICAL: Destroy circuit breakers AFTER cleanup functions complete
-		// This ensures cleanup functions can still use circuit breakers if needed
-		queryCircuitBreaker?.destroy()
-		connectionCircuitBreaker?.destroy()
-		preKeyCircuitBreaker?.destroy()
-
 		// IMPORTANT: Do NOT use removeAllListeners('connection.update')
 		// It would remove consumer listeners, breaking their reconnection logic
 	}
@@ -1287,12 +1141,8 @@ export const makeSocket = (config: SocketConfig) => {
 			if (diff > keepAliveIntervalMs + 5000) {
 				void end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if (ws.isOpen) {
-				// Send keep-alive ping via sendNode() (fire-and-forget) instead of query().
-				// query() wraps the ping in the query circuit breaker — when that breaker is
-				// open or timing out, the ping is never sent, WA never responds, lastDateRecv
-				// goes stale, and the diff check above wrongly fires "Connection was lost".
-				// sendNode() bypasses the query circuit breaker entirely; WA's ping response
-				// still arrives as an incoming frame and updates lastDateRecv normally.
+				// Send keep-alive ping via sendNode() (fire-and-forget) instead of query();
+				// WA's ping response arrives as an incoming frame and updates lastDateRecv.
 				sendNode({
 					tag: 'iq',
 					attrs: {
@@ -1509,7 +1359,7 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 
 			const ref = (refNode.content as Buffer).toString('utf-8')
-			const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
+			const qr = buildPairingQRData(ref, noiseKeyB64, identityKeyB64, advB64, browser)
 
 			ev.emit('connection.update', { qr })
 
@@ -1800,25 +1650,6 @@ export const makeSocket = (config: SocketConfig) => {
 		sendWAMBuffer,
 		executeUSyncQuery,
 		onWhatsApp,
-		// Circuit breaker utilities
-		circuitBreakers: {
-			query: queryCircuitBreaker,
-			connection: connectionCircuitBreaker,
-			preKey: preKeyCircuitBreaker
-		},
-		/** Get circuit breaker statistics */
-		getCircuitBreakerStats: () => ({
-			query: queryCircuitBreaker?.getStats(),
-			connection: connectionCircuitBreaker?.getStats(),
-			preKey: preKeyCircuitBreaker?.getStats()
-		}),
-		/** Reset all circuit breakers to closed state */
-		resetCircuitBreakers: () => {
-			queryCircuitBreaker?.reset()
-			connectionCircuitBreaker?.reset()
-			preKeyCircuitBreaker?.reset()
-			logger.info('All circuit breakers reset to closed state')
-		},
 		// Unified Session Telemetry
 		/** Send unified_session telemetry manually */
 		sendUnifiedSession,
