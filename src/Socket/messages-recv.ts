@@ -564,8 +564,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const sendMessageAck = async (node: BinaryNode, errorCode?: number): Promise<void> => {
+	const sendMessageAck = async (node: BinaryNode, errorCode?: number) => {
 		const stanza = buildAckStanza(node, errorCode, authState.creds.me!.id)
+		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
 
