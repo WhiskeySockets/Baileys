@@ -56,7 +56,7 @@ jobs:
         working-directory: packages/baileys
         run: |
           npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
-          npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
+          npm publish --access public --provenance --tag latest
           npx json -I -f package.json -e "this.name='baileys'"
 
       - name: Generate Changelog

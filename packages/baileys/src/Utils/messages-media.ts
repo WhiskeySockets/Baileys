@@ -777,9 +777,11 @@ const uploadWithFetch = async ({
 	// Convert Node.js Readable to Web ReadableStream
 	const nodeStream = createReadStream(filePath)
 	const webStream = Readable.toWeb(nodeStream) as ReadableStream
+	// Native fetch only accepts Undici-style dispatchers, not generic https Agents.
+	const dispatcher = typeof (agent as { dispatch?: unknown } | undefined)?.dispatch === 'function' ? agent : undefined
 
 	const response = await fetch(url, {
-		dispatcher: agent,
+		...(dispatcher ? { dispatcher } : {}),
 		method: 'POST',
 		body: webStream,
 		headers,
