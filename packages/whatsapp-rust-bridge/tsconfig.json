@@ -12,7 +12,15 @@
     "rootDir": "./ts",
     /* These two options are crucial for the postbuild step */
     "declaration": true,
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    /* Parity tests import from `baileys/lib/*`, which only exists after baileys is built.
+       Redirect to baileys/src directly so bun (and tsc) can run tests against any baileys
+       checkout — including older versions — without a prior build step. */
+    "baseUrl": ".",
+    "paths": {
+      "baileys": ["../baileys/src/index.ts"],
+      "baileys/lib/*": ["../baileys/src/*"]
+    }
   },
   "include": ["ts/**/*.ts"],
   "exclude": ["ts/macro.ts"]
