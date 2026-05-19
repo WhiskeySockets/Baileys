@@ -52,10 +52,13 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-      - name: Install binaryen (wasm-opt)
+      - name: Install Binaryen (wasm-opt)
+        # Ubuntu repo Binaryen is too old for `--gufa-optimizing` and similar flags
+        # used by scripts/build-wasm.mjs. Pin to a known-good upstream release.
         run: |
-          sudo apt-get update
-          sudo apt-get install -y binaryen
+          BINARYEN_VERSION=129
+          curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz" | tar -xz -C /tmp
+          echo "/tmp/binaryen-version_${BINARYEN_VERSION}/bin" >> "$GITHUB_PATH"
 
       - name: Cache cargo registry + target
         uses: actions/cache@v4
