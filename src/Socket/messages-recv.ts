@@ -564,16 +564,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const sendMessageAck = (node: BinaryNode, errorCode?: number) => {
+	const sendMessageAck = (node: BinaryNode, errorCode?: number): Promise<void> => {
 		if (!ws.isOpen) {
 			logger.debug({ recv: node.attrs }, 'dropping ack because socket closed')
-			return
+			return Promise.resolve()
 		}
 
 		const stanza = buildAckStanza(node, errorCode, authState.creds.me!.id)
 
-		void sendNode(stanza).catch(err => {
-			if (isConnectionClosedError(err)) {
+		return sendNode(stanza).catch(err => {
+			if (!ws.isOpen || isConnectionClosedError(err)) {
 				logger.debug({ recv: node.attrs, ack: stanza.attrs }, 'dropping ack because socket closed')
 				return
 			}
@@ -1578,7 +1578,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			sendMessageAck(node)
+			void sendMessageAck(node)
 		}
 	}
 
@@ -1611,7 +1611,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			sendMessageAck(node)
+			void sendMessageAck(node)
 		}
 	}
 
@@ -1620,7 +1620,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 		if (encNode?.attrs.type === 'msmsg') {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
-			sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
+			void sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
 			return
 		}
 
@@ -1661,7 +1661,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 						acked = true
-						return sendMessageAck(node, NACK_REASONS.ParsingError)
+						void sendMessageAck(node, NACK_REASONS.ParsingError)
+						return
 					}
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
@@ -1679,14 +1680,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								'skipping placeholder resend for excluded unavailable type'
 							)
 							acked = true
-							return sendMessageAck(node)
+							void sendMessageAck(node)
+							return
 						}
 
 						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
 						if (messageAge > PLACEHOLDER_MAX_AGE_SECONDS) {
 							logger.debug({ msgId: msg.key.id, messageAge }, 'skipping placeholder resend for old message')
 							acked = true
-							return sendMessageAck(node)
+							void sendMessageAck(node)
+							return
 						}
 
 						// Request the real content from the phone via placeholder resend PDO.
@@ -1724,7 +1727,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
 							})
 						acked = true
-						sendMessageAck(node)
+						void sendMessageAck(node)
 						// Don't return — fall through to upsertMessage so the stub is emitted
 					} else {
 						// Skip retry for expired status messages (>24h old)
@@ -1736,7 +1739,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									'skipping retry for expired status message'
 								)
 								acked = true
-								return sendMessageAck(node)
+								void sendMessageAck(node)
+								return
 							}
 						}
 
@@ -1760,7 +1764,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							}
 
 							acked = true
-							sendMessageAck(node, NACK_REASONS.UnhandledError)
+							void sendMessageAck(node, NACK_REASONS.UnhandledError)
 						})
 					}
 				} else {
@@ -1798,7 +1802,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 					} else {
 						acked = true
-						sendMessageAck(node)
+						void sendMessageAck(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
 				}
@@ -1810,7 +1814,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
 			if (!acked) {
-				sendMessageAck(node, NACK_REASONS.UnhandledError)
+				void sendMessageAck(node, NACK_REASONS.UnhandledError)
 			}
 		}
 	}
@@ -1872,7 +1876,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling call')
 		} finally {
-			sendMessageAck(node)
+			void sendMessageAck(node)
 		}
 	}
 
@@ -2013,7 +2017,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (ignoreJid && ignoreJid !== S_WHATSAPP_NET && shouldIgnoreJid(ignoreJid)) {
-			sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
+			void sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
 			return
 		}
 
