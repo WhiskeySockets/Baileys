@@ -22,7 +22,7 @@ import type {
 	WAMessageKey,
 	WAPatchName
 } from '../Types'
-import { DisconnectReason, ReachoutTimelockEnforcementType, WAMessageStatus, WAMessageStubType } from '../Types'
+import { ReachoutTimelockEnforcementType, WAMessageStatus, WAMessageStubType } from '../Types'
 import {
 	ACCOUNT_RESTRICTED_TEXT,
 	aesDecryptCTR,
@@ -44,6 +44,7 @@ import {
 	getStatusFromReceiptType,
 	handleIdentityChange,
 	hkdf,
+	isConnectionClosedError,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
@@ -101,31 +102,10 @@ type ReachoutTimelockNotificationPayload = {
 	time_enforcement_ends?: string
 }
 
-type SocketWriteError = {
-	code?: unknown
-	output?: {
-		statusCode?: unknown
-	}
-}
-
 const ENFORCEMENT_TYPE_VALUES = new Set<string>(Object.values(ReachoutTimelockEnforcementType))
 
 function isValidEnforcementType(value: string | undefined): value is ReachoutTimelockEnforcementType {
 	return typeof value === 'string' && ENFORCEMENT_TYPE_VALUES.has(value)
-}
-
-function isConnectionClosedError(error: unknown) {
-	if (!error || typeof error !== 'object') {
-		return false
-	}
-
-	const err = error as SocketWriteError
-	return (
-		err.output?.statusCode === DisconnectReason.connectionClosed ||
-		err.code === 'ECONNRESET' ||
-		err.code === 'EPIPE' ||
-		err.code === 'ECONNABORTED'
-	)
 }
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {

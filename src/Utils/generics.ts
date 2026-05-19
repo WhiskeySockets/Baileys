@@ -231,6 +231,26 @@ export function bindWaitForEvent<T extends keyof BaileysEventMap>(ev: BaileysEve
 
 export const bindWaitForConnectionUpdate = (ev: BaileysEventEmitter) => bindWaitForEvent(ev, 'connection.update')
 
+export function isConnectionClosedError(error: unknown) {
+	if (!error || typeof error !== 'object') {
+		return false
+	}
+
+	const err = error as {
+		code?: unknown
+		output?: {
+			statusCode?: unknown
+		}
+	}
+
+	return (
+		err.output?.statusCode === DisconnectReason.connectionClosed ||
+		err.code === 'ECONNRESET' ||
+		err.code === 'EPIPE' ||
+		err.code === 'ECONNABORTED'
+	)
+}
+
 /**
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
