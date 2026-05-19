@@ -42,6 +42,7 @@ import {
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
 	extractAddressingContext,
+	extractE2ESessionFromRetryReceipt,
 	getCallStatusFromNode,
 	getDecryptionJid,
 	getHistoryMsg,
@@ -80,6 +81,7 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
+	getBinaryNodeChildUInt,
 	isJidGroup,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -2048,11 +2050,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
-	const sendMessagesAgain = async (key: WAMessageKey, ids: string[], retryNode: BinaryNode) => {
+	const sendMessagesAgain = async (
+		key: WAMessageKey,
+		ids: string[],
+		retryNode: BinaryNode,
+		receiptNode: BinaryNode
+	) => {
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 
 		const retryCount = +retryNode.attrs.count! || 1
+		const msgId = ids[0]
+		const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
+
+		// Helper: delete the session at BOTH the PN- and LID-addressed keys.
+		// InfiniteAPI's signal storage (`signalStorage.loadSession`) canonicalizes
+		// a PN signal-address to its LID counterpart when a `lidMapping` entry
+		// exists — so the session that `getSessionInfo()` reads can live under
+		// the LID key while `sessionId` is computed from the PN participant.
+		// Clearing only `sessionId` would leave the canonical session intact.
+		// Always clear both, wrap in the same transaction (meId) used elsewhere
+		// to keep ordering vs sendMessage's session ops (race-prevention from a3dd21c9).
+		const deleteCanonicalSession = async () => {
+			const updates: { [key: string]: null } = { [sessionId]: null }
+			if (!isLidUser(participant)) {
+				const lid = await signalRepository.lidMapping.getLIDForPN(participant)
+				if (lid) {
+					updates[signalRepository.jidToSignalProtocolAddress(lid)] = null
+				}
+			}
+
+			await authState.keys.transaction(async () => {
+				await authState.keys.set({ session: updates })
+			}, authState.creds.me?.id || 'session-operation')
+		}
 
 		// Try to get messages from cache first, then fallback to getMessage
 		const msgs: (proto.IMessage | undefined)[] = []
@@ -2091,14 +2122,88 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// prevents the first message decryption failure
 		const sendToAll = !jidDecode(participant)?.device
 
-		// Check if we should recreate session for this retry
+		// --- 1b168592: process <keys> bundle from retry receipt (when present) ---
+		// WA may attach a fresh prekey bundle so the resend lands on a usable session
+		// without an extra IQ round-trip. If injection succeeds we SKIP the
+		// session-recreation + assertSessions path below — the bundle already supplies
+		// a valid outgoing session.
+		let injectedFromBundle = false
+		const bundle = extractE2ESessionFromRetryReceipt(receiptNode)
+		if (bundle) {
+			try {
+				// Pass the CANONICAL JID (LID when PN has a mapping) so the SessionBuilder
+				// transaction locks on the same key that `encryptMessage` uses. Without this,
+				// a concurrent retry-inject and send/encrypt for the same logical peer would
+				// hold different `parsedKeys.transaction` mutex keys (`PN` vs the resolved
+				// LID), letting them mutate the same canonical session record concurrently.
+				const lid = !isLidUser(participant)
+					? await signalRepository.lidMapping.getLIDForPN(participant)
+					: null
+				const canonicalJid = lid || participant
+				await signalRepository.injectE2ESession({ jid: canonicalJid, session: bundle })
+				injectedFromBundle = true
+				logger.debug(
+					{ participant, canonicalJid, retryCount },
+					'injected session from retry receipt key bundle'
+				)
+			} catch (error) {
+				logger.warn({ error, participant }, 'failed to inject session from retry receipt')
+			}
+		}
+
+		if (!injectedFromBundle) {
+			// No usable bundle — if the receipt's registration id no longer matches our
+			// stored session's, the peer rotated their identity. Delete the stale session
+			// so the next encryptMessage forces a fresh pkmsg. Use deleteCanonicalSession
+			// so both PN and LID-keyed copies are cleared (signal storage resolves PN→LID).
+			// Validate `<registration>` is exactly 4 bytes (same strictness as the bundle
+			// parser) before trusting the decoded uint — overlong buffers would otherwise
+			// silently pass the first-4-bytes decode.
+			const regBuf = getBinaryNodeChildBuffer(receiptNode, 'registration')
+			const receivedRegId =
+				regBuf && regBuf.length === 4 ? getBinaryNodeChildUInt(receiptNode, 'registration', 4) : undefined
+			if (typeof receivedRegId === 'number' && Number.isInteger(receivedRegId)) {
+				const info = await signalRepository.getSessionInfo(participant)
+				if (info && info.registrationId !== 0 && info.registrationId !== receivedRegId) {
+					logger.info(
+						{ participant, stored: info.registrationId, received: receivedRegId },
+						'reg id mismatch on retry without bundle, deleting session'
+					)
+					await deleteCanonicalSession()
+				}
+			}
+		}
+
+		// Base-key collision detection (WA Web RetryMsgJob):
+		// retry==2 records the open-session base key for this (sessionId, msgId).
+		// retry>2 with the same base key still in place means neither side rotated
+		// — force a fresh session before resending so the peer can decrypt.
+		const BASE_KEY_CHECK_RETRY = 2
+		if (msgId && messageRetryManager) {
+			const info = await signalRepository.getSessionInfo(participant)
+			if (info) {
+				if (retryCount === BASE_KEY_CHECK_RETRY) {
+					messageRetryManager.saveBaseKey(sessionId, msgId, info.baseKey)
+				} else if (retryCount > BASE_KEY_CHECK_RETRY) {
+					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
+						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
+						await deleteCanonicalSession()
+					}
+
+					messageRetryManager.deleteBaseKey(sessionId, msgId)
+				}
+			}
+		}
+
+		// --- InfiniteAPI session-recreation + MAC-error detection ---
+		// Only runs when we did NOT inject a fresh session from the bundle.
+		// Preserves the parseRetryErrorCode / shouldRecreateSession heuristics
+		// added by 52aa6402 (WABA Android alignment) and a3dd21c9 (Bad MAC loop break).
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager && retryCount >= 1) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount >= 1 && !injectedFromBundle) {
 			try {
-				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
-
 				const hasSession = await signalRepository.validateSession(participant)
 
 				// Extract error code from retry node if present (for MAC error detection)
@@ -2114,24 +2219,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{ participant, retryCount, reason: recreateReason, errorCode },
 						'recreating session for outgoing retry'
 					)
-					// CRITICAL: Use same transaction key as encrypt/decrypt operations to prevent race
-					// Using meId ensures this delete serializes with sendMessage() and other session operations
-					await authState.keys.transaction(async () => {
-						await authState.keys.set({ session: { [sessionId]: null } })
-					}, authState.creds.me?.id || 'session-operation')
+					// Use deleteCanonicalSession so the LID-keyed copy is also cleared
+					// (signalStorage.loadSession resolves PN→LID — see helper above).
+					// The race-prevention via me?.id transaction key is preserved inside
+					// the helper, matching the original a3dd21c9 / 52aa6402 contract.
+					await deleteCanonicalSession()
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
 			}
 		}
 
-		await assertSessions([participant], true)
+		if (!injectedFromBundle) {
+			await assertSessions([participant], true)
+		}
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
-		logger.debug({ participant, sendToAll, shouldRecreateSession, recreateReason }, 'forced new session for retry recp')
+		logger.debug(
+			{ participant, sendToAll, shouldRecreateSession, recreateReason, injectedFromBundle },
+			'prepared session for retry resend'
+		)
 
 		for (const [i, msg] of msgs.entries()) {
 			if (!ids[i]) continue
@@ -2240,7 +2350,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								try {
 									await updateSendMessageAgainCount(ids[0], key.participant)
 									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!)
+									await sendMessagesAgain(key, ids, retryNode!, node)
 								} catch (error: unknown) {
 									logger.error(
 										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },

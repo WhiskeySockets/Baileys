@@ -29,6 +29,11 @@ type EncryptGroupMessageOpts = {
 	meId: string
 }
 
+type GetSenderKeyDistributionMessageOpts = {
+	group: string
+	meId: string
+}
+
 type PreKey = {
 	keyId: number
 	publicKey: Uint8Array
@@ -42,7 +47,8 @@ type E2ESession = {
 	registrationId: number
 	identityKey: Uint8Array
 	signedPreKey: SignedPreKey
-	preKey: PreKey
+	/** Optional — retry-receipt bundles may omit the one-time pre-key. */
+	preKey?: PreKey
 }
 
 type E2ESessionOpts = {
@@ -62,6 +68,12 @@ export type SignalRepository = {
 		senderKeyDistributionMessage: Uint8Array
 		ciphertext: Uint8Array
 	}>
+	/** Build a SenderKeyDistributionMessage for an existing/new sender key (no encryption). */
+	getSenderKeyDistributionMessage(opts: GetSenderKeyDistributionMessageOpts): Promise<Uint8Array>
+	/** Check whether a sender key already exists for `(group, meId)`. */
+	hasSenderKey(opts: GetSenderKeyDistributionMessageOpts): Promise<boolean>
+	/** Read the base key + registration id from the open session (for retry collision detection). */
+	getSessionInfo(jid: string): Promise<{ baseKey: Uint8Array; registrationId: number } | null>
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>
 	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
 	jidToSignalProtocolAddress(jid: string): string
