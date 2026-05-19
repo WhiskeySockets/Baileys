@@ -330,7 +330,7 @@ const processMessage = async (
 
 	const protocolMsg = content?.protocolMessage
 	if (protocolMsg) {
-		if (!message.key.fromMe) return; // drop fake protocolMessages
+		if (!message.key.fromMe) return // drop fake protocolMessages
 		switch (protocolMsg.type) {
 			case proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION:
 				const histNotification = protocolMsg.historySyncNotification!
