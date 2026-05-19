@@ -1118,7 +1118,10 @@ export namespace proto {
             JSON_PATCH_STREAMING = 58,
             AI_TAB_FORCE_CLIPPY = 59,
             UNIFIED_RESPONSE_EMBEDDED_SCREENS = 60,
-            AI_SUBSCRIPTION_ENABLED = 61
+            AI_SUBSCRIPTION_ENABLED = 61,
+            UNIFIED_RESPONSE_AI_CONTENT_SEARCH_ENABLED = 62,
+            UNIFIED_RESPONSE_MARKDOWN_LINKS_ENABLED = 63,
+            AI_RICH_RESPONSE_MAPS_V2_ENABLED = 64
         }
     }
 
@@ -3640,7 +3643,9 @@ export namespace proto {
                 OFFERS = 7,
                 BESTSELLERS = 8,
                 MENU = 9,
-                ABOUT = 10
+                ABOUT = 10,
+                SHOP = 11,
+                ORDER = 12
             }
         }
 
@@ -4824,7 +4829,8 @@ export namespace proto {
             INJECTED = 1,
             INJECTED_PARTIAL = 2,
             INJECTION_FAILED = 3,
-            INJECTION_FAILED_NO_RETRY = 4
+            INJECTION_FAILED_NO_RETRY = 4,
+            DEDUPED = 5
         }
     }
 
@@ -5876,8 +5882,9 @@ export namespace proto {
         pollAddOptionMessage?: (proto.Message.IPollAddOptionMessage|null);
         eventInviteMessage?: (proto.Message.IEventInviteMessage|null);
         groupRootKeyShare?: (proto.IGroupRootKeyShare|null);
-        p2PPaymentReminderNotification?: (proto.Message.IP2PPaymentReminderNotification|null);
+        paymentReminderMessage?: (proto.Message.IPaymentReminderMessage|null);
         splitPaymentMessage?: (proto.Message.ISplitPaymentMessage|null);
+        newsletterAdminProfileStatusMessage?: (proto.Message.IFutureProofMessage|null);
     }
 
     class Message implements IMessage {
@@ -5985,8 +5992,9 @@ export namespace proto {
         public pollAddOptionMessage?: (proto.Message.IPollAddOptionMessage|null);
         public eventInviteMessage?: (proto.Message.IEventInviteMessage|null);
         public groupRootKeyShare?: (proto.IGroupRootKeyShare|null);
-        public p2PPaymentReminderNotification?: (proto.Message.IP2PPaymentReminderNotification|null);
+        public paymentReminderMessage?: (proto.Message.IPaymentReminderMessage|null);
         public splitPaymentMessage?: (proto.Message.ISplitPaymentMessage|null);
+        public newsletterAdminProfileStatusMessage?: (proto.Message.IFutureProofMessage|null);
         public static create(properties?: proto.IMessage): proto.Message;
         public static encode(m: proto.IMessage, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message;
@@ -6907,6 +6915,7 @@ export namespace proto {
             caption?: (string|null);
             isCanceled?: (boolean|null);
             endTime?: (number|Long|null);
+            callLink?: (string|null);
         }
 
         class EventInviteMessage implements IEventInviteMessage {
@@ -6919,6 +6928,7 @@ export namespace proto {
             public caption?: (string|null);
             public isCanceled?: (boolean|null);
             public endTime?: (number|Long|null);
+            public callLink?: (string|null);
             public static create(properties?: proto.Message.IEventInviteMessage): proto.Message.EventInviteMessage;
             public static encode(m: proto.Message.IEventInviteMessage, w?: $protobuf.Writer): $protobuf.Writer;
             public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.EventInviteMessage;
@@ -8439,62 +8449,6 @@ export namespace proto {
             }
         }
 
-        interface IP2PPaymentReminderNotification {
-            reminderId?: (string|null);
-            amount?: (proto.IMoney|null);
-            frequency?: (proto.Message.P2PPaymentReminderNotification.ReminderFrequency|null);
-            nextReminderTimestamp?: (number|Long|null);
-            expiryTimestamp?: (number|Long|null);
-            state?: (proto.Message.P2PPaymentReminderNotification.ReminderState|null);
-            description?: (string|null);
-            creatorJid?: (string|null);
-            receiverJid?: (string|null);
-            upiId?: (string|null);
-            createdTimestamp?: (number|Long|null);
-        }
-
-        class P2PPaymentReminderNotification implements IP2PPaymentReminderNotification {
-            constructor(p?: proto.Message.IP2PPaymentReminderNotification);
-            public reminderId?: (string|null);
-            public amount?: (proto.IMoney|null);
-            public frequency?: (proto.Message.P2PPaymentReminderNotification.ReminderFrequency|null);
-            public nextReminderTimestamp?: (number|Long|null);
-            public expiryTimestamp?: (number|Long|null);
-            public state?: (proto.Message.P2PPaymentReminderNotification.ReminderState|null);
-            public description?: (string|null);
-            public creatorJid?: (string|null);
-            public receiverJid?: (string|null);
-            public upiId?: (string|null);
-            public createdTimestamp?: (number|Long|null);
-            public static create(properties?: proto.Message.IP2PPaymentReminderNotification): proto.Message.P2PPaymentReminderNotification;
-            public static encode(m: proto.Message.IP2PPaymentReminderNotification, w?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.P2PPaymentReminderNotification;
-            public static fromObject(d: { [k: string]: any }): proto.Message.P2PPaymentReminderNotification;
-            public static toObject(m: proto.Message.P2PPaymentReminderNotification, o?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
-            public static getTypeUrl(typeUrlPrefix?: string): string;
-        }
-
-        namespace P2PPaymentReminderNotification {
-
-            enum ReminderFrequency {
-                UNKNOWN_FREQUENCY = 0,
-                WEEKLY = 1,
-                BIWEEKLY = 2,
-                MONTHLY = 3,
-                CUSTOM = 4
-            }
-
-            enum ReminderState {
-                UNKNOWN_STATE = 0,
-                ACTIVE = 1,
-                PAUSED = 2,
-                STOPPED = 3,
-                EXPIRED = 4,
-                CANCELLED = 5
-            }
-        }
-
         interface IPaymentExtendedMetadata {
             type?: (number|null);
             platform?: (string|null);
@@ -8628,6 +8582,58 @@ export namespace proto {
                 public static toObject(m: proto.Message.PaymentLinkMetadata.PaymentLinkProvider, o?: $protobuf.IConversionOptions): { [k: string]: any };
                 public toJSON(): { [k: string]: any };
                 public static getTypeUrl(typeUrlPrefix?: string): string;
+            }
+        }
+
+        interface IPaymentReminderMessage {
+            reminderId?: (string|null);
+            instanceId?: (string|null);
+            description?: (string|null);
+            frequency?: (proto.Message.PaymentReminderMessage.ReminderFrequency|null);
+            status?: (proto.Message.PaymentReminderMessage.ReminderStatus|null);
+            payeeVpa?: (string|null);
+            payeeJid?: (string|null);
+            payerJid?: (string|null);
+            amount?: (proto.IMoney|null);
+        }
+
+        class PaymentReminderMessage implements IPaymentReminderMessage {
+            constructor(p?: proto.Message.IPaymentReminderMessage);
+            public reminderId?: (string|null);
+            public instanceId?: (string|null);
+            public description?: (string|null);
+            public frequency?: (proto.Message.PaymentReminderMessage.ReminderFrequency|null);
+            public status?: (proto.Message.PaymentReminderMessage.ReminderStatus|null);
+            public payeeVpa?: (string|null);
+            public payeeJid?: (string|null);
+            public payerJid?: (string|null);
+            public amount?: (proto.IMoney|null);
+            public static create(properties?: proto.Message.IPaymentReminderMessage): proto.Message.PaymentReminderMessage;
+            public static encode(m: proto.Message.IPaymentReminderMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PaymentReminderMessage;
+            public static fromObject(d: { [k: string]: any }): proto.Message.PaymentReminderMessage;
+            public static toObject(m: proto.Message.PaymentReminderMessage, o?: $protobuf.IConversionOptions): { [k: string]: any };
+            public toJSON(): { [k: string]: any };
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        namespace PaymentReminderMessage {
+
+            enum ReminderFrequency {
+                REMINDER_FREQUENCY_UNKNOWN = 0,
+                WEEKLY = 1,
+                BI_WEEKLY = 2,
+                MONTHLY = 3,
+                QUARTERLY = 4
+            }
+
+            enum ReminderStatus {
+                REMINDER_STATUS_UNKNOWN = 0,
+                ACTIVE = 1,
+                CANCELLED_BY_CREATOR = 2,
+                STOPPED_BY_RECEIVER = 3,
+                EXPIRED = 4,
+                PAID = 5
             }
         }
 
