@@ -1631,8 +1631,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							await signalRepository.migrateSession(primaryJid, alt)
 						}
 					} else {
-						await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-						await signalRepository.migrateSession(alt, primaryJid)
+						// Mirror the LID branch's guard: skip the store + migrate
+						// when the PN→LID mapping is already known. Without this,
+						// every inbound message from a PN-form participant whose
+						// mapping was established by an earlier message re-runs
+						// `storeLIDPNMappings` + `migrateSession` (the latter is
+						// idempotent via `migratedSessionCache`, but it's still
+						// pure overhead per inbound message).
+						if (!(await signalRepository.lidMapping.getLIDForPN(alt))) {
+							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+							await signalRepository.migrateSession(alt, primaryJid)
+						}
 					}
 				})
 			}
