@@ -28,13 +28,15 @@ const silent = P({ level: 'silent' })
 describe('handleIdentityChange — in-flight refresh tracking (M11)', () => {
 	it('a second identity change for the same jid is skipped while a previous refresh is still running', async () => {
 		// Short debounce TTL on purpose — the in-flight guard must catch the
-		// second invocation even after the debounce has expired.
-		const debounceCache = new NodeCache<boolean>({ stdTTL: 0.02, useClones: false })
+		// second invocation even after the debounce has expired. Window
+		// widened (50ms / 300ms / 120ms gap) for stability under full-suite
+		// scheduling pressure.
+		const debounceCache = new NodeCache<boolean>({ stdTTL: 0.05, useClones: false })
 		const inFlightRefreshes = new Set<string>()
 		let assertCalls = 0
 		const assertSessions = async () => {
 			assertCalls++
-			await delay(60) // longer than the debounce TTL on purpose
+			await delay(300) // longer than the debounce TTL on purpose
 			return true
 		}
 
@@ -55,7 +57,7 @@ describe('handleIdentityChange — in-flight refresh tracking (M11)', () => {
 		// Wait long enough for the debounce TTL to expire but well within the
 		// in-flight assertSessions promise. The second invocation should now hit
 		// the in-flight guard.
-		await delay(20)
+		await delay(120)
 		const second = await handleIdentityChange(node, ctx)
 
 		expect(second).toEqual({ action: 'skipped_in_flight' })
