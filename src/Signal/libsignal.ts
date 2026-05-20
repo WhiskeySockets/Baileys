@@ -94,6 +94,24 @@ export function makeLibSignalRepository(
 	// Bound delegate so repository methods can pre-resolve before acquiring locks.
 	const resolveLIDSignalAddress = (id: string) => resolveSignalAddressId(id, lidMapping)
 
+	/**
+	 * Build a per-call `signalStorage` instance whose resolver returns
+	 * `wireJid` for `rawAddr` (and falls through to the standard `lidMapping`
+	 * lookup for any other id libsignal might pass — e.g. the participant
+	 * field on a sender-key operation, which is not the one we pre-resolved).
+	 *
+	 * This is what closes the TOCTOU on resolved-address divergence: the
+	 * outer transactWith locks on `wireJid`, and every storage call libsignal
+	 * makes inside that scope uses the SAME `wireJid` for the row it
+	 * reads/writes — no independent re-resolution that could land on a
+	 * different row if the mapping changed mid-flight.
+	 */
+	const pinResolutionForStorage = (rawAddr: string, wireJid: string) =>
+		signalStorage(auth, lidMapping, async (id: string) => {
+			if (id === rawAddr) return wireJid
+			return resolveSignalAddressId(id, lidMapping)
+		})
+
 	// Baileys' `addTransactionCapability` returns a store with `transactWith`
 	// implemented; narrow to the record-transaction variant so the internal
 	// call sites don't have to null-check the (publicly optional) method.
@@ -162,15 +180,18 @@ export function makeLibSignalRepository(
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const addrStr = addr.toString()
-			const session = new libsignal.SessionCipher(storage, addr)
 
-			// Pre-resolve the wire id so the lock targets the SAME storage row
-			// that `storage.loadSession`/`saveIdentity` will later read/write
-			// (which themselves go through `resolveLIDSignalAddress`). Without
-			// this, a PN-form caller locks `session:peer.0` while the actual
-			// mutation lands on `session:peer_1.0`, letting a LID-form caller
-			// race against us on the same underlying row.
+			// Pre-resolve the wire id ONCE, then thread it through libsignal's
+			// internal storage calls via a pinned `signalStorage` instance.
+			// Without pinning, `storage.loadSession`/`storeSession`/`saveIdentity`
+			// each independently re-resolve via `lidMapping` — if a mapping
+			// change lands between our pre-resolve (for the lock) and any of
+			// those internal calls, the actual row hit can drift away from
+			// the locked record. Pinning makes the entire operation use
+			// `wireJid` everywhere `addrStr` would appear.
 			const wireJid = await resolveLIDSignalAddress(addrStr)
+			const pinnedStorage = pinResolutionForStorage(addrStr, wireJid)
+			const session = new libsignal.SessionCipher(pinnedStorage, addr)
 
 			// H1 fix: pkmsg identity-key save runs INSIDE the per-jid transaction
 			// scope, sharing the session+identity-key locks with the decrypt
@@ -201,7 +222,7 @@ export function makeLibSignalRepository(
 				if (type === 'pkmsg') {
 					const identityKey = extractIdentityFromPkmsg(ciphertext)
 					if (identityKey) {
-						const identityChanged = await storage.saveIdentity(addrStr, identityKey)
+						const identityChanged = await pinnedStorage.saveIdentity(addrStr, identityKey)
 						if (identityChanged) {
 							logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
 						}
@@ -214,9 +235,12 @@ export function makeLibSignalRepository(
 
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new libsignal.SessionCipher(storage, addr)
-			// Pre-resolve so the lock targets the same row libsignal will hit.
-			const wireJid = await resolveLIDSignalAddress(addr.toString())
+			const addrStr = addr.toString()
+			// Pre-resolve + pin so libsignal's internal storage calls use the
+			// same wire id we lock on (see decryptMessage for rationale).
+			const wireJid = await resolveLIDSignalAddress(addrStr)
+			const pinnedStorage = pinResolutionForStorage(addrStr, wireJid)
+			const cipher = new libsignal.SessionCipher(pinnedStorage, addr)
 
 			return parsedKeys.transactWith({ records: [{ type: 'session', id: wireJid }] }, async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
@@ -270,9 +294,12 @@ export function makeLibSignalRepository(
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
 			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new libsignal.SessionBuilder(storage, addr)
-			// Pre-resolve so the lock targets the same row libsignal will hit.
-			const wireJid = await resolveLIDSignalAddress(addr.toString())
+			const addrStr = addr.toString()
+			// Pre-resolve + pin so libsignal's internal storage calls use the
+			// same wire id we lock on (see decryptMessage for rationale).
+			const wireJid = await resolveLIDSignalAddress(addrStr)
+			const pinnedStorage = pinResolutionForStorage(addrStr, wireJid)
+			const cipher = new libsignal.SessionBuilder(pinnedStorage, addr)
 			return parsedKeys.transactWith({ records: [{ type: 'session', id: wireJid }] }, async () => {
 				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
 				// but the bundled .d.ts marks it required.
@@ -519,15 +546,24 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
-	lidMapping: LIDMappingStore
+	lidMapping: LIDMappingStore,
+	/**
+	 * Optional pinned-resolution override. When the repository methods
+	 * pre-resolve `addrStr → wireJid` to scope a `transactWith` lock, they
+	 * pass a per-call `signalStorage` instance with `pinnedResolver` set so
+	 * libsignal's internal storage calls don't independently re-resolve
+	 * (which would TOCTOU against a mid-flight LID mapping change — see
+	 * Stage 3 round 2 commit). The function receives the same raw `id`
+	 * libsignal would pass and returns the wire form to use, bypassing
+	 * any consult of `lidMapping`.
+	 */
+	pinnedResolver?: (id: string) => Promise<string>
 ): SenderKeyStore &
 	libsignal.SignalStorage & {
 		loadIdentityKey(id: string): Promise<Uint8Array | undefined>
 		saveIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
 	} {
-	// Delegate to the module-level helper (also used by repository methods
-	// to pre-resolve before acquiring transactWith locks).
-	const resolveLIDSignalAddress = (id: string) => resolveSignalAddressId(id, lidMapping)
+	const resolveLIDSignalAddress = pinnedResolver ?? ((id: string) => resolveSignalAddressId(id, lidMapping))
 
 	return {
 		loadSession: async (id: string) => {
