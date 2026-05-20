@@ -23,35 +23,45 @@ export class PreKeyManager {
 	 * mutation set, and route deletions through {@link processDeletions}.
 	 * Caller holds the outer transaction lock.
 	 */
-	async processOperations(
+	async processOperations<T extends keyof SignalDataTypeMap>(
 		data: SignalDataSet,
-		keyType: keyof SignalDataTypeMap,
+		keyType: T,
 		transactionCache: SignalDataSet,
 		mutations: SignalDataSet,
 		isInTransaction: boolean
 	): Promise<void> {
-		const keyData = data[keyType]
+		type Bucket = { [id: string]: SignalDataTypeMap[T] | null }
+
+		const keyData = data[keyType] as Bucket | undefined
 		if (!keyData) return
 
-		// Ensure structures exist
-		transactionCache[keyType] = transactionCache[keyType] || ({} as any)
-		mutations[keyType] = mutations[keyType] || ({} as any)
+		// Concrete typed bucket references — internal logic uses the precise
+		// `SignalDataTypeMap[T] | null` value type instead of `any`. The
+		// SignalDataSet container is a distributed mapped type and assigning
+		// a non-distributed bucket back to it requires a narrow cast at the
+		// boundary (the only `as` cast remaining; pre-Stage-1 used `as any`).
+		const cacheBucket: Bucket = (transactionCache[keyType] as Bucket | undefined) ?? {}
+		const mutationsBucket: Bucket = (mutations[keyType] as Bucket | undefined) ?? {}
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		transactionCache[keyType] = cacheBucket as any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		mutations[keyType] = mutationsBucket as any
 
-		// Separate deletions from updates
 		const deletions: string[] = []
-		const updates: Record<string, any> = {}
+		const updates: { [id: string]: SignalDataTypeMap[T] } = {}
 
 		for (const keyId in keyData) {
-			if (keyData[keyId] === null) {
+			const value = keyData[keyId]
+			if (value === null) {
 				deletions.push(keyId)
-			} else {
-				updates[keyId] = keyData[keyId]
+			} else if (value !== undefined) {
+				updates[keyId] = value
 			}
 		}
 
 		if (Object.keys(updates).length > 0) {
-			Object.assign(transactionCache[keyType]!, updates)
-			Object.assign(mutations[keyType]!, updates)
+			Object.assign(cacheBucket, updates)
+			Object.assign(mutationsBucket, updates)
 		}
 
 		if (deletions.length > 0) {
@@ -66,7 +76,7 @@ export class PreKeyManager {
 	 * the subsequent durable write — otherwise a concurrent writer can flip
 	 * the existence state between our read and the caller's write (H2).
 	 */
-	async validateDeletions(data: SignalDataSet, keyType: keyof SignalDataTypeMap): Promise<void> {
+	async validateDeletions<T extends keyof SignalDataTypeMap>(data: SignalDataSet, keyType: T): Promise<void> {
 		const keyData = data[keyType]
 		if (!keyData) return
 
@@ -82,19 +92,23 @@ export class PreKeyManager {
 		}
 	}
 
-	private async processDeletions(
-		keyType: keyof SignalDataTypeMap,
+	private async processDeletions<T extends keyof SignalDataTypeMap>(
+		keyType: T,
 		ids: string[],
 		transactionCache: SignalDataSet,
 		mutations: SignalDataSet,
 		isInTransaction: boolean
 	): Promise<void> {
+		type Bucket = { [id: string]: SignalDataTypeMap[T] | null }
+		const cacheBucket = transactionCache[keyType] as Bucket | undefined
+		const mutationsBucket = mutations[keyType] as Bucket | undefined
+
 		if (isInTransaction) {
 			// In transaction, only allow deletion if key exists in cache
 			for (const keyId of ids) {
-				if (transactionCache[keyType]?.[keyId]) {
-					transactionCache[keyType][keyId] = null
-					mutations[keyType]![keyId] = null
+				if (cacheBucket?.[keyId]) {
+					cacheBucket[keyId] = null
+					if (mutationsBucket) mutationsBucket[keyId] = null
 				} else {
 					this.logger.warn(`Skipping deletion of non-existent ${keyType} in transaction: ${keyId}`)
 				}
@@ -104,8 +118,8 @@ export class PreKeyManager {
 			const existingKeys = await this.store.get(keyType, ids)
 			for (const keyId of ids) {
 				if (existingKeys[keyId]) {
-					transactionCache[keyType]![keyId] = null
-					mutations[keyType]![keyId] = null
+					if (cacheBucket) cacheBucket[keyId] = null
+					if (mutationsBucket) mutationsBucket[keyId] = null
 				} else {
 					this.logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
 				}

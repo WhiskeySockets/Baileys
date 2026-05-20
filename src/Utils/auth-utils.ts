@@ -227,7 +227,15 @@ export const addTransactionCapability = (
 								await preKeyManager.validateDeletions(data, type)
 							}
 
-							const typeData = { [type]: data[type] } as SignalDataSet
+							// `validateDeletions` may have removed every entry from
+							// the bucket (e.g. all targeted ids were already gone).
+							// Skip the durable write in that case — no work to do,
+							// and writing `{ 'pre-key': {} }` is a wasteful no-op
+							// against the storage adapter.
+							const bucket = data[type]
+							if (!bucket || Object.keys(bucket).length === 0) return
+
+							const typeData = { [type]: bucket } as SignalDataSet
 							await state.set(typeData)
 						})
 					)
@@ -288,9 +296,9 @@ export const addTransactionCapability = (
 					logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
 
 					return result
-				} catch (error) {
-					logger.error({ error }, 'transaction failed, rolling back')
-					throw error
+				} catch (err) {
+					logger.error({ err }, 'transaction failed, rolling back')
+					throw err
 				}
 			})
 		},

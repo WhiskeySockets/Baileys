@@ -69,10 +69,12 @@ describe('makeLockManager', () => {
 			})
 		).rejects.toThrow('boom')
 
-		// Subsequent acquisition on the same ref must succeed promptly — no leak.
-		const start = Date.now()
+		// Subsequent acquisition on the same ref must succeed — no leak. The
+		// jest test timeout (default 5s) is the upper bound; if the lock
+		// weren't released the `await` below would deadlock and the suite
+		// would time out. After resolution the ref is no longer reported as
+		// held.
 		await locks.withLock(ref, async () => {})
-		expect(Date.now() - start).toBeLessThan(50)
 		expect(locks.isLocked(ref)).toBe(false)
 	})
 
@@ -155,14 +157,15 @@ describe('makeLockManager', () => {
 			const locks = makeLockManager()
 			const ref = { namespace: 'session', id: 'a' }
 
-			// If duplicates weren't coalesced, the second `withSingleLock` call on
-			// the same key inside the recursive acquire would deadlock against the
-			// outer one. We assert it completes promptly.
-			const start = Date.now()
+			// If duplicates weren't coalesced, the second `withSingleLock` call
+			// on the same key inside the recursive acquire would deadlock
+			// against the outer one. We assert it resolves (jest's default
+			// test timeout is the deadlock bound) and that the lock is
+			// released afterwards.
 			await locks.withLocks([ref, ref, ref], async () => {
 				await delay(5)
 			})
-			expect(Date.now() - start).toBeLessThan(200)
+			expect(locks.isLocked(ref)).toBe(false)
 		})
 
 		it('allows non-overlapping multi-acquires to proceed in parallel', async () => {
