@@ -530,7 +530,7 @@ function signalStorage(
 			// session+identity-key write run inside a single transactWith. The
 			// commit lands as ONE state.set covering both types — readers can
 			// no longer observe `session=null` paired with the OLD identity-key.
-			const txKeys = keys as SignalKeyStoreWithTransaction
+			const txKeys = keys as SignalKeyStoreWithRecordTransaction
 			return txKeys.transactWith(
 				{
 					records: [

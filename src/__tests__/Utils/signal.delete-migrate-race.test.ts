@@ -117,7 +117,7 @@ describe('libsignal — bulk session delete/migrate vs per-JID encrypt (H4)', ()
 				async () => {
 					if (encryptForPnActive) migrationSawEncrypt = true
 					await keys.set({
-						session: { [pnAddr]: null, [lidAddr]: Buffer.from([0x01]) as any }
+						session: { [pnAddr]: null, [lidAddr]: new Uint8Array([0x01]) }
 					})
 				}
 			)

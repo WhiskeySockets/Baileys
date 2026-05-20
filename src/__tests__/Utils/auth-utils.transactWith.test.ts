@@ -245,6 +245,7 @@ describe('addTransactionCapability — transactWith', () => {
 			})
 
 			let detachedCompleted: ((v: void) => void) | null = null
+			let detachedErr: unknown
 			const detached = new Promise<void>(resolve => {
 				detachedCompleted = resolve
 			})
@@ -254,15 +255,23 @@ describe('addTransactionCapability — transactWith', () => {
 				// After the outer work() resolves, the ALS context is sealed; this
 				// detached write must NOT mutate already-committed state.
 				void (async () => {
-					await delay(20)
-					await keys.set({ session: { a: Buffer.from([0xff]) as any } })
-					detachedCompleted!()
+					try {
+						await delay(20)
+						await keys.set({ session: { a: Buffer.from([0xff]) as any } })
+					} catch (err) {
+						detachedErr = err
+					} finally {
+						// Always signal completion so the test doesn't hang on
+						// an unhandled rejection from the detached write.
+						detachedCompleted?.()
+					}
 				})()
 
 				await keys.set({ session: { a: Buffer.from([0x01]) as any } })
 			})
 
 			await detached
+			expect(detachedErr).toBeUndefined()
 
 			expect(setCalls).toHaveLength(1)
 			expect(Buffer.from((setCalls[0] as any).session.a)).toEqual(Buffer.from([0x01]))
