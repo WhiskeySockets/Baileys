@@ -109,14 +109,24 @@ describe('makeCacheableSignalKeyStore — cache divergence on store failure (H6)
 
 		const id = '1'
 		const v1 = { public: Buffer.from([0x01]), private: Buffer.from([0x02]) }
+		const v2 = { public: Buffer.from([0x03]), private: Buffer.from([0x04]) }
 
-		// First set fails. After it rejects, an interleaved reader must not
-		// observe v1 — it was never durably persisted.
+		// Kick off the failing set without awaiting, then immediately fire a
+		// get against the same record while the in-flight set is still
+		// inside `flakyStore.set`'s 15ms delay. Per-record locking serializes
+		// the get behind the set — by the time the get acquires the lock the
+		// set has already rejected and the cache must NOT hold v1.
 		const failingSet = cacheable.set({ 'pre-key': { [id]: v1 as any } })
+		await delay(5) // let flakyStore.set begin its 15ms delay
+		const interleavedGet = cacheable.get('pre-key', [id])
 
 		await expect(failingSet).rejects.toThrow('first attempt failed')
+		expect(await interleavedGet).toEqual({})
 
-		const observed = await cacheable.get('pre-key', [id])
-		expect(observed).toEqual({})
+		// Now retry with v2. The store accepts on the second call (failNext
+		// was already flipped). After it succeeds the cache must observe v2.
+		await cacheable.set({ 'pre-key': { [id]: v2 as any } })
+		const finalGet = await cacheable.get('pre-key', [id])
+		expect(finalGet).toEqual({ [id]: v2 })
 	})
 })
