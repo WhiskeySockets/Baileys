@@ -173,10 +173,29 @@ async function verifyMigration(
 	for (const type of ALL_TYPES) {
 		const fromIds = await collectIds(from, type)
 		const toIds = await collectIds(to, type)
-		if (fromIds === null || toIds === null) continue
+		// A null from `collectIds` means we couldn't enumerate that side at
+		// all — that's a verification gap, not a clean pass. Surface it as
+		// a warning and fail the overall verified flag.
+		if (fromIds === null || toIds === null) {
+			warnings.push(`verification skipped for ${type}: unable to enumerate one side`)
+			ok = false
+			continue
+		}
+
 		for (const id of fromIds) {
 			if (!toIds.has(id)) {
 				warnings.push(`destination missing ${type}:${id}`)
+				ok = false
+			}
+		}
+
+		// Symmetric check: destination should not have records the source
+		// doesn't. An extra id in `to` means either a stale leftover from a
+		// prior partial run or an unrelated write to the destination during
+		// migration — both are signal worth surfacing.
+		for (const id of toIds) {
+			if (!fromIds.has(id)) {
+				warnings.push(`destination has unexpected ${type}:${id}`)
 				ok = false
 			}
 		}

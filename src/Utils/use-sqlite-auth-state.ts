@@ -85,117 +85,143 @@ export async function useSqliteAuthState(opts: SqliteAuthStateOptions): Promise<
 	saveCreds: () => Promise<void>
 	close: () => void
 }> {
-	let db: Database
-	if (opts.database) {
-		db = opts.database
-	} else {
-		const Database = await loadBetterSqlite3()
-		db = new Database(opts.dbPath)
-	}
-
-	// WAL mode allows concurrent reads alongside a single writer; matches
-	// what SQLite recommends for read-heavy workloads with sporadic writes.
-	db.pragma('journal_mode = WAL')
-	db.pragma('synchronous = NORMAL')
-
-	db.exec(CREATE_SCHEMA_SQL)
-
-	const stmts = {
-		credsSelect: db.prepare('SELECT value FROM creds WHERE key = ?'),
-		credsUpsert: db.prepare(
-			'INSERT INTO creds (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
-		),
-		keySelect: db.prepare('SELECT value FROM signal_keys WHERE type = ? AND id = ?'),
-		keyUpsert: db.prepare(
-			'INSERT INTO signal_keys (type, id, value) VALUES (?, ?, ?) ON CONFLICT(type, id) DO UPDATE SET value = excluded.value'
-		),
-		keyDelete: db.prepare('DELETE FROM signal_keys WHERE type = ? AND id = ?'),
-		keyListIds: db.prepare('SELECT id FROM signal_keys WHERE type = ?'),
-		keyList: db.prepare('SELECT id, value FROM signal_keys WHERE type = ?'),
-		clearKeys: db.prepare('DELETE FROM signal_keys')
-	}
-
-	const loadCreds = (): AuthenticationCreds => {
-		const row = stmts.credsSelect.get(CREDS_ROW_KEY) as { value: string } | undefined
-		if (!row) return initAuthCreds()
-		return JSON.parse(row.value, BufferJSON.reviver) as AuthenticationCreds
-	}
-
-	const persistCreds = (creds: AuthenticationCreds): void => {
-		stmts.credsUpsert.run(CREDS_ROW_KEY, JSON.stringify(creds, BufferJSON.replacer))
-	}
-
-	const creds = loadCreds()
-
-	// One BEGIN IMMEDIATE transaction per `set` call covers every type +
-	// every id at once. better-sqlite3's `transaction()` wraps the function in
-	// a savepoint-equivalent IMMEDIATE transaction so the whole thing either
-	// commits or rolls back atomically.
-	const applySetTx = db.transaction((data: SignalDataSet) => {
-		for (const category in data) {
-			const type = category as keyof SignalDataTypeMap
-			const bucket = data[type]
-			if (!bucket) continue
-			for (const id in bucket) {
-				const value = bucket[id]
-				if (value === null) {
-					stmts.keyDelete.run(type, id)
-				} else {
-					stmts.keyUpsert.run(type, id, JSON.stringify(value, BufferJSON.replacer))
-				}
-			}
+	// Track whether this function created the handle. If we did and any
+	// subsequent init step (pragma / exec / prepare / loadCreds) throws, we
+	// need to close the native handle ourselves — otherwise the caller never
+	// sees a `close()` to call and the file descriptor / WAL lock leaks on
+	// the startup failure path.
+	let db: Database | undefined
+	const ownsDb = !opts.database
+	try {
+		if (opts.database) {
+			db = opts.database
+		} else {
+			const Database = await loadBetterSqlite3()
+			db = new Database(opts.dbPath)
 		}
-	})
 
-	return {
-		state: {
-			creds,
-			keys: {
-				get: async (type, ids) => {
-					const out: Record<string, SignalDataTypeMap[typeof type]> = {}
-					for (const id of ids) {
-						const row = stmts.keySelect.get(type, id) as { value: string } | undefined
-						if (!row) continue
-						let value: any = JSON.parse(row.value, BufferJSON.reviver)
-						if (type === 'app-state-sync-key' && value) {
-							value = proto.Message.AppStateSyncKeyData.fromObject(value)
-						}
+		// WAL mode allows concurrent reads alongside a single writer; matches
+		// what SQLite recommends for read-heavy workloads with sporadic writes.
+		db.pragma('journal_mode = WAL')
+		db.pragma('synchronous = NORMAL')
 
-						out[id] = value as SignalDataTypeMap[typeof type]
-					}
+		db.exec(CREATE_SCHEMA_SQL)
 
-					return out
-				},
-				set: async data => {
-					applySetTx(data)
-				},
-				clear: async () => {
-					stmts.clearKeys.run()
-				},
-				list: async function* <T extends keyof SignalDataTypeMap>(
-					type: T
-				): AsyncIterable<readonly [string, SignalDataTypeMap[T]]> {
-					for (const row of stmts.keyList.iterate(type) as Iterable<{ id: string; value: string }>) {
-						let value: any = JSON.parse(row.value, BufferJSON.reviver)
-						if (type === 'app-state-sync-key' && value) {
-							value = proto.Message.AppStateSyncKeyData.fromObject(value)
-						}
+		const stmts = {
+			credsSelect: db.prepare('SELECT value FROM creds WHERE key = ?'),
+			credsUpsert: db.prepare(
+				'INSERT INTO creds (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+			),
+			keySelect: db.prepare('SELECT value FROM signal_keys WHERE type = ? AND id = ?'),
+			keyUpsert: db.prepare(
+				'INSERT INTO signal_keys (type, id, value) VALUES (?, ?, ?) ON CONFLICT(type, id) DO UPDATE SET value = excluded.value'
+			),
+			keyDelete: db.prepare('DELETE FROM signal_keys WHERE type = ? AND id = ?'),
+			keyListIds: db.prepare('SELECT id FROM signal_keys WHERE type = ?'),
+			keyList: db.prepare('SELECT id, value FROM signal_keys WHERE type = ?'),
+			clearKeys: db.prepare('DELETE FROM signal_keys')
+		}
 
-						yield [row.id, value as SignalDataTypeMap[T]] as const
-					}
-				},
-				listIds: async function* <T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<string> {
-					for (const row of stmts.keyListIds.iterate(type) as Iterable<{ id: string }>) {
-						yield row.id
+		const loadCreds = (): AuthenticationCreds => {
+			const row = stmts.credsSelect.get(CREDS_ROW_KEY) as { value: string } | undefined
+			if (!row) return initAuthCreds()
+			return JSON.parse(row.value, BufferJSON.reviver) as AuthenticationCreds
+		}
+
+		const persistCreds = (creds: AuthenticationCreds): void => {
+			stmts.credsUpsert.run(CREDS_ROW_KEY, JSON.stringify(creds, BufferJSON.replacer))
+		}
+
+		const creds = loadCreds()
+
+		// One BEGIN IMMEDIATE transaction per `set` call covers every type +
+		// every id at once. better-sqlite3's `transaction()` wraps the function in
+		// a savepoint-equivalent IMMEDIATE transaction so the whole thing either
+		// commits or rolls back atomically.
+		const applySetTx = db.transaction((data: SignalDataSet) => {
+			for (const category in data) {
+				const type = category as keyof SignalDataTypeMap
+				const bucket = data[type]
+				if (!bucket) continue
+				for (const id in bucket) {
+					const value = bucket[id]
+					if (value === null) {
+						stmts.keyDelete.run(type, id)
+					} else {
+						stmts.keyUpsert.run(type, id, JSON.stringify(value, BufferJSON.replacer))
 					}
 				}
 			}
-		},
-		saveCreds: async () => {
-			persistCreds(creds)
-		},
-		close: () => {
-			db.close()
+		})
+
+		// `db` is captured by `close` below; the non-null narrowing inside this
+		// successful-init branch is local.
+		const handle = db
+		return {
+			state: {
+				creds,
+				keys: {
+					get: async (type, ids) => {
+						const out: Record<string, SignalDataTypeMap[typeof type]> = {}
+						for (const id of ids) {
+							const row = stmts.keySelect.get(type, id) as { value: string } | undefined
+							if (!row) continue
+							let value: any = JSON.parse(row.value, BufferJSON.reviver)
+							if (type === 'app-state-sync-key' && value) {
+								value = proto.Message.AppStateSyncKeyData.fromObject(value)
+							}
+
+							out[id] = value as SignalDataTypeMap[typeof type]
+						}
+
+						return out
+					},
+					set: async data => {
+						applySetTx(data)
+					},
+					clear: async () => {
+						stmts.clearKeys.run()
+					},
+					list: async function* <T extends keyof SignalDataTypeMap>(
+						type: T
+					): AsyncIterable<readonly [string, SignalDataTypeMap[T]]> {
+						for (const row of stmts.keyList.iterate(type) as Iterable<{ id: string; value: string }>) {
+							let value: any = JSON.parse(row.value, BufferJSON.reviver)
+							if (type === 'app-state-sync-key' && value) {
+								value = proto.Message.AppStateSyncKeyData.fromObject(value)
+							}
+
+							yield [row.id, value as SignalDataTypeMap[T]] as const
+						}
+					},
+					listIds: async function* <T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<string> {
+						for (const row of stmts.keyListIds.iterate(type) as Iterable<{ id: string }>) {
+							yield row.id
+						}
+					}
+				}
+			},
+			saveCreds: async () => {
+				persistCreds(creds)
+			},
+			close: () => {
+				handle.close()
+			}
 		}
+	} catch (err) {
+		// Init failed AFTER we opened the handle (or while opening it). If we
+		// own the handle, close it so the file descriptor / WAL lock doesn't
+		// leak — the caller never received a `close()` to call. If the caller
+		// passed an existing `opts.database`, leave it alone; lifecycle is
+		// theirs.
+		if (ownsDb && db) {
+			try {
+				db.close()
+			} catch {
+				// best-effort — original error wins.
+			}
+		}
+
+		throw err
 	}
 }

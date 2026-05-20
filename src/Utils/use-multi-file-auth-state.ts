@@ -81,19 +81,34 @@ const fixFileName = (file?: string) => file?.replace(/\//g, '__')?.replace(/:/g,
 export const useMultiFileAuthState = async (
 	folder: string
 ): Promise<{ state: AuthenticationState; saveCreds: () => Promise<void> }> => {
-	const tryReadAndParse = async (path: string): Promise<unknown | null | 'corrupt'> => {
+	type ReadAttempt = { kind: 'ok'; value: unknown } | { kind: 'missing' } | { kind: 'corrupt'; cause: unknown }
+
+	/**
+	 * Read + JSON-parse a file with explicit outcome variants. Distinguishing
+	 * `missing` (ENOENT — fall through to backup) from `corrupt` (parse
+	 * failure — surface with cause) avoids the previous failure mode where
+	 * an `EACCES` / `EBUSY` was collapsed into `'corrupt'`, hiding the real
+	 * I/O error and producing an `AuthFileCorruptError` with a synthetic
+	 * cause that didn't actually reflect why the read failed.
+	 *
+	 * Non-ENOENT I/O errors are rethrown so the caller's structured logger
+	 * sees the original error code; only an actual `JSON.parse` failure
+	 * yields `corrupt` (and carries the parse exception forward as the
+	 * eventual `AuthFileCorruptError.cause`).
+	 */
+	const tryReadAndParse = async (path: string): Promise<ReadAttempt> => {
 		let raw: string
 		try {
 			raw = await readFile(path, { encoding: 'utf-8' })
 		} catch (error: any) {
-			if (error?.code === 'ENOENT') return null
-			return 'corrupt'
+			if (error?.code === 'ENOENT') return { kind: 'missing' }
+			throw error
 		}
 
 		try {
-			return JSON.parse(raw, BufferJSON.reviver)
-		} catch {
-			return 'corrupt'
+			return { kind: 'ok', value: JSON.parse(raw, BufferJSON.reviver) }
+		} catch (error) {
+			return { kind: 'corrupt', cause: error }
 		}
 	}
 
@@ -129,20 +144,23 @@ export const useMultiFileAuthState = async (
 		const release = await acquireFileLock(filePath)
 		try {
 			const primary = await tryReadAndParse(filePath)
-			if (primary !== 'corrupt' && primary !== null) return primary
-			if (primary === null) {
+			if (primary.kind === 'ok') return primary.value
+			if (primary.kind === 'missing') {
 				// Main file missing — see if a .bak survived an interrupted
 				// write so we can recover.
 				const backup = await tryReadAndParse(bakPath)
-				if (backup !== 'corrupt' && backup !== null) return backup
+				if (backup.kind === 'ok') return backup.value
 				return null
 			}
 
-			// `primary === 'corrupt'` — try the backup before surfacing.
+			// `primary.kind === 'corrupt'` — try the backup before surfacing.
 			const backup = await tryReadAndParse(bakPath)
-			if (backup !== 'corrupt' && backup !== null) return backup
+			if (backup.kind === 'ok') return backup.value
 
-			throw new AuthFileCorruptError(filePath, new Error('parse failure with no recoverable backup'))
+			// Forward the actual parse exception as the cause so operators
+			// can distinguish a malformed-JSON failure from other read
+			// problems (the latter would have been rethrown above).
+			throw new AuthFileCorruptError(filePath, primary.cause)
 		} finally {
 			release()
 		}
@@ -150,9 +168,20 @@ export const useMultiFileAuthState = async (
 
 	const removeData = async (file: string) => {
 		const filePath = join(folder, fixFileName(file)!)
+		const tmpPath = `${filePath}.tmp`
+		const bakPath = `${filePath}.bak`
 		const release = await acquireFileLock(filePath)
 		try {
-			await unlink(filePath).catch(() => {})
+			// Unlink the primary AND its companions (.tmp from an in-flight
+			// write, .bak rotated by writeData). Without this, `readData`
+			// would fall back to the `.bak` on the next `get` and resurrect
+			// the deleted value — fatal for session clears and identity-key
+			// deletions after any prior rewrite created a backup.
+			await Promise.all([
+				unlink(filePath).catch(() => {}),
+				unlink(tmpPath).catch(() => {}),
+				unlink(bakPath).catch(() => {})
+			])
 		} finally {
 			release()
 		}
@@ -248,10 +277,15 @@ export const useMultiFileAuthState = async (
 					await Promise.all(deletions.map(file => removeData(file)))
 				},
 				clear: async () => {
+					// Sweep .json, .json.tmp, and .json.bak. Skipping .tmp/.bak
+					// would leave backups that `readData` would resurrect on
+					// the next `get`, making `clear()` partially undo itself.
 					const entries = await readdir(folder).catch(() => [])
 					await Promise.all(
 						entries
-							.filter(f => f !== 'creds.json' && f.endsWith('.json') && !f.endsWith('.tmp'))
+							.filter(
+								f => f !== 'creds.json' && (f.endsWith('.json') || f.endsWith('.json.tmp') || f.endsWith('.json.bak'))
+							)
 							.map(f => unlink(join(folder, f)).catch(() => {}))
 					)
 				},
