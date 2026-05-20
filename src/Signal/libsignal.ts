@@ -28,6 +28,37 @@ import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
+/**
+ * Resolve a signal-protocol-address string (`user[_domainType].device`) to its
+ * post-LID-mapping form. If `id` is already a LID/HOSTED_LID address, or no PN
+ * mapping exists, it's returned unchanged.
+ *
+ * Lifted from `signalStorage()`'s closure (where it was hidden as a private
+ * helper) so the repository methods can pre-resolve before acquiring locks —
+ * otherwise `transactWith` would lock the raw PN id while
+ * `loadSession`/`storeSession`/`saveIdentity` internally rewrite to the LID
+ * form, letting two callers think they're touching different records when
+ * they're actually mutating the same underlying storage row.
+ */
+async function resolveSignalAddressId(id: string, lidMapping: LIDMappingStore): Promise<string> {
+	if (!id.includes('.')) return id
+
+	const [deviceId, device] = id.split('.')
+	const [user, domainType_] = deviceId!.split('_')
+	const domainType = parseInt(domainType_ || '0')
+
+	if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
+
+	const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
+	const lidForPN = await lidMapping.getLIDForPN(pnJid)
+	if (lidForPN) {
+		const lidAddr = jidToSignalProtocolAddress(lidForPN)
+		return lidAddr.toString()
+	}
+
+	return id
+}
+
 /** Extract identity key from PreKeyWhisperMessage for identity change detection */
 function extractIdentityFromPkmsg(ciphertext: Uint8Array): Uint8Array | undefined {
 	try {
@@ -60,6 +91,8 @@ export function makeLibSignalRepository(
 ): SignalRepositoryWithLIDStore {
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
+	// Bound delegate so repository methods can pre-resolve before acquiring locks.
+	const resolveLIDSignalAddress = (id: string) => resolveSignalAddressId(id, lidMapping)
 
 	// Baileys' `addTransactionCapability` returns a store with `transactWith`
 	// implemented; narrow to the record-transaction variant so the internal
@@ -131,15 +164,23 @@ export function makeLibSignalRepository(
 			const addrStr = addr.toString()
 			const session = new libsignal.SessionCipher(storage, addr)
 
+			// Pre-resolve the wire id so the lock targets the SAME storage row
+			// that `storage.loadSession`/`saveIdentity` will later read/write
+			// (which themselves go through `resolveLIDSignalAddress`). Without
+			// this, a PN-form caller locks `session:peer.0` while the actual
+			// mutation lands on `session:peer_1.0`, letting a LID-form caller
+			// race against us on the same underlying row.
+			const wireJid = await resolveLIDSignalAddress(addrStr)
+
 			// H1 fix: pkmsg identity-key save runs INSIDE the per-jid transaction
 			// scope, sharing the session+identity-key locks with the decrypt
 			// itself. Previously the save happened before the transaction was
 			// opened, so a concurrent send for the same jid could load the stale
 			// session under its own meId-keyed lock and then commit it back over
 			// the cleared one.
-			const records: RecordRef[] = [{ type: 'session', id: addrStr }]
+			const records: RecordRef[] = [{ type: 'session', id: wireJid }]
 			if (type === 'pkmsg') {
-				records.push({ type: 'identity-key', id: addrStr })
+				records.push({ type: 'identity-key', id: wireJid })
 			}
 
 			async function doDecrypt() {
@@ -174,8 +215,10 @@ export function makeLibSignalRepository(
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
+			// Pre-resolve so the lock targets the same row libsignal will hit.
+			const wireJid = await resolveLIDSignalAddress(addr.toString())
 
-			return parsedKeys.transactWith({ records: [{ type: 'session', id: addr.toString() }] }, async () => {
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: wireJid }] }, async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
 				return { type, ciphertext: Buffer.from(body, 'binary') }
@@ -228,7 +271,9 @@ export function makeLibSignalRepository(
 			logger.trace({ jid }, 'injecting E2EE session')
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionBuilder(storage, addr)
-			return parsedKeys.transactWith({ records: [{ type: 'session', id: addr.toString() }] }, async () => {
+			// Pre-resolve so the lock targets the same row libsignal will hit.
+			const wireJid = await resolveLIDSignalAddress(addr.toString())
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: wireJid }] }, async () => {
 				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
 				// but the bundled .d.ts marks it required.
 				await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
@@ -263,14 +308,19 @@ export function makeLibSignalRepository(
 		async deleteSession(jids: string[]) {
 			if (!jids.length) return
 
-			// Convert JIDs to signal addresses and prepare for bulk deletion
+			// Convert JIDs to signal addresses, pre-resolve each to its wire id
+			// so the lock and the actual session-row deletion target the SAME
+			// storage record (PN → LID mapping is transparent inside
+			// `signalStorage`, so without pre-resolution the lock could be on
+			// the PN form while the delete lands on the LID form).
 			const sessionUpdates: { [key: string]: null } = {}
 			const sessionAddrs: string[] = []
-			jids.forEach(jid => {
+			for (const jid of jids) {
 				const addr = jidToSignalProtocolAddress(jid).toString()
-				sessionUpdates[addr] = null
-				sessionAddrs.push(addr)
-			})
+				const wireJid = await resolveLIDSignalAddress(addr)
+				sessionUpdates[wireJid] = null
+				sessionAddrs.push(wireJid)
+			}
 
 			// H4 fix: lock by the actual session record ids instead of a synthetic
 			// `delete-N-sessions` key. Now serializes against concurrent
@@ -475,26 +525,9 @@ function signalStorage(
 		loadIdentityKey(id: string): Promise<Uint8Array | undefined>
 		saveIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
 	} {
-	// Shared function to resolve PN signal address to LID if mapping exists
-	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
-		if (id.includes('.')) {
-			const [deviceId, device] = id.split('.')
-			const [user, domainType_] = deviceId!.split('_')
-			const domainType = parseInt(domainType_ || '0')
-
-			if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
-
-			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
-
-			const lidForPN = await lidMapping.getLIDForPN(pnJid)
-			if (lidForPN) {
-				const lidAddr = jidToSignalProtocolAddress(lidForPN)
-				return lidAddr.toString()
-			}
-		}
-
-		return id
-	}
+	// Delegate to the module-level helper (also used by repository methods
+	// to pre-resolve before acquiring transactWith locks).
+	const resolveLIDSignalAddress = (id: string) => resolveSignalAddressId(id, lidMapping)
 
 	return {
 		loadSession: async (id: string) => {
