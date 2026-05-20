@@ -53,6 +53,7 @@ import {
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
+import { makeLockManager } from '../Utils/lock-manager'
 import { makeMutex } from '../Utils/make-mutex'
 import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
@@ -143,6 +144,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
 
+	/**
+	 * Per-(alt-jid) keyed lock for the pre-mutex LID-mapping & migration block
+	 * (H8). Two parallel inbound messages from the same alt-jid participant
+	 * previously both observed a null mapping, both called
+	 * `storeLIDPNMappings`, and both called `migrateSession`. The mutex below
+	 * serializes the "look up → store → migrate" sequence per participant so
+	 * exactly one migration fires per (genuinely-missing) mapping.
+	 */
+	const lidMigrationLocks = makeLockManager()
+
 	const msgRetryCache =
 		config.msgRetryCounterCache ||
 		new NodeCache<number>({
@@ -158,6 +169,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
+	/** In-flight identity refreshes — see handleIdentityChange M11 guard. */
+	const inFlightIdentityRefreshes = new Set<string>()
 
 	let sendActiveReceipts = false
 
@@ -788,6 +801,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				validateSession: signalRepository.validateSession,
 				assertSessions,
 				debounceCache: identityAssertDebounce,
+				inFlightRefreshes: inFlightIdentityRefreshes,
 				logger,
 				onBeforeSessionRefresh: reissueTcTokenAfterIdentityChange
 			})
@@ -1604,17 +1618,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 			// store new mappings we didn't have before
 			if (!!alt) {
-				const altServer = jidDecode(alt)?.server
-				const primaryJid = msg.key.participant || msg.key.remoteJid!
-				if (altServer === 'lid') {
-					if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
-						await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-						await signalRepository.migrateSession(primaryJid, alt)
+				// H8 fix: serialize the look-up → store → migrate sequence per
+				// alt-jid. Concurrent inbound messages from the same participant
+				// would otherwise each observe a null mapping and each fire the
+				// migration.
+				await lidMigrationLocks.withLock({ namespace: 'lid-migration', id: alt }, async () => {
+					const altServer = jidDecode(alt)?.server
+					const primaryJid = msg.key.participant || msg.key.remoteJid!
+					if (altServer === 'lid') {
+						if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
+							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+							await signalRepository.migrateSession(primaryJid, alt)
+						}
+					} else {
+						await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+						await signalRepository.migrateSession(alt, primaryJid)
 					}
-				} else {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-					await signalRepository.migrateSession(alt, primaryJid)
-				}
+				})
 			}
 
 			await messageMutex.mutex(async () => {

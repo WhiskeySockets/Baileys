@@ -128,20 +128,18 @@ export function makeLibSignalRepository(
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
+			const addrStr = addr.toString()
 			const session = new libsignal.SessionCipher(storage, addr)
 
-			// Extract and save sender's identity key before decryption for identity change detection.
-			// NOTE: this runs outside the per-jid transaction today (H1 — addressed in Stage 3 by
-			// folding identity save into the transaction scope alongside session).
+			// H1 fix: pkmsg identity-key save runs INSIDE the per-jid transaction
+			// scope, sharing the session+identity-key locks with the decrypt
+			// itself. Previously the save happened before the transaction was
+			// opened, so a concurrent send for the same jid could load the stale
+			// session under its own meId-keyed lock and then commit it back over
+			// the cleared one.
+			const records: RecordRef[] = [{ type: 'session', id: addrStr }]
 			if (type === 'pkmsg') {
-				const identityKey = extractIdentityFromPkmsg(ciphertext)
-				if (identityKey) {
-					const addrStr = addr.toString()
-					const identityChanged = await storage.saveIdentity(addrStr, identityKey)
-					if (identityChanged) {
-						logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
-					}
-				}
+				records.push({ type: 'identity-key', id: addrStr })
 			}
 
 			async function doDecrypt() {
@@ -158,7 +156,17 @@ export function makeLibSignalRepository(
 				return result
 			}
 
-			return parsedKeys.transactWith({ records: [{ type: 'session', id: addr.toString() }] }, async () => {
+			return parsedKeys.transactWith({ records }, async () => {
+				if (type === 'pkmsg') {
+					const identityKey = extractIdentityFromPkmsg(ciphertext)
+					if (identityKey) {
+						const identityChanged = await storage.saveIdentity(addrStr, identityKey)
+						if (identityChanged) {
+							logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
+						}
+					}
+				}
+
 				return await doDecrypt()
 			})
 		},
@@ -517,27 +525,43 @@ function signalStorage(
 		},
 		saveIdentity: async (id: string, identityKey: Uint8Array): Promise<boolean> => {
 			const wireJid = await resolveLIDSignalAddress(id)
-			const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
 
-			const keysMatch =
-				existingKey?.length === identityKey.length && existingKey.every((byte, i) => byte === identityKey[i])
+			// H3 fix: the read-then-write sequence and the cross-type
+			// session+identity-key write run inside a single transactWith. The
+			// commit lands as ONE state.set covering both types — readers can
+			// no longer observe `session=null` paired with the OLD identity-key.
+			const txKeys = keys as SignalKeyStoreWithTransaction
+			return txKeys.transactWith(
+				{
+					records: [
+						{ type: 'identity-key', id: wireJid },
+						{ type: 'session', id: wireJid }
+					]
+				},
+				async () => {
+					const { [wireJid]: existingKey } = await txKeys.get('identity-key', [wireJid])
 
-			if (existingKey && !keysMatch) {
-				// Identity changed - clear session and update key
-				await keys.set({
-					session: { [wireJid]: null },
-					'identity-key': { [wireJid]: identityKey }
-				})
-				return true
-			}
+					const keysMatch =
+						existingKey?.length === identityKey.length && existingKey.every((byte, i) => byte === identityKey[i])
 
-			if (!existingKey) {
-				// New contact - Trust on First Use (TOFU)
-				await keys.set({ 'identity-key': { [wireJid]: identityKey } })
-				return true
-			}
+					if (existingKey && !keysMatch) {
+						// Identity changed — clear session and update key atomically.
+						await txKeys.set({
+							session: { [wireJid]: null },
+							'identity-key': { [wireJid]: identityKey }
+						})
+						return true
+					}
 
-			return false
+					if (!existingKey) {
+						// New contact - Trust on First Use (TOFU)
+						await txKeys.set({ 'identity-key': { [wireJid]: identityKey } })
+						return true
+					}
+
+					return false
+				}
+			)
 		},
 		loadPreKey: async (id: number | string) => {
 			const keyId = id.toString()
