@@ -3,7 +3,6 @@ import { Boom } from '@hapi/boom'
 import { AsyncLocalStorage } from 'async_hooks'
 import { Mutex } from 'async-mutex'
 import { randomBytes } from 'crypto'
-import PQueue from 'p-queue'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
@@ -16,6 +15,7 @@ import type {
 } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
+import { makeLockManager } from './lock-manager'
 import type { ILogger } from './logger'
 import { PreKeyManager } from './pre-key-manager'
 
@@ -102,16 +102,32 @@ export function makeCacheableSignalKeyStore(
 		async clear() {
 			await cache.flushAll()
 			await store.clear?.()
-		}
+		},
+		// Enumeration cannot be satisfied from the sparse in-memory cache — pass through.
+		// Bypasses the cache mutex deliberately: a long-running enumeration must not
+		// block point reads/writes for the duration of a full-store walk.
+		...(store.list
+			? {
+					list: <T extends keyof SignalDataTypeMap>(type: T) => store.list!(type)
+				}
+			: {}),
+		...(store.listIds
+			? {
+					listIds: <T extends keyof SignalDataTypeMap>(type: T) => store.listIds!(type)
+				}
+			: {})
 	}
 }
 
 /**
  * Adds DB-like transaction capability to the SignalKeyStore
- * Uses AsyncLocalStorage for automatic context management
- * @param state the key store to apply this capability to
- * @param logger logger to log events
- * @returns SignalKeyStore with transaction capability
+ * Uses AsyncLocalStorage for automatic context management.
+ *
+ * Stage 1: replaced the bespoke txMutexes/refCount pair (M3) and the dual
+ * PreKeyManager.queues vs auth-utils.keyQueues map (H2) with a single
+ * {@link LockManager} instance. The legacy `transaction(work, key: string)`
+ * signature is preserved by locking under the `'__legacy__'` namespace; Stage 2
+ * adds the typed record-scoped `transactWith` API alongside it.
  */
 export const addTransactionCapability = (
 	state: SignalKeyStore,
@@ -119,64 +135,8 @@ export const addTransactionCapability = (
 	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
-
-	// Queues for concurrency control (keyed by signal data type - bounded set)
-	const keyQueues = new Map<string, PQueue>()
-
-	// Transaction mutexes with reference counting for cleanup
-	const txMutexes = new Map<string, Mutex>()
-	const txMutexRefCounts = new Map<string, number>()
-
-	// Pre-key manager for specialized operations
+	const locks = makeLockManager()
 	const preKeyManager = new PreKeyManager(state, logger)
-
-	/**
-	 * Get or create a queue for a specific key type
-	 */
-	function getQueue(key: string): PQueue {
-		if (!keyQueues.has(key)) {
-			keyQueues.set(key, new PQueue({ concurrency: 1 }))
-		}
-
-		return keyQueues.get(key)!
-	}
-
-	/**
-	 * Get or create a transaction mutex
-	 */
-	function getTxMutex(key: string): Mutex {
-		if (!txMutexes.has(key)) {
-			txMutexes.set(key, new Mutex())
-			txMutexRefCounts.set(key, 0)
-		}
-
-		return txMutexes.get(key)!
-	}
-
-	/**
-	 * Acquire a reference to a transaction mutex
-	 */
-	function acquireTxMutexRef(key: string): void {
-		const count = txMutexRefCounts.get(key) ?? 0
-		txMutexRefCounts.set(key, count + 1)
-	}
-
-	/**
-	 * Release a reference to a transaction mutex and cleanup if no longer needed
-	 */
-	function releaseTxMutexRef(key: string): void {
-		const count = (txMutexRefCounts.get(key) ?? 1) - 1
-		txMutexRefCounts.set(key, count)
-
-		// Cleanup if no more references and mutex is not locked
-		if (count <= 0) {
-			const mutex = txMutexes.get(key)
-			if (mutex && !mutex.isLocked()) {
-				txMutexes.delete(key)
-				txMutexRefCounts.delete(key)
-			}
-		}
-	}
 
 	/**
 	 * Check if currently in a transaction
@@ -231,7 +191,9 @@ export const addTransactionCapability = (
 				ctx.dbQueries++
 				logger.trace({ type, count: missing.length }, 'fetching missing keys in transaction')
 
-				const fetched = await getTxMutex(type).runExclusive(() => state.get(type, missing))
+				// Per-type read serialization, same semantic as before but routed
+				// through the canonical LockManager instead of a private PQueue.
+				const fetched = await locks.withLock({ namespace: '__type__', id: type }, () => state.get(type, missing))
 
 				// Update cache
 				ctx.cache[type] = ctx.cache[type] || ({} as any)
@@ -254,22 +216,26 @@ export const addTransactionCapability = (
 			const ctx = txStorage.getStore()
 
 			if (!ctx) {
-				// No transaction - direct write with queue protection
-				const types = Object.keys(data)
-
-				// Process pre-keys with validation
-				for (const type_ of types) {
-					const type = type_ as keyof SignalDataTypeMap
-					if (type === 'pre-key') {
-						await preKeyManager.validateDeletions(data, type)
-					}
-				}
-
-				// Write all data in parallel
+				// No transaction — hold one per-type lock across validate + write so
+				// pre-key deletion validation reads the same store state that the
+				// write will observe (H2 fix).
+				const types = Object.keys(data) as Array<keyof SignalDataTypeMap>
 				await Promise.all(
 					types.map(type =>
-						getQueue(type).add(async () => {
-							const typeData = { [type]: data[type as keyof SignalDataTypeMap] } as SignalDataSet
+						locks.withLock({ namespace: '__type__', id: type }, async () => {
+							if (type === 'pre-key') {
+								await preKeyManager.validateDeletions(data, type)
+							}
+
+							// `validateDeletions` may have removed every entry from
+							// the bucket (e.g. all targeted ids were already gone).
+							// Skip the durable write in that case — no work to do,
+							// and writing `{ 'pre-key': {} }` is a wasteful no-op
+							// against the storage adapter.
+							const bucket = data[type]
+							if (!bucket || Object.keys(bucket).length === 0) return
+
+							const typeData = { [type]: bucket } as SignalDataSet
 							await state.set(typeData)
 						})
 					)
@@ -303,44 +269,55 @@ export const addTransactionCapability = (
 		transaction: async (work, key) => {
 			const existing = txStorage.getStore()
 
-			// Nested transaction - reuse existing context
+			// Nested transaction — reuse existing context. Note: this is the H0
+			// bypass that Stage 2's `transactWith` fixes by requiring the inner
+			// scope to be a subset of the outer scope.
 			if (existing) {
 				logger.trace('reusing existing transaction context')
 				return work()
 			}
 
-			// New transaction - acquire mutex and create context
-			const mutex = getTxMutex(key)
-			acquireTxMutexRef(key)
+			// New transaction — acquire the legacy-namespaced lock and create a
+			// fresh AsyncLocalStorage context.
+			return locks.withLock({ namespace: '__legacy__', id: key }, async () => {
+				const ctx: TransactionContext = {
+					cache: {},
+					mutations: {},
+					dbQueries: 0
+				}
 
-			try {
-				return await mutex.runExclusive(async () => {
-					const ctx: TransactionContext = {
-						cache: {},
-						mutations: {},
-						dbQueries: 0
-					}
+				logger.trace('entering transaction')
 
-					logger.trace('entering transaction')
+				try {
+					const result = await txStorage.run(ctx, work)
 
-					try {
-						const result = await txStorage.run(ctx, work)
+					await commitWithRetry(ctx.mutations)
 
-						// Commit mutations
-						await commitWithRetry(ctx.mutations)
+					logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
 
-						logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
+					return result
+				} catch (err) {
+					logger.error({ err }, 'transaction failed, rolling back')
+					throw err
+				}
+			})
+		},
 
-						return result
-					} catch (error) {
-						logger.error({ error }, 'transaction failed, rolling back')
-						throw error
-					}
-				})
-			} finally {
-				releaseTxMutexRef(key)
-			}
-		}
+		// Enumeration pass-throughs (Stage 1 type lift). Transactions over `list`
+		// would require a holistic snapshot the cache layer can't provide — these
+		// reads bypass the per-key tx cache by design. Stage 5's adapters
+		// implement these; pre-existing user stores without `list` simply omit
+		// these methods (they're optional on the interface).
+		...(state.list
+			? {
+					list: <T extends keyof SignalDataTypeMap>(type: T) => state.list!(type)
+				}
+			: {}),
+		...(state.listIds
+			? {
+					listIds: <T extends keyof SignalDataTypeMap>(type: T) => state.listIds!(type)
+				}
+			: {})
 	}
 }
 
