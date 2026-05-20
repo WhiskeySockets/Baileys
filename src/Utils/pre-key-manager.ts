@@ -86,7 +86,7 @@ export class PreKeyManager {
 		const existingKeys = await this.store.get(keyType, deletionIds)
 		for (const keyId of deletionIds) {
 			if (!existingKeys[keyId]) {
-				this.logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
+				this.logger.warn({ keyType, keyId }, 'skipping deletion of non-existent record')
 				delete data[keyType]![keyId]
 			}
 		}
@@ -110,7 +110,7 @@ export class PreKeyManager {
 					cacheBucket[keyId] = null
 					if (mutationsBucket) mutationsBucket[keyId] = null
 				} else {
-					this.logger.warn(`Skipping deletion of non-existent ${keyType} in transaction: ${keyId}`)
+					this.logger.warn({ keyType, keyId }, 'skipping deletion of non-existent record (in transaction)')
 				}
 			}
 		} else {
@@ -121,7 +121,7 @@ export class PreKeyManager {
 					if (cacheBucket) cacheBucket[keyId] = null
 					if (mutationsBucket) mutationsBucket[keyId] = null
 				} else {
-					this.logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
+					this.logger.warn({ keyType, keyId }, 'skipping deletion of non-existent record')
 				}
 			}
 		}

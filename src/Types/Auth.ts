@@ -116,9 +116,59 @@ export type SignalKeyStore = {
 	listIds?<T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<string>
 }
 
+/**
+ * Scope declaration for {@link SignalKeyStoreWithTransaction.transactWith}.
+ *
+ * The records list names every (type, id) pair the transaction will read or
+ * write. Locks are acquired in a deterministic sorted order via the
+ * LockManager, so two transactions with overlapping scope acquired in opposite
+ * orders cannot deadlock against each other.
+ */
+export type TransactionScope = {
+	records: readonly RecordRef[]
+}
+
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
+	/**
+	 * @deprecated Use {@link SignalKeyStoreWithRecordTransaction.transactWith}
+	 * (available on stores built via Baileys' `addTransactionCapability`),
+	 * which acquires record-identifier-keyed locks rather than a single
+	 * caller-chosen string key. Scheduled for removal in v8.
+	 *
+	 * Stage 2 fixed the nested-bypass behavior (H0): re-entering this method
+	 * with a key not already held by an outer transaction now acquires its
+	 * own lock instead of silently sharing the outer's lock. Same-key nested
+	 * calls still bypass (re-entry safety).
+	 */
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	/**
+	 * Optional record-scoped transaction surface. Added in Stage 2 as an
+	 * **additive** capability — existing user-implemented stores that only
+	 * provide `transaction()` keep compiling. Baileys' own
+	 * `addTransactionCapability` returns a store that implements it; internal
+	 * callers narrow to {@link SignalKeyStoreWithRecordTransaction} when
+	 * they need a non-optional surface.
+	 *
+	 * @see SignalKeyStoreWithRecordTransaction for the required-method variant.
+	 */
+	transactWith?<T>(scope: TransactionScope, work: () => Promise<T>): Promise<T>
+}
+
+/**
+ * Variant of {@link SignalKeyStoreWithTransaction} that requires
+ * `transactWith`. Baileys' own `addTransactionCapability` returns this
+ * concrete shape, so internal call sites (`libsignal`, `messages-send`,
+ * etc.) get the precise method signature without needing to null-check the
+ * optional `transactWith` field on every call.
+ *
+ * Third-party stores can opt in by implementing this interface explicitly
+ * when they're ready for the record-scoped API. Stores that only implement
+ * the legacy `transaction()` continue to satisfy
+ * {@link SignalKeyStoreWithTransaction} and stay compatible.
+ */
+export type SignalKeyStoreWithRecordTransaction = SignalKeyStoreWithTransaction & {
+	transactWith<T>(scope: TransactionScope, work: () => Promise<T>): Promise<T>
 }
 
 export type TransactionCapabilityOptions = {

@@ -3,7 +3,13 @@ import * as libsignal from 'libsignal'
 // @ts-ignore
 import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
 import { LRUCache } from 'lru-cache'
-import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
+import type {
+	LIDMapping,
+	RecordRef,
+	SignalAuthState,
+	SignalKeyStoreWithRecordTransaction,
+	SignalKeyStoreWithTransaction
+} from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
@@ -55,7 +61,10 @@ export function makeLibSignalRepository(
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
 
-	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
+	// Baileys' `addTransactionCapability` returns a store with `transactWith`
+	// implemented; narrow to the record-transaction variant so the internal
+	// call sites don't have to null-check the (publicly optional) method.
+	const parsedKeys = auth.keys as SignalKeyStoreWithRecordTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
 		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,
@@ -79,10 +88,9 @@ export function makeLibSignalRepository(
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
 
-			// Use transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
+			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderName.toString() }] }, async () => {
 				return cipher.decrypt(msg)
-			}, group)
+			})
 		},
 		async processSenderKeyDistributionMessage({ item, authorJid }) {
 			const builder = new GroupSessionBuilder(storage)
@@ -91,7 +99,6 @@ export function makeLibSignalRepository(
 			}
 
 			const senderName = jidToSignalSenderKeyName(item.groupId, authorJid)
-
 			const senderMsg = new SenderKeyDistributionMessage(
 				null,
 				null,
@@ -100,25 +107,32 @@ export function makeLibSignalRepository(
 				item.axolotlSenderKeyDistributionMessage
 			)
 			const senderNameStr = senderName.toString()
-			const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-			if (!senderKey) {
-				await storage.storeSenderKey(senderName, new SenderKeyRecord())
-			}
 
-			return parsedKeys.transaction(async () => {
+			// The "ensure a SenderKeyRecord exists" check runs INSIDE the
+			// per-record transactWith below. The previous pre-lock get + write
+			// here was both redundant and unsafe: a concurrent
+			// `processSenderKeyDistributionMessage` (or any other writer to the
+			// same sender-key record) could commit a populated record between
+			// our pre-lock read and our pre-lock write, which our write would
+			// then clobber with an empty record. Removing it eliminates that
+			// race window without changing observable behavior — the in-lock
+			// re-check handles the first-time-seeing-this-sender case.
+			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderNameStr }] }, async () => {
 				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
 				if (!senderKey) {
 					await storage.storeSenderKey(senderName, new SenderKeyRecord())
 				}
 
 				await builder.process(senderName, senderMsg)
-			}, item.groupId)
+			})
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const session = new libsignal.SessionCipher(storage, addr)
 
-			// Extract and save sender's identity key before decryption for identity change detection
+			// Extract and save sender's identity key before decryption for identity change detection.
+			// NOTE: this runs outside the per-jid transaction today (H1 — addressed in Stage 3 by
+			// folding identity save into the transaction scope alongside session).
 			if (type === 'pkmsg') {
 				const identityKey = extractIdentityFromPkmsg(ciphertext)
 				if (identityKey) {
@@ -144,38 +158,37 @@ export function makeLibSignalRepository(
 				return result
 			}
 
-			// If it's not a sync message, we need to ensure atomicity
-			// For regular messages, we use a transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: addr.toString() }] }, async () => {
 				return await doDecrypt()
-			}, jid)
+			})
 		},
 
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
-			// Use transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: addr.toString() }] }, async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
 				return { type, ciphertext: Buffer.from(body, 'binary') }
-			}, jid)
+			})
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
-			return parsedKeys.transaction(async () => {
-				const { senderName, skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
+			const senderName = jidToSignalSenderKeyName(group, meId)
+			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderName.toString() }] }, async () => {
+				const { skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
 				const ciphertext = await new GroupCipher(storage, senderName).encrypt(data)
 				return { ciphertext, senderKeyDistributionMessage: skdm.serialize() }
-			}, group)
+			})
 		},
 
 		async getSenderKeyDistributionMessage({ group, meId }) {
-			return parsedKeys.transaction(async () => {
+			const senderName = jidToSignalSenderKeyName(group, meId)
+			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderName.toString() }] }, async () => {
 				const { skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
 				return skdm.serialize()
-			}, group)
+			})
 		},
 
 		async hasSenderKey({ group, meId }) {
@@ -205,12 +218,13 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
-			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
-			return parsedKeys.transaction(async () => {
+			const addr = jidToSignalProtocolAddress(jid)
+			const cipher = new libsignal.SessionBuilder(storage, addr)
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: addr.toString() }] }, async () => {
 				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
 				// but the bundled .d.ts marks it required.
 				await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
-			}, jid)
+			})
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()
@@ -243,15 +257,19 @@ export function makeLibSignalRepository(
 
 			// Convert JIDs to signal addresses and prepare for bulk deletion
 			const sessionUpdates: { [key: string]: null } = {}
+			const sessionAddrs: string[] = []
 			jids.forEach(jid => {
-				const addr = jidToSignalProtocolAddress(jid)
-				sessionUpdates[addr.toString()] = null
+				const addr = jidToSignalProtocolAddress(jid).toString()
+				sessionUpdates[addr] = null
+				sessionAddrs.push(addr)
 			})
 
-			// Single transaction for all deletions
-			return parsedKeys.transaction(async () => {
+			// H4 fix: lock by the actual session record ids instead of a synthetic
+			// `delete-N-sessions` key. Now serializes against concurrent
+			// encrypt/decrypt transactions for any of these jids.
+			return parsedKeys.transactWith({ records: sessionAddrs.map(id => ({ type: 'session', id })) }, async () => {
 				await auth.keys.set({ session: sessionUpdates })
-			}, `delete-${jids.length}-sessions`)
+			})
 		},
 
 		close() {
@@ -324,36 +342,47 @@ export function makeLibSignalRepository(
 				'bulk device migration complete - all user devices processed'
 			)
 
-			// Single transaction for all migrations
-			return parsedKeys.transaction(
+			// Prepare migration operations with addressing metadata up-front so
+			// we can build a precise lock scope before entering the critical
+			// section (H4 fix: lock the actual session record ids + the
+			// device-list record, instead of a synthetic `migrate-N-...` key).
+			type MigrationOp = {
+				fromJid: string
+				toJid: string
+				pnUser: string
+				lidUser: string
+				deviceId: number
+				fromAddr: libsignal.ProtocolAddress
+				toAddr: libsignal.ProtocolAddress
+			}
+
+			const migrationOps: MigrationOp[] = deviceJids.map(jid => {
+				const lidWithDevice = transferDevice(jid, toJid)
+				const fromDecoded = jidDecode(jid)!
+				const toDecoded = jidDecode(lidWithDevice)!
+
+				return {
+					fromJid: jid,
+					toJid: lidWithDevice,
+					pnUser: fromDecoded.user,
+					lidUser: toDecoded.user,
+					deviceId: fromDecoded.device || 0,
+					fromAddr: jidToSignalProtocolAddress(jid),
+					toAddr: jidToSignalProtocolAddress(lidWithDevice)
+				}
+			})
+
+			const sessionRecords: RecordRef[] = []
+			for (const op of migrationOps) {
+				sessionRecords.push({ type: 'session', id: op.fromAddr.toString() })
+				sessionRecords.push({ type: 'session', id: op.toAddr.toString() })
+			}
+
+			return parsedKeys.transactWith(
+				{
+					records: [{ type: 'device-list', id: user }, ...sessionRecords]
+				},
 				async (): Promise<{ migrated: number; skipped: number; total: number }> => {
-					// Prepare migration operations with addressing metadata
-					type MigrationOp = {
-						fromJid: string
-						toJid: string
-						pnUser: string
-						lidUser: string
-						deviceId: number
-						fromAddr: libsignal.ProtocolAddress
-						toAddr: libsignal.ProtocolAddress
-					}
-
-					const migrationOps: MigrationOp[] = deviceJids.map(jid => {
-						const lidWithDevice = transferDevice(jid, toJid)
-						const fromDecoded = jidDecode(jid)!
-						const toDecoded = jidDecode(lidWithDevice)!
-
-						return {
-							fromJid: jid,
-							toJid: lidWithDevice,
-							pnUser: fromDecoded.user,
-							lidUser: toDecoded.user,
-							deviceId: fromDecoded.device || 0,
-							fromAddr: jidToSignalProtocolAddress(jid),
-							toAddr: jidToSignalProtocolAddress(lidWithDevice)
-						}
-					})
-
 					const totalOps = migrationOps.length
 					let migratedCount = 0
 
@@ -398,8 +427,7 @@ export function makeLibSignalRepository(
 
 					const skippedCount = totalOps - migratedCount
 					return { migrated: migratedCount, skipped: skippedCount, total: totalOps }
-				},
-				`migrate-${deviceJids.length}-sessions-${jidDecode(toJid)?.user}`
+				}
 			)
 		}
 	}
