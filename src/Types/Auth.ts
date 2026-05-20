@@ -131,28 +131,43 @@ export type TransactionScope = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	/**
-	 * @deprecated Use {@link SignalKeyStoreWithTransaction.transactWith} which
-	 * acquires record-identifier-keyed locks rather than a single caller-chosen
-	 * string key. Scheduled for removal in v8.
+	 * @deprecated Use {@link SignalKeyStoreWithRecordTransaction.transactWith}
+	 * (available on stores built via Baileys' `addTransactionCapability`),
+	 * which acquires record-identifier-keyed locks rather than a single
+	 * caller-chosen string key. Scheduled for removal in v8.
 	 *
 	 * Stage 2 fixed the nested-bypass behavior (H0): re-entering this method
-	 * with a key not already held by an outer transaction now acquires its own
-	 * lock instead of silently sharing the outer's lock. Same-key nested calls
-	 * still bypass (re-entry safety).
+	 * with a key not already held by an outer transaction now acquires its
+	 * own lock instead of silently sharing the outer's lock. Same-key nested
+	 * calls still bypass (re-entry safety).
 	 */
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
 	/**
-	 * Run `work` inside a record-scoped transaction. Acquires locks on every
-	 * record in `scope.records` via the LockManager before invoking `work`,
-	 * commits accumulated mutations in a single atomic `state.set` on success,
-	 * and discards them on throw.
+	 * Optional record-scoped transaction surface. Added in Stage 2 as an
+	 * **additive** capability — existing user-implemented stores that only
+	 * provide `transaction()` keep compiling. Baileys' own
+	 * `addTransactionCapability` returns a store that implements it; internal
+	 * callers narrow to {@link SignalKeyStoreWithRecordTransaction} when
+	 * they need a non-optional surface.
 	 *
-	 * Nested calls whose records are already held by an outer transaction
-	 * (including legacy `transaction(work, key)` calls) bypass re-acquisition
-	 * but still share the outer's mutation accumulator. Records not held by
-	 * the outer are acquired fresh, fixing the H0 nested-lock-suppression
-	 * defect.
+	 * @see SignalKeyStoreWithRecordTransaction for the required-method variant.
 	 */
+	transactWith?<T>(scope: TransactionScope, work: () => Promise<T>): Promise<T>
+}
+
+/**
+ * Variant of {@link SignalKeyStoreWithTransaction} that requires
+ * `transactWith`. Baileys' own `addTransactionCapability` returns this
+ * concrete shape, so internal call sites (`libsignal`, `messages-send`,
+ * etc.) get the precise method signature without needing to null-check the
+ * optional `transactWith` field on every call.
+ *
+ * Third-party stores can opt in by implementing this interface explicitly
+ * when they're ready for the record-scoped API. Stores that only implement
+ * the legacy `transaction()` continue to satisfy
+ * {@link SignalKeyStoreWithTransaction} and stay compatible.
+ */
+export type SignalKeyStoreWithRecordTransaction = SignalKeyStoreWithTransaction & {
 	transactWith<T>(scope: TransactionScope, work: () => Promise<T>): Promise<T>
 }
 

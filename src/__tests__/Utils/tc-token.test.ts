@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals'
-import { type SignalKeyStoreWithTransaction } from '../../Types'
+import { type SignalKeyStoreWithRecordTransaction, type SignalKeyStoreWithTransaction } from '../../Types'
 import { SERVER_ERROR_CODES } from '../../Utils'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -26,11 +26,11 @@ const computeCutoff = () => {
 	return cutoffBucket * BUCKET_DURATION
 }
 
-const createMockKeys = (): jest.Mocked<SignalKeyStoreWithTransaction> => ({
+const createMockKeys = (): jest.Mocked<SignalKeyStoreWithRecordTransaction> => ({
 	get: jest.fn<SignalKeyStoreWithTransaction['get']>() as any,
 	set: jest.fn<SignalKeyStoreWithTransaction['set']>(),
 	transaction: jest.fn<SignalKeyStoreWithTransaction['transaction']>(async (work: () => any) => await work()) as any,
-	transactWith: jest.fn<SignalKeyStoreWithTransaction['transactWith']>(
+	transactWith: jest.fn<SignalKeyStoreWithRecordTransaction['transactWith']>(
 		async (_scope: any, work: () => any) => await work()
 	) as any,
 	isInTransaction: jest.fn<SignalKeyStoreWithTransaction['isInTransaction']>()

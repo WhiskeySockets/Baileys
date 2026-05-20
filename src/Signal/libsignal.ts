@@ -3,7 +3,13 @@ import * as libsignal from 'libsignal'
 // @ts-ignore
 import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
 import { LRUCache } from 'lru-cache'
-import type { LIDMapping, RecordRef, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
+import type {
+	LIDMapping,
+	RecordRef,
+	SignalAuthState,
+	SignalKeyStoreWithRecordTransaction,
+	SignalKeyStoreWithTransaction
+} from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
@@ -55,7 +61,10 @@ export function makeLibSignalRepository(
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
 
-	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
+	// Baileys' `addTransactionCapability` returns a store with `transactWith`
+	// implemented; narrow to the record-transaction variant so the internal
+	// call sites don't have to null-check the (publicly optional) method.
+	const parsedKeys = auth.keys as SignalKeyStoreWithRecordTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
 		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,

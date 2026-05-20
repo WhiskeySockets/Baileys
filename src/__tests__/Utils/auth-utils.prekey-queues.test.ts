@@ -170,16 +170,20 @@ describe('addTransactionCapability — pre-key validation vs write coordination 
 		const deleterGetStart = events.indexOf('get-start:pre-key:9')
 		const deleterGetEnd = events.indexOf('get-end:pre-key:9')
 
-		if (deleterGetStart >= 0) {
-			const creatorWriteEvents = events
-				.map((e, i) => ({ e, i }))
-				.filter(({ e }) => e.startsWith('set-start:pre-key:9') || e.startsWith('set-end:pre-key:9'))
-				.map(({ i }) => i)
+		// The deleter MUST have performed a validation read — without these
+		// assertions the non-straddling check below would silently pass if
+		// `validateDeletions` ever stopped issuing the get entirely.
+		expect(deleterGetStart).toBeGreaterThanOrEqual(0)
+		expect(deleterGetEnd).toBeGreaterThan(deleterGetStart)
 
-			// No write event lies between the deleter's get-start and get-end —
-			// the read snapshot is stable for the duration of validation.
-			const straddling = creatorWriteEvents.filter(i => i > deleterGetStart && i < deleterGetEnd)
-			expect(straddling).toEqual([])
-		}
+		const creatorWriteEvents = events
+			.map((e, i) => ({ e, i }))
+			.filter(({ e }) => e.startsWith('set-start:pre-key:9') || e.startsWith('set-end:pre-key:9'))
+			.map(({ i }) => i)
+
+		// No write event lies between the deleter's get-start and get-end —
+		// the read snapshot is stable for the duration of validation.
+		const straddling = creatorWriteEvents.filter(i => i > deleterGetStart && i < deleterGetEnd)
+		expect(straddling).toEqual([])
 	})
 })

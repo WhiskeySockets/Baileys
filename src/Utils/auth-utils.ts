@@ -11,7 +11,7 @@ import type {
 	SignalDataSet,
 	SignalDataTypeMap,
 	SignalKeyStore,
-	SignalKeyStoreWithTransaction,
+	SignalKeyStoreWithRecordTransaction,
 	TransactionCapabilityOptions,
 	TransactionScope
 } from '../Types'
@@ -151,7 +151,7 @@ export const addTransactionCapability = (
 	state: SignalKeyStore,
 	logger: ILogger,
 	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
-): SignalKeyStoreWithTransaction => {
+): SignalKeyStoreWithRecordTransaction => {
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
 	const locks = makeLockManager()
 	const preKeyManager = new PreKeyManager(state, logger)
