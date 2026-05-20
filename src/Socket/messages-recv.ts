@@ -1625,14 +1625,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await lidMigrationLocks.withLock({ namespace: 'lid-migration', id: alt }, async () => {
 					const altServer = jidDecode(alt)?.server
 					const primaryJid = msg.key.participant || msg.key.remoteJid!
+					// Skip the store + migrate ONLY when the existing mapping
+					// already matches the incoming `primaryJid`. A bare
+					// existence check would freeze a stale mapping forever:
+					// if a PN previously mapped to one LID and a new message
+					// arrives announcing a different LID, we must reconcile
+					// rather than silently ignore the update. Equality with
+					// the incoming side is the correct idempotency guard.
 					if (altServer === 'lid') {
-						if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
+						const existingPn = await signalRepository.lidMapping.getPNForLID(alt)
+						if (existingPn !== primaryJid) {
 							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
 							await signalRepository.migrateSession(primaryJid, alt)
 						}
 					} else {
-						await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-						await signalRepository.migrateSession(alt, primaryJid)
+						const existingLid = await signalRepository.lidMapping.getLIDForPN(alt)
+						if (existingLid !== primaryJid) {
+							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+							await signalRepository.migrateSession(alt, primaryJid)
+						}
 					}
 				})
 			}
