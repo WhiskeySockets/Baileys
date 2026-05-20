@@ -163,6 +163,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		namespace: 'msg-retry',
 		id: `${msgId}:${participant}`
 	})
+	/**
+	 * Single-flight guard for `requestPlaceholderResend` (Stage 9). The cache-
+	 * based dedupe (\`get → set\`) had a race window: two concurrent calls for
+	 * the same message id could both observe the cache as empty and both
+	 * issue the placeholder resend. The lock collapses the get + set into
+	 * one critical section per id.
+	 */
+	const placeholderResendLocks = makeLockManager()
+
 	const incrementRetryAndGet = async (msgId: string, participant: string): Promise<number> => {
 		return retryLocks.withLock(retryLockRef(msgId, participant), async () => {
 			const key = `${msgId}:${participant}`
@@ -241,14 +250,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		if (await placeholderResendCache.get(messageKey?.id!)) {
-			logger.debug({ messageKey }, 'already requested resend')
-			return
-		} else {
-			// Store original message data so PDO response handler can preserve
-			// metadata (LID details, timestamps, etc.) that the phone may omit
-			await placeholderResendCache.set(messageKey?.id!, msgData || true)
-		}
+		// Stage 9: collapse the previous \`get → set\` cache-dedupe into one
+		// per-id critical section so two concurrent callers can't both
+		// observe an empty cache and both fire the resend.
+		const alreadyHandled = await placeholderResendLocks.withLock(
+			{ namespace: 'placeholder-resend', id: messageKey?.id ?? '' },
+			async () => {
+				if (await placeholderResendCache.get(messageKey?.id!)) {
+					logger.debug({ messageKey }, 'already requested resend')
+					return true
+				}
+
+				// Store original message data so PDO response handler can preserve
+				// metadata (LID details, timestamps, etc.) that the phone may omit
+				await placeholderResendCache.set(messageKey?.id!, msgData || true)
+				return false
+			}
+		)
+		if (alreadyHandled) return
 
 		await delay(2000)
 

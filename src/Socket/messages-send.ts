@@ -33,6 +33,7 @@ import {
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
+	runDetached,
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
@@ -123,9 +124,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	let mediaConn: Promise<MediaConnInfo> | undefined
 	/** Per-socket media host; updated whenever media_conn is fetched. Defaults to the public WhatsApp host. */
 	let mediaHost: string = DEF_MEDIA_HOST
+	/**
+	 * Single-flight guard for the media-conn fetch (Stage 9). Two concurrent
+	 * callers used to both observe `mediaConn` as expired and both reassign
+	 * the in-flight promise, leaking the first fetch's result. The mutex
+	 * ensures only one refresh runs at a time; subsequent callers await the
+	 * one in-flight or reuse the freshly-cached value.
+	 */
+	const mediaConnMutex = makeMutex()
 	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
-		const media = await mediaConn
-		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
+		const cached = await mediaConn
+		if (cached && !forceGet && new Date().getTime() - cached.fetchDate.getTime() <= cached.ttl * 1000) {
+			return cached
+		}
+
+		return mediaConnMutex.mutex(async () => {
+			// Re-check inside the lock: another caller may have refreshed.
+			const after = await mediaConn
+			if (after && !forceGet && new Date().getTime() - after.fetchDate.getTime() <= after.ttl * 1000) {
+				return after
+			}
+
 			mediaConn = (async () => {
 				const result = await query({
 					tag: 'iq',
@@ -137,7 +156,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: [{ tag: 'media_conn', attrs: {} }]
 				})
 				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
-				// TODO: explore full length of data that whatsapp provides
 				const node: MediaConnInfo = {
 					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
 						hostname: attrs.hostname!,
@@ -154,9 +172,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				return node
 			})()
-		}
 
-		return mediaConn!
+			return mediaConn
+		})
 	}
 
 	/**
@@ -1407,9 +1425,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalNodes
 				})
 				if (config.emitOwnEvents) {
-					process.nextTick(async () => {
-						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
-					})
+					// Detached on purpose — `relayMessage` already returned. The
+					// upsert is a best-effort projection into the local event
+					// stream. Stage 9: route through `runDetached` so a
+					// rejection becomes a structured `error` log instead of an
+					// `unhandledRejection`.
+					process.nextTick(() =>
+						runDetached(() => messageMutex.mutex(() => upsertMessage(fullMsg, 'append')), logger, {
+							op: 'emitOwnEvents.upsertMessage',
+							msgId: fullMsg.key.id
+						})
+					)
 				}
 
 				return fullMsg

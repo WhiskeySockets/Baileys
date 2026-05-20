@@ -482,3 +482,39 @@ export function bytesToCrockford(buffer: Buffer): string {
 export function encodeNewsletterMessage(message: proto.IMessage): Uint8Array {
 	return proto.Message.encode(message).finish()
 }
+
+/**
+ * Schedule an async function to run without blocking the caller (`fire and
+ * forget`) — but always log rejections at `warn`/`error` instead of letting
+ * them become silent `unhandledRejection`.
+ *
+ * Used throughout the socket layer to replace ad-hoc patterns like
+ * `void (async () => { ... })()` and `process.nextTick(async () => { ... })`
+ * whose rejections previously only debug-logged (or never surfaced at all).
+ *
+ * @param work the async work to run detached
+ * @param logger child logger to use for error reporting
+ * @param context structured context attached to the log entry (operation
+ *                name, ids, etc.) so operators can correlate the failure
+ *                with the call site
+ */
+export function runDetached(
+	work: () => Promise<unknown>,
+	logger: { warn?: (obj: unknown, msg?: string) => void; error?: (obj: unknown, msg?: string) => void },
+	context: Record<string, unknown> = {}
+): void {
+	let result: Promise<unknown> | undefined
+	try {
+		result = work()
+	} catch (err) {
+		// Synchronous throw from `work` itself (rare — `async` functions wrap in Promise.reject).
+		logger.error?.({ err, ...context }, 'runDetached: detached work threw synchronously')
+		return
+	}
+
+	if (result !== undefined && result !== null) {
+		Promise.resolve(result).catch((err: unknown) => {
+			logger.error?.({ err, ...context }, 'runDetached: detached work rejected')
+		})
+	}
+}
