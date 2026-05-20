@@ -39,6 +39,18 @@ import { buildMergedTcTokenIndexWrite, resolveTcTokenJid } from './tc-token-util
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
 	placeholderResendCache?: CacheStore
+	/**
+	 * Optional cache used to dedupe redelivered messages (M8). When supplied
+	 * with a (msgId, sender) key set, `processMessage` short-circuits a second
+	 * processing pass — preventing double `messages.upsert` emission, double
+	 * history-record append, double `migrateSession`, and double tc-token
+	 * index writes that the audit flagged as M8.
+	 *
+	 * Callers should pre-populate this cache (typically a `NodeCache` with a
+	 * TTL longer than typical retry windows but shorter than minutes) on the
+	 * receive pipeline. Pass `undefined` to opt out (legacy behavior).
+	 */
+	processedMessageCache?: CacheStore
 	creds: AuthenticationCreds
 	keyStore: SignalKeyStoreWithTransaction
 	ev: BaileysEventEmitter
@@ -295,6 +307,7 @@ const processMessage = async (
 	{
 		shouldProcessHistoryMsg,
 		placeholderResendCache,
+		processedMessageCache,
 		ev,
 		creds,
 		signalRepository,
@@ -304,6 +317,23 @@ const processMessage = async (
 		getMessage
 	}: ProcessMessageContext
 ) => {
+	// M8: idempotency guard. Redelivered messages (from a retry-receipt
+	// loop, or a duplicate stanza) previously fully re-processed — duplicate
+	// `messages.upsert` events, doubled history appends, repeated session
+	// migrations, clobbered tc-token state. Skip if we've seen the
+	// `(msgId, sender)` pair recently.
+	if (processedMessageCache && message.key?.id) {
+		const sender = getKeyAuthor(message.key, creds.me!.id)
+		const idempotencyKey = `${message.key.id}:${sender}`
+		const already = await processedMessageCache.get<boolean>(idempotencyKey)
+		if (already) {
+			logger?.debug?.({ msgId: message.key.id, sender }, 'processMessage: skipping redelivered message (M8 guard)')
+			return
+		}
+
+		await processedMessageCache.set(idempotencyKey, true)
+	}
+
 	const meId = creds.me!.id
 	const { accountSettings } = creds
 
