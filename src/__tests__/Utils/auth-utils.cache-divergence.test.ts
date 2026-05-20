@@ -29,7 +29,7 @@ const silentLogger = (): ILogger =>
 	}) as unknown as ILogger
 
 describe('makeCacheableSignalKeyStore — cache divergence on store failure (H6)', () => {
-	it.failing('does not return uncommitted cache value after store.set throws', async () => {
+	it('does not return uncommitted cache value after store.set throws', async () => {
 		const persisted: Record<string, Record<string, unknown>> = {}
 		let shouldThrow = true
 
@@ -73,53 +73,50 @@ describe('makeCacheableSignalKeyStore — cache divergence on store failure (H6)
 		expect(observed).toEqual({})
 	})
 
-	it.failing(
-		'a get() interleaved between a failed set() and a successful retry does not return the failed value',
-		async () => {
-			const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
-			const persisted: Record<string, Record<string, unknown>> = {}
-			let failNext = true
+	it('a get() interleaved between a failed set() and a successful retry does not return the failed value', async () => {
+		const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+		const persisted: Record<string, Record<string, unknown>> = {}
+		let failNext = true
 
-			const flakyStore: SignalKeyStore = {
-				async get(type, ids) {
-					const bucket = persisted[type] ?? {}
-					const out: Record<string, any> = {}
-					for (const id of ids) {
-						if (id in bucket) out[id] = bucket[id]
-					}
+		const flakyStore: SignalKeyStore = {
+			async get(type, ids) {
+				const bucket = persisted[type] ?? {}
+				const out: Record<string, any> = {}
+				for (const id of ids) {
+					if (id in bucket) out[id] = bucket[id]
+				}
 
-					return out
-				},
-				async set(data: SignalDataSet) {
-					await delay(15)
-					if (failNext) {
-						failNext = false
-						throw new Error('first attempt failed')
-					}
+				return out
+			},
+			async set(data: SignalDataSet) {
+				await delay(15)
+				if (failNext) {
+					failNext = false
+					throw new Error('first attempt failed')
+				}
 
-					for (const type in data) {
-						persisted[type] = persisted[type] ?? {}
-						const incoming = (data as any)[type] as Record<string, unknown>
-						for (const id in incoming) {
-							persisted[type][id] = incoming[id]
-						}
+				for (const type in data) {
+					persisted[type] = persisted[type] ?? {}
+					const incoming = (data as any)[type] as Record<string, unknown>
+					for (const id in incoming) {
+						persisted[type][id] = incoming[id]
 					}
 				}
 			}
-
-			const cacheable = makeCacheableSignalKeyStore(flakyStore, silentLogger())
-
-			const id = '1'
-			const v1 = { public: Buffer.from([0x01]), private: Buffer.from([0x02]) }
-
-			// First set fails. After it rejects, an interleaved reader must not
-			// observe v1 — it was never durably persisted.
-			const failingSet = cacheable.set({ 'pre-key': { [id]: v1 as any } })
-
-			await expect(failingSet).rejects.toThrow('first attempt failed')
-
-			const observed = await cacheable.get('pre-key', [id])
-			expect(observed).toEqual({})
 		}
-	)
+
+		const cacheable = makeCacheableSignalKeyStore(flakyStore, silentLogger())
+
+		const id = '1'
+		const v1 = { public: Buffer.from([0x01]), private: Buffer.from([0x02]) }
+
+		// First set fails. After it rejects, an interleaved reader must not
+		// observe v1 — it was never durably persisted.
+		const failingSet = cacheable.set({ 'pre-key': { [id]: v1 as any } })
+
+		await expect(failingSet).rejects.toThrow('first attempt failed')
+
+		const observed = await cacheable.get('pre-key', [id])
+		expect(observed).toEqual({})
+	})
 })
