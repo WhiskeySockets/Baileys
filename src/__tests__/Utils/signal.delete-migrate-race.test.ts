@@ -1,18 +1,12 @@
 /**
- * H4 — `deleteSession` / `migrateSession` use synthetic transaction keys.
+ * H4 — `deleteSession` / `migrateSession` previously used synthetic
+ * transaction keys (`delete-${count}-sessions`, `migrate-${count}-...`) that
+ * did NOT overlap with the per-JID `transaction(work, jid)` keyspace. CLOSED
+ * in Stage 2 by migrating libsignal.ts to `transactWith({records:[{type:'session', id:addr}, ...]})`.
  *
- * Per-JID encrypt/decrypt transactions key on `jid`. Bulk delete and migrate
- * paths key on synthetic strings (`delete-${count}-sessions`,
- * `migrate-${count}-sessions-${user}`) that do NOT overlap with the per-JID
- * keyspace. As a result a session can be mid-encrypt for `jid:foo` while
- * `deleteSession(['foo'])` simultaneously writes `session.foo = null`.
- *
- * Desired behavior: any transaction that mutates `session.${addr}` serializes
- * with any other transaction (encrypt, decrypt, delete, migrate) that touches
- * the same `session.${addr}` record — regardless of how the caller "named" the
- * transaction.
- *
- * Failing while H4 is unresolved. Flipped to `it(...)` in Stages 2-3.
+ * These tests pin the new contract at the auth-utils layer: any `transactWith`
+ * that names a session record serializes against any other `transactWith` on
+ * the same record — no matter what the "outer naming" was.
  */
 import type { SignalDataSet, SignalKeyStore } from '../../Types'
 import { addTransactionCapability } from '../../Utils/auth-utils'
@@ -59,31 +53,33 @@ const makeStore = (): SignalKeyStore => {
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 describe('libsignal — bulk session delete/migrate vs per-JID encrypt (H4)', () => {
-	it.failing('deleteSession serializes against an in-flight encrypt for the same address', async () => {
+	it('deleteSession (transactWith on session records) serializes against an in-flight encrypt for the same address', async () => {
 		const keys = addTransactionCapability(makeStore(), silentLogger(), {
 			maxCommitRetries: 1,
 			delayBetweenTriesMs: 1
 		})
 
-		const addr = '12025550100.0' // signal protocol address string
+		const addr = '12025550100.0'
 
 		let encryptActive = false
 		let deleteSawEncryptActive = false
 
-		// Encrypt-shaped tx: keyed by per-recipient address.
-		const encrypt = keys.transaction(async () => {
+		// Encrypt-shaped tx: scope = the per-recipient session record.
+		const encrypt = keys.transactWith({ records: [{ type: 'session', id: addr }] }, async () => {
 			encryptActive = true
 			await delay(30)
 			encryptActive = false
-		}, addr)
+		})
 
-		// Delete-shaped tx: keyed by synthetic `delete-1-sessions`.
+		// Delete-shaped tx: scope = the same session record (Stage 2 fix —
+		// previously a synthetic `delete-N-sessions` string key that didn't
+		// share lockspace with encrypt).
 		const deleteAll = (async () => {
 			await delay(5)
-			await keys.transaction(async () => {
+			await keys.transactWith({ records: [{ type: 'session', id: addr }] }, async () => {
 				if (encryptActive) deleteSawEncryptActive = true
 				await keys.set({ session: { [addr]: null } })
-			}, `delete-1-sessions`)
+			})
 		})()
 
 		await Promise.all([encrypt, deleteAll])
@@ -91,7 +87,7 @@ describe('libsignal — bulk session delete/migrate vs per-JID encrypt (H4)', ()
 		expect(deleteSawEncryptActive).toBe(false)
 	})
 
-	it.failing('migrateSession serializes against in-flight encrypts for any of the migrated addresses', async () => {
+	it('migrateSession (transactWith over the affected session records) serializes against in-flight encrypts on any of them', async () => {
 		const keys = addTransactionCapability(makeStore(), silentLogger(), {
 			maxCommitRetries: 1,
 			delayBetweenTriesMs: 1
@@ -99,25 +95,32 @@ describe('libsignal — bulk session delete/migrate vs per-JID encrypt (H4)', ()
 
 		const pnAddr = '12025550100.0'
 		const lidAddr = '12025550100_1.0'
-		const user = '12025550100'
 
 		let encryptForPnActive = false
 		let migrationSawEncrypt = false
 
-		const encrypt = keys.transaction(async () => {
+		const encrypt = keys.transactWith({ records: [{ type: 'session', id: pnAddr }] }, async () => {
 			encryptForPnActive = true
 			await delay(30)
 			encryptForPnActive = false
-		}, pnAddr)
+		})
 
 		const migrate = (async () => {
 			await delay(5)
-			await keys.transaction(async () => {
-				if (encryptForPnActive) migrationSawEncrypt = true
-				await keys.set({
-					session: { [pnAddr]: null, [lidAddr]: Buffer.from([0x01]) as any }
-				})
-			}, `migrate-1-sessions-${user}`)
+			await keys.transactWith(
+				{
+					records: [
+						{ type: 'session', id: pnAddr },
+						{ type: 'session', id: lidAddr }
+					]
+				},
+				async () => {
+					if (encryptForPnActive) migrationSawEncrypt = true
+					await keys.set({
+						session: { [pnAddr]: null, [lidAddr]: Buffer.from([0x01]) as any }
+					})
+				}
+			)
 		})()
 
 		await Promise.all([encrypt, migrate])

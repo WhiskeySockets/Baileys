@@ -9,6 +9,9 @@ const mockKeys: jest.Mocked<SignalKeyStoreWithTransaction> = {
 	get: jest.fn<SignalKeyStoreWithTransaction['get']>() as any,
 	set: jest.fn<SignalKeyStoreWithTransaction['set']>(),
 	transaction: jest.fn<SignalKeyStoreWithTransaction['transaction']>(async (work: () => any) => await work()) as any,
+	transactWith: jest.fn<SignalKeyStoreWithTransaction['transactWith']>(
+		async (_scope: any, work: () => any) => await work()
+	) as any,
 	isInTransaction: jest.fn<SignalKeyStoreWithTransaction['isInTransaction']>()
 }
 const logger = P({ level: 'silent' })

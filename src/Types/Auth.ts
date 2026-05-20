@@ -116,9 +116,44 @@ export type SignalKeyStore = {
 	listIds?<T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<string>
 }
 
+/**
+ * Scope declaration for {@link SignalKeyStoreWithTransaction.transactWith}.
+ *
+ * The records list names every (type, id) pair the transaction will read or
+ * write. Locks are acquired in a deterministic sorted order via the
+ * LockManager, so two transactions with overlapping scope acquired in opposite
+ * orders cannot deadlock against each other.
+ */
+export type TransactionScope = {
+	records: readonly RecordRef[]
+}
+
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
+	/**
+	 * @deprecated Use {@link SignalKeyStoreWithTransaction.transactWith} which
+	 * acquires record-identifier-keyed locks rather than a single caller-chosen
+	 * string key. Scheduled for removal in v8.
+	 *
+	 * Stage 2 fixed the nested-bypass behavior (H0): re-entering this method
+	 * with a key not already held by an outer transaction now acquires its own
+	 * lock instead of silently sharing the outer's lock. Same-key nested calls
+	 * still bypass (re-entry safety).
+	 */
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	/**
+	 * Run `work` inside a record-scoped transaction. Acquires locks on every
+	 * record in `scope.records` via the LockManager before invoking `work`,
+	 * commits accumulated mutations in a single atomic `state.set` on success,
+	 * and discards them on throw.
+	 *
+	 * Nested calls whose records are already held by an outer transaction
+	 * (including legacy `transaction(work, key)` calls) bypass re-acquisition
+	 * but still share the outer's mutation accumulator. Records not held by
+	 * the outer are acquired fresh, fixing the H0 nested-lock-suppression
+	 * defect.
+	 */
+	transactWith<T>(scope: TransactionScope, work: () => Promise<T>): Promise<T>
 }
 
 export type TransactionCapabilityOptions = {

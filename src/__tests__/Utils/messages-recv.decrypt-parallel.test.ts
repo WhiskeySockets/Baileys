@@ -61,7 +61,7 @@ const makeStore = (): SignalKeyStore => {
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 describe('messages-recv — per-JID ratchet serialization vs concurrent send (H10)', () => {
-	it.failing('decrypt for jid serializes against an encrypt for the same jid wrapped in an outer meId tx', async () => {
+	it('decrypt for jid serializes against an encrypt for the same jid wrapped in an outer meId tx', async () => {
 		const store = makeStore()
 		// Seed: a "session" with an integer counter standing in for ratchet chain index.
 		await store.set({ session: { 'peer@s.whatsapp.net': Buffer.from([0]) } })
@@ -108,44 +108,41 @@ describe('messages-recv — per-JID ratchet serialization vs concurrent send (H1
 		expect(finalCounter).toBe(2)
 	})
 
-	it.failing(
-		'two parallel decrypts at the receive layer serialize even when one is nested in an outer meId tx',
-		async () => {
-			const store = makeStore()
-			await store.set({ session: { 'peer@s.whatsapp.net': Buffer.from([0]) } })
+	it('two parallel decrypts at the receive layer serialize even when one is nested in an outer meId tx', async () => {
+		const store = makeStore()
+		await store.set({ session: { 'peer@s.whatsapp.net': Buffer.from([0]) } })
 
-			const keys = addTransactionCapability(store, silentLogger(), {
-				maxCommitRetries: 1,
-				delayBetweenTriesMs: 1
-			})
+		const keys = addTransactionCapability(store, silentLogger(), {
+			maxCommitRetries: 1,
+			delayBetweenTriesMs: 1
+		})
 
-			const meId = 'me@s.whatsapp.net'
-			const jid = 'peer@s.whatsapp.net'
+		const meId = 'me@s.whatsapp.net'
+		const jid = 'peer@s.whatsapp.net'
 
-			const ratchetAdvance = () =>
-				keys.transaction(async () => {
-					const { [jid]: sess } = await keys.get('session', [jid])
-					const counter = Buffer.isBuffer(sess) ? (sess[0] ?? 0) : 0
-					await delay(10)
-					await keys.set({ session: { [jid]: Buffer.from([counter + 1]) } })
-				}, jid)
+		const ratchetAdvance = () =>
+			keys.transaction(async () => {
+				const { [jid]: sess } = await keys.get('session', [jid])
+				const counter = Buffer.isBuffer(sess) ? (sess[0] ?? 0) : 0
+				await delay(10)
+				await keys.set({ session: { [jid]: Buffer.from([counter + 1]) } })
+			}, jid)
 
-			const N = 8
-			const ops: Promise<unknown>[] = []
-			for (let i = 0; i < N; i++) {
-				// Half of them go through an outer meId tx (mimicking the relayMessage path).
-				if (i % 2 === 0) {
-					ops.push(keys.transaction(async () => ratchetAdvance(), meId))
-				} else {
-					ops.push(ratchetAdvance())
-				}
+		const N = 8
+		const ops: Promise<unknown>[] = []
+		for (let i = 0; i < N; i++) {
+			// Half of them go through an outer meId tx (mimicking the relayMessage path).
+			if (i % 2 === 0) {
+				ops.push(keys.transaction(async () => ratchetAdvance(), meId))
+			} else {
+				ops.push(ratchetAdvance())
 			}
-
-			await Promise.all(ops)
-
-			const { [jid]: finalSession } = await store.get('session', [jid])
-			const finalCounter = Buffer.isBuffer(finalSession) ? finalSession[0] : 0
-			expect(finalCounter).toBe(N)
 		}
-	)
+
+		await Promise.all(ops)
+
+		const { [jid]: finalSession } = await store.get('session', [jid])
+		const finalCounter = Buffer.isBuffer(finalSession) ? finalSession[0] : 0
+		expect(finalCounter).toBe(N)
+	})
 })

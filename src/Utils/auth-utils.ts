@@ -7,11 +7,13 @@ import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
 	CacheStore,
+	RecordRef,
 	SignalDataSet,
 	SignalDataTypeMap,
 	SignalKeyStore,
 	SignalKeyStoreWithTransaction,
-	TransactionCapabilityOptions
+	TransactionCapabilityOptions,
+	TransactionScope
 } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
@@ -20,13 +22,29 @@ import type { ILogger } from './logger'
 import { PreKeyManager } from './pre-key-manager'
 
 /**
- * Transaction context stored in AsyncLocalStorage
+ * Transaction context stored in AsyncLocalStorage.
+ *
+ * `heldLocks` tracks every `${namespace} ${id}` lock acquired in the outer
+ * scope, including the synthetic `__legacy__` namespace used by the
+ * deprecated `transaction(work, key)` API. Inner calls (both legacy and
+ * `transactWith`) consult this set to skip re-acquisition of a lock already
+ * held by the same async context — preserving re-entry safety while still
+ * closing the H0 bypass for genuinely new lock keys.
  */
 interface TransactionContext {
 	cache: SignalDataSet
 	mutations: SignalDataSet
 	dbQueries: number
+	heldLocks: Set<string>
+	/** Sealed by `transactWith` after the work() promise resolves; further writes from detached async become no-ops (M5 hardening). */
+	sealed: boolean
 }
+
+const LEGACY_NAMESPACE = '__legacy__'
+
+/** Build the canonical heldLocks key. Mirrors LockManager's internal `refKey`. */
+const lockKeyForRef = (namespace: string, id: string): string => `${namespace} ${id}`
+const lockKeyForRecord = (r: RecordRef): string => lockKeyForRef(r.type, r.id)
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -243,6 +261,16 @@ export const addTransactionCapability = (
 				return
 			}
 
+			// M5 hardening: detached async (setImmediate, process.nextTick,
+			// unawaited promises) inherits the AsyncLocalStorage context. After
+			// the outer work() resolves the context is sealed; writes from such
+			// orphaned callbacks become no-ops rather than silently mutating
+			// already-committed state.
+			if (ctx.sealed) {
+				logger.warn({ types: Object.keys(data) }, 'transaction context is sealed; ignoring detached write (M5 guard)')
+				return
+			}
+
 			// In transaction - update cache and mutations
 			logger.trace({ types: Object.keys(data) }, 'caching in transaction')
 
@@ -267,37 +295,94 @@ export const addTransactionCapability = (
 		isInTransaction,
 
 		transaction: async (work, key) => {
+			const lockKey = lockKeyForRef(LEGACY_NAMESPACE, key)
 			const existing = txStorage.getStore()
 
-			// Nested transaction — reuse existing context. Note: this is the H0
-			// bypass that Stage 2's `transactWith` fixes by requiring the inner
-			// scope to be a subset of the outer scope.
-			if (existing) {
-				logger.trace('reusing existing transaction context')
+			// Re-entry on a lock the outer scope already holds: bypass to avoid
+			// self-deadlock. Different keys, however, must acquire their own lock
+			// (this is the H0 closure — the unconditional bypass was the bug).
+			if (existing?.heldLocks.has(lockKey)) {
+				logger.trace({ key }, 'reusing held legacy lock')
 				return work()
 			}
 
-			// New transaction — acquire the legacy-namespaced lock and create a
-			// fresh AsyncLocalStorage context.
-			return locks.withLock({ namespace: '__legacy__', id: key }, async () => {
+			return locks.withLock({ namespace: LEGACY_NAMESPACE, id: key }, async () => {
+				if (existing) {
+					// Nested under an outer transaction we're now properly locked
+					// against. Share the outer's mutation accumulator so all
+					// writes commit together at the outermost level.
+					existing.heldLocks.add(lockKey)
+					try {
+						return await work()
+					} finally {
+						existing.heldLocks.delete(lockKey)
+					}
+				}
+
 				const ctx: TransactionContext = {
 					cache: {},
 					mutations: {},
-					dbQueries: 0
+					dbQueries: 0,
+					heldLocks: new Set([lockKey]),
+					sealed: false
 				}
 
 				logger.trace('entering transaction')
 
 				try {
 					const result = await txStorage.run(ctx, work)
-
+					ctx.sealed = true
 					await commitWithRetry(ctx.mutations)
-
 					logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
-
 					return result
 				} catch (err) {
+					ctx.sealed = true
 					logger.error({ err }, 'transaction failed, rolling back')
+					throw err
+				}
+			})
+		},
+
+		transactWith: async <T>(scope: TransactionScope, work: () => Promise<T>): Promise<T> => {
+			const existing = txStorage.getStore()
+
+			// Determine which records still need a lock — outer scope may already
+			// hold some of them, in which case re-acquisition would self-deadlock.
+			const needsAcquire = scope.records.filter(r => !existing?.heldLocks.has(lockKeyForRecord(r)))
+			const newLockKeys = needsAcquire.map(lockKeyForRecord)
+			const lockRefs = needsAcquire.map(r => ({ namespace: r.type, id: r.id }))
+
+			return locks.withLocks(lockRefs, async () => {
+				if (existing) {
+					// Nested transaction — share outer's ctx, mark the newly held
+					// locks so deeper nesting sees them as held.
+					for (const k of newLockKeys) existing.heldLocks.add(k)
+					try {
+						return await work()
+					} finally {
+						for (const k of newLockKeys) existing.heldLocks.delete(k)
+					}
+				}
+
+				const ctx: TransactionContext = {
+					cache: {},
+					mutations: {},
+					dbQueries: 0,
+					heldLocks: new Set(newLockKeys),
+					sealed: false
+				}
+
+				logger.trace({ records: scope.records.length }, 'entering transactWith')
+
+				try {
+					const result = await txStorage.run(ctx, work)
+					ctx.sealed = true
+					await commitWithRetry(ctx.mutations)
+					logger.trace({ dbQueries: ctx.dbQueries }, 'transactWith completed')
+					return result
+				} catch (err) {
+					ctx.sealed = true
+					logger.error({ err }, 'transactWith failed, rolling back')
 					throw err
 				}
 			})
