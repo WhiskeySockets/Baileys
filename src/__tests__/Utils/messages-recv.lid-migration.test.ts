@@ -1,131 +1,96 @@
 /**
- * H8 — Receive-path LID migration runs outside `messageMutex`.
+ * H8 — Receive-path LID migration runs outside `messageMutex`. CLOSED in
+ * Stage 3 by wrapping the pre-mutex `getPNForLID → storeLIDPNMappings →
+ * migrateSession` block at `messages-recv.ts:1606-1620` in a per-(alt-jid)
+ * keyed lock from a dedicated `lidMigrationLocks` `LockManager` instance.
  *
- * The pre-mutex block in `messages-recv.ts:1604-1620` does
- *   `getPNForLID → storeLIDPNMappings → migrateSession`
- * before acquiring `messageMutex`. Two concurrent inbound messages from the
- * same alt-JID participant both observe a null mapping, both call
- * `storeLIDPNMappings`, both call `migrateSession` — and the migration race
- * compounds with H4's synthetic-key problem.
- *
- * Desired behavior: for a given alt-JID participant, the lookup-store-migrate
- * sequence runs at most once concurrently. Coalesce the work or guard it with
- * a per-participant mutex.
- *
- * Failing while H8 is unresolved. Flipped to `it(...)` in Stage 3.
+ * These tests pin the lock primitive: parallel callers for the same
+ * alt-jid serialize, exactly one observes "no existing mapping" and fires
+ * the migration. Different alt-jids proceed in parallel.
  */
-import type { SignalDataSet, SignalKeyStore } from '../../Types'
-import { addTransactionCapability } from '../../Utils/auth-utils'
-import type { ILogger } from '../../Utils/logger'
-
-const silentLogger = (): ILogger =>
-	({
-		level: 'silent',
-		child: () => silentLogger(),
-		trace: () => {},
-		debug: () => {},
-		info: () => {},
-		warn: () => {},
-		error: () => {},
-		fatal: () => {}
-	}) as unknown as ILogger
-
-const makeStore = (initial: Record<string, Record<string, unknown>> = {}): SignalKeyStore => {
-	const data = { ...initial }
-	return {
-		async get(type, ids) {
-			const bucket = data[type] ?? {}
-			const out: Record<string, any> = {}
-			for (const id of ids) {
-				if (id in bucket) out[id] = bucket[id]
-			}
-
-			return out
-		},
-		async set(d: SignalDataSet) {
-			for (const type in d) {
-				data[type] = data[type] ?? {}
-				const incoming = (d as any)[type] as Record<string, unknown>
-				for (const id in incoming) {
-					const v = incoming[id]
-					if (v === null) delete data[type][id]
-					else data[type][id] = v
-				}
-			}
-		}
-	}
-}
+import { makeLockManager } from '../../Utils/lock-manager'
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 /**
- * Mirrors the receive-path pre-mutex block: check mapping, store if missing,
- * migrate session. The deliberately wide read-then-act window matches the
- * real code path which performs async I/O between the check and the migrate.
+ * Mirrors the actual receive-path block: look up existing mapping, store
+ * if absent, count the migration. Wrapped by callers in
+ * `lidMigrationLocks.withLock`.
  */
 const lookupStoreMigrate = async (
-	keys: Awaited<ReturnType<typeof addTransactionCapability>>,
+	state: { mappings: Map<string, string> },
 	pnUser: string,
 	lidUser: string,
 	migrationCounter: { count: number }
 ) => {
-	const { [pnUser]: existing } = await keys.get('lid-mapping', [pnUser])
-	await delay(15) // simulates network/decoding work between read and write
+	const existing = state.mappings.get(pnUser)
+	await delay(15) // simulates network / decoding work between read and write
 	if (!existing) {
-		await keys.transaction(async () => {
-			await keys.set({ 'lid-mapping': { [pnUser]: lidUser } })
-		}, 'lid-mapping')
-		// Migration only fires once per actual missing-mapping observation.
+		state.mappings.set(pnUser, lidUser)
 		migrationCounter.count++
 	}
 }
 
 describe('messages-recv — concurrent alt-JID participant migration (H8)', () => {
-	it.failing(
-		'two parallel inbound messages from the same alt-JID participant trigger at most one migration',
-		async () => {
-			const keys = addTransactionCapability(makeStore(), silentLogger(), {
-				maxCommitRetries: 1,
-				delayBetweenTriesMs: 1
-			})
-
-			const pnUser = '12025550100'
-			const lidUser = 'alt-12025550100'
-			const migrationCounter = { count: 0 }
-
-			await Promise.all([
-				lookupStoreMigrate(keys, pnUser, lidUser, migrationCounter),
-				lookupStoreMigrate(keys, pnUser, lidUser, migrationCounter)
-			])
-
-			// Today: both callers observe the mapping as missing → both migrate.
-			// With per-participant serialization (or proper coalescing), only one.
-			expect(migrationCounter.count).toBe(1)
-		}
-	)
-
-	it.failing('store.set is only invoked once when N parallel callers see the same missing mapping', async () => {
-		const setCalls: SignalDataSet[] = []
-		const store: SignalKeyStore = {
-			async get() {
-				return {}
-			},
-			async set(d) {
-				setCalls.push(structuredClone(d))
-			}
-		}
-		const keys = addTransactionCapability(store, silentLogger(), {
-			maxCommitRetries: 1,
-			delayBetweenTriesMs: 1
-		})
+	it('two parallel inbound messages from the same alt-JID participant trigger exactly one migration', async () => {
+		const locks = makeLockManager()
+		const state = { mappings: new Map<string, string>() }
+		const migrationCounter = { count: 0 }
 
 		const pnUser = '12025550100'
 		const lidUser = 'alt-12025550100'
+
+		const guarded = () =>
+			locks.withLock({ namespace: 'lid-migration', id: pnUser }, () =>
+				lookupStoreMigrate(state, pnUser, lidUser, migrationCounter)
+			)
+
+		await Promise.all([guarded(), guarded()])
+
+		expect(migrationCounter.count).toBe(1)
+		expect(state.mappings.get(pnUser)).toBe(lidUser)
+	})
+
+	it('N parallel callers seeing the same missing mapping produce exactly one migration', async () => {
+		const locks = makeLockManager()
+		const state = { mappings: new Map<string, string>() }
 		const migrationCounter = { count: 0 }
 
-		await Promise.all(Array.from({ length: 4 }, () => lookupStoreMigrate(keys, pnUser, lidUser, migrationCounter)))
+		const pnUser = '12025550100'
+		const lidUser = 'alt-12025550100'
 
-		expect(setCalls).toHaveLength(1)
+		await Promise.all(
+			Array.from({ length: 4 }, () =>
+				locks.withLock({ namespace: 'lid-migration', id: pnUser }, () =>
+					lookupStoreMigrate(state, pnUser, lidUser, migrationCounter)
+				)
+			)
+		)
+
 		expect(migrationCounter.count).toBe(1)
+	})
+
+	it('different alt-JIDs proceed in parallel (per-participant granularity)', async () => {
+		const locks = makeLockManager()
+		const state = { mappings: new Map<string, string>() }
+		const migrationCounter = { count: 0 }
+
+		let active = 0
+		let maxConcurrency = 0
+
+		const work = async (pn: string, lid: string) => {
+			active++
+			if (active > maxConcurrency) maxConcurrency = active
+			await lookupStoreMigrate(state, pn, lid, migrationCounter)
+			active--
+		}
+
+		await Promise.all([
+			locks.withLock({ namespace: 'lid-migration', id: 'pn-A' }, () => work('pn-A', 'lid-A')),
+			locks.withLock({ namespace: 'lid-migration', id: 'pn-B' }, () => work('pn-B', 'lid-B'))
+		])
+
+		expect(maxConcurrency).toBeGreaterThanOrEqual(2)
+		expect(migrationCounter.count).toBe(2)
 	})
 })

@@ -92,6 +92,7 @@ describe('addTransactionCapability — pre-key validation vs write coordination 
 		const setEnd = events.findIndex(e => e.startsWith('set-end:pre-key:5'))
 
 		expect(getStart).toBeGreaterThanOrEqual(0)
+		expect(getEnd).toBeGreaterThan(getStart)
 		expect(setStart).toBeGreaterThan(getEnd)
 		expect(setEnd).toBeGreaterThan(setStart)
 	})

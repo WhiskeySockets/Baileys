@@ -31,7 +31,7 @@ const silentLogger = (): ILogger =>
 	}) as unknown as ILogger
 
 describe('SignalKeyStore.set — cross-type atomicity (H3 / H5)', () => {
-	it.failing('a multi-type set() issues exactly one underlying store.set call covering every type', async () => {
+	it('a multi-type set() issues exactly one underlying store.set call covering every type', async () => {
 		const calls: SignalDataSet[] = []
 		const store: SignalKeyStore = {
 			async get() {
