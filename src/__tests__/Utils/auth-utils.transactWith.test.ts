@@ -115,7 +115,11 @@ describe('addTransactionCapability — transactWith', () => {
 			keys.transactWith({ records: [{ type: 'session', id: 'c' }] }, work)
 		])
 
-		expect(maxConcurrency).toBeGreaterThanOrEqual(2)
+		// Three records, three independent locks, 15ms work each — under
+		// correct per-record locking all three are in-flight simultaneously.
+		// `>= 2` would pass even if one of the records erroneously serialized
+		// against another.
+		expect(maxConcurrency).toBe(3)
 	})
 
 	it('commits mutations to the underlying store in a single state.set call on success', async () => {

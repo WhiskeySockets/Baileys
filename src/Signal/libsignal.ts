@@ -99,7 +99,6 @@ export function makeLibSignalRepository(
 			}
 
 			const senderName = jidToSignalSenderKeyName(item.groupId, authorJid)
-
 			const senderMsg = new SenderKeyDistributionMessage(
 				null,
 				null,
@@ -108,11 +107,16 @@ export function makeLibSignalRepository(
 				item.axolotlSenderKeyDistributionMessage
 			)
 			const senderNameStr = senderName.toString()
-			const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-			if (!senderKey) {
-				await storage.storeSenderKey(senderName, new SenderKeyRecord())
-			}
 
+			// The "ensure a SenderKeyRecord exists" check runs INSIDE the
+			// per-record transactWith below. The previous pre-lock get + write
+			// here was both redundant and unsafe: a concurrent
+			// `processSenderKeyDistributionMessage` (or any other writer to the
+			// same sender-key record) could commit a populated record between
+			// our pre-lock read and our pre-lock write, which our write would
+			// then clobber with an empty record. Removing it eliminates that
+			// race window without changing observable behavior — the in-lock
+			// re-check handles the first-time-seeing-this-sender case.
 			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderNameStr }] }, async () => {
 				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
 				if (!senderKey) {
