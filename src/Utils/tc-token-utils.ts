@@ -1,6 +1,35 @@
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import type { BinaryNode } from '../WABinary'
-import { getBinaryNodeChild, getBinaryNodeChildren, isLidUser, jidNormalizedUser } from '../WABinary'
+import {
+	getBinaryNodeChild,
+	getBinaryNodeChildren,
+	isHostedLidUser,
+	isHostedPnUser,
+	isJidMetaAI,
+	isLidUser,
+	isPnUser,
+	jidNormalizedUser
+} from '../WABinary'
+
+// Same phone-number pattern as WABinary's isJidBot, applied against the user
+// part so the check is invariant to @c.us ↔ @s.whatsapp.net normalization.
+const BOT_PHONE_REGEX = /^1313555\d{4}$|^131655500\d{2}$/
+
+/**
+ * Mirrors WA Web's `Wid.isRegularUser()` (user ∧ ¬PSA ∧ ¬Bot). Used to gate tctoken
+ * storage against malformed notifications — WA Web filters server-side but we
+ * defend here for parity with `WAWebSetTcTokenChatAction.handleIncomingTcToken`.
+ * Works for both pre- and post-normalized JIDs (`@c.us` vs `@s.whatsapp.net`).
+ */
+function isRegularUser(jid: string | undefined): boolean {
+	if (!jid) return false
+	const user = jid.split('@')[0] ?? ''
+	if (!user) return false // empty user part (e.g. malformed `@s.whatsapp.net`)
+	if (user === '0') return false // PSA
+	if (BOT_PHONE_REGEX.test(user)) return false // Bot by phone pattern
+	if (isJidMetaAI(jid)) return false // MetaAI (@bot server)
+	return !!(isPnUser(jid) || isLidUser(jid) || isHostedPnUser(jid) || isHostedLidUser(jid) || jid.endsWith('@c.us'))
+}
 
 /** 7 days in seconds — matches WA Web AB prop tctoken_duration */
 const TC_TOKEN_BUCKET_DURATION = 604800
@@ -85,9 +114,15 @@ export async function buildTcTokenFromJid({
 		const tcTokenBuffer = entry?.token
 
 		if (!tcTokenBuffer?.length || isTcTokenExpired(entry?.timestamp)) {
-			// Opportunistic cleanup: remove expired token from store
-			if (tcTokenBuffer) {
-				await authState.keys.set({ tctoken: { [storageJid]: null } })
+			// Opportunistic cleanup: drop the expired token but preserve senderTimestamp so the
+			// fire-and-forget issuance dedupe survives — same shape used in messages-send, so this
+			// path no longer wipes that placeholder (only clears a real, non-empty expired token).
+			if (tcTokenBuffer?.length) {
+				const cleared =
+					entry?.senderTimestamp !== undefined
+						? { token: Buffer.alloc(0), senderTimestamp: entry.senderTimestamp }
+						: null
+				await authState.keys.set({ tctoken: { [storageJid]: cleared } })
 			}
 
 			return baseContent.length > 0 ? baseContent : undefined
@@ -136,6 +171,12 @@ export async function storeTcTokensFromIqResult({
 		}
 
 		const rawJid = jidNormalizedUser(tokenNode.attrs.jid || fallbackJid)
+		// Defensive parity with WA Web: never store tokens under PSA/bot/MetaAI JIDs,
+		// which a malformed notification could otherwise smuggle in.
+		if (!isRegularUser(rawJid)) {
+			continue
+		}
+
 		const storageJid = await resolveTcTokenJid(rawJid, getLIDForPN)
 		const existingTcData = await keys.get('tctoken', [storageJid])
 		const existingEntry = existingTcData[storageJid]
