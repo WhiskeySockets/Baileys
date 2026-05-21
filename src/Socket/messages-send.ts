@@ -30,6 +30,7 @@ import {
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
+	invalidateRecentMessageOnUpdate,
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
@@ -116,6 +117,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
+
+	// Invalidate the recent-messages cache when a sent message is revoked or
+	// edited. Without this, a late `<receipt type="retry">` (commonly produced
+	// by the recipient's other devices after a revoke/edit, or by transient
+	// delivery failures) causes `sendMessagesAgain` to re-send the original
+	// payload — "ghosting" deleted messages and breaking interactive flows
+	// where the consumer relies on the user editing the bot's own message.
+	//
+	// process-message.ts emits `messages.update` with `messageStubType=REVOKE`
+	// on revoke and with `update.message.editedMessage` on edit; the predicate
+	// itself lives in `invalidateRecentMessageOnUpdate` so it's unit-testable
+	// without bootstrapping the full socket.
+	if (messageRetryManager) {
+		ev.on('messages.update', updates => {
+			for (const u of updates) {
+				invalidateRecentMessageOnUpdate(messageRetryManager, u)
+			}
+		})
+	}
 
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
