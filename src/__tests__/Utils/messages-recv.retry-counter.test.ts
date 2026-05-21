@@ -36,17 +36,33 @@ const makeCacheStore = (): CacheStore => {
 /**
  * Mirrors the production `incrementRetryAndGet` helper:
  *   per-(msgId,participant) lock → read → +1 → write → return.
+ *
+ * The optional `hooks` fire INSIDE the lock body so the concurrency test
+ * below can observe how many incrementers are simultaneously holding work
+ * inside the critical section — measuring the call wrapper from the
+ * outside would always count all three callers as "in-flight" even if the
+ * locks serialized them, masking a per-key-granularity regression.
  */
-const makeIncrementer = (cache: CacheStore) => {
+type IncrementHooks = {
+	enterCritical?: () => void
+	leaveCritical?: () => void
+}
+
+const makeIncrementer = (cache: CacheStore, hooks?: IncrementHooks) => {
 	const locks = makeLockManager()
 	return async (msgId: string, participant: string): Promise<number> => {
 		return locks.withLock({ namespace: 'msg-retry', id: `${msgId}:${participant}` }, async () => {
-			const key = `${msgId}:${participant}`
-			await delay(5)
-			const next = ((await cache.get<number>(key)) ?? 0) + 1
-			await delay(5)
-			await cache.set(key, next)
-			return next
+			hooks?.enterCritical?.()
+			try {
+				const key = `${msgId}:${participant}`
+				await delay(5)
+				const next = ((await cache.get<number>(key)) ?? 0) + 1
+				await delay(5)
+				await cache.set(key, next)
+				return next
+			} finally {
+				hooks?.leaveCritical?.()
+			}
 		})
 	}
 }
@@ -88,25 +104,32 @@ describe('msgRetryCache — atomic increment across retry paths (H9)', () => {
 
 	it('different (msgId, participant) pairs proceed in parallel', async () => {
 		const cache = makeCacheStore()
-		const increment = makeIncrementer(cache)
 
+		// Track concurrency INSIDE the lock body so the assertion observes
+		// actual per-key parallelism. The previous wrapper-based counter
+		// incremented `active` synchronously for all three callers BEFORE
+		// any of them entered the critical section, so `maxConcurrency`
+		// would always reach 3 — even if the LockManager had been
+		// regressed to a global mutex.
 		let active = 0
 		let maxConcurrency = 0
-		const trackingIncrement = async (msgId: string, participant: string) => {
-			active++
-			if (active > maxConcurrency) maxConcurrency = active
-			const result = await increment(msgId, participant)
-			active--
-			return result
-		}
+		const increment = makeIncrementer(cache, {
+			enterCritical: () => {
+				active++
+				if (active > maxConcurrency) maxConcurrency = active
+			},
+			leaveCritical: () => {
+				active--
+			}
+		})
 
-		await Promise.all([
-			trackingIncrement('msg-A', 'peer@x'),
-			trackingIncrement('msg-B', 'peer@x'),
-			trackingIncrement('msg-A', 'peer@y')
-		])
+		await Promise.all([increment('msg-A', 'peer@x'), increment('msg-B', 'peer@x'), increment('msg-A', 'peer@y')])
 
-		// At least two of these should be in-flight at once — they don't share a key.
-		expect(maxConcurrency).toBeGreaterThanOrEqual(2)
+		// Three distinct keys → all three locks acquired in parallel; the
+		// 10ms total work per call means at the busiest moment all three
+		// should be holding their respective critical sections. Asserting
+		// `=== 3` (not `>= 2`) catches any future regression that adds
+		// coarser serialization across distinct keys.
+		expect(maxConcurrency).toBe(3)
 	})
 })
