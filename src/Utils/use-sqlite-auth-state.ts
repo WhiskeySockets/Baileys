@@ -1,12 +1,15 @@
-// Type-only namespace import so we don't pull better-sqlite3 into the bundle
+// Type-only import so we don't pull better-sqlite3 into the bundle
 // unconditionally. The runtime `import('better-sqlite3')` below remains lazy.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Database = any
-
+import type BetterSqlite3Module from 'better-sqlite3'
 import { proto } from '../../WAProto/index.js'
 import type { AuthenticationCreds, AuthenticationState, SignalDataSet, SignalDataTypeMap } from '../Types'
 import { initAuthCreds } from './auth-utils'
 import { BufferJSON } from './generics'
+
+/** A live `better-sqlite3` database handle (the instance type, not the constructor). */
+type Database = BetterSqlite3Module.Database
+/** The constructor exposed by `better-sqlite3`'s `export =` default. */
+type DatabaseConstructor = typeof BetterSqlite3Module
 
 /**
  * Lazy load `better-sqlite3` so the dependency is only required when this
@@ -14,8 +17,7 @@ import { BufferJSON } from './generics'
  * dependency; users who stick with `useMultiFileAuthState` (or supply their
  * own store) don't need to install it.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function loadBetterSqlite3(): Promise<any> {
+async function loadBetterSqlite3(): Promise<DatabaseConstructor> {
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const mod = (await import('better-sqlite3')) as any
@@ -74,8 +76,8 @@ type SqliteAuthStateOptions = {
  *   - efficient `list`/`listIds` enumeration for bulk operations and migration.
  *
  * Lifecycle:
- *   - `state.close()` closes the underlying SQLite handle.
- *   - The same `dbPath` can be reopened after close to resume.
+ *   - the returned `close()` closes the underlying SQLite handle.
+ *   - The same `dbPath` can be reopened after `close()` to resume.
  *
  * For migrating an existing on-disk `useMultiFileAuthState` folder to this
  * store, see {@link migrateAuthState}.
@@ -135,9 +137,13 @@ export async function useSqliteAuthState(opts: SqliteAuthStateOptions): Promise<
 		const creds = loadCreds()
 
 		// One BEGIN IMMEDIATE transaction per `set` call covers every type +
-		// every id at once. better-sqlite3's `transaction()` wraps the function in
-		// a savepoint-equivalent IMMEDIATE transaction so the whole thing either
-		// commits or rolls back atomically.
+		// every id at once. better-sqlite3's `transaction()` defaults to
+		// DEFERRED — the write lock is only acquired on the first writing
+		// statement, which under concurrency can produce `SQLITE_BUSY` if
+		// two callers race to upgrade their readers to writers. We invoke
+		// via the `.immediate(...)` flavour below so the write lock is
+		// taken up front and the whole call either gets the lock or fails
+		// fast, without leaving the caller mid-write.
 		const applySetTx = db.transaction((data: SignalDataSet) => {
 			for (const category in data) {
 				const type = category as keyof SignalDataTypeMap
@@ -177,7 +183,7 @@ export async function useSqliteAuthState(opts: SqliteAuthStateOptions): Promise<
 						return out
 					},
 					set: async data => {
-						applySetTx(data)
+						applySetTx.immediate(data)
 					},
 					clear: async () => {
 						stmts.clearKeys.run()

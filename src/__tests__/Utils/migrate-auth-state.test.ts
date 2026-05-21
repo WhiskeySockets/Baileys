@@ -22,11 +22,15 @@ describe('migrateAuthState — multi-file → SQLite', () => {
 		await rm(dir, { recursive: true, force: true })
 	})
 
-	it('copies creds and every signal record type', async () => {
+	it('copies creds and every signal record type (including app-state-sync-key)', async () => {
 		const src = await useMultiFileAuthState(dir)
 		src.state.creds.advSecretKey = 'migrate-test-secret'
 		await src.saveCreds()
 
+		// `app-state-sync-key` is the type that exercises the
+		// `proto.Message.AppStateSyncKeyData.fromObject` codec on read, so
+		// migrating it round-trips the protobuf-special-cased path — not
+		// just plain Buffer/object values like the other types.
 		await src.state.keys.set({
 			'pre-key': {
 				'1': { public: Buffer.from([0x11]), private: Buffer.from([0x12]) } as any,
@@ -38,6 +42,13 @@ describe('migrateAuthState — multi-file → SQLite', () => {
 			},
 			'identity-key': {
 				'peer-a@s.whatsapp.net': Buffer.from([0xb1]) as any
+			},
+			'app-state-sync-key': {
+				'key-id-1': {
+					keyData: Buffer.from([0xc1, 0xc2, 0xc3]),
+					fingerprint: { rawId: 1, currentIndex: 0, deviceIndexes: [0] },
+					timestamp: '1700000000'
+				} as any
 			}
 		})
 
@@ -49,6 +60,7 @@ describe('migrateAuthState — multi-file → SQLite', () => {
 		expect(result.counts['pre-key']).toBe(2)
 		expect(result.counts['session']).toBe(2)
 		expect(result.counts['identity-key']).toBe(1)
+		expect(result.counts['app-state-sync-key']).toBe(1)
 		expect(result.verified).toBe(true)
 		expect(result.warnings).toEqual([])
 
@@ -61,6 +73,10 @@ describe('migrateAuthState — multi-file → SQLite', () => {
 		const preKeys = await dst.state.keys.get('pre-key', ['1', '2'])
 		expect(Buffer.from((preKeys['1'] as any).public)).toEqual(Buffer.from([0x11]))
 		expect(Buffer.from((preKeys['2'] as any).public)).toEqual(Buffer.from([0x21]))
+
+		const appStateKeys = await dst.state.keys.get('app-state-sync-key', ['key-id-1'])
+		expect(appStateKeys['key-id-1']).toBeDefined()
+		expect(Buffer.from((appStateKeys['key-id-1'] as any).keyData)).toEqual(Buffer.from([0xc1, 0xc2, 0xc3]))
 
 		dst.close()
 	})

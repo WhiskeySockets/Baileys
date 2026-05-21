@@ -17,15 +17,17 @@ import { useSqliteAuthState } from '../../Utils/use-sqlite-auth-state'
 const sampleSession = (b: number) => Buffer.from([b])
 
 describe('useSqliteAuthState', () => {
-	it('opens an in-memory database and round-trips creds', async () => {
+	it('opens an in-memory database and accepts an in-process creds mutation', async () => {
+		// Renamed from "round-trips creds" — this in-memory case doesn't
+		// actually round-trip across opens (`:memory:` is per-connection,
+		// so a `close()` would discard the DB). It just exercises the
+		// in-process mutation path. The file-backed test below covers the
+		// real cross-instance round-trip.
 		const { state, saveCreds, close } = await useSqliteAuthState({ dbPath: ':memory:' })
 		state.creds.advSecretKey = 'sentinel'
 		await saveCreds()
 
-		// Cannot reopen `:memory:` (it's per-connection) — so verify via saveCreds
-		// + a second instance pointed at the same handle.
-		const row = (state.creds as any).advSecretKey
-		expect(row).toBe('sentinel')
+		expect(state.creds.advSecretKey).toBe('sentinel')
 		close()
 	})
 

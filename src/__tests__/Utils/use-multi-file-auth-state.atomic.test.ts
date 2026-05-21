@@ -18,7 +18,7 @@
 import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { useMultiFileAuthState } from '../../Utils/use-multi-file-auth-state'
+import { AuthFileCorruptError, useMultiFileAuthState } from '../../Utils/use-multi-file-auth-state'
 
 describe('useMultiFileAuthState — atomic write & corruption recovery (H7)', () => {
 	let dir: string
@@ -59,9 +59,18 @@ describe('useMultiFileAuthState — atomic write & corruption recovery (H7)', ()
 		// Pre-seed dir with a deliberately corrupt creds.json.
 		await writeFile(join(dir, 'creds.json'), '{ "this is": not val')
 
-		// Today: useMultiFileAuthState swallows the error and returns initAuthCreds()
-		// — caller can't tell corruption apart from a brand new install.
-		await expect(useMultiFileAuthState(dir)).rejects.toThrow()
+		// Pin the rejection to the corruption contract: the throw must be an
+		// `AuthFileCorruptError` whose `cause` is the underlying
+		// `JSON.parse` SyntaxError, not some unrelated boot-time error.
+		// Without this, the test would also pass if `useMultiFileAuthState`
+		// threw for any other reason (missing folder, EACCES, …).
+		const error = await useMultiFileAuthState(dir).then(
+			() => null,
+			(err: unknown) => err
+		)
+		expect(error).toBeInstanceOf(AuthFileCorruptError)
+		expect((error as AuthFileCorruptError).path).toMatch(/creds\.json$/)
+		expect((error as AuthFileCorruptError).cause).toBeInstanceOf(SyntaxError)
 	})
 
 	it.todo(

@@ -96,12 +96,22 @@ export const useMultiFileAuthState = async (
 	 * yields `corrupt` (and carries the parse exception forward as the
 	 * eventual `AuthFileCorruptError.cause`).
 	 */
+	/** Narrow an unknown error to the standard Node fs `code` field. */
+	const errorCode = (error: unknown): string | undefined => {
+		if (typeof error === 'object' && error !== null && 'code' in error) {
+			const code = (error as { code: unknown }).code
+			return typeof code === 'string' ? code : undefined
+		}
+
+		return undefined
+	}
+
 	const tryReadAndParse = async (path: string): Promise<ReadAttempt> => {
 		let raw: string
 		try {
 			raw = await readFile(path, { encoding: 'utf-8' })
-		} catch (error: any) {
-			if (error?.code === 'ENOENT') return { kind: 'missing' }
+		} catch (error: unknown) {
+			if (errorCode(error) === 'ENOENT') return { kind: 'missing' }
 			throw error
 		}
 
@@ -129,12 +139,25 @@ export const useMultiFileAuthState = async (
 		try {
 			await writeFile(tmpPath, JSON.stringify(data, BufferJSON.replacer))
 			// Rotate the previous file to .bak. If it doesn't exist, that's fine.
-			await rename(filePath, bakPath).catch((err: any) => {
-				if (err?.code !== 'ENOENT') throw err
+			await rename(filePath, bakPath).catch((err: unknown) => {
+				if (errorCode(err) !== 'ENOENT') throw err
 			})
 			await rename(tmpPath, filePath)
 		} finally {
 			release()
+		}
+	}
+
+	/**
+	 * Swallow ONLY `ENOENT` from a cleanup unlink; rethrow EPERM/EBUSY/EIO so
+	 * a delete that fails for a real reason (filesystem perms, locked file,
+	 * underlying I/O error) doesn't silently leave the file in place.
+	 */
+	const unlinkIgnoreMissing = async (path: string) => {
+		try {
+			await unlink(path)
+		} catch (err: unknown) {
+			if (errorCode(err) !== 'ENOENT') throw err
 		}
 	}
 
@@ -150,7 +173,13 @@ export const useMultiFileAuthState = async (
 				// write so we can recover.
 				const backup = await tryReadAndParse(bakPath)
 				if (backup.kind === 'ok') return backup.value
-				return null
+				if (backup.kind === 'missing') return null
+				// Backup exists but is corrupt. Surface that rather than
+				// silently returning null — `null` would let the caller
+				// (e.g. creds.json bootstrap) fall back to `initAuthCreds()`,
+				// masking the corruption as "fresh install" and discarding
+				// any pairing state still recoverable by hand.
+				throw new AuthFileCorruptError(bakPath, backup.cause)
 			}
 
 			// `primary.kind === 'corrupt'` — try the backup before surfacing.
@@ -177,11 +206,11 @@ export const useMultiFileAuthState = async (
 			// would fall back to the `.bak` on the next `get` and resurrect
 			// the deleted value — fatal for session clears and identity-key
 			// deletions after any prior rewrite created a backup.
-			await Promise.all([
-				unlink(filePath).catch(() => {}),
-				unlink(tmpPath).catch(() => {}),
-				unlink(bakPath).catch(() => {})
-			])
+			//
+			// `unlinkIgnoreMissing` only swallows ENOENT; any other I/O
+			// failure (EPERM/EBUSY/EIO) propagates so the caller learns
+			// the delete partially failed.
+			await Promise.all([unlinkIgnoreMissing(filePath), unlinkIgnoreMissing(tmpPath), unlinkIgnoreMissing(bakPath)])
 		} finally {
 			release()
 		}
@@ -313,13 +342,16 @@ export const useMultiFileAuthState = async (
 					// Sweep .json, .json.tmp, and .json.bak. Skipping .tmp/.bak
 					// would leave backups that `readData` would resurrect on
 					// the next `get`, making `clear()` partially undo itself.
+					// Each unlink swallows ONLY ENOENT (concurrent delete or
+					// already gone); real I/O errors propagate so the caller
+					// sees the failure.
 					const entries = await readdir(folder).catch(() => [])
 					await Promise.all(
 						entries
 							.filter(
 								f => f !== 'creds.json' && (f.endsWith('.json') || f.endsWith('.json.tmp') || f.endsWith('.json.bak'))
 							)
-							.map(f => unlink(join(folder, f)).catch(() => {}))
+							.map(f => unlinkIgnoreMissing(join(folder, f)))
 					)
 				},
 				list: async function* <T extends keyof SignalDataTypeMap>(
