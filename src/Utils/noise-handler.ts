@@ -12,12 +12,6 @@ const IV_LENGTH = 12
 
 const EMPTY_BUFFER = Buffer.alloc(0)
 
-const generateIV = (counter: number): Uint8Array => {
-	const iv = new ArrayBuffer(IV_LENGTH)
-	new DataView(iv).setUint32(8, counter)
-	return new Uint8Array(iv)
-}
-
 /**
  * Builds a fresh AES-GCM IV from the counter on every call. Stage 7 (M10):
  * the previous implementation reused a single shared `Uint8Array` and mutated
@@ -25,6 +19,12 @@ const generateIV = (counter: number): Uint8Array => {
  * future move to an async/streaming AEAD silently reuses the IV with the same
  * key, which is catastrophic for AES-GCM. The fresh allocation costs ~12
  * bytes per call and removes the implicit "must stay sync" invariant.
+ *
+ * Single source of truth for handshake AND transport IV construction (the
+ * earlier `generateIV` ArrayBuffer+DataView variant was identical in output
+ * — 12 zero bytes with the counter written as big-endian uint32 at offset
+ * 8 — but a redundant second implementation; consolidating prevents the
+ * two from drifting apart in future edits).
  */
 const ivForCounter = (counter: number): Uint8Array => {
 	const iv = new Uint8Array(IV_LENGTH)
@@ -129,7 +129,7 @@ export const makeNoiseHandler = ({
 			return transport.encrypt(plaintext)
 		}
 
-		const result = aesEncryptGCM(plaintext, encKey, generateIV(counter++), hash)
+		const result = aesEncryptGCM(plaintext, encKey, ivForCounter(counter++), hash)
 		authenticate(result)
 		return result
 	}
@@ -139,7 +139,7 @@ export const makeNoiseHandler = ({
 			return transport.decrypt(ciphertext)
 		}
 
-		const result = aesDecryptGCM(ciphertext, decKey, generateIV(counter++), hash)
+		const result = aesDecryptGCM(ciphertext, decKey, ivForCounter(counter++), hash)
 		authenticate(ciphertext)
 		return result
 	}
