@@ -201,13 +201,46 @@ export const useMultiFileAuthState = async (
 	const creds: AuthenticationCreds = ((await readData('creds.json')) as AuthenticationCreds | null) || initAuthCreds()
 
 	/**
+	 * Reverse `fixFileName` for the only id spaces that actually use the two
+	 * mangled characters:
+	 *
+	 *   - `sender-key`: ids are `SenderKeyName.toString()` →
+	 *     `${groupId}::${signalAddr}`. `groupId` is `${creator}-${timestamp}@g.us`
+	 *     (one literal `-`), `signalAddr` is `{user}[_{domain}].{device}`
+	 *     (no `-`, at most one `_`). Therefore `--` in a filename is
+	 *     unambiguously the mangled `::` separator, and single `-` is
+	 *     original. Replace `--` with `::`.
+	 *   - `app-state-sync-key`: ids are standard base64 of the binary key id
+	 *     (alphabet `A-Za-z0-9+/=`). `_` is not in that alphabet, so `__`
+	 *     in a filename is unambiguously the mangled `/`. Replace `__`
+	 *     with `/`.
+	 *
+	 * Every other type's ids are either purely numeric (`pre-key`), bare JIDs
+	 * without device suffixes (`tctoken`, `lid-mapping`, `device-list`,
+	 * `app-state-sync-version`), or signal-protocol-addresses without any
+	 * mangled characters (`session`, `identity-key`). For those `fixFileName`
+	 * is identity, so reversal is also identity.
+	 *
+	 * The `tctoken` exception: its sentinel id `__index` contains a literal
+	 * `__` that must NOT be decoded to `/index`. Per-type dispatch keeps
+	 * that intact.
+	 */
+	function decodeIdForType<T extends keyof SignalDataTypeMap>(type: T, encodedId: string): string {
+		if (type === 'sender-key') {
+			return encodedId.replace(/--/g, '::')
+		}
+
+		if (type === 'app-state-sync-key') {
+			return encodedId.replace(/__/g, '/')
+		}
+
+		return encodedId
+	}
+
+	/**
 	 * Iterate every file in the folder that belongs to `type`. Yields the
-	 * encoded id (filename-safe form) — the same id callers pass to
-	 * `get`/`set`. Reversing the `fixFileName` transform is ambiguous (`:` and
-	 * `-` collide), so we surface the encoded form. For typical JIDs the two
-	 * forms are identical; for device-suffixed JIDs they differ — Baileys'
-	 * own callers always go through the same `fixFileName` transform on
-	 * subsequent lookups, so round-trip semantics are preserved.
+	 * decoded id (the same logical id callers passed to `get`/`set` originally)
+	 * via {@link decodeIdForType}, plus the on-disk filename for read access.
 	 */
 	async function* iterateType<T extends keyof SignalDataTypeMap>(
 		type: T
@@ -219,7 +252,7 @@ export const useMultiFileAuthState = async (
 			// Skip `.tmp` (in-flight writes) and `.bak` (rotated backups) artifacts.
 			if (filename.endsWith('.tmp') || filename.endsWith('.bak')) continue
 			const encodedId = filename.slice(prefix.length, -'.json'.length)
-			yield { id: encodedId, filename }
+			yield { id: decodeIdForType(type, encodedId), filename }
 		}
 	}
 
