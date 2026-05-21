@@ -72,6 +72,38 @@ describe('BufferJSON', () => {
 describe('runDetached', () => {
 	const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
+	it('schedules work on a microtask so the caller tick is not blocked', async () => {
+		// Pre-fix `runDetached` called `work()` inline, so even an `async`
+		// work function ran its synchronous prologue in the caller's tick.
+		// Post-fix it goes through `Promise.resolve().then(work)`, which
+		// defers ALL of `work` (including the sync prologue) to a
+		// microtask. The marker below records observation order: the
+		// caller's "after runDetached" line must observe its own
+		// synchronous statement BEFORE work's prologue runs.
+		const order: string[] = []
+		const logger = { error: () => {} }
+
+		runDetached(
+			async () => {
+				order.push('work-prologue')
+				await delay(0)
+				order.push('work-after-await')
+			},
+			logger
+		)
+
+		// Synchronous: runs immediately after `runDetached` returns. Must
+		// land in `order` BEFORE the work's prologue (which is now
+		// microtask-scheduled).
+		order.push('caller-sync')
+
+		await delay(20)
+
+		expect(order[0]).toBe('caller-sync')
+		expect(order).toContain('work-prologue')
+		expect(order).toContain('work-after-await')
+	})
+
 	it('logs the actual rejection even when context carries a colliding `err` key', async () => {
 		// Stage 9 round 2 fix: the logger payload spreads `context` BEFORE
 		// `err` so a caller-supplied `context.err` (e.g. a previous failure
