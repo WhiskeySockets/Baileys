@@ -243,7 +243,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		remoteJid: chatId,
 		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
 		remoteJidUsername: !isJidGroup(chatId)
-			? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username
+			? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username || stanza.attrs.username
 			: undefined,
 		fromMe,
 		id: msgId,
