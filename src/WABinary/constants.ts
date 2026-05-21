@@ -1292,14 +1292,14 @@ export const SINGLE_BYTE_TOKENS = [
 	'screen_height'
 ]
 
-export const TOKEN_MAP: { [token: string]: { dict?: number; index: number } } = {}
+export const TOKEN_MAP_REFACTOR: Map<string, { dict?: number; index: number }> = new Map()
 
 for (const [i, SINGLE_BYTE_TOKEN] of SINGLE_BYTE_TOKENS.entries()) {
-	TOKEN_MAP[SINGLE_BYTE_TOKEN] = { index: i }
+	TOKEN_MAP_REFACTOR.set(SINGLE_BYTE_TOKEN, { index: i })
 }
 
 for (const [i, DOUBLE_BYTE_TOKEN] of DOUBLE_BYTE_TOKENS.entries()) {
 	for (const [j, element] of DOUBLE_BYTE_TOKEN.entries()) {
-		TOKEN_MAP[element] = { dict: i, index: j }
+		TOKEN_MAP_REFACTOR.set(element, { dict: i, index: j })
 	}
 }
