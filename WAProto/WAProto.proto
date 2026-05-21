@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1039183767
+/// WhatsApp Version: 2.3000.1039904970
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -430,6 +430,9 @@ message BotCapabilityMetadata {
         AI_TAB_FORCE_CLIPPY = 59;
         UNIFIED_RESPONSE_EMBEDDED_SCREENS = 60;
         AI_SUBSCRIPTION_ENABLED = 61;
+        UNIFIED_RESPONSE_AI_CONTENT_SEARCH_ENABLED = 62;
+        UNIFIED_RESPONSE_MARKDOWN_LINKS_ENABLED = 63;
+        AI_RICH_RESPONSE_MAPS_V2_ENABLED = 64;
     }
 }
 
@@ -1482,6 +1485,8 @@ message ContextInfo {
             BESTSELLERS = 8;
             MENU = 9;
             ABOUT = 10;
+            SHOP = 11;
+            ORDER = 12;
         }
     }
     
@@ -1982,6 +1987,7 @@ message GroupHistoryBundleInfo {
         INJECTED_PARTIAL = 2;
         INJECTION_FAILED = 3;
         INJECTION_FAILED_NO_RETRY = 4;
+        DEDUPED = 5;
     }
 }
 
@@ -2426,8 +2432,9 @@ message Message {
     optional PollAddOptionMessage pollAddOptionMessage = 121;
     optional EventInviteMessage eventInviteMessage = 122;
     optional GroupRootKeyShare groupRootKeyShare = 123;
-    optional P2PPaymentReminderNotification p2PPaymentReminderNotification = 124;
+    optional PaymentReminderMessage paymentReminderMessage = 124;
     optional SplitPaymentMessage splitPaymentMessage = 125;
+    optional FutureProofMessage newsletterAdminProfileStatusMessage = 126;
     message AlbumMessage {
         optional uint32 expectedImageCount = 2;
         optional uint32 expectedVideoCount = 3;
@@ -2753,6 +2760,7 @@ message Message {
         optional string caption = 6;
         optional bool isCanceled = 7;
         optional int64 endTime = 8;
+        optional string callLink = 9;
     }
     
     message EventMessage {
@@ -3335,35 +3343,6 @@ message Message {
         }
     }
     
-    message P2PPaymentReminderNotification {
-        optional string reminderId = 1;
-        optional Money amount = 2;
-        optional ReminderFrequency frequency = 3;
-        optional int64 nextReminderTimestamp = 4;
-        optional int64 expiryTimestamp = 5;
-        optional ReminderState state = 6;
-        optional string description = 7;
-        optional string creatorJid = 8;
-        optional string receiverJid = 9;
-        optional string upiId = 10;
-        optional int64 createdTimestamp = 11;
-        enum ReminderFrequency {
-            UNKNOWN_FREQUENCY = 0;
-            WEEKLY = 1;
-            BIWEEKLY = 2;
-            MONTHLY = 3;
-            CUSTOM = 4;
-        }
-        enum ReminderState {
-            UNKNOWN_STATE = 0;
-            ACTIVE = 1;
-            PAUSED = 2;
-            STOPPED = 3;
-            EXPIRED = 4;
-            CANCELLED = 5;
-        }
-    }
-    
     message PaymentExtendedMetadata {
         optional uint32 type = 1;
         optional string platform = 2;
@@ -3407,6 +3386,33 @@ message Message {
             optional string paramsJson = 1;
         }
         
+    }
+    
+    message PaymentReminderMessage {
+        optional string reminderId = 1;
+        optional string instanceId = 2;
+        optional string description = 3;
+        optional ReminderFrequency frequency = 4;
+        optional ReminderStatus status = 5;
+        optional string payeeVpa = 6;
+        optional string payeeJid = 7;
+        optional string payerJid = 8;
+        optional Money amount = 9;
+        enum ReminderFrequency {
+            REMINDER_FREQUENCY_UNKNOWN = 0;
+            WEEKLY = 1;
+            BI_WEEKLY = 2;
+            MONTHLY = 3;
+            QUARTERLY = 4;
+        }
+        enum ReminderStatus {
+            REMINDER_STATUS_UNKNOWN = 0;
+            ACTIVE = 1;
+            CANCELLED_BY_CREATOR = 2;
+            STOPPED_BY_RECEIVER = 3;
+            EXPIRED = 4;
+            PAID = 5;
+        }
     }
     
     message PeerDataOperationRequestMessage {
@@ -5237,6 +5243,7 @@ message SyncActionValue {
     
     message LabelAssociationAction {
         optional bool labeled = 1;
+        repeated SyncActionValue.ModelMetadata modelMetaData = 2;
     }
     
     message LabelEditAction {
@@ -5323,6 +5330,12 @@ message SyncActionValue {
             ACTIVE = 0;
             INACTIVE = 1;
         }
+    }
+    
+    message ModelMetadata {
+        optional string modelName = 1;
+        optional bool isLatestModel = 2;
+        optional bool isDetected = 3;
     }
     
     message MusicUserIdAction {
