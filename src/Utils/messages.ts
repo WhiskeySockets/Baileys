@@ -669,6 +669,13 @@ export const generateWAMessageContent = async (
 		}
 	}
 
+	// If the caller supplied a messageSecret in options, honor it. The per-type
+	// branches above (poll, event) have already set m.messageContextInfo.messageSecret
+	// where they apply; we only override when those branches didn't set one.
+	if (options?.messageSecret && !m.messageContextInfo?.messageSecret) {
+		m.messageContextInfo = { ...(m.messageContextInfo ?? {}), messageSecret: options.messageSecret }
+	}
+
 	if (shouldIncludeReportingToken(m)) {
 		m.messageContextInfo = m.messageContextInfo || {}
 		if (!m.messageContextInfo.messageSecret) {
