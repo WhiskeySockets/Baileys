@@ -242,9 +242,12 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const key: WAMessageKey = {
 		remoteJid: chatId,
 		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
-		remoteJidUsername: !isJidGroup(chatId)
-			? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username
-			: undefined,
+		// Direct chats only (msgType === 'chat'): on broadcast/newsletter the remoteJid is not a
+		// user, and `stanza.attrs.username` there is participant-level data, not the chat identity.
+		remoteJidUsername:
+			msgType === 'chat'
+				? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username || stanza.attrs.username
+				: undefined,
 		fromMe,
 		id: msgId,
 		participant,

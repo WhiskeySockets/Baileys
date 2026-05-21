@@ -64,6 +64,8 @@ import {
 } from '../Utils'
 import { logMessageReceived, logTcToken } from '../Utils/baileys-logger'
 import { makeMutex } from '../Utils/make-mutex'
+import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
+import { buildAckStanza } from '../Utils/stanza-ack'
 import {
 	metrics,
 	recordHistorySyncMessages,
@@ -71,7 +73,7 @@ import {
 	recordMessageReceived,
 	recordMessageRetry
 } from '../Utils/prometheus-metrics.js'
-import { isTcTokenExpired, resolveTcTokenJid, storeTcTokensFromIqResult } from '../Utils/tc-token-utils'
+import { isRegularUser, isTcTokenExpired, resolveTcTokenJid, storeTcTokensFromIqResult } from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -552,42 +554,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const sendMessageAck = async ({ tag, attrs, content }: BinaryNode, errorCode?: number) => {
-		const stanza: BinaryNode = {
-			tag: 'ack',
-			attrs: {
-				id: attrs.id!,
-				to: attrs.from!,
-				class: tag
-			}
-		}
-
-		if (!!errorCode) {
-			stanza.attrs.error = errorCode.toString()
-		}
-
-		if (!!attrs.participant) {
-			stanza.attrs.participant = attrs.participant
-		}
-
-		if (!!attrs.recipient) {
-			stanza.attrs.recipient = attrs.recipient
-		}
-
-		if (
-			!!attrs.type &&
-			(tag !== 'message' || getBinaryNodeChild({ tag, attrs, content }, 'unavailable') || errorCode !== 0)
-		) {
-			stanza.attrs.type = attrs.type
-		}
-
-		if (tag === 'message' && getBinaryNodeChild({ tag, attrs, content }, 'unavailable')) {
-			const meId = authState.creds.me?.id
-			if (!meId) throw new Boom('Not authenticated', { statusCode: 401 })
-			stanza.attrs.from = meId
-		}
-
-		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
+	const sendMessageAck = async (node: BinaryNode, errorCode?: number) => {
+		// buildAckStanza mirrors WA Web: always emit `type` when present, and `from=meId` for
+		// message-class ACKs WHEN we know our id. We intentionally do NOT hard-fail when `me` is
+		// momentarily unset (reconnect/pairing edge): buildAckStanza simply omits `from`, so the
+		// ACK still goes out instead of throwing and letting the server retry forever (Codex #440).
+		const meId = authState.creds.me?.id
+		const stanza = buildAckStanza(node, errorCode, meId)
+		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
 
@@ -1972,6 +1946,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		if (!tokensNode) return
 
+		// Defensive parity with the IQ-result path (storeTcTokensFromIqResult): never persist a
+		// tctoken for PSA/bot/MetaAI contacts — the same isRegularUser gate, shared across both
+		// token-ingestion paths so notifications can't smuggle one in.
+		if (!isRegularUser(from)) return
+
 		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
 
 		for (const tokenNode of tokenNodes) {
@@ -2367,7 +2346,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			await sendMessageAck(node)
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack receipt'))
 		}
 	}
 
@@ -2411,7 +2390,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			await sendMessageAck(node)
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack notification'))
 		}
 	}
 
@@ -2433,81 +2412,91 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		const {
-			fullMessage: msg,
-			category,
-			author,
-			decrypt
-		} = decryptMessageNode(
-			node,
-			authState.creds.me!.id,
-			authState.creds.me!.lid || '',
-			signalRepository,
-			logger,
-		)
-
-		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
-		// Handle LID/PN mappings with hybrid approach:
-		// - Store mapping operation runs in background (non-critical for decrypt)
-		// - Session migration MUST complete before decrypt() to avoid "No session record" errors
-		// This addresses Codex/Copilot review concerns about race conditions with decrypt()
-		if (!!alt) {
-			const altServer = jidDecode(alt)?.server
-			const primaryJid = msg.key.participant || msg.key.remoteJid!
-
-			if (altServer === 'lid') {
-				// Check if mapping already exists to avoid unnecessary storage operations
-				const existingMapping = await signalRepository.lidMapping.getPNForLID(alt)
-				if (!existingMapping) {
-					// MUST await: normalizeMessageJids() runs after this and needs the mapping
-					// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
-					await signalRepository.lidMapping
-						.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-						.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
-				}
-
-				// CRITICAL: ALWAYS migrate session, even if mapping exists
-				// Other code paths (e.g., USync device lookup in messages-send.ts:310-319)
-				// may create mappings via storeLIDPNMappings() without calling migrateSession()
-				// This leaves sessions under PN format while decrypt() expects LID format
-				// Skipping migration based on mapping existence causes "No session record" errors
-				await signalRepository.migrateSession(primaryJid, alt)
-			} else {
-				// Check if reverse mapping exists
-				const existingMapping = await signalRepository.lidMapping.getLIDForPN(alt)
-				if (!existingMapping) {
-					// MUST await: normalizeMessageJids() runs after this and needs the mapping
-					// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
-					await signalRepository.lidMapping
-						.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-						.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
-				}
-
-				// CRITICAL: ALWAYS migrate session, even if mapping exists
-				// Same reasoning as above - mapping existence doesn't guarantee session migration
-				await signalRepository.migrateSession(alt, primaryJid)
-			}
-		}
-
-		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
-			messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
-			logger.debug(
-				{
-					jid: msg.key.remoteJid,
-					id: msg.key.id
-				},
-				'Added message to recent cache for retry receipts'
-			)
-		}
-
-		// CRITICAL: Normalize JIDs BEFORE acquiring mutex to ensure messages from the same
-		// chat (arriving with different JID formats - LID vs PN) use the SAME mutex key.
-		// This prevents parallel processing of messages from the same conversation which
-		// would break message ordering guarantees.
-		// Addresses Copilot/Codex PR #75 critical review: JID normalization vulnerability
-		await normalizeMessageJids(msg, signalRepository, logger)
+		// `acked` tracks whether ANY ack/receipt was already sent for this node.
+		// The outer catch below uses it to send a single NACK on unexpected errors
+		// (matching upstream c4e5d126) — closing the window where a throw in decode/decrypt
+		// setup / alt-mapping / migrateSession / normalizeMessageJids / the mutex body
+		// previously left the message un-acked and the server retrying forever.
+		let acked = false
 
 		try {
+			// decryptMessageNode runs decodeMessageNode, which can throw synchronously on a
+			// malformed stanza (missing participant / unknown type). Keep it INSIDE the try so
+			// such failures are NACKed by the guard below instead of escaping the handler un-acked.
+			const {
+				fullMessage: msg,
+				category,
+				author,
+				decrypt
+			} = decryptMessageNode(
+				node,
+				authState.creds.me!.id,
+				authState.creds.me!.lid || '',
+				signalRepository,
+				logger,
+			)
+
+			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
+			// Handle LID/PN mappings with hybrid approach:
+			// - Store mapping operation runs in background (non-critical for decrypt)
+			// - Session migration MUST complete before decrypt() to avoid "No session record" errors
+			// This addresses Codex/Copilot review concerns about race conditions with decrypt()
+			if (!!alt) {
+				const altServer = jidDecode(alt)?.server
+				const primaryJid = msg.key.participant || msg.key.remoteJid!
+
+				if (altServer === 'lid') {
+					// Check if mapping already exists to avoid unnecessary storage operations
+					const existingMapping = await signalRepository.lidMapping.getPNForLID(alt)
+					if (!existingMapping) {
+						// MUST await: normalizeMessageJids() runs after this and needs the mapping
+						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
+						await signalRepository.lidMapping
+							.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+							.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
+					}
+
+					// CRITICAL: ALWAYS migrate session, even if mapping exists
+					// Other code paths (e.g., USync device lookup in messages-send.ts:310-319)
+					// may create mappings via storeLIDPNMappings() without calling migrateSession()
+					// This leaves sessions under PN format while decrypt() expects LID format
+					// Skipping migration based on mapping existence causes "No session record" errors
+					await signalRepository.migrateSession(primaryJid, alt)
+				} else {
+					// Check if reverse mapping exists
+					const existingMapping = await signalRepository.lidMapping.getLIDForPN(alt)
+					if (!existingMapping) {
+						// MUST await: normalizeMessageJids() runs after this and needs the mapping
+						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
+						await signalRepository.lidMapping
+							.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+							.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
+					}
+
+					// CRITICAL: ALWAYS migrate session, even if mapping exists
+					// Same reasoning as above - mapping existence doesn't guarantee session migration
+					await signalRepository.migrateSession(alt, primaryJid)
+				}
+			}
+
+			if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
+				messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
+				logger.debug(
+					{
+						jid: msg.key.remoteJid,
+						id: msg.key.id
+					},
+					'Added message to recent cache for retry receipts'
+				)
+			}
+
+			// CRITICAL: Normalize JIDs BEFORE acquiring mutex to ensure messages from the same
+			// chat (arriving with different JID formats - LID vs PN) use the SAME mutex key.
+			// This prevents parallel processing of messages from the same conversation which
+			// would break message ordering guarantees.
+			// Addresses Copilot/Codex PR #75 critical review: JID normalization vulnerability
+			await normalizeMessageJids(msg, signalRepository, logger)
+
 			// Use KeyedMutex with NORMALIZED remoteJid for parallel processing across different chats
 			// while maintaining sequential order within the same chat
 			// Fallback chain: remoteJid (normalized) > msg.key.id (unique) > 'unknown' (serializes all)
@@ -2527,7 +2516,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					// Handle "Missing keys" - standard decryption failure
 					// Return NACK with parsing error to signal the issue
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
-						return sendMessageAck(node, NACK_REASONS.ParsingError)
+						await sendMessageAck(node, NACK_REASONS.ParsingError)
+						acked = true
+						return
 					}
 
 					// Handle "Message absent from node" - likely a CTWA (Click-to-WhatsApp) ads message
@@ -2547,7 +2538,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								'CTWA: Skipping placeholder resend for unavailable fanout type'
 							)
 							metrics.ctwaRecoveryFailures.inc({ reason: 'unavailable_fanout' })
-							return sendMessageAck(node)
+							await sendMessageAck(node)
+							acked = true
+							return
 						}
 
 						// Skip old messages - don't request resend for messages older than 7 days
@@ -2559,7 +2552,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								'CTWA: Skipping placeholder resend for old message'
 							)
 							metrics.ctwaRecoveryFailures.inc({ reason: 'message_too_old' })
-							return sendMessageAck(node)
+							await sendMessageAck(node)
+							acked = true
+							return
 						}
 
 						if (enableCTWARecovery && msg.key) {
@@ -2641,7 +2636,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							)
 						}
 
-						return sendMessageAck(node)
+						await sendMessageAck(node)
+						acked = true
+						return
 					}
 
 					// Skip retry for expired status messages (>24h old)
@@ -2652,7 +2649,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								{ msgId: msg.key.id, messageAge, remoteJid: msg.key.remoteJid },
 								'skipping retry for expired status message'
 							)
-							return sendMessageAck(node)
+							await sendMessageAck(node)
+							acked = true
+							return
 						}
 					}
 
@@ -2700,6 +2699,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
+						acked = true
 					})
 				} else {
 					if (messageRetryManager && msg.key.id) {
@@ -2726,6 +2726,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 
 						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+						acked = true
 
 						// send ack for history message
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
@@ -2735,6 +2736,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 					} else {
 						await sendMessageAck(node)
+						acked = true
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
 				}
@@ -2781,6 +2783,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
+			// If nothing acked the message yet (a throw in alt-mapping / migrateSession /
+			// normalizeMessageJids / decrypt / upsert), send a single NACK so the server
+			// stops retrying. Guarded by `acked` to avoid double-ack on paths that already
+			// sent a receipt/ack. (.catch so an ack failure here doesn't escape the handler.)
+			if (!acked) {
+				await sendMessageAck(node, NACK_REASONS.UnhandledError).catch(ackErr =>
+					logger.error({ ackErr }, 'failed to ack message after error')
+				)
+			}
 		}
 	}
 
@@ -2863,7 +2874,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}))
 	}
 
-	const handleCall = async (node: BinaryNode) => {
+	const handleCallInner = async (node: BinaryNode) => {
 		const { attrs } = node
 		const children = getAllBinaryNodeChildren(node)
 
@@ -3011,8 +3022,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			ev.emit('call', [call])
 		}
+	}
 
-		await sendMessageAck(node)
+	// Wrap call handling so the ACK is ALWAYS sent — even if a child parse,
+	// sanitizeCallerPn, or LID→PN resolution throws (matches upstream c4e5d126).
+	// The inner function keeps every InfiniteAPI customization untouched.
+	const handleCall = async (node: BinaryNode) => {
+		try {
+			await handleCallInner(node)
+		} catch (error) {
+			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling call')
+		} finally {
+			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack call'))
+		}
 	}
 
 	const handleBadAck = async ({ attrs }: BinaryNode) => {
@@ -3144,74 +3166,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	type MessageType = 'message' | 'call' | 'receipt' | 'notification'
-
-	type OfflineNode = {
-		type: MessageType
-		node: BinaryNode
-	}
-
 	/** Yields control to the event loop to prevent blocking */
 	const yieldToEventLoop = (): Promise<void> => {
 		return new Promise(resolve => setImmediate(resolve))
 	}
 
-	const makeOfflineNodeProcessor = () => {
-		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
-			['message', handleMessage],
-			['call', handleCall],
-			['receipt', handleReceipt],
-			['notification', handleNotification]
-		])
-		const nodes: OfflineNode[] = []
-		let isProcessing = false
+	const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
+		['message', handleMessage],
+		['call', handleCall],
+		['receipt', handleReceipt],
+		['notification', handleNotification]
+	])
 
-		// Number of nodes to process before yielding to event loop
-		const BATCH_SIZE = 25
-
-		const enqueue = (type: MessageType, node: BinaryNode) => {
-			nodes.push({ type, node })
-
-			if (isProcessing) {
-				return
-			}
-
-			isProcessing = true
-
-			const promise = async () => {
-				let processedInBatch = 0
-
-				while (nodes.length && ws.isOpen) {
-					const { type, node } = nodes.shift()!
-
-					const nodeProcessor = nodeProcessorMap.get(type)
-
-					if (!nodeProcessor) {
-						onUnexpectedError(new Error(`unknown offline node type: ${type}`), 'processing offline node')
-						continue
-					}
-
-					await nodeProcessor(node)
-					processedInBatch++
-
-					// Yield to event loop after processing a batch
-					// This prevents blocking the event loop for too long when there are many offline nodes
-					if (processedInBatch >= BATCH_SIZE) {
-						processedInBatch = 0
-						await yieldToEventLoop()
-					}
-				}
-
-				isProcessing = false
-			}
-
-			promise().catch(error => onUnexpectedError(error, 'processing offline nodes'))
-		}
-
-		return { enqueue }
-	}
-
-	const offlineNodeProcessor = makeOfflineNodeProcessor()
+	// Keep batchSize=25 (InfiniteAPI tuning from PR #239 / 3d9d7baf) — the extracted
+	// processor adds per-node `.catch()` so a handler error no longer kills the drain loop.
+	const offlineNodeProcessor = makeOfflineNodeProcessor(
+		nodeProcessorMap,
+		{
+			isWsOpen: () => ws.isOpen,
+			onUnexpectedError,
+			yieldToEventLoop
+		},
+		25
+	)
 
 	const processNode = async (
 		type: MessageType,

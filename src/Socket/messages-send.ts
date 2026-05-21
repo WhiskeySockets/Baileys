@@ -1557,6 +1557,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				} else {
 					stanza.attrs.to = participant.jid
 				}
+			} else if (isCarousel) {
+				// CARROUSEL FIX (Option B): keep the envelope `to` consistent with the
+				// LID-canonicalized participants. canonicalizeCarouselRecipients converts the
+				// participant/enc nodes to LID, but the envelope stayed PN — and a PN envelope
+				// wrapping LID participant enc nodes is a mismatch the server rejects with
+				// error 400. Resolve the envelope to the same LID; fall back to PN when no
+				// mapping exists (in which case participants also stayed PN, so still consistent).
+				// Normalize first so `@c.us` inputs also resolve — isAnyPnUser/getLIDForPN
+				// reject raw `@c.us`, which sendMessage() can pass directly (Codex P1).
+				const normalizedDest = jidNormalizedUser(destinationJid)
+				const carouselLid = isAnyPnUser(normalizedDest) ? await getLIDForPN(normalizedDest) : null
+				// Prefer the LID, then the normalized jid (so an `@c.us` envelope matches the
+				// normalized participants), and finally the raw input — never an empty `to`, since
+				// jidNormalizedUser returns '' for a malformed JID (would yield a 400) (Copilot #440).
+				stanza.attrs.to = carouselLid || normalizedDest || destinationJid
+				if (carouselLid) {
+					logger.info(
+						{ msgId, from: destinationJid, to: carouselLid },
+						'[CAROUSEL] Envelope addressing canonicalized to LID (match participants)'
+					)
+				}
 			} else {
 				stanza.attrs.to = destinationJid
 			}
@@ -1611,22 +1632,39 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (tcTokenBuffer?.length && isTcTokenExpired(existingTokenEntry?.timestamp)) {
 				logTcToken('expired', { jid: destinationJid, timestamp: existingTokenEntry?.timestamp })
 				tcTokenBuffer = undefined
-				// Opportunistic cleanup: remove expired token from store
+				// Opportunistic cleanup: drop the expired token but preserve senderTimestamp so the
+				// fire-and-forget issuance dedupe (shouldSendNewTcToken) survives the cleanup.
+				const cleared =
+					existingTokenEntry?.senderTimestamp !== undefined
+						? { token: Buffer.alloc(0), senderTimestamp: existingTokenEntry.senderTimestamp }
+						: null
 				try {
-					await authState.keys.set({ tctoken: { [tcTokenJid]: null } })
+					await authState.keys.set({ tctoken: { [tcTokenJid]: cleared } })
 				} catch {
 					/* ignore cleanup errors */
 				}
 			}
 
-			// If tctoken is missing for a 1:1 send, fetch it
-			// CDP capture confirms Pastorini stanza includes tctoken for carousel
+			// If tctoken is missing for a 1:1 send, fetch it.
+			//
+			// CAROUSEL DELIVERY NOTE (validated in staging 2026-05-20): the carousel
+			// DELIVERS and RENDERS on phone+Web *without* a tctoken. What the server
+			// actually requires for the carousel is CONSISTENT addressing (envelope `to`
+			// in LID matching the LID-canonicalized participants — see the envelope fix
+			// below). The tctoken below is best-effort: an empty IQ result on a fresh
+			// session is NON-FATAL, so we do not block delivery on it.
+			//
+			// We deliberately do NOT seed tctokens from history sync here (upstream PR
+			// #2339's storeTcTokensFromHistorySync / "E3"): a stale seeded token makes the
+			// server answer 479 (smax-invalid), which our ack handler marks as ERROR — and
+			// it adds NO rendering benefit, since the carousel renders tokenless. Only the
+			// full tctoken lifecycle (fetch+validate+reissue) would make seeding safe.
 			if (!tcTokenBuffer?.length && is1on1Send && !tcTokenFetchingJids.has(tcTokenJid)) {
 				tcTokenFetchingJids.add(tcTokenJid)
 				logTcToken('fetch', { jid: destinationJid })
 
 				if (isCarousel) {
-					// BLOCKING fetch for carousel — tctoken is required (Pastorini stanza has it)
+					// BLOCKING fetch for carousel — best-effort (see CAROUSEL DELIVERY NOTE above)
 					try {
 						const fetchResult = await getPrivacyTokens([destinationJid])
 
@@ -1713,10 +1751,69 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				;(stanza.content as BinaryNode[]).push(...deferredNodes)
 			}
 
-			// Log stanza structure for interactive messages
-			if (buttonType || isCarousel) {
-				const contentTags = Array.isArray(stanza.content) ? stanza.content.map((n: BinaryNode) => n.tag) : []
-				logger.info({ msgId, to: destinationJid, contentTags }, '[STANZA] Content tags: ' + JSON.stringify(contentTags))
+			// Unified send-summary log — shows EXACTLY what is sent for EVERY message type so it's
+			// easy to validate (same style first added for the carousel): the REAL envelope `to`
+			// (after any LID canonicalization), the addressing mode, the detected message kind,
+			// and which top-level stanza nodes are present.
+			{
+				// Cheap gate first: only interactive / poll / view-once are worth a per-send INFO line
+				// (low-volume). Plain text + regular media are skipped — so the heavier classification
+				// and tag mapping below never run on the high-volume hot path (Copilot #444).
+				const isViewOnce = !!(message.viewOnceMessage || message.viewOnceMessageV2)
+				const core = message.viewOnceMessage?.message || message.viewOnceMessageV2?.message || message
+				const isPoll = !!(
+					core.pollCreationMessage ||
+					(core as any).pollCreationMessageV2 ||
+					(core as any).pollCreationMessageV3
+				)
+
+				if (!!buttonType || isCarousel || isViewOnce || isPoll) {
+					const contentTags = Array.isArray(stanza.content) ? stanza.content.map((n: BinaryNode) => n.tag) : []
+					const envelopeTo = stanza.attrs.to || destinationJid
+					const addressing = isAnyLidUser(envelopeTo) ? 'LID' : 'PN'
+					const kind = ((): string => {
+						if (isCarousel) return 'carousel'
+						if (buttonType === 'list') return 'list'
+						if (buttonType) {
+							if (message.buttonsMessage || core.buttonsMessage) return 'buttons:reply'
+							const names = (core.interactiveMessage?.nativeFlowMessage?.buttons || []).map((b: any) => b?.name)
+							const hasCTA = names.some((n: string) => n === 'cta_url' || n === 'cta_copy' || n === 'cta_call')
+							const hasQR = names.some((n: string) => n === 'quick_reply')
+							if (hasCTA && hasQR) return 'buttons:mixed'
+							if (hasCTA) return 'buttons:cta'
+							if (hasQR) return 'buttons:reply'
+							return `buttons:${buttonType}`
+						}
+
+						if (isPoll) return 'poll'
+						if (core.imageMessage) return isViewOnce ? 'image(viewOnce)' : 'image'
+						if (core.videoMessage) return isViewOnce ? 'video(viewOnce)' : 'video'
+						if (core.audioMessage) return isViewOnce ? 'audio(viewOnce)' : 'audio'
+						if (core.documentMessage) return isViewOnce ? 'document(viewOnce)' : 'document'
+						return 'other'
+					})()
+
+					logger.info(
+						{
+							msgId,
+							kind,
+							envelopeTo,
+							addressing,
+							originalJid: destinationJid,
+							viewOnce: isViewOnce,
+							contentTags,
+							nodes: {
+								tctoken: contentTags.includes('tctoken'),
+								biz: contentTags.includes('biz'),
+								bot: contentTags.includes('bot'),
+								deviceIdentity: contentTags.includes('device-identity'),
+								qualityControl: isCarousel
+							},
+							participantDevices: participants.length
+						},
+						`[STANZA] Sending ${kind} → ${envelopeTo} (${addressing}) | nodes: [${contentTags.join(', ')}]`
+					)
+				}
 			}
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
