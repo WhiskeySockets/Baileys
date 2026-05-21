@@ -103,7 +103,12 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		throw new Boom('Unknown message type', { data: stanza })
 	}
 
-	const fromMe = (isLidUser(from) ? isMeLid : isMe)((stanza.attrs.participant || stanza.attrs.from)!)
+	// Check the sender against both our PN and LID identities — picking only
+	// one based on `from`'s format misses peer-routed self stanzas (history
+	// sync, app-state sync, etc.) when `from` and our stored identity are in
+	// different formats, leaving fromMe wrongly false.
+	const senderJid = (stanza.attrs.participant || stanza.attrs.from)!
+	const fromMe = isMe(senderJid) || isMeLid(senderJid)
 	const pushname = stanza?.attrs?.notify
 
 	const key: WAMessageKey = {
