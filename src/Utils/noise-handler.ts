@@ -166,9 +166,16 @@ export const makeNoiseHandler = ({
 		logger.trace('Noise handler transitioned to Transport state')
 
 		if (pendingOnFrame) {
-			logger.trace({ length: inBytes.length }, 'Flushing buffered frames after transport ready')
-			await processData(pendingOnFrame)
-			pendingOnFrame = null
+			// The pending-frame drain runs the SAME `processData` loop that
+			// `decodeFrame` does and mutates the SAME `inBytes` buffer. We
+			// must acquire the decodeFrame mutex so a `decodeFrame` arriving
+			// concurrently with `finishInit` queues behind us instead of
+			// racing the transport-mode async path through `inBytes`.
+			await decodeFrameMutex.runExclusive(async () => {
+				logger.trace({ length: inBytes.length }, 'Flushing buffered frames after transport ready')
+				await processData(pendingOnFrame!)
+				pendingOnFrame = null
+			})
 		}
 	}
 

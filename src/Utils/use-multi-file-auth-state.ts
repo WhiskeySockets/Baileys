@@ -130,8 +130,10 @@ export const useMultiFileAuthState = async (
 	//   2. if main exists, rename(main, bak)
 	//   3. rename(tmp, main)
 	// A crash between (2) and (3) leaves `.bak` intact; readData falls back.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const writeData = async (data: any, file: string) => {
+	// `data` is whatever the caller hands us — creds object, signal record
+	// value, etc. We don't inspect it; JSON.stringify accepts `unknown` and
+	// the BufferJSON replacer handles Buffer/Uint8Array values explicitly.
+	const writeData = async (data: unknown, file: string) => {
 		const filePath = join(folder, fixFileName(file)!)
 		const tmpPath = `${filePath}.tmp`
 		const bakPath = `${filePath}.bak`
@@ -293,9 +295,13 @@ export const useMultiFileAuthState = async (
 					const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
 					await Promise.all(
 						ids.map(async id => {
-							let value: any = await readData(`${type}-${id}.json`)
+							let value: unknown = await readData(`${type}-${id}.json`)
 							if (type === 'app-state-sync-key' && value) {
-								value = proto.Message.AppStateSyncKeyData.fromObject(value)
+								// `fromObject` is the protobuf codec's tolerant
+								// JSON-input parser; it accepts any plain object
+								// shape and validates field types internally.
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								value = proto.Message.AppStateSyncKeyData.fromObject(value as any)
 							}
 
 							if (value !== null && value !== undefined) {
@@ -358,9 +364,13 @@ export const useMultiFileAuthState = async (
 					type: T
 				): AsyncIterable<readonly [string, SignalDataTypeMap[T]]> {
 					for await (const entry of iterateType(type)) {
-						let value: any = await readData(entry.filename)
+						let value: unknown = await readData(entry.filename)
 						if (type === 'app-state-sync-key' && value) {
-							value = proto.Message.AppStateSyncKeyData.fromObject(value)
+							// See `get` above for the rationale on the `as any` —
+							// protobuf's `fromObject` is a tolerant JSON-input
+							// parser that internally validates the shape.
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							value = proto.Message.AppStateSyncKeyData.fromObject(value as any)
 						}
 
 						if (value !== null && value !== undefined) {

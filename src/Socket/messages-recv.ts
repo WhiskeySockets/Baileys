@@ -636,24 +636,35 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				return
 			}
 
+			// Derive a stable participant once. `String(undefined)` would
+			// yield the literal `'undefined'`, collapsing every
+			// participant-less stanza into one cache + lock bucket and
+			// breaking the per-(msgId, participant) isolation the retry
+			// counter relies on. Fall back to remoteJid, then to the
+			// stanza-level `from` attribute, which are always present.
+			const retryParticipant = msgKey?.participant ?? msgKey?.remoteJid ?? node.attrs.from!
+
 			// Mirror the retry count to the durable cache via the shared lock.
-			await retryLocks.withLock(retryLockRef(msgId, String(msgKey?.participant)), async () => {
-				const key = `${msgId}:${msgKey?.participant}`
+			await retryLocks.withLock(retryLockRef(msgId, retryParticipant), async () => {
+				const key = `${msgId}:${retryParticipant}`
 				await msgRetryCache.set(key, attempt.count)
 			})
 		} else {
+			// Same stable-fallback rationale as the retry-manager branch above.
+			const retryParticipant = msgKey?.participant ?? msgKey?.remoteJid ?? node.attrs.from!
+
 			// Fallback to old system — atomic increment via the shared lock so
 			// `sendRetryRequest` and `updateSendMessageAgainCount` (which both
 			// touch `msgRetryCache`) cannot lose increments to each other.
-			const next = await incrementRetryAndGet(msgId, String(msgKey?.participant))
+			const next = await incrementRetryAndGet(msgId, retryParticipant)
 			if (next > maxMsgRetryCount) {
 				logger.debug({ retryCount: next, msgId }, 'reached retry limit, clearing')
-				await msgRetryCache.del(`${msgId}:${msgKey?.participant}`)
+				await msgRetryCache.del(`${msgId}:${retryParticipant}`)
 				return
 			}
 		}
 
-		const key = `${msgId}:${msgKey?.participant}`
+		const key = `${msgId}:${msgKey?.participant ?? msgKey?.remoteJid ?? node.attrs.from}`
 		const retryCount = (await msgRetryCache.get<number>(key)) || 1
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
