@@ -176,9 +176,18 @@ export const makeSocket = (config: SocketConfig) => {
 	 */
 	const waitForMessage = async <T>(msgId: string, timeoutMs = defaultQueryTimeoutMs): Promise<T> => {
 		if (inFlightQueryTags.has(msgId)) {
-			// Should not happen under normal use — `query` auto-generates ids —
-			// but a caller that hand-rolls a tag could collide.
-			logger?.warn?.({ msgId }, 'duplicate in-flight query tag detected')
+			// Should not happen under normal use — `query` auto-generates ids
+			// — but a caller that hand-rolls a tag could collide. The
+			// previous behavior just logged a warning and registered the
+			// second listener anyway, meaning the original waiter could see
+			// its response stolen by the second registration's stanza
+			// handler (or vice versa). Throw instead so the second caller
+			// learns immediately and can choose a different tag; callers
+			// can branch on `err.output.statusCode === 409`.
+			throw new Boom('duplicate in-flight query tag', {
+				statusCode: 409,
+				data: { msgId }
+			})
 		}
 
 		inFlightQueryTags.add(msgId)

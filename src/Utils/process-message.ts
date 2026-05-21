@@ -33,8 +33,25 @@ import {
 import { aesDecryptGCM, hmacSign } from './crypto'
 import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
+import { makeLockManager } from './lock-manager'
 import type { ILogger } from './logger'
 import { buildMergedTcTokenIndexWrite, resolveTcTokenJid } from './tc-token-utils'
+
+/**
+ * Module-level lock used to atomically serialize the M8 idempotency
+ * read-modify-write across concurrent duplicate stanzas. Keyed by the
+ * `(msgId, sender)` pair, so different messages don't contend with each
+ * other and different sockets sharing this module don't accidentally
+ * collide (the key carries the full (msgId, sender) tuple — msgIds are
+ * server-assigned + sender-qualified, so cross-socket overlap is
+ * implausible in practice).
+ *
+ * Without this lock, two concurrent duplicates could each `get` the
+ * cache, see no entry, both pass the guard, both `set(true)`, and both
+ * fully process — the exact failure mode the M8 guard is supposed to
+ * prevent.
+ */
+const processedMessageLocks = makeLockManager()
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -333,13 +350,26 @@ const processMessage = async (
 	if (processedMessageCache && message.key?.id) {
 		const sender = getKeyAuthor(message.key, creds.me!.id)
 		idempotencyKey = `${message.key.id}:${sender}`
-		const already = await processedMessageCache.get<boolean>(idempotencyKey)
-		if (already) {
+
+		// Atomic check-and-set under a per-(msgId, sender) lock so two
+		// concurrent duplicates can't both observe an empty cache between
+		// their own `get` and `set`, both pass the guard, and both fully
+		// process. The lock is held ONLY across the RMW — the body runs
+		// outside it, so non-duplicate work still proceeds in parallel.
+		const alreadyProcessed = await processedMessageLocks.withLock(
+			{ namespace: 'process-msg', id: idempotencyKey },
+			async () => {
+				const already = await processedMessageCache.get<boolean>(idempotencyKey!)
+				if (already) return true
+				await processedMessageCache.set(idempotencyKey!, true)
+				return false
+			}
+		)
+
+		if (alreadyProcessed) {
 			logger?.debug?.({ msgId: message.key.id, sender }, 'processMessage: skipping redelivered message (M8 guard)')
 			return
 		}
-
-		await processedMessageCache.set(idempotencyKey, true)
 	}
 
 	// Body wrapped in an IIFE rather than a bare `try { ... }` so eslint's

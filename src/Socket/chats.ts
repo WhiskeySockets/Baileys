@@ -1480,6 +1480,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			placeholderResendCache.close()
 		}
 
+		// `processedMessageCache` is always owned by this socket (we
+		// construct it locally; no config override accepts it), so close
+		// its NodeCache timers on teardown to avoid a leak across
+		// disconnect / reconnect cycles. Without this, every reconnect
+		// would allocate a new NodeCache with its own `setInterval`-based
+		// TTL sweeper and the old one would keep running forever.
+		if (processedMessageCache.close) {
+			processedMessageCache.close()
+		}
+
 		syncState = SyncState.Connecting
 		privacySettings = undefined
 	})
