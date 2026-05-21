@@ -12,9 +12,14 @@
  * Uses `':memory:'` databases (better-sqlite3 supports them) so tests run
  * without touching the filesystem and don't need cleanup.
  */
+import type { SignalDataTypeMap } from '../../Types'
 import { useSqliteAuthState } from '../../Utils/use-sqlite-auth-state'
 
-const sampleSession = (b: number) => Buffer.from([b])
+// Return the precise `session` value type so call sites don't need an
+// `as any` to satisfy `state.keys.set({ session: { ... } })`. Buffer is a
+// Uint8Array at runtime; the cast is purely to widen one to the other for
+// TypeScript's mapped-type machinery.
+const sampleSession = (b: number): SignalDataTypeMap['session'] => Buffer.from([b]) as Uint8Array
 
 describe('useSqliteAuthState', () => {
 	it('opens an in-memory database and accepts an in-process creds mutation', async () => {
@@ -56,7 +61,7 @@ describe('useSqliteAuthState', () => {
 		const { state, close } = await useSqliteAuthState({ dbPath: ':memory:' })
 		const jid = 'peer@s.whatsapp.net'
 
-		await state.keys.set({ session: { [jid]: sampleSession(0x11) as any } })
+		await state.keys.set({ session: { [jid]: sampleSession(0x11) } })
 		let got = await state.keys.get('session', [jid])
 		expect(Buffer.from(got[jid] as Uint8Array)).toEqual(Buffer.from([0x11]))
 
@@ -71,8 +76,8 @@ describe('useSqliteAuthState', () => {
 		const jid = 'peer@s.whatsapp.net'
 
 		await state.keys.set({
-			session: { [jid]: sampleSession(0x01) as any },
-			'identity-key': { [jid]: sampleSession(0x02) as any }
+			session: { [jid]: sampleSession(0x01) },
+			'identity-key': { [jid]: sampleSession(0x02) }
 		})
 
 		const [{ [jid]: s }, { [jid]: i }] = await Promise.all([
@@ -91,7 +96,7 @@ describe('useSqliteAuthState', () => {
 
 		// Pre-seed identity-key so the partial-write test has something to
 		// observe; if rollback works, this value remains.
-		await state.keys.set({ 'identity-key': { [jid]: sampleSession(0xa0) as any } })
+		await state.keys.set({ 'identity-key': { [jid]: sampleSession(0xa0) } })
 
 		// Simulate a corrupt value that fails JSON.stringify by passing a
 		// circular reference. SQLite's BEGIN IMMEDIATE wraps the better-sqlite3
@@ -101,7 +106,7 @@ describe('useSqliteAuthState', () => {
 
 		await expect(
 			state.keys.set({
-				session: { [jid]: sampleSession(0xff) as any },
+				session: { [jid]: sampleSession(0xff) },
 				'identity-key': { [jid]: circular }
 			})
 		).rejects.toThrow()
@@ -120,9 +125,9 @@ describe('useSqliteAuthState', () => {
 
 		await state.keys.set({
 			session: {
-				'a@s.whatsapp.net': sampleSession(0x01) as any,
-				'b@s.whatsapp.net': sampleSession(0x02) as any,
-				'c@s.whatsapp.net': sampleSession(0x03) as any
+				'a@s.whatsapp.net': sampleSession(0x01),
+				'b@s.whatsapp.net': sampleSession(0x02),
+				'c@s.whatsapp.net': sampleSession(0x03)
 			}
 		})
 
@@ -146,7 +151,7 @@ describe('useSqliteAuthState', () => {
 		state.creds.advSecretKey = 'still-here'
 		await saveCreds()
 
-		await state.keys.set({ session: { 'peer@s.whatsapp.net': sampleSession(0x99) as any } })
+		await state.keys.set({ session: { 'peer@s.whatsapp.net': sampleSession(0x99) } })
 
 		await state.keys.clear!()
 
