@@ -57,7 +57,30 @@ const REAL_MSG_STUB_TYPES = new Set([
 ])
 
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
+const ENC_SECRET_EVENT_EDIT = 'Event Edit'
 const ENC_SECRET_MESSAGE_EDIT = 'Message Edit'
+const ENC_SECRET_MESSAGE_SCHEDULE = 'Message Schedule'
+const ENC_SECRET_POLL_EDIT = 'Poll Edit'
+const ENC_SECRET_POLL_ADD_OPTION = 'Poll Add Option'
+
+type SecretEncType = proto.Message.SecretEncryptedMessage.SecretEncType
+
+const getSecretEncTypeScopes = (secretEncType: SecretEncType | null | undefined) => {
+	switch (secretEncType) {
+		case proto.Message.SecretEncryptedMessage.SecretEncType.EVENT_EDIT:
+			return [ENC_SECRET_EVENT_EDIT]
+		case proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_EDIT:
+			return [ENC_SECRET_MESSAGE_EDIT]
+		case proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_SCHEDULE:
+			return [ENC_SECRET_MESSAGE_SCHEDULE]
+		case proto.Message.SecretEncryptedMessage.SecretEncType.POLL_EDIT:
+			return [ENC_SECRET_POLL_EDIT]
+		case proto.Message.SecretEncryptedMessage.SecretEncType.POLL_ADD_OPTION:
+			return [ENC_SECRET_POLL_ADD_OPTION, ENC_SECRET_POLL_EDIT]
+		default:
+			return undefined
+	}
+}
 
 async function storeTcTokensFromHistorySync(
 	chats: Chat[],
@@ -192,12 +215,10 @@ export const decryptSecretEncryptedMessage = async (
 	}
 
 	const targetMessageKey = secretEncryptedMessage.targetMessageKey as WAMessageKey | undefined
-	let editedMessage: proto.IMessage | undefined
+	let decryptedMessage: proto.IMessage | undefined
+	const secretEncTypeScopes = getSecretEncTypeScopes(secretEncryptedMessage.secretEncType)
 
-	if (
-		secretEncryptedMessage.secretEncType !== proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_EDIT ||
-		!targetMessageKey?.id
-	) {
+	if (!secretEncTypeScopes) {
 		logger?.warn(
 			{
 				secretEncType: secretEncryptedMessage.secretEncType,
@@ -208,41 +229,60 @@ export const decryptSecretEncryptedMessage = async (
 		return
 	}
 
-	if (!secretEncryptedMessage.encPayload?.length || !secretEncryptedMessage.encIv?.length) {
-		logger?.warn({ targetMessageKey }, 'missing encrypted edit payload')
+	if (!targetMessageKey?.id) {
+		logger?.warn(
+			{ targetMessageKey: secretEncryptedMessage.targetMessageKey },
+			'missing secret encrypted message target'
+		)
 		return
 	}
 
-	const ownSender = message.key.addressingMode === 'lid' && meLid ? meLid : meId
+	if (!secretEncryptedMessage.encPayload?.length || !secretEncryptedMessage.encIv?.length) {
+		logger?.warn({ targetMessageKey }, 'missing secret encrypted message payload')
+		return
+	}
+
+	const ownSender = jidNormalizedUser(message.key.addressingMode === 'lid' && meLid ? meLid : meId)
 	const originalSender = targetMessageKey.fromMe
 		? ownSender
-		: targetMessageKey.participant || targetMessageKey.remoteJid
-	const modificationSender = message.key.fromMe ? ownSender : message.key.participant || message.key.remoteJid
+		: jidNormalizedUser(targetMessageKey.participant || targetMessageKey.remoteJid || undefined)
+	const modificationSender = message.key.fromMe
+		? ownSender
+		: jidNormalizedUser(message.key.participant || message.key.remoteJid || undefined)
 
 	if (!originalSender || !modificationSender) {
 		logger?.warn({ targetMessageKey, messageKey: message.key }, 'missing sender for secret encrypted message')
 		return
 	}
 
-	try {
-		const decryptKey = generateMsgSecretKey(
-			ENC_SECRET_MESSAGE_EDIT,
-			targetMessageKey.id,
-			originalSender,
-			modificationSender,
-			messageSecret
-		)
-		const decrypted = aesDecryptGCM(
-			secretEncryptedMessage.encPayload,
-			decryptKey,
-			secretEncryptedMessage.encIv,
-			Buffer.alloc(0)
-		)
-		editedMessage = proto.Message.decode(decrypted)
-	} catch (err) {
+	let decryptErr: unknown
+	for (const secretEncTypeScope of secretEncTypeScopes) {
+		try {
+			const decryptKey = generateMsgSecretKey(
+				secretEncTypeScope,
+				targetMessageKey.id,
+				originalSender,
+				modificationSender,
+				messageSecret
+			)
+			const decrypted = aesDecryptGCM(
+				secretEncryptedMessage.encPayload,
+				decryptKey,
+				secretEncryptedMessage.encIv,
+				Buffer.alloc(0)
+			)
+			decryptedMessage = proto.Message.decode(decrypted)
+			break
+		} catch (err) {
+			decryptErr = err
+		}
+	}
+
+	if (!decryptedMessage) {
 		logger?.warn(
 			{
-				err,
+				err: decryptErr,
+				secretEncType: secretEncryptedMessage.secretEncType,
 				targetMessageKey,
 				messageKey: message.key,
 				originalSender,
@@ -250,21 +290,24 @@ export const decryptSecretEncryptedMessage = async (
 			},
 			'failed to decrypt secret encrypted message'
 		)
+		return
 	}
 
-	if (editedMessage) {
-		if (message.message?.messageContextInfo && !editedMessage.messageContextInfo) {
-			editedMessage.messageContextInfo = message.message.messageContextInfo
-		}
+	if (message.message?.messageContextInfo && !decryptedMessage.messageContextInfo) {
+		decryptedMessage.messageContextInfo = message.message.messageContextInfo
+	}
 
+	if (secretEncryptedMessage.secretEncType === proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_EDIT) {
 		message.message = {
 			protocolMessage: {
 				key: targetMessageKey,
 				type: proto.Message.ProtocolMessage.Type.MESSAGE_EDIT,
-				editedMessage,
+				editedMessage: decryptedMessage,
 				timestampMs: toNumber(message.messageTimestamp) * 1000
 			}
 		}
+	} else {
+		message.message = decryptedMessage
 	}
 }
 

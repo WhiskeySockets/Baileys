@@ -1775,12 +1775,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
 				const content = normalizeMessageContent(msg.message)
 				const secretEncryptedMessage = content?.secretEncryptedMessage
-				if (secretEncryptedMessage?.secretEncType === proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_EDIT) {
+				if (secretEncryptedMessage) {
 					const targetMessageKey = secretEncryptedMessage.targetMessageKey as WAMessageKey | undefined
 					const originalMessage = targetMessageKey?.id
 						? (messageRetryManager?.getRecentMessageById(targetMessageKey.id)?.message ??
 							(await getMessage(targetMessageKey).catch(err => {
-								logger.warn({ err, targetMessageKey }, 'failed to load original message for encrypted edit')
+								logger.warn({ err, targetMessageKey }, 'failed to load original message for secret encrypted message')
 								return undefined
 							})))
 						: undefined
@@ -1795,7 +1795,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							logger
 						)
 					} else {
-						logger.warn({ targetMessageKey }, 'missing original message secret for encrypted edit')
+						logger.warn(
+							{ secretEncType: secretEncryptedMessage.secretEncType, targetMessageKey },
+							'missing original message secret for secret encrypted message'
+						)
 					}
 				}
 
