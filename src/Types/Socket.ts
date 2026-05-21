@@ -82,8 +82,13 @@ export type SocketConfig = {
 	/** provide a cache to store media, so does not have to be re-uploaded */
 	mediaCache?: CacheStore
 	/**
+	 * 		 map to store the retry counts for failed messages;
+	 * used to determine whether to retry a message or not
+	 */
+	msgRetryResendCache?: CacheStore
+	/**
 	 * map to store the retry counts for failed messages;
-	 * used to determine whether to retry a message or not */
+	 * used to determine whether to send retry or not */
 	msgRetryCounterCache?: CacheStore
 	/** provide a cache to store a user's device list */
 	userDevicesCache?: PossiblyExtendedCacheStore

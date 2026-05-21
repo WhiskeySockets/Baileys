@@ -149,6 +149,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		})
+
+	const msgRetryResendCache =
+		config.msgRetryResendCache ||
+		new NodeCache<number>({
+			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
+			useClones: false
+		})
+
 	const callOfferCache =
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
@@ -1301,14 +1309,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const willSendMessageAgain = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const retryCount = (await msgRetryCache.get<number>(key)) || 0
+		const retryCount = (await msgRetryResendCache.get<number>(key)) || 0
 		return retryCount < maxMsgRetryCount
 	}
 
 	const updateSendMessageAgainCount = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const newValue = ((await msgRetryCache.get<number>(key)) || 0) + 1
-		await msgRetryCache.set(key, newValue)
+		const newValue = ((await msgRetryResendCache.get<number>(key)) || 0) + 1
+		await msgRetryResendCache.set(key, newValue)
 	}
 
 	const sendMessagesAgain = async (
@@ -1526,7 +1534,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						if (ids[0] && key.participant && (await willSendMessageAgain(ids[0], key.participant))) {
 							if (key.fromMe) {
 								try {
-									await updateSendMessageAgainCount(ids[0], key.participant)
 									logger.debug({ attrs, key }, 'recv retry request')
 									await sendMessagesAgain(key, ids, retryNode!, node)
 								} catch (error: unknown) {
