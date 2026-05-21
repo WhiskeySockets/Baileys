@@ -617,7 +617,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				// Check if we have a session with this JID
-				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
 				const hasSession = await signalRepository.validateSession(fromJid)
 				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists)
 				shouldRecreateSession = result.recreate
@@ -625,8 +624,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				if (shouldRecreateSession) {
 					logger.debug({ fromJid, retryCount, reason: recreateReason }, 'recreating session for retry')
-					// Delete existing session to force recreation
-					await authState.keys.set({ session: { [sessionId]: null } })
+					await signalRepository.deleteSessionForJid(fromJid)
 					forceIncludeKeys = true
 				}
 			} catch (error) {
@@ -1383,7 +1381,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{ participant, stored: info.registrationId, received: receivedRegId },
 						'reg id mismatch on retry without bundle, deleting session'
 					)
-					await authState.keys.set({ session: { [sessionId]: null } })
+					await signalRepository.deleteSessionForJid(participant)
 				}
 			}
 		}
@@ -1397,7 +1395,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				} else if (retryCount > BASE_KEY_CHECK_RETRY) {
 					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
 						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
-						await authState.keys.set({ session: { [sessionId]: null } })
+						await signalRepository.deleteSessionForJid(participant)
 					}
 
 					messageRetryManager.deleteBaseKey(sessionId, msgId)
@@ -1417,7 +1415,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				if (shouldRecreateSession) {
 					logger.debug({ participant, retryCount, reason: recreateReason }, 'recreating session for outgoing retry')
-					await authState.keys.set({ session: { [sessionId]: null } })
+					await signalRepository.deleteSessionForJid(participant)
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')

@@ -340,6 +340,31 @@ export const addTransactionCapability = (
 			} finally {
 				releaseTxMutexRef(key)
 			}
+		},
+
+		/**
+		 * Like `transaction` but never reuses a surrounding ALS context and
+		 * always commits before returning. Required when the work's writes
+		 * must be visible to a sibling caller before the local scope ends
+		 * (e.g. a per-recipient lock that needs the next acquirer to read
+		 * fresh state from disk). Caller is responsible for serialisation.
+		 */
+		isolatedTransaction: async <T>(exec: () => Promise<T>): Promise<T> => {
+			const ctx: TransactionContext = {
+				cache: {},
+				mutations: {},
+				dbQueries: 0
+			}
+
+			try {
+				const result = await txStorage.run(ctx, exec)
+				await commitWithRetry(ctx.mutations)
+				logger.trace({ dbQueries: ctx.dbQueries }, 'isolated transaction completed')
+				return result
+			} catch (error) {
+				logger.error({ err: error }, 'isolated transaction failed')
+				throw error
+			}
 		}
 	}
 }
