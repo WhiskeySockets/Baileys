@@ -1,6 +1,29 @@
 import { Boom } from '@hapi/boom'
 import { expandAppStateKeys } from 'whatsapp-rust-bridge'
 import { proto } from '../../WAProto/index.js'
+
+/**
+ * Thrown by `decodePatches` when the LTHash MAC computed locally does not
+ * match the server-supplied MAC for a patch.
+ *
+ * Stage 8 (M7): the previous implementation logged a `warn` and silently
+ * `break`-ed the patch loop, leaving `state` partially advanced. Subsequent
+ * server patches at higher versions then failed verification permanently
+ * because the stored hash had diverged. Throwing here surfaces the
+ * divergence to the caller (in practice, the app-state sync orchestrator)
+ * so it can choose to resync from a snapshot rather than silently degrading.
+ */
+export class LTHashMismatchError extends Error {
+	readonly patchName: string
+	readonly version: number
+	constructor(patchName: string, version: number) {
+		super(`LTHash verification failed for patch "${patchName}" at version ${version}`)
+		this.name = 'LTHashMismatchError'
+		this.patchName = patchName
+		this.version = version
+	}
+}
+
 import type {
 	BaileysEventEmitter,
 	Chat,
@@ -541,8 +564,11 @@ export const decodePatches = async (
 			const result = mutationKeys(keyEnc.keyData!)
 			const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 			if (Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
-				logger?.warn({ name, version: newState.version }, 'LTHash verification failed, skipping remaining patches')
-				break
+				logger?.warn(
+					{ name, version: newState.version },
+					'LTHash verification failed — throwing LTHashMismatchError (M7) so caller can resync from snapshot'
+				)
+				throw new LTHashMismatchError(name, newState.version)
 			}
 		}
 

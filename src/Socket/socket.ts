@@ -160,16 +160,53 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/**
-	 * Wait for a message with a certain tag to be received
-	 * @param msgId the message tag to await
-	 * @param timeoutMs timeout after which the promise will reject
+	 * Tracks the message tags currently awaiting a server response. Used to
+	 * detect — and warn about — duplicate stanzas the server stutter-sends for
+	 * the same tag (M9). The Set is cleared in `waitForMessage`'s finally block.
 	 */
-	const waitForMessage = async <T>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
+	const inFlightQueryTags = new Set<string>()
+
+	/**
+	 * Wait for a message with a certain tag to be received.
+	 *
+	 * Stage 8 (M9): on timeout this now throws a typed `QueryTimeoutError`
+	 * instead of resolving `undefined`. The previous behavior let downstream
+	 * `if (result && 'tag' in result)` checks fall through, masking timeouts
+	 * as "missing tag" or "TypeError on result.tag" depending on the caller.
+	 */
+	const waitForMessage = async <T>(msgId: string, timeoutMs = defaultQueryTimeoutMs): Promise<T> => {
+		if (inFlightQueryTags.has(msgId)) {
+			// Should not happen under normal use — `query` auto-generates ids
+			// — but a caller that hand-rolls a tag could collide. The
+			// previous behavior just logged a warning and registered the
+			// second listener anyway, meaning the original waiter could see
+			// its response stolen by the second registration's stanza
+			// handler (or vice versa). Throw instead so the second caller
+			// learns immediately and can choose a different tag; callers
+			// can branch on `err.output.statusCode === 409`.
+			throw new Boom('duplicate in-flight query tag', {
+				statusCode: 409,
+				data: { msgId }
+			})
+		}
+
+		inFlightQueryTags.add(msgId)
+
 		let onRecv: ((data: T) => void) | undefined
 		let onErr: ((err: Error) => void) | undefined
+		let resolvedOnce = false
 		try {
 			const result = await promiseTimeout<T>(timeoutMs, (resolve, reject) => {
 				onRecv = data => {
+					if (resolvedOnce) {
+						// Server emitted a second stanza for the same tag.
+						// Surface it so operators can investigate; the first
+						// response has already been delivered to the caller.
+						logger?.warn?.({ msgId }, 'duplicate response for in-flight query tag (later response dropped)')
+						return
+					}
+
+					resolvedOnce = true
 					resolve(data)
 				}
 
@@ -190,14 +227,17 @@ export const makeSocket = (config: SocketConfig) => {
 			})
 			return result
 		} catch (error) {
-			// Catch timeout and return undefined instead of throwing
 			if (error instanceof Boom && error.output?.statusCode === DisconnectReason.timedOut) {
 				logger?.warn?.({ msgId }, 'timed out waiting for message')
-				return undefined
+				throw new Boom(`Timed out waiting for response to query ${msgId}`, {
+					statusCode: DisconnectReason.timedOut,
+					data: { msgId, timeoutMs }
+				})
 			}
 
 			throw error
 		} finally {
+			inFlightQueryTags.delete(msgId)
 			if (onRecv) ws.off(`TAG:${msgId}`, onRecv)
 			if (onErr) {
 				ws.off('close', onErr)
