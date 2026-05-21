@@ -98,6 +98,14 @@ export type SignalKeyStore = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	/**
+	 * Like `transaction` but never reuses a surrounding ALS context and
+	 * always commits before returning. Caller is responsible for any
+	 * serialisation. Optional for backwards compatibility — external auth
+	 * stores that implement this interface directly may omit it; callers
+	 * (e.g. libsignal.ts) fall back to `transaction` in that case.
+	 */
+	isolatedTransaction?<T>(exec: () => Promise<T>): Promise<T>
 }
 
 export type TransactionCapabilityOptions = {
