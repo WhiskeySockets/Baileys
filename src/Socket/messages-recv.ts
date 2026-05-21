@@ -549,6 +549,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await sendNode(stanza)
 	}
 
+	// Mirrors WA Web's sendDeliveryReceiptsAfterDecryption: fire-and-forget so a transient
+	// send failure (ECONNRESET, half-open WS, etc.) never blocks message emission.
+	const dispatchReceiptAfterDecryption = (
+		jid: string,
+		participant: string | null | undefined,
+		ids: string[],
+		type: MessageReceiptType,
+		key: WAMessageKey
+	): void => {
+		if (type === 'sender' && !participant) {
+			logger.warn({ key }, 'skipping sender receipt: missing participant')
+			return
+		}
+
+		void sendReceipt(jid, participant ?? undefined, ids, type).catch(err =>
+			logger.error({ err, key, receiptType: type }, 'failed to send delivery receipt')
+		)
+	}
+
 	const rejectCall = async (callId: string, callFrom: string) => {
 		const stanza: BinaryNode = {
 			tag: 'call',
@@ -1755,13 +1774,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 
 						acked = true
-						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+						dispatchReceiptAfterDecryption(msg.key.remoteJid!, participant, [msg.key.id!], type, msg.key)
 
-						// send ack for history message
-						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
-						if (isAnyHistoryMsg) {
+						if (getHistoryMsg(msg.message!)) {
 							const jid = jidNormalizedUser(msg.key.remoteJid!)
-							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync') // TODO: investigate
+							dispatchReceiptAfterDecryption(jid, undefined, [msg.key.id!], 'hist_sync', msg.key)
 						}
 					} else {
 						acked = true
