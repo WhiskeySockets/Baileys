@@ -81,6 +81,9 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	let bufferCount = 0
 	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
 	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
+	const CHATS_DELETE_DEBOUNCE_MS = 500
+	const pendingChatDeletes = new Set<string>()
+	let chatDeleteDebounceTimeout: NodeJS.Timeout | null = null
 
 	// take the generic event and fire it as a baileys event
 	ev.on('event', (map: BaileysEventData) => {
@@ -90,6 +93,10 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	})
 
 	function buffer() {
+		if (pendingChatDeletes.size) {
+			flushPendingChatDeletes(true)
+		}
+
 		if (!isBuffering) {
 			logger.debug('Event buffer activated')
 			isBuffering = true
@@ -131,6 +138,15 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			flushPendingTimeout = null
 		}
 
+		if (chatDeleteDebounceTimeout) {
+			clearTimeout(chatDeleteDebounceTimeout)
+			chatDeleteDebounceTimeout = null
+		}
+
+		if (pendingChatDeletes.size) {
+			flushPendingChatDeletes(true)
+		}
+
 		// Clear history cache if it exceeds the max size
 		if (historyCache.size > MAX_HISTORY_CACHE_SIZE) {
 			logger.debug({ cacheSize: historyCache.size }, 'Clearing history cache')
@@ -160,6 +176,26 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		return true
 	}
 
+	function flushPendingChatDeletes(toBuffer: boolean) {
+		if (!pendingChatDeletes.size) {
+			return
+		}
+
+		if (chatDeleteDebounceTimeout) {
+			clearTimeout(chatDeleteDebounceTimeout)
+			chatDeleteDebounceTimeout = null
+		}
+
+		const deletes = Array.from(pendingChatDeletes)
+		pendingChatDeletes.clear()
+
+		if (toBuffer) {
+			append(data, historyCache, 'chats.delete', deletes, logger)
+		} else {
+			ev.emit('event', { 'chats.delete': deletes })
+		}
+	}
+
 	return {
 		process(handler) {
 			const listener = async (map: BaileysEventData) => {
@@ -172,6 +208,11 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			}
 		},
 		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap[T]) {
+			// Ensure pending debounced chat deletes are not reordered relative to new events.
+			if (pendingChatDeletes.size > 0 && event !== 'chats.delete') {
+				flushPendingChatDeletes(isBuffering)
+			}
+
 			// Check if this is a messages.upsert with a different type than what's buffered
 			// If so, flush the buffered messages first to avoid type overshadowing
 			if (event === 'messages.upsert') {
@@ -196,6 +237,23 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 
 			if (isBuffering && BUFFERABLE_EVENT_SET.has(event)) {
 				append(data, historyCache, event as BufferableEvent, evData, logger)
+				return true
+			}
+
+			// Coalesce rapid-fire chat deletes into a single emit window to reduce event-loop pressure.
+			if (event === 'chats.delete') {
+				for (const chatId of evData as BaileysEventMap['chats.delete']) {
+					pendingChatDeletes.add(chatId)
+				}
+
+				if (chatDeleteDebounceTimeout) {
+					clearTimeout(chatDeleteDebounceTimeout)
+				}
+
+				chatDeleteDebounceTimeout = setTimeout(() => {
+					flushPendingChatDeletes(false)
+				}, CHATS_DELETE_DEBOUNCE_MS)
+
 				return true
 			}
 

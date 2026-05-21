@@ -22,6 +22,64 @@ import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
+let isSessionCipherYieldPatched = false
+const SESSION_CIPHER_YIELD_PATCH_MARKER = Symbol('baileys.sessionCipherYieldPatch')
+
+type DecryptWhisperFn = (...args: unknown[]) => Promise<unknown>
+type SessionCipherPrototype = {
+	doDecryptWhisperMessage?: DecryptWhisperFn & { [SESSION_CIPHER_YIELD_PATCH_MARKER]?: true }
+}
+type SessionCipherCtor = {
+	prototype?: SessionCipherPrototype
+}
+type LibSignalLike = {
+	SessionCipher?: SessionCipherCtor
+}
+
+export function hasSessionCipherYieldPatch(): boolean {
+	const sessionCipherProto = (libsignal as unknown as LibSignalLike).SessionCipher?.prototype
+	const decrypt = sessionCipherProto?.doDecryptWhisperMessage
+	return Boolean(decrypt?.[SESSION_CIPHER_YIELD_PATCH_MARKER])
+}
+
+/**
+ * Workaround for libsignal-node event-loop starvation when decrypting with many stale sessions.
+ * Yields to the event loop before each CPU-heavy session decrypt attempt.
+ */
+export function patchSessionCipherYield(logger: ILogger): boolean {
+	if (isSessionCipherYieldPatched) {
+		return true
+	}
+
+	const sessionCipherProto = (libsignal as unknown as LibSignalLike).SessionCipher?.prototype
+	if (!sessionCipherProto) {
+		logger.warn('libsignal SessionCipher prototype not found; skipping event-loop yield patch')
+		return false
+	}
+
+	const originalDecrypt = sessionCipherProto.doDecryptWhisperMessage
+	if (typeof originalDecrypt !== 'function') {
+		logger.warn('libsignal SessionCipher#doDecryptWhisperMessage not found; skipping event-loop yield patch')
+		return false
+	}
+
+	if (originalDecrypt[SESSION_CIPHER_YIELD_PATCH_MARKER]) {
+		isSessionCipherYieldPatched = true
+		return true
+	}
+
+	const wrappedDecrypt = async function (this: unknown, ...args: unknown[]) {
+		await new Promise<void>(resolve => setImmediate(resolve))
+		return await originalDecrypt.apply(this, args)
+	} as DecryptWhisperFn & { [SESSION_CIPHER_YIELD_PATCH_MARKER]?: true }
+	wrappedDecrypt[SESSION_CIPHER_YIELD_PATCH_MARKER] = true
+	sessionCipherProto.doDecryptWhisperMessage = wrappedDecrypt
+
+	isSessionCipherYieldPatched = true
+	logger.info('applied libsignal SessionCipher event-loop yield patch')
+	return true
+}
+
 /** Extract identity key from PreKeyWhisperMessage for identity change detection */
 function extractIdentityFromPkmsg(ciphertext: Uint8Array): Uint8Array | undefined {
 	try {
@@ -52,6 +110,8 @@ export function makeLibSignalRepository(
 	logger: ILogger,
 	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 ): SignalRepositoryWithLIDStore {
+	patchSessionCipherYield(logger)
+
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
 
