@@ -797,12 +797,33 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					const senderKeySessionTargets = senderKeyRecipients
-					await assertSessions(senderKeySessionTargets)
+					let reachableRecipients = [...senderKeySessionTargets]
+					try {
+						await assertSessions(senderKeySessionTargets)
+					} catch(sessionErr) {
+						const isRecoverable = ['not-acceptable', 'Timed Out', 'No sessions'].includes((sessionErr as Error).message)
+						if(isRecoverable && senderKeySessionTargets.length > 1) {
+							logger.warn({ count: senderKeySessionTargets.length, err: (sessionErr as Error).message },
+								'batch assertSessions failed — retrying per-JID to skip unreachable devices')
+							reachableRecipients = []
+							for(const candidateJid of senderKeySessionTargets) {
+								try {
+									await assertSessions([candidateJid])
+									reachableRecipients.push(candidateJid)
+								} catch(e) {
+									logger.warn({ jid: candidateJid, err: (e as Error).message }, 'skipping unreachable participant device')
+								}
+							}
+						} else {
+							throw sessionErr
+						}
+					}
 
-					const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
-					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
-
-					participants.push(...result.nodes)
+					if(reachableRecipients.length) {
+						const result = await createParticipantNodes(reachableRecipients, senderKeyMsg, extraAttrs)
+						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
+						participants.push(...result.nodes)
+					}
 				}
 
 				binaryNodeContent.push({
