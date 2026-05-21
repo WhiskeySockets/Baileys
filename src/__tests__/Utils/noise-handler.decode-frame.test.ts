@@ -14,7 +14,7 @@
 import { jest } from '@jest/globals'
 import { NOISE_WA_HEADER } from '../../Defaults'
 import { Curve } from '../../Utils/crypto'
-import { makeNoiseHandler } from '../../Utils/noise-handler'
+import { __testOnly_ivForCounter, makeNoiseHandler } from '../../Utils/noise-handler'
 import type { BinaryNode } from '../../WABinary/types'
 
 const createMockLogger = () => ({
@@ -101,10 +101,32 @@ describe('Noise transport — per-call IV allocation (M10)', () => {
 		const c1 = handler.encrypt(same)
 		const c2 = handler.encrypt(same)
 
-		// Stage 7 (M10) allocates a fresh IV per call. The counter still
-		// advances, so two encrypts of identical plaintext produce distinct
-		// ciphertexts. Verified behaviorally because the IV is internal to
-		// TransportState and jest cannot spy on ESM `crypto` module exports.
+		// Behavioral check: counter advances, so two encrypts of identical
+		// plaintext produce distinct ciphertexts. Necessary but not
+		// sufficient — this would also pass if the IV buffer were shared
+		// and merely re-written in place, which is the regression class
+		// the structural check below pins.
 		expect(Buffer.from(c1).equals(Buffer.from(c2))).toBe(false)
+	})
+
+	it('ivForCounter returns a fresh Uint8Array instance per call (not a shared mutable buffer)', () => {
+		// Direct identity check on the IV allocator. The behavioral test
+		// above passes whenever the counter advances, even if the IV
+		// buffer is shared. THIS test fails the moment someone "optimizes"
+		// `ivForCounter` to return a module-level scratch buffer — the
+		// exact regression class M10 is meant to prevent (any future move
+		// to an async or streaming AEAD would then silently reuse the
+		// same IV+key pair, which is catastrophic for AES-GCM).
+		const a = __testOnly_ivForCounter(7)
+		const b = __testOnly_ivForCounter(7)
+
+		expect(a).not.toBe(b) // distinct instances
+		expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true) // same content
+
+		// Mutating one must not affect the other — pins independence of
+		// the underlying ArrayBuffers (a shared `Uint8Array.from(x)` view
+		// onto the same buffer would also fail this).
+		a[0] = 0xff
+		expect(b[0]).toBe(0)
 	})
 })

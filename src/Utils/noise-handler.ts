@@ -35,6 +35,18 @@ const ivForCounter = (counter: number): Uint8Array => {
 	return iv
 }
 
+/**
+ * Test-only export of {@link ivForCounter}. Not part of the public API
+ * surface — the leading underscore + `__testOnly_` prefix flag that.
+ *
+ * The M10 regression test uses this to assert that consecutive calls
+ * return distinct `Uint8Array` instances. A ciphertext-inequality check
+ * alone passes even when the IV buffer is shared and merely mutated
+ * between calls (counter still advances → ciphertexts differ); the
+ * identity check pins the "fresh allocation per call" contract directly.
+ */
+export const __testOnly_ivForCounter = ivForCounter
+
 class TransportState {
 	private readCounter = 0
 	private writeCounter = 0
