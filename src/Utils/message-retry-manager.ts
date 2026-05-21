@@ -135,6 +135,14 @@ export class MessageRetryManager {
 	}
 
 	/**
+	 * Get a recent message using only its message ID.
+	 */
+	getRecentMessageById(id: string): RecentMessage | undefined {
+		const keyStr = this.messageKeyIndex.get(id)
+		return keyStr ? this.recentMessagesMap.get(keyStr) : undefined
+	}
+
+	/**
 	 * Check if a session should be recreated based on retry count, history, and error code.
 	 * MAC errors (codes 4 and 7) trigger immediate session recreation regardless of timeout.
 	 */

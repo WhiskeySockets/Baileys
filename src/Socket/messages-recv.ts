@@ -32,6 +32,7 @@ import {
 	decodeMediaRetryNode,
 	decodeMessageNode,
 	decryptMessageNode,
+	decryptSecretEncryptedMessage,
 	delay,
 	derivePairingCodeKey,
 	encodeBigEndian,
@@ -47,6 +48,7 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	normalizeMessageContent,
 	SERVER_ERROR_CODES,
 	toNumber,
 	unixTimestampSeconds,
@@ -1771,6 +1773,34 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
+				const content = normalizeMessageContent(msg.message)
+				const secretEncryptedMessage = content?.secretEncryptedMessage
+				if (secretEncryptedMessage) {
+					const targetMessageKey = secretEncryptedMessage.targetMessageKey as WAMessageKey | undefined
+					const originalMessage = targetMessageKey?.id
+						? (messageRetryManager?.getRecentMessageById(targetMessageKey.id)?.message ??
+							(await getMessage(targetMessageKey).catch(err => {
+								logger.warn({ err, targetMessageKey }, 'failed to load original message for secret encrypted message')
+								return undefined
+							})))
+						: undefined
+
+					const messageSecret = normalizeMessageContent(originalMessage)?.messageContextInfo?.messageSecret
+					if (messageSecret?.length) {
+						await decryptSecretEncryptedMessage(
+							msg,
+							messageSecret,
+							authState.creds.me!.id,
+							authState.creds.me!.lid!,
+							logger
+						)
+					} else {
+						logger.warn(
+							{ secretEncType: secretEncryptedMessage.secretEncType, targetMessageKey },
+							'missing original message secret for secret encrypted message'
+						)
+					}
+				}
 
 				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 			})
