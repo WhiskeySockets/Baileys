@@ -34,7 +34,7 @@ const silentLogger = (): ILogger =>
 	}) as unknown as ILogger
 
 describe('event-buffer — re-entrant flush race (M6)', () => {
-	it.failing('re-entrant events emitted from a listener during flush survive the next flush', async () => {
+	it('re-entrant events emitted from a listener during flush survive the next flush', async () => {
 		const ev = makeEventBuffer(silentLogger())
 		const observed: string[] = []
 		let reentered = false
