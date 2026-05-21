@@ -21,7 +21,7 @@ const BOT_PHONE_REGEX = /^1313555\d{4}$|^131655500\d{2}$/
  * defend here for parity with `WAWebSetTcTokenChatAction.handleIncomingTcToken`.
  * Works for both pre- and post-normalized JIDs (`@c.us` vs `@s.whatsapp.net`).
  */
-function isRegularUser(jid: string | undefined): boolean {
+export function isRegularUser(jid: string | undefined): boolean {
 	if (!jid) return false
 	const user = jid.split('@')[0] ?? ''
 	if (!user) return false // empty user part (e.g. malformed `@s.whatsapp.net`)

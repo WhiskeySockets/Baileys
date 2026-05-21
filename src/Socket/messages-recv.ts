@@ -73,7 +73,7 @@ import {
 	recordMessageReceived,
 	recordMessageRetry
 } from '../Utils/prometheus-metrics.js'
-import { isTcTokenExpired, resolveTcTokenJid, storeTcTokensFromIqResult } from '../Utils/tc-token-utils'
+import { isRegularUser, isTcTokenExpired, resolveTcTokenJid, storeTcTokensFromIqResult } from '../Utils/tc-token-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -1945,6 +1945,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = jidNormalizedUser(node.attrs.from)
 
 		if (!tokensNode) return
+
+		// Defensive parity with the IQ-result path (storeTcTokensFromIqResult): never persist a
+		// tctoken for PSA/bot/MetaAI contacts — the same isRegularUser gate, shared across both
+		// token-ingestion paths so notifications can't smuggle one in.
+		if (!isRegularUser(from)) return
 
 		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
 
