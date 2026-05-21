@@ -508,13 +508,16 @@ export function runDetached(
 		result = work()
 	} catch (err) {
 		// Synchronous throw from `work` itself (rare — `async` functions wrap in Promise.reject).
-		logger.error?.({ err, ...context }, 'runDetached: detached work threw synchronously')
+		// `err` goes LAST so a `context.err` key (e.g. caller passing
+		// `{ err: previousFailure }`) can't overwrite the actual exception
+		// in the structured log.
+		logger.error?.({ ...context, err }, 'runDetached: detached work threw synchronously')
 		return
 	}
 
 	if (result !== undefined && result !== null) {
 		Promise.resolve(result).catch((err: unknown) => {
-			logger.error?.({ err, ...context }, 'runDetached: detached work rejected')
+			logger.error?.({ ...context, err }, 'runDetached: detached work rejected')
 		})
 	}
 }

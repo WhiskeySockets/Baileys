@@ -1,4 +1,4 @@
-import { BufferJSON } from '../../Utils/generics'
+import { BufferJSON, runDetached } from '../../Utils/generics'
 
 describe('BufferJSON', () => {
 	const originalObject = {
@@ -66,5 +66,37 @@ describe('BufferJSON', () => {
 	it('should correctly handle an empty object', () => {
 		const revived = JSON.parse('{}', BufferJSON.reviver)
 		expect(revived).toEqual({})
+	})
+})
+
+describe('runDetached', () => {
+	const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
+	it('logs the actual rejection even when context carries a colliding `err` key', async () => {
+		// Stage 9 round 2 fix: the logger payload spreads `context` BEFORE
+		// `err` so a caller-supplied `context.err` (e.g. a previous failure
+		// they're carrying through) can't shadow the actual exception that
+		// just fired. Pre-fix the order was `{ err, ...context }` which
+		// would let `context.err` overwrite the real one in the log.
+		const errorCalls: Array<{ obj: unknown; msg?: string }> = []
+		const logger = { error: (obj: unknown, msg?: string) => errorCalls.push({ obj, msg }) }
+
+		runDetached(
+			async () => {
+				throw new Error('actual-detached-failure')
+			},
+			logger,
+			{ op: 'unit-test', err: 'caller-supplied-misleading-value' }
+		)
+
+		// Detached rejection lands on a microtask later.
+		await delay(10)
+
+		expect(errorCalls).toHaveLength(1)
+		const payload = errorCalls[0]!.obj as { op: string; err: unknown }
+		expect(payload.op).toBe('unit-test')
+		// The REAL Error must win — not the caller's misleading string.
+		expect(payload.err).toBeInstanceOf(Error)
+		expect((payload.err as Error).message).toBe('actual-detached-failure')
 	})
 })

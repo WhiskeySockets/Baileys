@@ -132,15 +132,33 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	 * one in-flight or reuse the freshly-cached value.
 	 */
 	const mediaConnMutex = makeMutex()
+	/**
+	 * Safely await the cached `mediaConn` promise. If a previous fetch
+	 * stored a REJECTED promise, awaiting it again would just rethrow
+	 * forever and poison every subsequent caller with the stale failure
+	 * — there'd be no way to retry. Clear the cache slot on rejection so
+	 * the next caller falls through to a fresh `media_conn` query.
+	 */
+	const safeAwaitMediaConn = async (): Promise<MediaConnInfo | undefined> => {
+		if (!mediaConn) return undefined
+		try {
+			return await mediaConn
+		} catch (err) {
+			logger.warn?.({ err }, 'previous media_conn fetch failed, will retry')
+			mediaConn = undefined
+			return undefined
+		}
+	}
+
 	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
-		const cached = await mediaConn
+		const cached = await safeAwaitMediaConn()
 		if (cached && !forceGet && new Date().getTime() - cached.fetchDate.getTime() <= cached.ttl * 1000) {
 			return cached
 		}
 
 		return mediaConnMutex.mutex(async () => {
 			// Re-check inside the lock: another caller may have refreshed.
-			const after = await mediaConn
+			const after = await safeAwaitMediaConn()
 			if (after && !forceGet && new Date().getTime() - after.fetchDate.getTime() <= after.ttl * 1000) {
 				return after
 			}

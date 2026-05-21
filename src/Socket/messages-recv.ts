@@ -1814,7 +1814,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await attemptRetryRequest(node)
 
 						acked = true
-						await sendMessageAck(node, NACK_REASONS.UnhandledError)
+						// Skip the ack if the socket is no longer open. Without
+						// this guard, `sendMessageAck` would throw a
+						// `Connection Closed` Boom inside the receive pipeline,
+						// surfacing as an unhandled rejection that interrupts
+						// downstream message handling. The server already moved
+						// on; missing an ack on a closed socket is benign.
+						if (ws.isOpen) {
+							await sendMessageAck(node, NACK_REASONS.UnhandledError)
+						}
 					}
 				} else {
 					if (messageRetryManager && msg.key.id) {
