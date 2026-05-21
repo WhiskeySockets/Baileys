@@ -1756,45 +1756,43 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// (after any LID canonicalization), the addressing mode, the detected message kind,
 			// and which top-level stanza nodes are present.
 			{
-				const contentTags = Array.isArray(stanza.content) ? stanza.content.map((n: BinaryNode) => n.tag) : []
-				const envelopeTo = stanza.attrs.to || destinationJid
-				const addressing = isAnyLidUser(envelopeTo) ? 'LID' : 'PN'
-
+				// Cheap gate first: only interactive / poll / view-once are worth a per-send INFO line
+				// (low-volume). Plain text + regular media are skipped — so the heavier classification
+				// and tag mapping below never run on the high-volume hot path (Copilot #444).
 				const isViewOnce = !!(message.viewOnceMessage || message.viewOnceMessageV2)
 				const core = message.viewOnceMessage?.message || message.viewOnceMessageV2?.message || message
-				const kind = ((): string => {
-					if (isCarousel) return 'carousel'
-					if (buttonType === 'list') return 'list'
-					if (buttonType) {
-						if (message.buttonsMessage || core.buttonsMessage) return 'buttons:reply'
-						const names = (core.interactiveMessage?.nativeFlowMessage?.buttons || []).map((b: any) => b?.name)
-						const hasCTA = names.some((n: string) => n === 'cta_url' || n === 'cta_copy' || n === 'cta_call')
-						const hasQR = names.some((n: string) => n === 'quick_reply')
-						if (hasCTA && hasQR) return 'buttons:mixed'
-						if (hasCTA) return 'buttons:cta'
-						if (hasQR) return 'buttons:reply'
-						return `buttons:${buttonType}`
-					}
+				const isPoll = !!(
+					core.pollCreationMessage ||
+					(core as any).pollCreationMessageV2 ||
+					(core as any).pollCreationMessageV3
+				)
 
-					if (core.pollCreationMessage || (core as any).pollCreationMessageV2 || (core as any).pollCreationMessageV3) {
-						return 'poll'
-					}
+				if (!!buttonType || isCarousel || isViewOnce || isPoll) {
+					const contentTags = Array.isArray(stanza.content) ? stanza.content.map((n: BinaryNode) => n.tag) : []
+					const envelopeTo = stanza.attrs.to || destinationJid
+					const addressing = isAnyLidUser(envelopeTo) ? 'LID' : 'PN'
+					const kind = ((): string => {
+						if (isCarousel) return 'carousel'
+						if (buttonType === 'list') return 'list'
+						if (buttonType) {
+							if (message.buttonsMessage || core.buttonsMessage) return 'buttons:reply'
+							const names = (core.interactiveMessage?.nativeFlowMessage?.buttons || []).map((b: any) => b?.name)
+							const hasCTA = names.some((n: string) => n === 'cta_url' || n === 'cta_copy' || n === 'cta_call')
+							const hasQR = names.some((n: string) => n === 'quick_reply')
+							if (hasCTA && hasQR) return 'buttons:mixed'
+							if (hasCTA) return 'buttons:cta'
+							if (hasQR) return 'buttons:reply'
+							return `buttons:${buttonType}`
+						}
 
-					if (core.imageMessage) return isViewOnce ? 'image(viewOnce)' : 'image'
-					if (core.videoMessage) return isViewOnce ? 'video(viewOnce)' : 'video'
-					if (core.audioMessage) return isViewOnce ? 'audio(viewOnce)' : 'audio'
-					if (core.documentMessage) return 'document'
-					if (core.stickerMessage) return 'sticker'
-					if (core.locationMessage) return 'location'
-					if (core.contactMessage || core.contactsArrayMessage) return 'contact'
-					if (core.extendedTextMessage || core.conversation) return 'text'
-					return 'other'
-				})()
+						if (isPoll) return 'poll'
+						if (core.imageMessage) return isViewOnce ? 'image(viewOnce)' : 'image'
+						if (core.videoMessage) return isViewOnce ? 'video(viewOnce)' : 'video'
+						if (core.audioMessage) return isViewOnce ? 'audio(viewOnce)' : 'audio'
+						if (core.documentMessage) return isViewOnce ? 'document(viewOnce)' : 'document'
+						return 'other'
+					})()
 
-				// INFO only for interactive / poll / view-once — these are low-volume and the ones
-				// worth validating. Plain text and regular (non-view-once) media are skipped so we
-				// don't emit a per-message info log (volume + recipient metadata) in production.
-				if (!!buttonType || isCarousel || isViewOnce || kind === 'poll') {
 					logger.info(
 						{
 							msgId,
