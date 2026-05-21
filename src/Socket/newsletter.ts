@@ -1,3 +1,4 @@
+import { Boom } from '@hapi/boom'
 import type { NewsletterCreateResponse, SocketConfig, WAMediaUpload } from '../Types'
 import type { NewsletterMetadata, NewsletterUpdate } from '../Types'
 import { QueryIds, XWAPaths } from '../Types'
@@ -6,22 +7,32 @@ import { getBinaryNodeChild } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
+// executeWMexQuery throws Boom on missing data, so a populated response is
+// the only non-throwing path. Keep a defensive guard but use Boom for
+// consistency with the rest of the protocol layer.
 const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
+	if (!response) {
+		throw new Boom('newsletterCreate: server returned an empty response', { statusCode: 400 })
+	}
+
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response
 	return {
 		id: id,
 		owner: undefined,
-		name: thread.name.text,
-		creation_time: parseInt(thread.creation_time, 10),
-		description: thread.description.text,
-		invite: thread.invite,
-		subscribers: parseInt(thread.subscribers_count, 10),
-		verification: thread.verification,
-		picture: {
-			id: thread.picture.id,
-			directPath: thread.picture.direct_path
-		},
-		mute_state: viewer.mute
+		name: thread?.name?.text,
+		creation_time: thread?.creation_time ? parseInt(thread.creation_time, 10) : undefined,
+		description: thread?.description?.text,
+		invite: thread?.invite,
+		subscribers: thread?.subscribers_count ? parseInt(thread.subscribers_count, 10) : undefined,
+		verification: thread?.verification,
+		// A freshly-created newsletter has no picture set: the server returns
+		// `thread.picture: null`. Guard against the null so the parse doesn't
+		// throw `Cannot read properties of null (reading 'id')` on every
+		// successful create.
+		picture: thread?.picture
+			? { id: thread.picture.id, directPath: thread.picture.direct_path }
+			: undefined,
+		mute_state: viewer?.mute
 	}
 }
 

@@ -45,6 +45,13 @@ export class WebSocketClient extends AbstractSocketClient {
 			return
 		}
 
+		// If the underlying ws is already CLOSED, the 'close' event won't fire
+		// again — awaiting it would deadlock. Drop the reference and return.
+		if (this.isClosed) {
+			this.socket = null
+			return
+		}
+
 		const closePromise = new Promise<void>(resolve => {
 			this.socket?.once('close', resolve)
 		})
