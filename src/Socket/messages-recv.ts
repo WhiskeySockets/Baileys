@@ -44,6 +44,7 @@ import {
 	getStatusFromReceiptType,
 	handleIdentityChange,
 	hkdf,
+	isConnectionClosedError,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
@@ -547,6 +548,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const stanza = buildAckStanza(node, errorCode, authState.creds.me!.id)
 		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
+	}
+
+	const sendMessageAckFireAndForget = (node: BinaryNode, errorCode?: number) => {
+		void sendMessageAck(node, errorCode).catch(err => {
+			if (!ws.isOpen || isConnectionClosedError(err)) {
+				logger.debug({ recv: node.attrs }, 'dropping ack because socket closed')
+				return
+			}
+
+			onUnexpectedError(err, 'send ack')
+		})
 	}
 
 	const rejectCall = async (callId: string, callFrom: string) => {
@@ -1545,7 +1557,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack receipt'))
+			sendMessageAckFireAndForget(node)
 		}
 	}
 
@@ -1578,7 +1590,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack notification'))
+			sendMessageAckFireAndForget(node)
 		}
 	}
 
@@ -1587,7 +1599,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 		if (encNode?.attrs.type === 'msmsg') {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
-			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
+			sendMessageAckFireAndForget(node, NACK_REASONS.MissingMessageSecret)
 			return
 		}
 
@@ -1628,7 +1640,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 						acked = true
-						return sendMessageAck(node, NACK_REASONS.ParsingError)
+						sendMessageAckFireAndForget(node, NACK_REASONS.ParsingError)
+						return
 					}
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
@@ -1646,14 +1659,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								'skipping placeholder resend for excluded unavailable type'
 							)
 							acked = true
-							return sendMessageAck(node)
+							sendMessageAckFireAndForget(node)
+							return
 						}
 
 						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
 						if (messageAge > PLACEHOLDER_MAX_AGE_SECONDS) {
 							logger.debug({ msgId: msg.key.id, messageAge }, 'skipping placeholder resend for old message')
 							acked = true
-							return sendMessageAck(node)
+							sendMessageAckFireAndForget(node)
+							return
 						}
 
 						// Request the real content from the phone via placeholder resend PDO.
@@ -1691,7 +1706,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
 							})
 						acked = true
-						await sendMessageAck(node)
+						sendMessageAckFireAndForget(node)
 						// Don't return — fall through to upsertMessage so the stub is emitted
 					} else {
 						// Skip retry for expired status messages (>24h old)
@@ -1703,7 +1718,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									'skipping retry for expired status message'
 								)
 								acked = true
-								return sendMessageAck(node)
+								sendMessageAckFireAndForget(node)
+								return
 							}
 						}
 
@@ -1727,7 +1743,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							}
 
 							acked = true
-							await sendMessageAck(node, NACK_REASONS.UnhandledError)
+							sendMessageAckFireAndForget(node, NACK_REASONS.UnhandledError)
 						})
 					}
 				} else {
@@ -1765,7 +1781,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 					} else {
 						acked = true
-						await sendMessageAck(node)
+						sendMessageAckFireAndForget(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
 				}
@@ -1777,9 +1793,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
 			if (!acked) {
-				await sendMessageAck(node, NACK_REASONS.UnhandledError).catch(ackErr =>
-					logger.error({ ackErr }, 'failed to ack message after error')
-				)
+				sendMessageAckFireAndForget(node, NACK_REASONS.UnhandledError)
 			}
 		}
 	}
@@ -1841,7 +1855,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling call')
 		} finally {
-			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack call'))
+			sendMessageAckFireAndForget(node)
 		}
 	}
 
@@ -1982,7 +1996,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (ignoreJid && ignoreJid !== S_WHATSAPP_NET && shouldIgnoreJid(ignoreJid)) {
-			await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
+			sendMessageAckFireAndForget(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
 			return
 		}
 
