@@ -163,6 +163,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		namespace: 'msg-retry',
 		id: `${msgId}:${participant}`
 	})
+	/**
+	 * Single-flight guard for `requestPlaceholderResend` (Stage 9). The cache-
+	 * based dedupe (\`get → set\`) had a race window: two concurrent calls for
+	 * the same message id could both observe the cache as empty and both
+	 * issue the placeholder resend. The lock collapses the get + set into
+	 * one critical section per id.
+	 */
+	const placeholderResendLocks = makeLockManager()
+
 	const incrementRetryAndGet = async (msgId: string, participant: string): Promise<number> => {
 		return retryLocks.withLock(retryLockRef(msgId, participant), async () => {
 			const key = `${msgId}:${participant}`
@@ -241,18 +250,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		if (await placeholderResendCache.get(messageKey?.id!)) {
-			logger.debug({ messageKey }, 'already requested resend')
+		// Guard against an undefined `messageKey.id`. Without this, the lock
+		// would acquire on the empty-string id (serializing every
+		// id-less caller through a single bucket) and the cache get/set
+		// would hit `undefined` as a key. Up the call stack `messageKey`
+		// is non-optional so the `id` check is the only real concern.
+		if (!messageKey.id) {
+			logger.warn({ messageKey }, 'requestPlaceholderResend called with undefined message id')
 			return
-		} else {
-			// Store original message data so PDO response handler can preserve
-			// metadata (LID details, timestamps, etc.) that the phone may omit
-			await placeholderResendCache.set(messageKey?.id!, msgData || true)
 		}
+
+		const resendId = messageKey.id
+
+		// Stage 9: collapse the previous `get → set` cache-dedupe into one
+		// per-id critical section so two concurrent callers can't both
+		// observe an empty cache and both fire the resend.
+		const alreadyHandled = await placeholderResendLocks.withLock(
+			{ namespace: 'placeholder-resend', id: resendId },
+			async () => {
+				if (await placeholderResendCache.get(resendId)) {
+					logger.debug({ messageKey }, 'already requested resend')
+					return true
+				}
+
+				// Store original message data so PDO response handler can preserve
+				// metadata (LID details, timestamps, etc.) that the phone may omit
+				await placeholderResendCache.set(resendId, msgData || true)
+				return false
+			}
+		)
+		if (alreadyHandled) return
 
 		await delay(2000)
 
-		if (!(await placeholderResendCache.get(messageKey?.id!))) {
+		if (!(await placeholderResendCache.get(resendId))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -267,9 +298,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		setTimeout(async () => {
-			if (await placeholderResendCache.get(messageKey?.id!)) {
+			if (await placeholderResendCache.get(resendId)) {
 				logger.debug({ messageKey }, 'PDO message without response after 8 seconds. Phone possibly offline')
-				await placeholderResendCache.del(messageKey?.id!)
+				await placeholderResendCache.del(resendId)
 			}
 		}, 8_000)
 
@@ -1795,7 +1826,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await attemptRetryRequest(node)
 
 						acked = true
-						await sendMessageAck(node, NACK_REASONS.UnhandledError)
+						// Skip the ack if the socket is no longer open. Without
+						// this guard, `sendMessageAck` would throw a
+						// `Connection Closed` Boom inside the receive pipeline,
+						// surfacing as an unhandled rejection that interrupts
+						// downstream message handling. The server already moved
+						// on; missing an ack on a closed socket is benign.
+						if (ws.isOpen) {
+							await sendMessageAck(node, NACK_REASONS.UnhandledError)
+						}
 					}
 				} else {
 					if (messageRetryManager && msg.key.id) {
