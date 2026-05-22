@@ -16,6 +16,7 @@ import {
 import {
 	type AuthenticationCreds,
 	type LIDMapping,
+	type MediaConnInfo,
 	type NewChatMessageCapInfo,
 	QueryIds,
 	ReachoutTimelockEnforcementType,
@@ -31,6 +32,7 @@ import {
 	bytesToCrockford,
 	configureSuccessfulPairing,
 	Curve,
+	DEF_MEDIA_HOST,
 	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
@@ -45,6 +47,7 @@ import {
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
+import { makeMutex } from '../Utils/make-mutex'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -268,6 +271,85 @@ export const makeSocket = (config: SocketConfig) => {
 
 		return result
 	}
+
+	// --- media_conn machinery ---
+	//
+	// `mediaHost` is the per-socket CDN hostname WhatsApp returned in the
+	// most recent `media_conn` IQ. Lives on the BASE socket so every
+	// layer above (chats.ts app-state sync, messages-send.ts uploads,
+	// process-message.ts history sync) can route their downloads /
+	// uploads through the correct shard for this connection. Pre-Stage-11
+	// it lived in messages-send.ts which made it invisible to chats.ts
+	// (lower in the layering) — app-state external-blob downloads kept
+	// hitting `mmg.whatsapp.net` even when the socket was assigned a
+	// different host, producing 400s under `extractSyncdPatches`.
+	let mediaConn: Promise<MediaConnInfo> | undefined
+	let mediaHost: string = DEF_MEDIA_HOST
+	const mediaConnMutex = makeMutex()
+
+	/**
+	 * Safely await the cached `mediaConn`. A previously-stored rejected
+	 * promise would otherwise rethrow forever and poison every caller;
+	 * we catch, clear the slot, and let the caller fall through to a
+	 * fresh fetch.
+	 */
+	const safeAwaitMediaConn = async (): Promise<MediaConnInfo | undefined> => {
+		if (!mediaConn) return undefined
+		try {
+			return await mediaConn
+		} catch (err) {
+			logger.warn?.({ err }, 'previous media_conn fetch failed, will retry')
+			mediaConn = undefined
+			return undefined
+		}
+	}
+
+	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
+		const cached = await safeAwaitMediaConn()
+		if (cached && !forceGet && new Date().getTime() - cached.fetchDate.getTime() <= cached.ttl * 1000) {
+			return cached
+		}
+
+		return mediaConnMutex.mutex(async () => {
+			// Re-check inside the lock: another caller may have refreshed.
+			const after = await safeAwaitMediaConn()
+			if (after && !forceGet && new Date().getTime() - after.fetchDate.getTime() <= after.ttl * 1000) {
+				return after
+			}
+
+			mediaConn = (async () => {
+				const result = await query({
+					tag: 'iq',
+					attrs: {
+						type: 'set',
+						xmlns: 'w:m',
+						to: S_WHATSAPP_NET
+					},
+					content: [{ tag: 'media_conn', attrs: {} }]
+				})
+				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
+				const node: MediaConnInfo = {
+					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
+						hostname: attrs.hostname!,
+						maxContentLengthBytes: +attrs.maxContentLengthBytes!
+					})),
+					auth: mediaConnNode.attrs.auth!,
+					ttl: +mediaConnNode.attrs.ttl!,
+					fetchDate: new Date()
+				}
+				logger.debug('fetched media conn')
+				if (node.hosts[0]) {
+					mediaHost = node.hosts[0].hostname
+				}
+
+				return node
+			})()
+
+			return mediaConn
+		})
+	}
+
+	const getMediaHost = () => mediaHost
 
 	// Validate current key-bundle on server; on failure, trigger pre-key upload and rethrow
 	const digestKeyBundle = async (): Promise<void> => {
@@ -1011,6 +1093,23 @@ export const makeSocket = (config: SocketConfig) => {
 			} catch (e) {
 				logger.warn({ e }, 'failed to run digest after login')
 			}
+
+			// Pre-fetch the media_conn host once the socket is ready so
+			// later downloads (app-state external blobs, history sync,
+			// media messages) hit the CDN shard WhatsApp assigned this
+			// connection instead of the hardcoded `mmg.whatsapp.net`
+			// fallback. The result is cached + TTL-managed inside
+			// `refreshMediaConn` itself, so subsequent calls are no-ops
+			// until the TTL expires. Failure here is non-fatal — uploads
+			// already re-fetch on demand, and downloads fall back to
+			// `DEF_MEDIA_HOST` (so we end up where we were before this
+			// fix), just with a structured warning the operator can
+			// alert on.
+			try {
+				await refreshMediaConn()
+			} catch (err) {
+				logger.warn({ err }, 'failed to pre-fetch media_conn on socket open')
+			}
 		} catch (err) {
 			logger.warn({ err }, 'failed to send initial passive iq')
 		}
@@ -1241,6 +1340,11 @@ export const makeSocket = (config: SocketConfig) => {
 		uploadPreKeysToServerIfRequired,
 		digestKeyBundle,
 		rotateSignedPreKey,
+		// Media routing (Stage 11): per-socket `media_conn`-derived host so
+		// any layer above can route its downloads / uploads through the
+		// shard WhatsApp assigned this connection.
+		refreshMediaConn,
+		getMediaHost,
 		requestPairingCode,
 		updateServerTimeOffset,
 		sendUnifiedSession,
