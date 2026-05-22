@@ -14,6 +14,7 @@ import {
 	UPLOAD_TIMEOUT
 } from '../Defaults'
 import {
+	type AuthenticationCreds,
 	type LIDMapping,
 	type NewChatMessageCapInfo,
 	QueryIds,
@@ -529,26 +530,54 @@ export const makeSocket = (config: SocketConfig) => {
 			return
 		}
 
+		// Generate ONCE (outside the retry loop): pre-keys are persisted to
+		// the store, and `nextPreKeyId` advances so a parallel call doesn't
+		// reuse the id range. `firstUnuploadedPreKeyId` is HELD BACK in
+		// `commitUpdate` and only emitted after the server confirms — so a
+		// permanent upload failure leaves the local store carrying the
+		// generated keys ready for the next attempt (instead of marking
+		// them as "uploaded" prematurely and orphaning them).
+		let pendingNode: BinaryNode | undefined
+		let pendingCommit: Partial<AuthenticationCreds> | undefined
+
 		const uploadLogic = async (retryCount: number): Promise<void> => {
 			logger.info({ count, retryCount }, 'uploading pre-keys')
 
-			// Generate and save pre-keys atomically (prevents ID collisions on retry)
-			const node = await keys.transaction(async () => {
-				logger.debug({ requestedCount: count }, 'generating pre-keys with requested count')
-				const { update, node } = await getNextPreKeysNode({ creds, keys }, count)
-				// Update credentials immediately to prevent duplicate IDs on retry
-				ev.emit('creds.update', update)
-				return node
-			}, creds?.me?.id || 'upload-pre-keys')
+			if (!pendingNode) {
+				const generated = await keys.transaction(async () => {
+					logger.debug({ requestedCount: count }, 'generating pre-keys with requested count')
+					const { allocUpdate, commitUpdate, node } = await getNextPreKeysNode({ creds, keys }, count)
+					// Allocation half: commit immediately so parallel generation
+					// never collides on the same id range.
+					ev.emit('creds.update', allocUpdate)
+					return { node, commitUpdate }
+				}, creds?.me?.id || 'upload-pre-keys')
+				pendingNode = generated.node
+				pendingCommit = generated.commitUpdate
+			}
 
-			// Upload to server (outside transaction, can fail without affecting local keys)
+			// Bail out before the network call if the socket is gone — the
+			// next reconnect will run uploadPreKeysToServerIfRequired and
+			// retry naturally.
+			if (!ws.isOpen) {
+				throw new Boom('socket closed mid-upload, deferring to reconnect', {
+					statusCode: DisconnectReason.connectionClosed
+				})
+			}
+
 			try {
-				await query(node)
+				await query(pendingNode)
 				logger.info({ count }, 'uploaded pre-keys successfully')
+				// Commit half: advance firstUnuploadedPreKeyId NOW that the
+				// server has the keys.
+				if (pendingCommit) ev.emit('creds.update', pendingCommit)
 			} catch (uploadError) {
 				logger.error({ uploadError: (uploadError as Error).toString(), count }, 'Failed to upload pre-keys to server')
 
 				// Recurse into uploadLogic; calling uploadPreKeys would await its own in-flight promise.
+				// `pendingNode` + `pendingCommit` are preserved so the retry
+				// uses the SAME node (same key range) — the keys are already
+				// in the store; the server just hasn't acknowledged them.
 				if (retryCount < 3) {
 					const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000)
 					logger.info(`Retrying pre-key upload in ${backoffDelay}ms`)
@@ -556,6 +585,9 @@ export const makeSocket = (config: SocketConfig) => {
 					return uploadLogic(retryCount + 1)
 				}
 
+				// Permanent failure: leave `firstUnuploadedPreKeyId` UNCHANGED so
+				// the next uploadPreKeysToServerIfRequired call re-attempts
+				// these same keys instead of skipping past them.
 				throw uploadError
 			}
 		}

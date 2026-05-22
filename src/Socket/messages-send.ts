@@ -40,7 +40,7 @@ import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
-	buildMergedTcTokenIndexWrite,
+	commitTcTokenWithIndex,
 	isTcTokenExpired,
 	resolveIssuanceJid,
 	resolveTcTokenJid,
@@ -588,6 +588,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const meLid = authState.creds.me?.lid
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
+		// Per-recipient failures are accumulated rather than masked: the
+		// final result tells the caller exactly which recipients didn't
+		// get the message and why, so they can decide between
+		// "best-effort, log and move on" (the existing behavior) and
+		// "fail the whole send" (a stricter caller-side policy).
+		const failures: Array<{ jid: string; cause: unknown }> = []
+
 		const encryptionPromises = (patchedMessages as any).map(
 			async ({ recipientJid: jid, message: patchedMessage }: any) => {
 				try {
@@ -634,6 +641,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					return node
 				} catch (err) {
+					failures.push({ jid, cause: err })
 					logger.error({ jid, err }, 'Failed to encrypt for recipient')
 					return null
 				}
@@ -643,10 +651,36 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 
 		if (recipientJids.length > 0 && nodes.length === 0) {
-			throw new Boom('All encryptions failed', { statusCode: 500 })
+			// All recipients failed — attach the per-recipient causes via
+			// `data` so the caller's log shows which underlying errors
+			// (key-store failure, session corruption, etc.) caused the
+			// total failure instead of just the generic "All encryptions
+			// failed" string. `data.firstCause` is the most likely
+			// repeated root cause for quick diagnosis.
+			throw new Boom('All encryptions failed', {
+				statusCode: 500,
+				data: {
+					failed: failures.map(f => ({ jid: f.jid, error: String(f.cause) })),
+					firstCause: failures[0]?.cause ? String(failures[0].cause) : undefined
+				}
+			})
 		}
 
-		return { nodes, shouldIncludeDeviceIdentity }
+		if (failures.length > 0) {
+			// Partial failure: some recipients didn't get the message.
+			// Log structured so operators can grep / alert on this without
+			// trawling individual "Failed to encrypt for recipient" lines.
+			logger.warn(
+				{
+					succeededCount: nodes.length,
+					failedCount: failures.length,
+					failed: failures.map(f => ({ jid: f.jid, error: String(f.cause) }))
+				},
+				'createParticipantNodes: partial encryption failure'
+			)
+		}
+
+		return { nodes, shouldIncludeDeviceIdentity, failures }
 	}
 
 	const relayMessage = async (
@@ -1158,15 +1192,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
 						const currentEntry = currentData[tcTokenJid]
-						const indexWrite = await buildMergedTcTokenIndexWrite(authState.keys, [tcTokenJid])
-						await authState.keys.set({
-							tctoken: {
-								[tcTokenJid]: {
-									token: Buffer.alloc(0),
-									...currentEntry,
-									senderTimestamp: issueTimestamp
-								},
-								...indexWrite
+						// Stage 10 (closure of deferred tc-token item): atomic
+						// read-merge-write through `commitTcTokenWithIndex` so a
+						// concurrent `flushTcTokenIndex` on the recv path can't
+						// race the index update.
+						await commitTcTokenWithIndex(authState.keys, [tcTokenJid], {
+							[tcTokenJid]: {
+								token: Buffer.alloc(0),
+								...currentEntry,
+								senderTimestamp: issueTimestamp
 							}
 						})
 					})
@@ -1449,10 +1483,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// rejection becomes a structured `error` log instead of an
 					// `unhandledRejection`.
 					process.nextTick(() =>
-						runDetached(() => messageMutex.mutex(() => upsertMessage(fullMsg, 'append')), logger, {
-							op: 'emitOwnEvents.upsertMessage',
-							msgId: fullMsg.key.id
-						})
+						runDetached(
+							() =>
+								// Stage 10: keyed-mutex variant. The upsert is a
+								// per-chat operation (appends to that chat's
+								// history projection), so we acquire under the
+								// outgoing chat's remoteJid — same key the
+								// inbound receive path uses, ensuring upsertMessage
+								// ordering stays consistent with any concurrent
+								// inbound message for the same chat.
+								messageMutex.mutex(fullMsg.key.remoteJid ?? '__no-chat__', () => upsertMessage(fullMsg, 'append')),
+							logger,
+							{ op: 'emitOwnEvents.upsertMessage', msgId: fullMsg.key.id }
+						)
 					)
 				}
 
