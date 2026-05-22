@@ -675,7 +675,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 		}
 
-		await authState.keys.transaction(async () => {
+		// H0 fix: NO outer `keys.transaction` here. Wrapping relayMessage in an
+		// outer legacy transaction makes every inner `transactWith` (e.g. the
+		// per-session lock in `encryptMessage`) NESTED. Nested transactWiths
+		// release their per-record lock when `work()` returns but defer the
+		// durable commit to the outermost transaction. While the outer is still
+		// running between encrypt-release and outer-commit, a concurrent inbound
+		// decrypt for the same wireJid can acquire `session:wireJid`, load the
+		// pre-commit state from durable storage, advance its receiving chain,
+		// and commit — clobbering the sending-chain advance the encrypt was
+		// going to commit later. The bench trace shows this directly: same
+		// `wireJid`, encrypt stages `BacNgC: N+1`, concurrent decrypt's commit
+		// lands with `BacNgC: N` (the pre-encrypt value), and the next encrypt
+		// re-emits counter N → peer reports "old counter N+1 / N".
+		//
+		// The inner `transactWith({ records: [{ type: 'session', id: wireJid }] })`
+		// in `signalRepository.encryptMessage` is the correct serialization
+		// scope: it commits atomically per encrypt and naturally serializes
+		// against inbound decrypts on the same wireJid.
+		await (async () => {
 			const mediaType = getMediaType(message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
@@ -1148,7 +1166,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (messageRetryManager && !participant) {
 				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
 			}
-		}, meId)
+		})()
 
 		return msgId
 	}
