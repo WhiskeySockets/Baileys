@@ -85,7 +85,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		signalRepository,
 		onUnexpectedError,
 		sendUnifiedSession,
-		registerSocketEndHandler
+		registerSocketEndHandler,
+		getMediaHost
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -665,7 +666,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					})
 
 					// extract from binary node
-					const decoded = await extractSyncdPatches(result, config?.options)
+					// Stage 11: route the external-blob download (for collections too
+					// large to inline) through the socket's `media_conn` host so the
+					// app-state sync hits the same shard as the upload path.
+					const decoded = await extractSyncdPatches(result, config?.options, getMediaHost())
 					for (const key in decoded) {
 						const name = key as WAPatchName
 						const { patches, hasMorePatches, snapshot } = decoded[name]
@@ -697,7 +701,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									config.options,
 									initialVersionMap[name],
 									logger,
-									appStateMacVerification.patch
+									appStateMacVerification.patch,
+									getMediaHost()
 								)
 
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
@@ -999,7 +1004,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				getAppStateSyncKey,
 				config.options,
 				undefined,
-				logger
+				logger,
+				undefined,
+				getMediaHost()
 			)
 			for (const key in mutationMap) {
 				onMutation(mutationMap[key]!)
@@ -1350,7 +1357,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				keyStore: authState.keys,
 				logger,
 				options: config.options,
-				getMessage
+				getMessage,
+				// Stage 11: thread the per-socket media-CDN host into
+				// history-sync downloads inside processMessage.
+				getMediaHost
 			})
 		])
 

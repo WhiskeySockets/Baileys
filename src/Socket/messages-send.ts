@@ -4,7 +4,6 @@ import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMessageContent,
-	MediaConnInfo,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MiscMessageGenerationOptions,
@@ -18,7 +17,8 @@ import {
 	assertMeId,
 	bindWaitForEvent,
 	decryptMediaRetryData,
-	DEF_MEDIA_HOST,
+	downloadContentFromMessage,
+	downloadMediaMessage,
 	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
@@ -52,8 +52,6 @@ import {
 	type BinaryNode,
 	type BinaryNodeAttributes,
 	type FullJid,
-	getBinaryNodeChild,
-	getBinaryNodeChildren,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidBot,
@@ -94,7 +92,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendNode,
 		groupMetadata,
 		groupToggleEphemeral,
-		registerSocketEndHandler
+		registerSocketEndHandler,
+		refreshMediaConn,
+		getMediaHost
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -121,79 +121,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
-	let mediaConn: Promise<MediaConnInfo> | undefined
-	/** Per-socket media host; updated whenever media_conn is fetched. Defaults to the public WhatsApp host. */
-	let mediaHost: string = DEF_MEDIA_HOST
-	/**
-	 * Single-flight guard for the media-conn fetch (Stage 9). Two concurrent
-	 * callers used to both observe `mediaConn` as expired and both reassign
-	 * the in-flight promise, leaking the first fetch's result. The mutex
-	 * ensures only one refresh runs at a time; subsequent callers await the
-	 * one in-flight or reuse the freshly-cached value.
-	 */
-	const mediaConnMutex = makeMutex()
-	/**
-	 * Safely await the cached `mediaConn` promise. If a previous fetch
-	 * stored a REJECTED promise, awaiting it again would just rethrow
-	 * forever and poison every subsequent caller with the stale failure
-	 * — there'd be no way to retry. Clear the cache slot on rejection so
-	 * the next caller falls through to a fresh `media_conn` query.
-	 */
-	const safeAwaitMediaConn = async (): Promise<MediaConnInfo | undefined> => {
-		if (!mediaConn) return undefined
-		try {
-			return await mediaConn
-		} catch (err) {
-			logger.warn?.({ err }, 'previous media_conn fetch failed, will retry')
-			mediaConn = undefined
-			return undefined
-		}
-	}
-
-	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
-		const cached = await safeAwaitMediaConn()
-		if (cached && !forceGet && new Date().getTime() - cached.fetchDate.getTime() <= cached.ttl * 1000) {
-			return cached
-		}
-
-		return mediaConnMutex.mutex(async () => {
-			// Re-check inside the lock: another caller may have refreshed.
-			const after = await safeAwaitMediaConn()
-			if (after && !forceGet && new Date().getTime() - after.fetchDate.getTime() <= after.ttl * 1000) {
-				return after
-			}
-
-			mediaConn = (async () => {
-				const result = await query({
-					tag: 'iq',
-					attrs: {
-						type: 'set',
-						xmlns: 'w:m',
-						to: S_WHATSAPP_NET
-					},
-					content: [{ tag: 'media_conn', attrs: {} }]
-				})
-				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
-				const node: MediaConnInfo = {
-					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
-						hostname: attrs.hostname!,
-						maxContentLengthBytes: +attrs.maxContentLengthBytes!
-					})),
-					auth: mediaConnNode.attrs.auth!,
-					ttl: +mediaConnNode.attrs.ttl!,
-					fetchDate: new Date()
-				}
-				logger.debug('fetched media conn')
-				if (node.hosts[0]) {
-					mediaHost = node.hosts[0].hostname
-				}
-
-				return node
-			})()
-
-			return mediaConn
-		})
-	}
+	// `mediaConn` / `mediaHost` / `refreshMediaConn` moved to the base
+	// socket in Stage 11 so chats.ts (which is BELOW this layer in the
+	// socket layering) can also route its app-state / history-sync
+	// downloads through the correct CDN shard. We just pull the helpers
+	// out of `sock`.
 
 	/**
 	 * generic send receipt function
@@ -743,7 +675,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 		}
 
-		await authState.keys.transaction(async () => {
+		// H0 fix: NO outer `keys.transaction` here. Wrapping relayMessage in an
+		// outer legacy transaction makes every inner `transactWith` (e.g. the
+		// per-session lock in `encryptMessage`) NESTED. Nested transactWiths
+		// release their per-record lock when `work()` returns but defer the
+		// durable commit to the outermost transaction. While the outer is still
+		// running between encrypt-release and outer-commit, a concurrent inbound
+		// decrypt for the same wireJid can acquire `session:wireJid`, load the
+		// pre-commit state from durable storage, advance its receiving chain,
+		// and commit — clobbering the sending-chain advance the encrypt was
+		// going to commit later. The bench trace shows this directly: same
+		// `wireJid`, encrypt stages `BacNgC: N+1`, concurrent decrypt's commit
+		// lands with `BacNgC: N` (the pre-encrypt value), and the next encrypt
+		// re-emits counter N → peer reports "old counter N+1 / N".
+		//
+		// The inner `transactWith({ records: [{ type: 'session', id: wireJid }] })`
+		// in `signalRepository.encryptMessage` is the correct serialization
+		// scope: it commits atomically per encrypt and naturally serializes
+		// against inbound decrypts on the same wireJid.
+		await (async () => {
 			const mediaType = getMediaType(message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
@@ -1216,7 +1166,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (messageRetryManager && !participant) {
 				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
 			}
-		}, meId)
+		})()
 
 		return msgId
 	}
@@ -1322,11 +1272,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			userDevicesCache.close()
 		}
 
-		mediaConn = undefined
+		// `mediaConn` clearing now lives in the base socket's own
+		// teardown — moved alongside the rest of the media-conn
+		// machinery in Stage 11.
 		if (messageRetryManager) {
 			messageRetryManager.clear()
 		}
 	})
+
+	/**
+	 * Download helpers that auto-inject the per-socket `mediaHost` (the
+	 * hostname WhatsApp returned in the last `media_conn` IQ — see
+	 * `refreshMediaConn` above). Routing downloads through the assigned
+	 * host avoids hitting the wrong shard / regional CDN and matches the
+	 * behavior the upload path already has via `getWAUploadToServer`.
+	 *
+	 * Callers can still pass `options.host` to override (e.g. to follow a
+	 * redirect to a different shard); the auto-injection only fills the
+	 * default. Callers can also still import the standalone utilities
+	 * `downloadMediaMessage` / `downloadContentFromMessage` if they want
+	 * to bypass the socket binding entirely (e.g. historical messages
+	 * downloaded after the socket has closed).
+	 */
+	const downloadMediaMessageWithHost = <Type extends 'buffer' | 'stream'>(
+		...[message, type, options, ctx]: Parameters<typeof downloadMediaMessage<Type>>
+	) => downloadMediaMessage<Type>(message, type, { host: getMediaHost(), ...options }, ctx)
+
+	const downloadContentFromMessageWithHost: typeof downloadContentFromMessage = (message, type, opts = {}) =>
+		downloadContentFromMessage(message, type, { host: getMediaHost(), ...opts })
 
 	return {
 		...sock,
@@ -1339,8 +1312,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendReceipts,
 		readMessages,
 		refreshMediaConn,
-		// Function (not getter) so the spread in chats.ts preserves the live closure binding.
-		getMediaHost: () => mediaHost,
+		// `getMediaHost` is already re-exported from the base socket via
+		// the `...sock` spread above. Keeping the explicit re-export here
+		// so the typed return shape from this layer is unchanged.
+		getMediaHost,
+		/** Build a media URL using the socket's current `media_conn` host. */
+		getMediaUrl: (directPath: string) => getUrlFromDirectPath(directPath, getMediaHost()),
+		/**
+		 * Download a media message via the per-socket `media_conn` host. Same
+		 * signature as the standalone utility; pass `options.host` to
+		 * override the auto-injected default.
+		 */
+		downloadMediaMessage: downloadMediaMessageWithHost,
+		/**
+		 * Lower-level helper if you already have a `DownloadableMessage`
+		 * (e.g. extracted from a quoted message). Auto-injects the
+		 * socket's `mediaHost`.
+		 */
+		downloadContentFromMessage: downloadContentFromMessageWithHost,
 		waUploadToServer,
 		fetchPrivacySettings,
 		sendPeerDataOperationMessage,
@@ -1374,7 +1363,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								}
 
 								content.directPath = media.directPath
-								content.url = getUrlFromDirectPath(content.directPath!, mediaHost)
+								content.url = getUrlFromDirectPath(content.directPath!, getMediaHost())
 
 								logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 							} catch (err: any) {
