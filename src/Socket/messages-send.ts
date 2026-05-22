@@ -19,6 +19,8 @@ import {
 	bindWaitForEvent,
 	decryptMediaRetryData,
 	DEF_MEDIA_HOST,
+	downloadContentFromMessage,
+	downloadMediaMessage,
 	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
@@ -1328,6 +1330,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 	})
 
+	/**
+	 * Download helpers that auto-inject the per-socket `mediaHost` (the
+	 * hostname WhatsApp returned in the last `media_conn` IQ — see
+	 * `refreshMediaConn` above). Routing downloads through the assigned
+	 * host avoids hitting the wrong shard / regional CDN and matches the
+	 * behavior the upload path already has via `getWAUploadToServer`.
+	 *
+	 * Callers can still pass `options.host` to override (e.g. to follow a
+	 * redirect to a different shard); the auto-injection only fills the
+	 * default. Callers can also still import the standalone utilities
+	 * `downloadMediaMessage` / `downloadContentFromMessage` if they want
+	 * to bypass the socket binding entirely (e.g. historical messages
+	 * downloaded after the socket has closed).
+	 */
+	const downloadMediaMessageWithHost = <Type extends 'buffer' | 'stream'>(
+		...[message, type, options, ctx]: Parameters<typeof downloadMediaMessage<Type>>
+	) => downloadMediaMessage<Type>(message, type, { host: mediaHost, ...options }, ctx)
+
+	const downloadContentFromMessageWithHost: typeof downloadContentFromMessage = (message, type, opts = {}) =>
+		downloadContentFromMessage(message, type, { host: mediaHost, ...opts })
+
 	return {
 		...sock,
 		userDevicesCache,
@@ -1341,6 +1364,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		refreshMediaConn,
 		// Function (not getter) so the spread in chats.ts preserves the live closure binding.
 		getMediaHost: () => mediaHost,
+		/** Build a media URL using the socket's current `media_conn` host. */
+		getMediaUrl: (directPath: string) => getUrlFromDirectPath(directPath, mediaHost),
+		/**
+		 * Download a media message via the per-socket `media_conn` host. Same
+		 * signature as the standalone utility; pass `options.host` to
+		 * override the auto-injected default.
+		 */
+		downloadMediaMessage: downloadMediaMessageWithHost,
+		/**
+		 * Lower-level helper if you already have a `DownloadableMessage`
+		 * (e.g. extracted from a quoted message). Auto-injects the
+		 * socket's `mediaHost`.
+		 */
+		downloadContentFromMessage: downloadContentFromMessageWithHost,
 		waUploadToServer,
 		fetchPrivacySettings,
 		sendPeerDataOperationMessage,
