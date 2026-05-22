@@ -83,14 +83,11 @@ describe('runDetached', () => {
 		const order: string[] = []
 		const logger = { error: () => {} }
 
-		runDetached(
-			async () => {
-				order.push('work-prologue')
-				await delay(0)
-				order.push('work-after-await')
-			},
-			logger
-		)
+		runDetached(async () => {
+			order.push('work-prologue')
+			await delay(0)
+			order.push('work-after-await')
+		}, logger)
 
 		// Synchronous: runs immediately after `runDetached` returns. Must
 		// land in `order` BEFORE the work's prologue (which is now
