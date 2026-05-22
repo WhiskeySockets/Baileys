@@ -97,23 +97,20 @@ export async function commitTcTokenWithIndex(
 	extraWrites?: { [jid: string]: SignalDataTypeMap['tctoken'] | null }
 ): Promise<void> {
 	const recordIds = [TC_TOKEN_INDEX_KEY, ...Object.keys(extraWrites ?? {})]
-	await keys.transactWith(
-		{ records: recordIds.map(id => ({ type: 'tctoken', id })) },
-		async () => {
-			const persisted = await readTcTokenIndex(keys)
-			const merged = new Set(persisted)
-			for (const jid of addedJids) {
-				if (jid && jid !== TC_TOKEN_INDEX_KEY) merged.add(jid)
-			}
-
-			await keys.set({
-				tctoken: {
-					...(extraWrites ?? {}),
-					[TC_TOKEN_INDEX_KEY]: { token: Buffer.from(JSON.stringify([...merged])) }
-				}
-			})
+	await keys.transactWith({ records: recordIds.map(id => ({ type: 'tctoken', id })) }, async () => {
+		const persisted = await readTcTokenIndex(keys)
+		const merged = new Set(persisted)
+		for (const jid of addedJids) {
+			if (jid && jid !== TC_TOKEN_INDEX_KEY) merged.add(jid)
 		}
-	)
+
+		await keys.set({
+			tctoken: {
+				...(extraWrites ?? {}),
+				[TC_TOKEN_INDEX_KEY]: { token: Buffer.from(JSON.stringify([...merged])) }
+			}
+		})
+	})
 }
 
 // WA Web has separate sender/receiver AB props for these but they're identical today

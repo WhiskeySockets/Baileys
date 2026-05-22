@@ -120,8 +120,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/** Per-chat mutex around receipt processing. Same rationale as `messageMutex`. */
 	const receiptMutex = makeKeyedMutex()
 
-	/** this mutex ensures that app state patches are processed in order */
-	const appStatePatchMutex = makeMutex()
+	/**
+	 * Per-`WAPatchName` app-state patch mutex (Stage 10 — closes the
+	 * deferred per-collection finding). Was a single global
+	 * `makeMutex()` that serialized every `appPatch` call across every
+	 * collection (`critical_block`, `regular`, `regular_low`,
+	 * `regular_high`, `critical_unblock_low`). Switched to a keyed
+	 * mutex on the patch name so two collections can apply patches in
+	 * parallel; same-collection patches still strictly serialize
+	 * because their LTHash version chain requires sequential
+	 * application (`encodeSyncdPatch` reserves the next version off
+	 * the read state and a concurrent patch on the same collection
+	 * must wait).
+	 */
+	const appStatePatchMutex = makeKeyedMutex()
 
 	/** this mutex ensures that notifications are processed in order */
 	const notificationMutex = makeMutex()
@@ -929,7 +941,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		let initial: LTHashState
 		let encodeResult: { patch: proto.ISyncdPatch; state: LTHashState }
 
-		await appStatePatchMutex.mutex(async () => {
+		await appStatePatchMutex.mutex(name, async () => {
 			await authState.keys.transaction(async () => {
 				logger.debug({ patch: patchCreate }, 'applying app patch')
 

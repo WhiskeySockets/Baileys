@@ -661,7 +661,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				statusCode: 500,
 				data: {
 					failed: failures.map(f => ({ jid: f.jid, error: String(f.cause) })),
-					firstCause: failures[0]?.cause ? String(failures[0]!.cause) : undefined
+					firstCause: failures[0]?.cause ? String(failures[0].cause) : undefined
 				}
 			})
 		}
@@ -1492,9 +1492,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								// inbound receive path uses, ensuring upsertMessage
 								// ordering stays consistent with any concurrent
 								// inbound message for the same chat.
-								messageMutex.mutex(fullMsg.key.remoteJid ?? '__no-chat__', () =>
-									upsertMessage(fullMsg, 'append')
-								),
+								messageMutex.mutex(fullMsg.key.remoteJid ?? '__no-chat__', () => upsertMessage(fullMsg, 'append')),
 							logger,
 							{ op: 'emitOwnEvents.upsertMessage', msgId: fullMsg.key.id }
 						)
