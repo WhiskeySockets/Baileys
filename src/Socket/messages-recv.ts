@@ -131,7 +131,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager,
-		getPrivacyTokens
+		getPrivacyTokens,
+		registerSocketEndHandler
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -3342,6 +3343,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 			}
 		}
+	})
+
+	registerSocketEndHandler(() => {
+		if (!config.msgRetryCounterCache) {
+			msgRetryCache.close?.()
+		}
+
+		if (!config.callOfferCache) {
+			callOfferCache.close?.()
+		}
+
+		identityAssertDebounce.close?.()
 	})
 
 	return {

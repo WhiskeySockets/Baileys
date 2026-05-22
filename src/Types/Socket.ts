@@ -20,6 +20,8 @@ export type CacheStore = {
 	del(key: string): void | Promise<void> | number | boolean
 	/** flush all data */
 	flushAll(): void | Promise<void>
+	/** release resources (e.g. stop the TTL check interval) on socket close */
+	close?: () => void
 }
 
 export type PossiblyExtendedCacheStore = CacheStore & {

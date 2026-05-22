@@ -533,6 +533,13 @@ export function makeLibSignalRepository(
 			}, `delete-${jids.length}-sessions`)
 		},
 
+		// Release in-memory caches on socket close (adapted from #2191). Uses our own
+		// lidMapping.destroy() (UAF-safe) rather than upstream's simpler close().
+		close() {
+			migratedSessionCache.clear()
+			lidMapping.destroy()
+		},
+
 		async migrateSession(
 			fromJid: string,
 			toJid: string
