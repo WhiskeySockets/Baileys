@@ -91,7 +91,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		signalRepository,
 		onUnexpectedError,
 		sendUnifiedSession,
-		skipOfflineBuffer: socketSkippedOfflineBuffer
+		skipOfflineBuffer: socketSkippedOfflineBuffer,
+		registerSocketEndHandler
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -1608,6 +1609,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 		} catch (error) {
 			logger.warn({ count: mappings.length, error }, 'Failed to store LID-PN mappings')
+		}
+	})
+
+	registerSocketEndHandler(() => {
+		if (awaitingSyncTimeout) {
+			clearTimeout(awaitingSyncTimeout)
+			awaitingSyncTimeout = undefined
+		}
+
+		if (historySyncPausedTimeout) {
+			clearTimeout(historySyncPausedTimeout)
+			historySyncPausedTimeout = undefined
 		}
 	})
 

@@ -169,6 +169,10 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 
 	const msgId = stanza.attrs.id
 	const from = stanza.attrs.from
+	if (!msgId) {
+		throw new Boom('Invalid message stanza: missing id attribute', { data: stanza })
+	}
+
 	if (!from) {
 		throw new Boom('Missing from attribute in message', { data: stanza })
 	}

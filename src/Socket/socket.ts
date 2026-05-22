@@ -478,6 +478,15 @@ export const makeSocket = (config: SocketConfig) => {
 	 */
 	let closed = false
 
+	// Callbacks run on socket close to release per-module resources (caches, timers) and prevent
+	// memory leaks on disconnect. Adapted from upstream #2191 — but we deliberately do NOT call
+	// ev.destroy() here, because end() intentionally keeps connection.update listeners alive for
+	// the consumer's reconnection logic (see end()).
+	const socketEndHandlers: Array<(error: Error | undefined) => void | Promise<void>> = []
+	const registerSocketEndHandler = (handler: (error: Error | undefined) => void | Promise<void>) => {
+		socketEndHandlers.push(handler)
+	}
+
 	// Session TTL and cleanup
 	const SESSION_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
 	let sessionStartTime: number | undefined
@@ -1099,6 +1108,28 @@ export const makeSocket = (config: SocketConfig) => {
 		cleanupPreKeyAutoSync()
 		cleanupSessionTTL()
 
+		// Release per-socket caches/state to prevent memory leaks on close (adapted from #2191).
+		// Runs AFTER the close event so consumers are notified first. We intentionally do NOT call
+		// ev.destroy() (it would drop connection.update listeners the consumer needs to reconnect).
+		try {
+			await signalRepository.close?.()
+		} catch (err) {
+			logger.error({ err }, 'error closing signal repository')
+		}
+
+		for (const handler of socketEndHandlers) {
+			try {
+				await handler(error)
+			} catch (err) {
+				logger.error({ err }, 'error in socket end handler')
+			}
+		}
+
+		// Release the handler closures themselves — each captures per-socket caches/timers, and we
+		// deliberately keep the event emitter alive for reconnection, so anything the consumer still
+		// references would otherwise pin all that captured scope.
+		socketEndHandlers.length = 0
+
 		// IMPORTANT: Do NOT use removeAllListeners('connection.update')
 		// It would remove consumer listeners, breaking their reconnection logic
 	}
@@ -1638,6 +1669,7 @@ export const makeSocket = (config: SocketConfig) => {
 		sendNode,
 		logout,
 		end,
+		registerSocketEndHandler,
 		onUnexpectedError,
 		uploadPreKeys,
 		uploadPreKeysToServerIfRequired,

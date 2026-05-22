@@ -131,7 +131,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
 		messageRetryManager,
-		getPrivacyTokens
+		getPrivacyTokens,
+		registerSocketEndHandler
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -3342,6 +3343,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 			}
 		}
+	})
+
+	registerSocketEndHandler(() => {
+		// close() stops the NodeCache check-period timer; flushAll() drops the entries so they're
+		// released immediately rather than waiting for the whole cache to be GC'd.
+		if (!config.msgRetryCounterCache) {
+			msgRetryCache.close?.()
+			msgRetryCache.flushAll?.()
+		}
+
+		if (!config.callOfferCache) {
+			callOfferCache.close?.()
+			callOfferCache.flushAll?.()
+		}
+
+		identityAssertDebounce.close?.()
+		identityAssertDebounce.flushAll?.()
 	})
 
 	return {

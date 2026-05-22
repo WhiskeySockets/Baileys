@@ -454,4 +454,18 @@ export class MessageRetryManager {
 		this.recentMessagesMap.delete(keyStr)
 		this.messageKeyIndex.delete(messageId)
 	}
+
+	/** Release all caches and cancel pending phone-request timers (called on socket close). */
+	clear(): void {
+		for (const messageId of Object.keys(this.pendingPhoneRequests)) {
+			clearTimeout(this.pendingPhoneRequests[messageId])
+		}
+
+		this.pendingPhoneRequests = {}
+		this.recentMessagesMap.clear()
+		this.messageKeyIndex.clear()
+		this.sessionRecreateHistory.clear()
+		this.retryCounters.clear()
+		this.baseKeys.clear()
+	}
 }

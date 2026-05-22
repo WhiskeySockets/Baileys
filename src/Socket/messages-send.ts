@@ -98,7 +98,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		fetchPrivacySettings,
 		sendNode,
 		groupMetadata,
-		groupToggleEphemeral
+		groupToggleEphemeral,
+		registerSocketEndHandler
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -2069,6 +2070,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
 
 	const waitForMsgMediaUpdate = bindWaitForEvent(ev, 'messages.media-update')
+
+	// Release per-socket caches on close to prevent leaks (adapted from #2191). Only close+flush
+	// caches we created ourselves — never a consumer-provided cache (it may be reused across
+	// reconnects). NodeCache.close() only stops the check-period timer; flushAll() also drops the
+	// entries, which matters because we deliberately keep the event emitter alive, so any consumer
+	// reference to the old socket would otherwise pin every cached entry until GC.
+	registerSocketEndHandler(() => {
+		if (!config.userDevicesCache) {
+			userDevicesCache.close?.()
+			userDevicesCache.flushAll?.()
+		}
+
+		peerSessionsCache.close?.()
+		peerSessionsCache.flushAll?.()
+		messageRetryManager?.clear()
+	})
 
 	return {
 		...sock,
