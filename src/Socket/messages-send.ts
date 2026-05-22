@@ -121,38 +121,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
-	/**
-	 * Per-recipient outbox mutex around the ENTIRE relayMessage body
-	 * (encrypt + assemble + sendNode). Without this, two parallel
-	 * `sendMessage(jid, ...)` calls can serialize their inner
-	 * `encryptMessage` correctly (via `transactWith` per-session lock)
-	 * yet still hit the network in the WRONG ORDER:
-	 *
-	 *   1. Handler A acquires session lock, encrypts (counter N), releases.
-	 *   2. Between lock release and Handler A's downstream `sendNode`,
-	 *      there are awaits (additional node assembly, group-metadata
-	 *      fetches, etc.). The JS scheduler can yield.
-	 *   3. Handler B's encrypt was queued on the session lock — it now
-	 *      acquires, encrypts (counter N+1), releases, and may reach
-	 *      its own `sendNode` BEFORE Handler A's `sendNode` is queued.
-	 *   4. Bytes hit the wire as N+1, N. Peer ratchets past N when it
-	 *      receives N+1, then reports "old counter" when N arrives.
-	 *
-	 * Under SQLite the encrypt commit is microsecond-fast so the gap is
-	 * imperceptible to the scheduler; under multi-file the writeFile +
-	 * two renames take milliseconds and the window opens wide enough to
-	 * make this reproducible. Serializing the entire relayMessage body
-	 * per destination jid closes the gap regardless of adapter speed —
-	 * the bytes hit `sendNode` in the same order the encrypt commits.
-	 *
-	 * Scope: keyed on the destination jid (the recipient chat / group).
-	 * Different chats proceed in parallel; same-chat outbound serializes.
-	 * For groups this also serializes the sender-key fanout against
-	 * other sends to the same group, which matches WhatsApp's expected
-	 * delivery-order semantics.
-	 */
-	const outboxMutex = makeKeyedMutex()
-
 	// `mediaConn` / `mediaHost` / `refreshMediaConn` moved to the base
 	// socket in Stage 11 so chats.ts (which is BELOW this layer in the
 	// socket layering) can also route its app-state / history-sync
@@ -648,35 +616,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const relayMessage = async (
-		jid: string,
-		message: proto.IMessage,
-		{
-			messageId: msgId,
-			participant,
-			additionalAttributes,
-			additionalNodes,
-			useUserDevicesCache,
-			useCachedGroupMetadata,
-			statusJidList
-		}: MessageRelayOptions
-	) => {
-		// Serialize the entire relay (encrypt + assemble + sendNode) per
-		// destination jid. See `outboxMutex` docblock for why this is
-		// necessary on top of the per-session `transactWith` lock.
-		return outboxMutex.mutex(jid, () =>
-			relayMessageImpl(jid, message, {
-				messageId: msgId,
-				participant,
-				additionalAttributes,
-				additionalNodes,
-				useUserDevicesCache,
-				useCachedGroupMetadata,
-				statusJidList
-			})
-		)
-	}
-
-	const relayMessageImpl = async (
 		jid: string,
 		message: proto.IMessage,
 		{
