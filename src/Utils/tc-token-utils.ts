@@ -1,4 +1,4 @@
-import type { SignalKeyStoreWithTransaction } from '../Types'
+import type { SignalDataTypeMap, SignalKeyStoreWithRecordTransaction, SignalKeyStoreWithTransaction } from '../Types'
 import type { BinaryNode } from '../WABinary'
 import {
 	getBinaryNodeChild,
@@ -50,7 +50,14 @@ export async function readTcTokenIndex(keys: SignalKeyStoreWithTransaction): Pro
 	}
 }
 
-/** Build a SignalDataSet fragment that writes the merged index (persisted ∪ added) under the sentinel key. */
+/** Build a SignalDataSet fragment that writes the merged index (persisted ∪ added) under the sentinel key.
+ *
+ * @deprecated Prefer {@link commitTcTokenWithIndex}, which performs the read
+ * → merge → write atomically under a `transactWith` lock on the index
+ * record. This helper still works but the caller must arrange its own
+ * locking to avoid two concurrent invocations each reading the same
+ * pre-merge state and clobbering each other's additions on commit.
+ */
 export async function buildMergedTcTokenIndexWrite(
 	keys: SignalKeyStoreWithTransaction,
 	addedJids: Iterable<string>
@@ -64,6 +71,49 @@ export async function buildMergedTcTokenIndexWrite(
 	return {
 		[TC_TOKEN_INDEX_KEY]: { token: Buffer.from(JSON.stringify([...merged])) }
 	}
+}
+
+/**
+ * Atomically commit a tctoken index update (and any accompanying per-jid
+ * token writes) under a `transactWith` lock on the index record.
+ *
+ * Stage 10 closure of the audit's deferred tc-token item: two concurrent
+ * callers using {@link buildMergedTcTokenIndexWrite} + a manual
+ * `keys.set` would each read the same pre-merge state and then commit
+ * their own merge, losing the other's additions. Wrapping the read +
+ * write in one transactWith on `{ type: 'tctoken', id: '__index' }`
+ * serializes them through the LockManager. Per-jid token writes can
+ * piggyback on the same transactWith by passing them in `extraWrites`
+ * — they're committed in the same atomic `state.set` as the index
+ * update, so a partial-commit window cannot exist.
+ *
+ * Records held: the index sentinel + every per-jid key in `extraWrites`.
+ * Concurrent callers touching disjoint jids and not the index proceed
+ * in parallel.
+ */
+export async function commitTcTokenWithIndex(
+	keys: SignalKeyStoreWithRecordTransaction,
+	addedJids: Iterable<string>,
+	extraWrites?: { [jid: string]: SignalDataTypeMap['tctoken'] | null }
+): Promise<void> {
+	const recordIds = [TC_TOKEN_INDEX_KEY, ...Object.keys(extraWrites ?? {})]
+	await keys.transactWith(
+		{ records: recordIds.map(id => ({ type: 'tctoken', id })) },
+		async () => {
+			const persisted = await readTcTokenIndex(keys)
+			const merged = new Set(persisted)
+			for (const jid of addedJids) {
+				if (jid && jid !== TC_TOKEN_INDEX_KEY) merged.add(jid)
+			}
+
+			await keys.set({
+				tctoken: {
+					...(extraWrites ?? {}),
+					[TC_TOKEN_INDEX_KEY]: { token: Buffer.from(JSON.stringify([...merged])) }
+				}
+			})
+		}
+	)
 }
 
 // WA Web has separate sender/receiver AB props for these but they're identical today

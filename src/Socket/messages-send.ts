@@ -40,7 +40,7 @@ import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
-	buildMergedTcTokenIndexWrite,
+	commitTcTokenWithIndex,
 	isTcTokenExpired,
 	resolveIssuanceJid,
 	resolveTcTokenJid,
@@ -1158,15 +1158,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
 						const currentEntry = currentData[tcTokenJid]
-						const indexWrite = await buildMergedTcTokenIndexWrite(authState.keys, [tcTokenJid])
-						await authState.keys.set({
-							tctoken: {
-								[tcTokenJid]: {
-									token: Buffer.alloc(0),
-									...currentEntry,
-									senderTimestamp: issueTimestamp
-								},
-								...indexWrite
+						// Stage 10 (closure of deferred tc-token item): atomic
+						// read-merge-write through `commitTcTokenWithIndex` so a
+						// concurrent `flushTcTokenIndex` on the recv path can't
+						// race the index update.
+						await commitTcTokenWithIndex(authState.keys, [tcTokenJid], {
+							[tcTokenJid]: {
+								token: Buffer.alloc(0),
+								...currentEntry,
+								senderTimestamp: issueTimestamp
 							}
 						})
 					})

@@ -57,7 +57,7 @@ import { makeLockManager } from '../Utils/lock-manager'
 import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
 import {
-	buildMergedTcTokenIndexWrite,
+	commitTcTokenWithIndex,
 	isTcTokenExpired,
 	readTcTokenIndex,
 	resolveIssuanceJid,
@@ -1323,10 +1323,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			tcTokenIndexTimer = undefined
 		}
 
-		// Merge with whatever is already persisted so we don't clobber writes from other
-		// paths (history sync, concurrent sessions on the same store).
-		const write = await buildMergedTcTokenIndexWrite(authState.keys, tcTokenKnownJids)
-		return authState.keys.set({ tctoken: write })
+		// Stage 10 (closure of deferred tc-token item): the read+write is
+		// wrapped in `transactWith` on the index record so a concurrent
+		// `commitTcTokenWithIndex` on the send path can't observe the same
+		// pre-merge state and clobber the merged additions.
+		await commitTcTokenWithIndex(authState.keys, tcTokenKnownJids)
 	}
 
 	function scheduleTcTokenIndexSave() {
