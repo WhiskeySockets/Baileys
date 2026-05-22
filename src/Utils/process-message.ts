@@ -63,6 +63,18 @@ const REAL_MSG_STUB_TYPES = new Set([
 
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
 
+// Self-only protocol types must originate from our own device; an attacker could otherwise spoof
+// one from a third party to manipulate local state (history sync, app-state keys, LID migration,
+// PDO responses). Cross-user types (REVOKE / EDIT / EPHEMERAL_SETTING / member label) are NOT in
+// this set — they legitimately arrive from others. (upstream #2557/whatsmeow). Module-level so it
+// isn't reallocated on every processed protocol message.
+const SELF_ONLY_PROTOCOL_TYPES = new Set<proto.Message.ProtocolMessage.Type>([
+	proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION,
+	proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE,
+	proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC,
+	proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE
+])
+
 /** Cleans a received message to further processing */
 export const cleanMessage = (message: WAMessage, meId: string, meLid: string) => {
 	// ensure remoteJid and participant doesn't have device or agent in it
@@ -396,20 +408,10 @@ const processMessage = async (
 
 	const protocolMsg = content?.protocolMessage
 	if (protocolMsg) {
-		// Self-only protocol types must originate from our own device; an attacker could otherwise
-		// spoof one from a third party to manipulate local state (history sync, app-state keys, LID
-		// migration, PDO responses). Cross-user types (REVOKE / EDIT / EPHEMERAL_SETTING / member
-		// label) are NOT in this set — they legitimately arrive from others. (upstream #2557/whatsmeow)
-		const SELF_ONLY_TYPES = new Set<proto.Message.ProtocolMessage.Type>([
-			proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION,
-			proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE,
-			proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC,
-			proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE
-		])
 		if (
 			protocolMsg.type !== null &&
 			protocolMsg.type !== undefined &&
-			SELF_ONLY_TYPES.has(protocolMsg.type) &&
+			SELF_ONLY_PROTOCOL_TYPES.has(protocolMsg.type) &&
 			!message.key.fromMe
 		) {
 			logger?.warn(

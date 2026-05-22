@@ -1111,7 +1111,12 @@ export const makeSocket = (config: SocketConfig) => {
 		// Release per-socket caches/state to prevent memory leaks on close (adapted from #2191).
 		// Runs AFTER the close event so consumers are notified first. We intentionally do NOT call
 		// ev.destroy() (it would drop connection.update listeners the consumer needs to reconnect).
-		signalRepository.close?.()
+		try {
+			signalRepository.close?.()
+		} catch (err) {
+			logger.error({ err }, 'error closing signal repository')
+		}
+
 		for (const handler of socketEndHandlers) {
 			try {
 				await handler(error)

@@ -533,9 +533,18 @@ export function makeLibSignalRepository(
 			}, `delete-${jids.length}-sessions`)
 		},
 
-		// Release in-memory caches on socket close (adapted from #2191). Uses our own
+		// Release in-memory caches and timers on socket close (adapted from #2191). Uses our own
 		// lidMapping.destroy() (UAF-safe) rather than upstream's simpler close().
+		//
+		// CRITICAL: cacheMetricsInterval must be cleared here. Its callback closure pins this entire
+		// repository (every LRU cache + lidMapping) in memory. On reconnect the consumer builds a
+		// fresh repository, so a stale interval would keep the OLD one alive forever — the dominant
+		// source of the gradual memory growth seen across many daily reconnects.
 		close() {
+			clearInterval(cacheMetricsInterval)
+			identityKeyCache.clear()
+			deviceListCache.clear()
+			migrationInFlight.clear()
 			migratedSessionCache.clear()
 			lidMapping.destroy()
 		},

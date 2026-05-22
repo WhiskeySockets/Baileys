@@ -343,7 +343,8 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		// Mirror WA Web: surface server/client errors with their code+text instead of crashing.
 		const errorNode = getBinaryNodeChild(result, 'error')
 		if (errorNode) {
-			const code = errorNode.attrs.code ? +errorNode.attrs.code : 500
+			const parsedCode = Number(errorNode.attrs.code)
+			const code = Number.isInteger(parsedCode) && parsedCode >= 100 && parsedCode <= 599 ? parsedCode : 500
 			const text = errorNode.attrs.text || 'group metadata query failed'
 			throw new Boom(text, { statusCode: code, data: errorNode })
 		}
