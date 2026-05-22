@@ -1112,7 +1112,7 @@ export const makeSocket = (config: SocketConfig) => {
 		// Runs AFTER the close event so consumers are notified first. We intentionally do NOT call
 		// ev.destroy() (it would drop connection.update listeners the consumer needs to reconnect).
 		try {
-			signalRepository.close?.()
+			await signalRepository.close?.()
 		} catch (err) {
 			logger.error({ err }, 'error closing signal repository')
 		}
@@ -1124,6 +1124,11 @@ export const makeSocket = (config: SocketConfig) => {
 				logger.error({ err }, 'error in socket end handler')
 			}
 		}
+
+		// Release the handler closures themselves — each captures per-socket caches/timers, and we
+		// deliberately keep the event emitter alive for reconnection, so anything the consumer still
+		// references would otherwise pin all that captured scope.
+		socketEndHandlers.length = 0
 
 		// IMPORTANT: Do NOT use removeAllListeners('connection.update')
 		// It would remove consumer listeners, breaking their reconnection logic

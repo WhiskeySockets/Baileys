@@ -344,7 +344,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		const errorNode = getBinaryNodeChild(result, 'error')
 		if (errorNode) {
 			const parsedCode = Number(errorNode.attrs.code)
-			const code = Number.isInteger(parsedCode) && parsedCode >= 100 && parsedCode <= 599 ? parsedCode : 500
+			const code = Number.isInteger(parsedCode) && parsedCode >= 400 && parsedCode <= 599 ? parsedCode : 500
 			const text = errorNode.attrs.text || 'group metadata query failed'
 			throw new Boom(text, { statusCode: code, data: errorNode })
 		}

@@ -86,5 +86,5 @@ export type SignalRepository = {
 export interface SignalRepositoryWithLIDStore extends SignalRepository {
 	lidMapping: LIDMappingStore
 	/** Release in-memory caches (migrated-session + LID mapping) on socket close. */
-	close?: () => void
+	close?: () => void | Promise<void>
 }
