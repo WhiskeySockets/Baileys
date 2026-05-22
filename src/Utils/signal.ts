@@ -237,9 +237,26 @@ export const getNextPreKeys = async ({ creds, keys }: AuthenticationState, count
 	return { update, preKeys }
 }
 
+/**
+ * Build the IQ node for a pre-key upload and split the creds update into
+ * two halves: an "allocation" update that's safe to commit immediately
+ * (advances `nextPreKeyId` so a parallel generation never reuses the
+ * same id range), and a "commit" update that should only be committed
+ * AFTER the server confirms the upload (advances `firstUnuploadedPreKeyId`
+ * — applying it before the server actually has the keys means a later
+ * upload-failure would leave generated-but-never-uploaded keys orphaned
+ * in the local store, since subsequent upload calls would skip past them).
+ *
+ * Stage 10 (M2 closure): the previous single `update` collapsed both
+ * fields and was emitted before the upload completed, so a permanent
+ * upload failure permanently lost the generated keys.
+ */
 export const getNextPreKeysNode = async (state: AuthenticationState, count: number) => {
 	const { creds } = state
 	const { update, preKeys } = await getNextPreKeys(state, count)
+
+	const allocUpdate: Partial<AuthenticationCreds> = { nextPreKeyId: update.nextPreKeyId }
+	const commitUpdate: Partial<AuthenticationCreds> = { firstUnuploadedPreKeyId: update.firstUnuploadedPreKeyId }
 
 	const node: BinaryNode = {
 		tag: 'iq',
@@ -257,5 +274,5 @@ export const getNextPreKeysNode = async (state: AuthenticationState, count: numb
 		]
 	}
 
-	return { update, node }
+	return { allocUpdate, commitUpdate, node }
 }
