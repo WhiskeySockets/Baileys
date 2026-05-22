@@ -1483,10 +1483,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// rejection becomes a structured `error` log instead of an
 					// `unhandledRejection`.
 					process.nextTick(() =>
-						runDetached(() => messageMutex.mutex(() => upsertMessage(fullMsg, 'append')), logger, {
-							op: 'emitOwnEvents.upsertMessage',
-							msgId: fullMsg.key.id
-						})
+						runDetached(
+							() =>
+								// Stage 10: keyed-mutex variant. The upsert is a
+								// per-chat operation (appends to that chat's
+								// history projection), so we acquire under the
+								// outgoing chat's remoteJid — same key the
+								// inbound receive path uses, ensuring upsertMessage
+								// ordering stays consistent with any concurrent
+								// inbound message for the same chat.
+								messageMutex.mutex(fullMsg.key.remoteJid ?? '__no-chat__', () =>
+									upsertMessage(fullMsg, 'append')
+								),
+							logger,
+							{ op: 'emitOwnEvents.upsertMessage', msgId: fullMsg.key.id }
+						)
 					)
 				}
 

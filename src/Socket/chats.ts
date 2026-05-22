@@ -45,7 +45,7 @@ import {
 	newLTHashState,
 	processSyncAction
 } from '../Utils'
-import { makeMutex } from '../Utils/make-mutex'
+import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { buildTcTokenFromJid } from '../Utils/tc-token-utils'
 import {
@@ -104,11 +104,21 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	let syncState: SyncState = SyncState.Connecting
 
-	/** this mutex ensures that messages are processed in order */
-	const messageMutex = makeMutex()
+	/**
+	 * Per-chat mutex around message decrypt + downstream side effects.
+	 * Stage 10: switched from a global `makeMutex()` to a keyed mutex
+	 * keyed on `remoteJid` so messages for different chats can decrypt
+	 * and project to events in parallel; same-chat messages stay
+	 * strictly serialized (the order-within-a-chat contract the original
+	 * mutex was protecting). Same-chat ordering is still required:
+	 * `messageRetryManager.addRecentMessage`, the per-chat history
+	 * append, and the downstream signal-layer side effects all assume
+	 * sequential application per chat.
+	 */
+	const messageMutex = makeKeyedMutex()
 
-	/** this mutex ensures that receipts are processed in order */
-	const receiptMutex = makeMutex()
+	/** Per-chat mutex around receipt processing. Same rationale as `messageMutex`. */
+	const receiptMutex = makeKeyedMutex()
 
 	/** this mutex ensures that app state patches are processed in order */
 	const appStatePatchMutex = makeMutex()

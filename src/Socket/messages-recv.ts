@@ -1578,7 +1578,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				receiptMutex.mutex(async () => {
+				// Per-chat receipt serialization (Stage 10): keyed on `remoteJid`
+				// so receipts for different chats process in parallel; same-chat
+				// receipts still serialize to preserve per-chat ordering.
+				// `remoteJid ?? '__no-chat__'` falls back to a sentinel so a
+				// receipt without a chat id (rare; defensive) doesn't try to
+				// acquire an empty-string key bucket.
+				receiptMutex.mutex(remoteJid ?? '__no-chat__', async () => {
 					const status = getStatusFromReceiptType(attrs.type)
 					if (
 						typeof status !== 'undefined' &&
@@ -1727,7 +1733,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			}
 
-			await messageMutex.mutex(async () => {
+			// Per-chat decrypt + side-effect serialization (Stage 10): keyed
+			// on the message's remoteJid so two different chats' inbound
+			// messages decrypt in parallel. Same-chat messages still
+			// serialize so the per-chat history append, receipt projection,
+			// and signal-layer state stay consistent.
+			const messageChatKey = msg.key?.remoteJid ?? '__no-chat__'
+			await messageMutex.mutex(messageChatKey, async () => {
 				await decrypt()
 
 				if (msg.key?.remoteJid && msg.key?.id && msg.message && messageRetryManager) {
