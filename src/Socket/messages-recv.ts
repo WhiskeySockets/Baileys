@@ -1278,9 +1278,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (messageRetryManager) {
-			// Check if we've exceeded max retries using the new system
-			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
-				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
+			// M12 fold (upstream #2576): atomic check-and-increment. `tryIncrement`
+			// reads the counter and increments it within one sync block, so a
+			// concurrent caller for the same msgId cannot both pass the limit
+			// check before either increments. Replaces the split
+			// `hasExceededMaxRetries` + `incrementRetryCount` pair which had
+			// an await boundary between the two operations.
+			const attempt = messageRetryManager.tryIncrement(msgId)
+			if (!attempt.proceed) {
+				logger.debug({ msgId, count: attempt.count }, 'reached retry limit with new retry manager, clearing')
 				messageRetryManager.markRetryFailed(msgId)
 				recordMessageFailure('retry', 'max_retries_reached')
 
@@ -1309,13 +1315,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				return
 			}
 
-			// Increment retry count using new system
-			const retryCount = messageRetryManager.incrementRetryCount(msgId)
 			recordMessageRetry('retry')
 
-			// Use the new retry count for the rest of the logic
+			// Mirror the retry count to the durable cache.
+			// Upstream #2576 H9 wraps this in retryLocks.withLock (LockManager) — we
+			// skip that wrap (LockManager arrives with Stage 1 #2571). The
+			// surrounding messageMutex.mutex(mutexKey, ...) at the call site of
+			// sendRetryRequest already serializes by (jid, msgId), so the residual
+			// race window is narrower than upstream's pre-#2576 state.
 			const key = `${msgId}:${msgKey?.participant}`
-			await msgRetryCache.set(key, retryCount)
+			await msgRetryCache.set(key, attempt.count)
 		} else {
 			// Fallback to old system
 			const key = `${msgId}:${msgKey?.participant}`

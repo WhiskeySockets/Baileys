@@ -112,10 +112,17 @@ export class MessageRetryManager {
 	})
 	private messageKeyIndex = new Map<string, string>()
 	private sessionRecreateHistory = new LRUCache<string, number>({
+		// M12 (upstream #2576): bound the cache. Without a max, a server that
+		// targets us with a stream of unique-jid identity changes could grow
+		// this map without bound. 10k entries × ~32 bytes per jid + timestamp
+		// = ~320 KB ceiling.
+		max: 10_000,
 		ttl: RECREATE_SESSION_TIMEOUT * 2,
 		ttlAutopurge: true
 	})
 	private retryCounters = new LRUCache<string, number>({
+		// M12 (upstream #2576): bound the cache (see sessionRecreateHistory).
+		max: 10_000,
 		ttl: 15 * 60 * 1000,
 		ttlAutopurge: true,
 		updateAgeOnGet: true
@@ -356,6 +363,30 @@ export class MessageRetryManager {
 	 */
 	hasExceededMaxRetries(messageId: string): boolean {
 		return this.getRetryCount(messageId) >= this.maxMsgRetryCount
+	}
+
+	/**
+	 * Atomic check-and-increment (M12 — upstream #2576): returns
+	 * `{ proceed: true, count }` if the retry attempt is allowed (and the
+	 * counter was incremented), or `{ proceed: false, count }` if the message
+	 * is already at or past the retry limit. JavaScript's single-threaded
+	 * execution model means the read+increment happens within one sync block
+	 * — no external `await` can interleave between the bound check and the
+	 * `set`. Prefer this over calling `hasExceededMaxRetries` followed by
+	 * `incrementRetryCount` separately, because the latter pattern has an
+	 * `await` boundary between the two ops and a concurrent caller can
+	 * race past the cap.
+	 */
+	tryIncrement(messageId: string): { proceed: boolean; count: number } {
+		const current = this.getRetryCount(messageId)
+		if (current >= this.maxMsgRetryCount) {
+			return { proceed: false, count: current }
+		}
+
+		const next = current + 1
+		this.retryCounters.set(messageId, next)
+		this.statistics.totalRetries++
+		return { proceed: true, count: next }
 	}
 
 	/**
