@@ -2093,7 +2093,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				const sessions = await authState.keys.get('session', lookupKeys)
-				const stillStoredKeys = lookupKeys.filter(k => sessions[k] != null)
+				const stillStoredKeys = lookupKeys.filter(k => sessions[k] !== undefined && sessions[k] !== null)
 				const deleted = stillStoredKeys.length === 0
 
 				// Only fetch registrationId when not deleted (for context) — avoids the noise of
