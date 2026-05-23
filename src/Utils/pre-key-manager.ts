@@ -22,14 +22,21 @@ import type { ILogger } from './logger'
  */
 export class PreKeyManager {
 	/**
-	 * Defensive flag — prevents operations after `destroy()` is called.
+	 * Defensive flag — guards method ENTRY against operations after `destroy()`
+	 * is called. `checkDestroyed()` runs synchronously at the top of each
+	 * public method, so a caller that hasn't yet entered cannot proceed once
+	 * `destroyed=true` is observed.
 	 *
-	 * THREAD SAFETY: JavaScript's single-threaded execution model means the
-	 * flag check and method body run atomically within one sync block.
+	 * Not a full memory barrier: once a method passes the entry guard, it can
+	 * await internally and the destroyed flag may flip during the await. The
+	 * stronger "drain in-flight operations before teardown" guarantee lives
+	 * one level up in `auth-utils.addTransactionCapability.destroy()` via the
+	 * `activeTransactions` counter (PR #453) — that's where actual concurrent-
+	 * with-destroy safety is enforced. This flag is just the entry barrier.
 	 *
-	 * Preserved from InfiniteAPI's pre-Stage-1 PreKeyManager. Upstream
-	 * dropped this protection but our socket close path benefits from it
-	 * (avoids late callers mutating a torn-down manager during reconnect).
+	 * Preserved from InfiniteAPI's pre-Stage-1 PreKeyManager. Upstream dropped
+	 * this protection but our socket close path benefits from it (avoids
+	 * late callers mutating a torn-down manager during reconnect).
 	 */
 	private destroyed = false
 

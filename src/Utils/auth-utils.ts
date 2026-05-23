@@ -414,9 +414,27 @@ export const addTransactionCapability = (
 			//
 			// New callers that race in see destroyed=true at the check above
 			// and throw before incrementing, so the counter monotonically
-			// decreases once `destroyed` flips. The poll is bounded by
-			// realistic tx duration (sub-second under normal load).
+			// decreases once `destroyed` flips.
+			//
+			// PR #453 round-2 (CodeRabbit + Copilot + cubic — 3 bots concordaram):
+			// the drain wait MUST be bounded. Now that `socket.ts:1073` awaits
+			// `keys.destroy?.()`, an unbounded wait would hang socket shutdown
+			// forever if a transaction got stuck (network freeze, external
+			// deadlock). Cap at 5s — well above the realistic sub-second tx
+			// duration under normal load. On timeout: log warn with the
+			// outstanding count and proceed with teardown anyway (better a
+			// torn-down preKeyManager error in a stuck tx than a hung shutdown
+			// that prevents reconnect).
+			const MAX_DRAIN_WAIT_MS = 5_000
+			const startedAt = Date.now()
 			while (activeTransactions > 0) {
+				if (Date.now() - startedAt >= MAX_DRAIN_WAIT_MS) {
+					logger.warn(
+						{ activeTransactions, waitedMs: MAX_DRAIN_WAIT_MS },
+						'destroy: drain wait timed out — proceeding with teardown'
+					)
+					break
+				}
 				logger.trace({ activeTransactions }, 'destroy: waiting for in-flight transactions to drain')
 				await delay(10)
 			}
