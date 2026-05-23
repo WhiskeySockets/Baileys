@@ -110,8 +110,16 @@ export function makeCacheableSignalKeyStore(
 			})
 		},
 		async clear() {
-			await cache.flushAll()
-			await store.clear?.()
+			// PR #453 round-4 (Copilot): synchronize clear with the same
+			// `cacheMutex` that guards get/set. Without this, a concurrent set()
+			// could land between `cache.flushAll()` and `store.clear()` (or
+			// after), repopulating the cache with values that no longer reflect
+			// the just-cleared store. Holding the mutex across the full clear
+			// op ensures no get/set observes a half-cleared state.
+			return cacheMutex.runExclusive(async () => {
+				await cache.flushAll()
+				await store.clear?.()
+			})
 		},
 		// Stage 1 (upstream #2571): enumeration cannot be satisfied from the sparse
 		// in-memory cache — pass through to the underlying store. Bypasses the cache
@@ -435,6 +443,13 @@ export const addTransactionCapability = (
 			// stuck tx than a hung shutdown that prevents reconnect).
 			const MAX_DRAIN_WAIT_MS = Math.max(5_000, maxCommitRetries * delayBetweenTriesMs + 2_000)
 			const startedAt = Date.now()
+			// PR #453 round-4 (Copilot): throttle the trace log. Without this,
+			// a 10ms poll + trace-level logging would emit ~MAX_DRAIN_WAIT_MS/10
+			// entries (e.g. 1200 at 12s cap) per close. Log only when the
+			// counter changes OR every 500ms — whichever comes first — so
+			// trace-enabled environments don't drown in noise during shutdown.
+			let lastLoggedCount = -1
+			let lastLoggedAt = 0
 			while (activeTransactions > 0) {
 				if (Date.now() - startedAt >= MAX_DRAIN_WAIT_MS) {
 					logger.warn(
@@ -443,7 +458,13 @@ export const addTransactionCapability = (
 					)
 					break
 				}
-				logger.trace({ activeTransactions }, 'destroy: waiting for in-flight transactions to drain')
+				const now = Date.now()
+				if (activeTransactions !== lastLoggedCount || now - lastLoggedAt >= 500) {
+					logger.trace({ activeTransactions }, 'destroy: waiting for in-flight transactions to drain')
+					lastLoggedCount = activeTransactions
+					lastLoggedAt = now
+				}
+
 				await delay(10)
 			}
 
