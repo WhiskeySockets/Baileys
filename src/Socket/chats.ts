@@ -1633,7 +1633,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			// Reset the back-assignment so a reconnect using the same config object doesn't pick
 			// our just-closed cache up as "consumer-provided" (ownership flip-flop) — that would
 			// leave the new socket using a timer-stopped cache where entries accumulate forever
-			// without TTL eviction. [Copilot PR #449 review]
+			// without TTL eviction.
 			if (config.placeholderResendCache === placeholderResendCache) {
 				config.placeholderResendCache = undefined
 			}

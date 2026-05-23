@@ -2066,21 +2066,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		/**
-		 * DIAGNOSTIC (temporary): verify that deleteCanonicalSession actually removed the session.
-		 * If `deleted` is false (raw key still present), the transaction either failed silently or
-		 * the LID/PN resolution missed the actual stored copy → that is the leak driving the
-		 * reg-id-mismatch loop reported in production. If `deleted` is true but future sends to
-		 * the same participant keep hitting mismatch with the SAME stale `stored` value, the
-		 * WhatsApp server is serving a cached PreKeyBundle with an old registrationId (out of our
-		 * control, only mitigation is to keep retrying).
+		 * TEMPORARY DIAGNOSTIC (TODO: remove after the reg-id-mismatch root cause is identified).
 		 *
-		 * Reads the raw session keys we just nulled (NOT getSessionInfo, which also returns null
-		 * when an existing session merely lacks an open chain or baseKey/registrationId — would
-		 * falsely look "deleted"). [Copilot PR #449 review]
+		 * Verifies that deleteCanonicalSession actually removed the session. Reads the raw session
+		 * keys we just nulled (NOT getSessionInfo — that returns null in three different cases:
+		 * truly deleted, session exists but has no open chain, or session exists but is missing
+		 * baseKey/registrationId — would falsely look "deleted" in the latter two).
 		 *
-		 * Only fires when a delete just happened — naturally low-frequency in stable operation;
-		 * frequent only right after a fresh QR pairing when sessions are first established.
-		 * Remove once the root cause is identified.
+		 * Logging strategy (designed to be safe in production):
+		 *  - deleted === true  → debug (expected path, no noise during retry storms)
+		 *  - deleted === false → warn  (a real bug — silent transaction failure or LID/PN
+		 *                                resolution missed the stored copy)
+		 *
+		 * The expensive part (keystore read) only runs when a delete just happened, which is
+		 * naturally low-frequency in stable operation. Frequent only right after a fresh QR
+		 * pairing when sessions are first established.
 		 */
 		const verifyCanonicalDelete = async (reason: string) => {
 			try {
@@ -2096,23 +2096,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const stillStoredKeys = lookupKeys.filter(k => sessions[k] !== undefined && sessions[k] !== null)
 				const deleted = stillStoredKeys.length === 0
 
-				// Only fetch registrationId when not deleted (for context) — avoids the noise of
-				// reading an open session right after a confirmed delete.
-				let registrationId: number | undefined
-				if (!deleted) {
-					const info = await signalRepository.getSessionInfo(participant)
-					registrationId = info?.registrationId
+				if (deleted) {
+					logger.debug({ participant, reason }, '[DIAG] POST-DELETE canonical session removed')
+					return
 				}
 
-				logger.info(
+				// Not deleted — fetch registrationId for context (the real problem case).
+				const info = await signalRepository.getSessionInfo(participant)
+				logger.warn(
 					{
 						participant,
 						reason,
-						deleted,
 						stillStoredKeys,
-						registrationId
+						registrationId: info?.registrationId
 					},
-					'[DIAG] POST-DELETE canonical session state'
+					'[DIAG] POST-DELETE canonical session STILL PRESENT — delete failed silently'
 				)
 			} catch (err) {
 				logger.debug({ err, participant, reason }, '[DIAG] POST-DELETE verification failed')
