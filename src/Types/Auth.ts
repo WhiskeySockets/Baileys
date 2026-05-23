@@ -105,8 +105,9 @@ export type SignalKeyStore = {
 	clear?(): Awaitable<void>
 	/**
 	 * Enumerate every (id, value) pair for a type. Optional so existing user-implemented
-	 * stores keep compiling; required by `migrateAuthState` and bulk operations. Adapters
-	 * should stream rather than buffer the whole result set into memory.
+	 * stores keep compiling; required by future auth-state migration / bulk operations
+	 * (Stage 5+ in the upstream concurrency rewrite — not yet ported to InfiniteAPI).
+	 * Adapters should stream rather than buffer the whole result set into memory.
 	 */
 	list?<T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<readonly [id: string, value: SignalDataTypeMap[T]]>
 	/**

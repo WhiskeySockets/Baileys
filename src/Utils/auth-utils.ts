@@ -420,12 +420,20 @@ export const addTransactionCapability = (
 			// the drain wait MUST be bounded. Now that `socket.ts:1073` awaits
 			// `keys.destroy?.()`, an unbounded wait would hang socket shutdown
 			// forever if a transaction got stuck (network freeze, external
-			// deadlock). Cap at 5s — well above the realistic sub-second tx
-			// duration under normal load. On timeout: log warn with the
-			// outstanding count and proceed with teardown anyway (better a
-			// torn-down preKeyManager error in a stuck tx than a hung shutdown
-			// that prevents reconnect).
-			const MAX_DRAIN_WAIT_MS = 5_000
+			// deadlock).
+			//
+			// PR #453 round-3 (cubic P2 follow-up): the cap MUST account for
+			// `commitWithRetry`'s legitimate retry budget — a healthy tx can
+			// burn `maxCommitRetries * delayBetweenTriesMs` (defaults: 10 ×
+			// 1000ms = 10s) waiting between retries. A fixed 5s cap would
+			// abort still-healthy transactions whose commits are merely
+			// retrying. Derive the cap from the retry budget + 2s slack for
+			// the actual state.set work, with a 5s floor for tiny configs.
+			//
+			// On timeout: log warn with the outstanding count and proceed with
+			// teardown anyway (better a torn-down preKeyManager error in a
+			// stuck tx than a hung shutdown that prevents reconnect).
+			const MAX_DRAIN_WAIT_MS = Math.max(5_000, maxCommitRetries * delayBetweenTriesMs + 2_000)
 			const startedAt = Date.now()
 			while (activeTransactions > 0) {
 				if (Date.now() - startedAt >= MAX_DRAIN_WAIT_MS) {
