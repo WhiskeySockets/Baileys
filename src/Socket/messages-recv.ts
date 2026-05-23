@@ -2065,6 +2065,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}, authState.creds.me?.id || 'session-operation')
 		}
 
+		/**
+		 * DIAGNOSTIC (temporary): verify that deleteCanonicalSession actually removed the session.
+		 * If `deleted` is false (session still loadable with same reg id), the transaction either
+		 * failed silently or the LID/PN resolution missed the actual stored copy → that is the
+		 * leak driving the reg-id-mismatch loop reported in production. If `deleted` is true but
+		 * future sends to the same participant keep hitting mismatch with the SAME stale
+		 * `stored` value, the WhatsApp server is serving a cached PreKeyBundle with an old
+		 * registrationId (out of our control, only mitigation is to keep retrying).
+		 *
+		 * Only fires when a delete just happened — naturally low-frequency in stable operation;
+		 * frequent only right after a fresh QR pairing when sessions are first established.
+		 * Remove once the root cause is identified.
+		 */
+		const verifyCanonicalDelete = async (reason: string) => {
+			try {
+				const verify = await signalRepository.getSessionInfo(participant)
+				logger.info(
+					{
+						participant,
+						reason,
+						deleted: !verify,
+						stillStored: verify?.registrationId
+					},
+					'[DIAG] POST-DELETE canonical session state'
+				)
+			} catch (err) {
+				logger.debug({ err, participant, reason }, '[DIAG] POST-DELETE verification failed')
+			}
+		}
+
 		// Try to get messages from cache first, then fallback to getMessage
 		const msgs: (proto.IMessage | undefined)[] = []
 		for (const id of ids) {
@@ -2150,6 +2180,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						'reg id mismatch on retry without bundle, deleting session'
 					)
 					await deleteCanonicalSession()
+					await verifyCanonicalDelete('reg_id_mismatch')
 				}
 			}
 		}
@@ -2168,6 +2199,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
 						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
 						await deleteCanonicalSession()
+						await verifyCanonicalDelete('base_key_collision')
 					}
 
 					messageRetryManager.deleteBaseKey(sessionId, msgId)
@@ -2204,6 +2236,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					// The race-prevention via me?.id transaction key is preserved inside
 					// the helper, matching the original a3dd21c9 / 52aa6402 contract.
 					await deleteCanonicalSession()
+					await verifyCanonicalDelete('outgoing_retry_recreate')
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
