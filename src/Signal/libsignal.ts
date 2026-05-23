@@ -542,6 +542,7 @@ export function makeLibSignalRepository(
 		// source of the gradual memory growth seen across many daily reconnects.
 		close() {
 			clearInterval(cacheMetricsInterval)
+			storage.clearPendingPreKeyDeletions()
 			identityKeyCache.clear()
 			deviceListCache.clear()
 			migrationInFlight.clear()
@@ -804,6 +805,10 @@ type ExtendedSignalStorage = SenderKeyStore &
 		 * @returns Result indicating if key changed, is new, and fingerprints
 		 */
 		saveIdentity(id: string, identityKey: Uint8Array): Promise<IdentitySaveResult>
+
+		/** Cancel pending PreKey deletion timers (5-min grace window) — called on socket close so the
+		 * Map entries stop pinning the storage closure across reconnects. */
+		clearPendingPreKeyDeletions(): void
 	}
 
 function signalStorage(
@@ -846,6 +851,13 @@ function signalStorage(
 	const pendingPreKeyDeletions = new Map<string, ReturnType<typeof setTimeout>>()
 
 	return {
+		clearPendingPreKeyDeletions: () => {
+			for (const timer of pendingPreKeyDeletions.values()) {
+				clearTimeout(timer)
+			}
+
+			pendingPreKeyDeletions.clear()
+		},
 		loadSession: async (id: string) => {
 			try {
 				const wireJid = await resolveLIDSignalAddress(id)

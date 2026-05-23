@@ -127,6 +127,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	// When a key arrives via APP_STATE_SYNC_KEY_SHARE, these are re-synced.
 	const blockedCollections = new Set<WAPatchName>()
 
+	const ownsPlaceholderResendCache = !config.placeholderResendCache
 	const placeholderResendCache =
 		config.placeholderResendCache ||
 		(new NodeCache<number>({
@@ -1621,6 +1622,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		if (historySyncPausedTimeout) {
 			clearTimeout(historySyncPausedTimeout)
 			historySyncPausedTimeout = undefined
+		}
+
+		// Close + flush our own placeholderResendCache so its NodeCache check-period timer stops
+		// and the entries don't pin the old socket via closure. NEVER touch a consumer-provided
+		// cache — they reuse it across reconnects intentionally (CTWA recovery continuity).
+		if (ownsPlaceholderResendCache) {
+			placeholderResendCache.close?.()
+			placeholderResendCache.flushAll?.()
 		}
 	})
 
