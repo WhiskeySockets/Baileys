@@ -161,8 +161,17 @@ export const makeNoiseHandler = ({
 
 		if (pendingOnFrame) {
 			logger.trace({ length: inBytes.length }, 'Flushing buffered frames after transport ready')
-			await processData(pendingOnFrame)
-			pendingOnFrame = null
+			// M10 fix (PR #451 CodeRabbit follow-up): acquire decodeFrameMutex
+			// here too. Without it, a socket `data` event firing during the
+			// `await processData(...)` would re-enter `decodeFrame` (which
+			// holds the mutex) and race on `inBytes` with this flush (which
+			// previously didn't). The mutex's reentrancy isn't an issue here
+			// — finishInit is only called once, from the handshake completion
+			// path, so this acquire happens before any other decodeFrame call.
+			await decodeFrameMutex.runExclusive(async () => {
+				await processData(pendingOnFrame!)
+				pendingOnFrame = null
+			})
 		}
 	}
 
