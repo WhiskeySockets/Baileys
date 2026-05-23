@@ -126,7 +126,14 @@ export class PreKeyManager {
 
 		const existingKeys = await this.store.get(keyType, deletionIds)
 		for (const keyId of deletionIds) {
-			if (!existingKeys[keyId]) {
+			// PR #453 round-5 (Copilot): use `=== undefined` instead of `!value`.
+			// Truthiness check would misclassify legitimate falsy stored values
+			// (e.g. `lid-mapping: ''` empty string) as "missing" and incorrectly
+			// drop the deletion. Currently this method is only invoked with
+			// keyType==='pre-key' (a non-falsy object), but the type signature is
+			// generic <T extends keyof SignalDataTypeMap> and `lid-mapping: string`
+			// exists in the map — guard against the latent trap.
+			if (existingKeys[keyId] === undefined) {
 				this.logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
 				delete data[keyType]![keyId]
 			}
@@ -145,20 +152,25 @@ export class PreKeyManager {
 		const mutationsBucket = mutations[keyType] as Bucket | undefined
 
 		if (isInTransaction) {
-			// In transaction, only allow deletion if key exists in cache
+			// In transaction, only allow deletion if key exists in cache.
+			// PR #453 round-5: `cacheBucket?.[keyId] !== undefined && cacheBucket[keyId] !== null`
+			// instead of truthiness — value can be `null` (already-marked-for-deletion)
+			// or a legitimate falsy value (empty string for lid-mapping).
 			for (const keyId of ids) {
-				if (cacheBucket?.[keyId]) {
-					cacheBucket[keyId] = null
+				const cached = cacheBucket?.[keyId]
+				if (cached !== undefined && cached !== null) {
+					cacheBucket![keyId] = null
 					if (mutationsBucket) mutationsBucket[keyId] = null
 				} else {
 					this.logger.warn(`Skipping deletion of non-existent ${keyType} in transaction: ${keyId}`)
 				}
 			}
 		} else {
-			// Outside transaction, validate against store
+			// Outside transaction, validate against store.
+			// PR #453 round-5: same `=== undefined` rationale as validateDeletions.
 			const existingKeys = await this.store.get(keyType, ids)
 			for (const keyId of ids) {
-				if (existingKeys[keyId]) {
+				if (existingKeys[keyId] !== undefined) {
 					if (cacheBucket) cacheBucket[keyId] = null
 					if (mutationsBucket) mutationsBucket[keyId] = null
 				} else {
