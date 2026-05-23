@@ -173,6 +173,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const TC_TOKEN_PRUNE_TS_KEY = '__prune_ts'
 	const tcTokenKnownJids = new Set<string>()
 	const tcTokenRetriedMsgIds = new Set<string>()
+	/**
+	 * Dedupe per-JID in-flight 463 token-refetch IQs.
+	 * Without this, a burst of 463 acks for the same recipient (e.g. multi-recipient
+	 * carousel) would fire N parallel getPrivacyTokens IQs. Adapted from upstream #2517
+	 * (which dedupes issuePrivacyTokens; we dedupe our equivalent getPrivacyTokens path).
+	 */
+	const inFlight463Recoveries = new Set<string>()
 
 	// Deduplicates retry requests per JID within a short window.
 	// When a burst of Bad MAC errors arrives for the same contact,
@@ -3213,22 +3220,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				logTcToken('error_463', { jid, msgId })
 
 				// WABA Android: error 463 triggers getPrivacyTokens() fire-and-forget
-				// to ensure token is available for the retry below
-				getPrivacyTokens([jid])
-					.then(async (result) => {
-						await storeTcTokensFromIqResult({
-							result,
-							fallbackJid: jid,
-							keys: authState.keys,
-							getLIDForPN,
-							onNewJidStored: (storedJid) => {
-								tcTokenKnownJids.add(storedJid)
-								scheduleTcTokenIndexSave()
-							}
+				// to ensure token is available for the retry below.
+				// Per-JID dedupe (adapted from upstream #2517) — burst of 463 acks for the
+				// same recipient must not fan out N parallel IQs.
+				if (!inFlight463Recoveries.has(jid)) {
+					inFlight463Recoveries.add(jid)
+					getPrivacyTokens([jid])
+						.then(async (result) => {
+							await storeTcTokensFromIqResult({
+								result,
+								fallbackJid: jid,
+								keys: authState.keys,
+								getLIDForPN,
+								onNewJidStored: (storedJid) => {
+									tcTokenKnownJids.add(storedJid)
+									scheduleTcTokenIndexSave()
+								}
+							})
+							logTcToken('fetched', { jid, reason: 'error_463' })
 						})
-						logTcToken('fetched', { jid, reason: 'error_463' })
-					})
-					.catch(() => { /* fire-and-forget */ })
+						.catch(() => { /* fire-and-forget */ })
+						.finally(() => {
+							inFlight463Recoveries.delete(jid)
+						})
+				}
 
 				// Single-retry: wait 1.5s for the server's tctoken notification to arrive,
 				// then resend. A Set prevents infinite retry loops.
