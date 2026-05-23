@@ -48,6 +48,7 @@ import {
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
 	SERVER_ERROR_CODES,
+	setBotMessageSecret,
 	toNumber,
 	unixTimestampSeconds,
 	xmppPreKey,
@@ -1583,14 +1584,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
-		const encNode = getBinaryNodeChild(node, 'enc')
-		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
-		if (encNode?.attrs.type === 'msmsg') {
-			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
-			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
-			return
-		}
-
 		let acked = false
 
 		try {
