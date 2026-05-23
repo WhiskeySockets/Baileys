@@ -667,11 +667,18 @@ export const makeEventBuffer = (
 		}
 
 		const consolidatedData = consolidateEvents(data)
+
+		// M6 fix (upstream #2577): swap `data` to the new (empty) buffer BEFORE
+		// invoking the synchronous `ev.emit`. EventEmitter listeners run
+		// synchronously inside `emit`; if a listener re-enters `buffer() +
+		// emit(...)`, the re-entrant event must land in the NEW buffer instead
+		// of the about-to-be-overwritten old one. Previously this swap
+		// happened AFTER the emit, opening a silent lost-event window.
+		data = newData
+
 		if (Object.keys(consolidatedData).length) {
 			ev.emit('event', consolidatedData)
 		}
-
-		data = newData
 
 		logger.trace({ conditionalChatUpdatesLeft, eventCount }, 'released buffered events')
 

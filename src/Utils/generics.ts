@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { createHash, randomBytes } from 'crypto'
+import type Long from 'long'
 import { proto } from '../../WAProto/index.js'
 // Single source of truth for WhatsApp Web version - imported from JSON
 import baileysVersionData from '../Defaults/baileys-version.json' with { type: 'json' }
@@ -533,4 +534,44 @@ export function bytesToCrockford(buffer: Buffer): string {
 
 export function encodeNewsletterMessage(message: proto.IMessage): Uint8Array {
 	return proto.Message.encode(message).finish()
+}
+
+/**
+ * Schedule an async function to run without blocking the caller (`fire and
+ * forget`) — but always log rejections at `error` instead of letting them
+ * become silent `unhandledRejection`.
+ *
+ * Replaces ad-hoc patterns like `void (async () => { ... })()` and
+ * `process.nextTick(async () => { ... })` whose rejections previously had
+ * no observable signal.
+ *
+ * Port of upstream #2579 (Stage 9).
+ *
+ * @param work the async work to run detached
+ * @param logger child logger to use for error reporting
+ * @param context structured context attached to the log entry (operation
+ *                name, ids, etc.) so operators can correlate the failure
+ *                with the call site
+ */
+export function runDetached(
+	work: () => Promise<unknown>,
+	logger: { warn?: (obj: unknown, msg?: string) => void; error?: (obj: unknown, msg?: string) => void },
+	context: Record<string, unknown> = {}
+): void {
+	// Schedule `work()` on a microtask rather than calling it inline. An
+	// `async` function still runs its synchronous prologue (variable
+	// initialization, the first chunk before any await) in the caller's
+	// tick when invoked directly, which defeats the "detached" name.
+	// Scheduling via `Promise.resolve().then(work)` defers the entire body
+	// to the microtask queue, and additionally folds synchronous throws
+	// from `work` into the same rejection-handling path as async
+	// rejections (the `.catch` below handles both uniformly).
+	//
+	// `err` goes LAST in the log spread so a caller-supplied `context.err`
+	// can't shadow the actual exception in the structured log.
+	Promise.resolve()
+		.then(work)
+		.catch((err: unknown) => {
+			logger.error?.({ ...context, err }, 'runDetached: detached work rejected')
+		})
 }

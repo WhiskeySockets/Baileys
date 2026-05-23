@@ -91,6 +91,7 @@ import {
 	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
+	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { extractGroupMetadata } from './groups'
@@ -112,6 +113,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sessionCleanupConfig?.autoCleanCorrupted ?? DEFAULT_SESSION_CLEANUP_CONFIG.autoCleanCorrupted
 	const sock = makeMessagesSocket(config)
 	const {
+		userDevicesCache,
+		devicesMutex,
 		ev,
 		authState,
 		ws,
@@ -170,6 +173,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const TC_TOKEN_PRUNE_TS_KEY = '__prune_ts'
 	const tcTokenKnownJids = new Set<string>()
 	const tcTokenRetriedMsgIds = new Set<string>()
+	/**
+	 * Dedupe per-JID in-flight 463 token-refetch IQs.
+	 * Without this, a burst of 463 acks for the same recipient (e.g. multi-recipient
+	 * carousel) would fire N parallel getPrivacyTokens IQs. Adapted from upstream #2517
+	 * (which dedupes issuePrivacyTokens; we dedupe our equivalent getPrivacyTokens path).
+	 */
+	const inFlight463Recoveries = new Set<string>()
 
 	// Deduplicates retry requests per JID within a short window.
 	// When a burst of Bad MAC errors arrives for the same contact,
@@ -1268,9 +1278,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (messageRetryManager) {
-			// Check if we've exceeded max retries using the new system
-			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
-				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
+			// M12 fold (upstream #2576): atomic check-and-increment. `tryIncrement`
+			// reads the counter and increments it within one sync block, so a
+			// concurrent caller for the same msgId cannot both pass the limit
+			// check before either increments. Replaces the split
+			// `hasExceededMaxRetries` + `incrementRetryCount` pair which had
+			// an await boundary between the two operations.
+			const attempt = messageRetryManager.tryIncrement(msgId)
+			if (!attempt.proceed) {
+				logger.debug({ msgId, count: attempt.count }, 'reached retry limit with new retry manager, clearing')
 				messageRetryManager.markRetryFailed(msgId)
 				recordMessageFailure('retry', 'max_retries_reached')
 
@@ -1299,13 +1315,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				return
 			}
 
-			// Increment retry count using new system
-			const retryCount = messageRetryManager.incrementRetryCount(msgId)
 			recordMessageRetry('retry')
 
-			// Use the new retry count for the rest of the logic
+			// Mirror the retry count to the durable cache.
+			// Upstream #2576 H9 wraps this in retryLocks.withLock (LockManager) — we
+			// skip that wrap (LockManager arrives with Stage 1 #2571). The
+			// surrounding messageMutex.mutex(mutexKey, ...) at the call site of
+			// sendRetryRequest already serializes by (jid, msgId), so the residual
+			// race window is narrower than upstream's pre-#2576 state.
 			const key = `${msgId}:${msgKey?.participant}`
-			await msgRetryCache.set(key, retryCount)
+			await msgRetryCache.set(key, attempt.count)
 		} else {
 			// Fallback to old system
 			const key = `${msgId}:${msgKey?.participant}`
@@ -1757,6 +1776,101 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const handleDevicesNotification = async (node: BinaryNode) => {
+		const [child] = getAllBinaryNodeChildren(node)
+		const from = jidNormalizedUser(node.attrs.from)
+
+		if (!child) {
+			logger.debug({ from }, 'devices notification missing child, skipping')
+			return
+		}
+
+		const tag = child.tag as 'add' | 'remove' | 'update'
+		const deviceHash = child.attrs.device_hash
+		const devices = getBinaryNodeChildren(child, 'device')
+
+		if (areJidsSameUser(from, authState.creds.me!.id) || areJidsSameUser(from, authState.creds.me!.lid)) {
+			const deviceJids = devices.map(d => d.attrs.jid)
+			logger.info({ deviceJids }, 'got my own devices')
+		}
+
+		if (!devices.length) {
+			logger.debug({ from, tag }, 'no devices in notification, skipping')
+			return
+		}
+
+		type DecodedDevice = { jid: string; user: string; server: string; device?: number }
+		const decoded: DecodedDevice[] = []
+		for (const d of devices) {
+			const jid = d.attrs.jid
+			if (!jid) continue
+			const parts = jidDecode(jid)
+			if (!parts) {
+				logger.debug({ jid }, 'failed to decode device jid, skipping')
+				continue
+			}
+
+			decoded.push({ jid, user: parts.user, server: parts.server, device: parts.device })
+		}
+
+		if (!decoded.length) return
+
+		await devicesMutex.mutex(async () => {
+			const byUser = new Map<string, DecodedDevice[]>()
+			for (const d of decoded) {
+				const list = byUser.get(d.user) || []
+				list.push(d)
+				byUser.set(d.user, list)
+			}
+
+			for (const [user, entries] of byUser) {
+				if (tag === 'update') {
+					logger.debug({ user }, `${user}'s device list updated, dropping cached devices`)
+					await userDevicesCache?.del(user)
+					continue
+				}
+
+				if (tag === 'remove') {
+					await signalRepository.deleteSession(entries.map(e => e.jid))
+				}
+
+				const existingCache: JidWithDevice[] = (await userDevicesCache?.get<JidWithDevice[]>(user)) || []
+				if (!existingCache.length) {
+					// No baseline yet; skip applying the delta so getUSyncDevices can
+					// later fetch the full device list. Caching just the notification
+					// entries would make a partial list look authoritative.
+					logger.debug({ user, tag }, 'device list not cached, deferring to USync refresh')
+					continue
+				}
+
+				const affected = new Set(entries.map(e => e.device))
+				let updatedDevices: JidWithDevice[]
+				switch (tag) {
+					case 'add':
+						logger.info({ deviceHash, count: entries.length }, 'devices added')
+						updatedDevices = [
+							...existingCache.filter(d => !affected.has(d.device)),
+							...entries.map(e => ({ user: e.user, server: e.server, device: e.device }))
+						]
+						break
+					case 'remove':
+						logger.info({ deviceHash, count: entries.length }, 'devices removed')
+						updatedDevices = existingCache.filter(d => !affected.has(d.device))
+						break
+					default:
+						logger.debug({ tag }, 'Unknown device list change tag')
+						continue
+				}
+
+				if (updatedDevices.length === 0) {
+					await userDevicesCache?.del(user)
+				} else {
+					await userDevicesCache?.set(user, updatedDevices)
+				}
+			}
+		})
+	}
+
 	const processNotification = async (node: BinaryNode) => {
 		const result: Partial<WAMessage> = {}
 		const [child] = getAllBinaryNodeChildren(node)
@@ -1783,16 +1897,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleEncryptNotification(node)
 				break
 			case 'devices':
-				const devices = getBinaryNodeChildren(child, 'device')
-				if (
-					areJidsSameUser(child!.attrs.jid, authState.creds.me!.id) ||
-					areJidsSameUser(child!.attrs.lid, authState.creds.me!.lid)
-				) {
-					const deviceData = devices.map(d => ({ id: d.attrs.jid, lid: d.attrs.lid }))
-					logger.info({ deviceData }, 'my own devices changed')
+				try {
+					await handleDevicesNotification(node)
+				} catch (error) {
+					logger.error({ error, node }, 'failed to handle devices notification')
 				}
-
-				//TODO: drop a new event, add hashes
 
 				break
 			case 'server_sync':
@@ -2502,35 +2611,43 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const primaryJid = msg.key.participant || msg.key.remoteJid!
 
 				if (altServer === 'lid') {
-					// Check if mapping already exists to avoid unnecessary storage operations
-					const existingMapping = await signalRepository.lidMapping.getPNForLID(alt)
-					if (!existingMapping) {
+					// HYBRID guard — covers two distinct bugs:
+					//   Bug B (upstream #2574 P1): equality check, not bare existence.
+					//     `if (!existingPn)` would freeze a STALE mapping forever — if
+					//     `alt` previously mapped to LID X and a new message announces
+					//     LID Y, the old "X" stays in the store and the user state
+					//     diverges from session state. Comparing against `primaryJid`
+					//     updates the mapping when stale and skips the store when it
+					//     already matches.
+					//   Bug A (our prior fix): mapping existence doesn't imply session
+					//     migration. USync device lookup (messages-send.ts:310-319) and
+					//     other paths call storeLIDPNMappings without migrateSession,
+					//     leaving sessions under the wrong key. Upstream's full guard
+					//     skips BOTH on match, relying on Stage 3 (#2573) libsignal
+					//     canonicalization which we don't have — so we keep the
+					//     ALWAYS-migrate safety even when the mapping was already
+					//     correct. `migrateSession` is idempotent via migratedSessionCache.
+					const existingPn = await signalRepository.lidMapping.getPNForLID(alt)
+					if (existingPn !== primaryJid) {
 						// MUST await: normalizeMessageJids() runs after this and needs the mapping
 						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
 						await signalRepository.lidMapping
 							.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-							.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
+							.catch(error => logger.warn({ error, alt, primaryJid, existingPn }, 'LID mapping storage failed'))
 					}
 
-					// CRITICAL: ALWAYS migrate session, even if mapping exists
-					// Other code paths (e.g., USync device lookup in messages-send.ts:310-319)
-					// may create mappings via storeLIDPNMappings() without calling migrateSession()
-					// This leaves sessions under PN format while decrypt() expects LID format
-					// Skipping migration based on mapping existence causes "No session record" errors
 					await signalRepository.migrateSession(primaryJid, alt)
 				} else {
-					// Check if reverse mapping exists
-					const existingMapping = await signalRepository.lidMapping.getLIDForPN(alt)
-					if (!existingMapping) {
+					// Symmetric hybrid guard for the PN-alt branch.
+					const existingLid = await signalRepository.lidMapping.getLIDForPN(alt)
+					if (existingLid !== primaryJid) {
 						// MUST await: normalizeMessageJids() runs after this and needs the mapping
 						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
 						await signalRepository.lidMapping
 							.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-							.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
+							.catch(error => logger.warn({ error, alt, primaryJid, existingLid }, 'LID mapping storage failed'))
 					}
 
-					// CRITICAL: ALWAYS migrate session, even if mapping exists
-					// Same reasoning as above - mapping existence doesn't guarantee session migration
 					await signalRepository.migrateSession(alt, primaryJid)
 				}
 			}
@@ -3120,22 +3237,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				logTcToken('error_463', { jid, msgId })
 
 				// WABA Android: error 463 triggers getPrivacyTokens() fire-and-forget
-				// to ensure token is available for the retry below
-				getPrivacyTokens([jid])
-					.then(async (result) => {
-						await storeTcTokensFromIqResult({
-							result,
-							fallbackJid: jid,
-							keys: authState.keys,
-							getLIDForPN,
-							onNewJidStored: (storedJid) => {
-								tcTokenKnownJids.add(storedJid)
-								scheduleTcTokenIndexSave()
-							}
+				// to ensure token is available for the retry below.
+				// Per-JID dedupe (adapted from upstream #2517) — burst of 463 acks for the
+				// same recipient must not fan out N parallel IQs.
+				if (!inFlight463Recoveries.has(jid)) {
+					inFlight463Recoveries.add(jid)
+					getPrivacyTokens([jid])
+						.then(async (result) => {
+							await storeTcTokensFromIqResult({
+								result,
+								fallbackJid: jid,
+								keys: authState.keys,
+								getLIDForPN,
+								onNewJidStored: (storedJid) => {
+									tcTokenKnownJids.add(storedJid)
+									scheduleTcTokenIndexSave()
+								}
+							})
+							logTcToken('fetched', { jid, reason: 'error_463' })
 						})
-						logTcToken('fetched', { jid, reason: 'error_463' })
-					})
-					.catch(() => { /* fire-and-forget */ })
+						.catch(() => { /* fire-and-forget */ })
+						.finally(() => {
+							inFlight463Recoveries.delete(jid)
+						})
+				}
 
 				// Single-retry: wait 1.5s for the server's tctoken notification to arrive,
 				// then resend. A Set prevents infinite retry loops.

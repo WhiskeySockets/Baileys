@@ -1,5 +1,6 @@
+import { pipeline } from 'stream/promises'
 import { promisify } from 'util'
-import { inflate } from 'zlib'
+import { createInflate, inflate } from 'zlib'
 import { proto } from '../../WAProto/index.js'
 import type { Chat, Contact, LIDMapping, WAMessage } from '../Types'
 import { WAMessageStubType } from '../Types'
@@ -28,16 +29,14 @@ const inflatePromise = promisify(inflate)
  */
 export const downloadHistory = async (msg: proto.Message.IHistorySyncNotification, options: RequestInit) => {
 	const stream = await downloadContentFromMessage(msg, 'md-msg-hist', { options })
-	const bufferArray: Buffer[] = []
-	for await (const chunk of stream) {
-		bufferArray.push(chunk)
-	}
+	// Pipe decrypted stream directly through zlib inflate
+	// This avoids allocating an intermediate buffer for the compressed data
+	const inflater = createInflate()
+	const chunks: Buffer[] = []
+	inflater.on('data', (chunk: Buffer) => chunks.push(chunk))
+	await pipeline(stream, inflater)
 
-	let buffer: Buffer = Buffer.concat(bufferArray)
-
-	// decompress buffer
-	buffer = await inflatePromise(buffer)
-
+	const buffer = Buffer.concat(chunks)
 	const syncData = proto.HistorySync.decode(buffer)
 	return syncData
 }

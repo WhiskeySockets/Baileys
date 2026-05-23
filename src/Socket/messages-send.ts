@@ -41,7 +41,7 @@ import {
 } from '../Utils'
 import { logMessageSent, logTcToken } from '../Utils/baileys-logger'
 import { getUrlInfo } from '../Utils/link-preview'
-import { makeKeyedMutex } from '../Utils/make-mutex'
+import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { metrics, recordMessageFailure, recordMessageSent } from '../Utils/prometheus-metrics'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
@@ -110,6 +110,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 			useClones: false
 		})
+	/** Serializes writes to userDevicesCache across USync refresh and device-notification handling. */
+	const devicesMutex = makeMutex()
 
 	const peerSessionsCache = new NodeCache<boolean>({
 		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES,
@@ -125,10 +127,47 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Tracks JIDs with an in-flight getPrivacyTokens IQ to avoid duplicate concurrent fetches
 	const tcTokenFetchingJids = new Set<string>()
 
-	let mediaConn: Promise<MediaConnInfo>
-	const refreshMediaConn = async (forceGet = false) => {
-		const media = await mediaConn
-		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
+	let mediaConn: Promise<MediaConnInfo> | undefined
+	/**
+	 * Single-flight guard for the media-conn fetch (adapted from upstream #2579 Stage 9).
+	 * Two concurrent callers used to both observe `mediaConn` as expired and both
+	 * reassign the in-flight promise, leaking the first fetch's result. The mutex
+	 * ensures only one refresh runs at a time; subsequent callers await the
+	 * in-flight or reuse the freshly-cached value.
+	 */
+	const mediaConnMutex = makeMutex()
+	/**
+	 * Safely await the cached `mediaConn` promise. If a previous fetch stored a
+	 * REJECTED promise, awaiting it again would just rethrow forever and poison
+	 * every subsequent caller with the stale failure — there'd be no way to retry.
+	 * Clear the cache slot on rejection so the next caller falls through to a
+	 * fresh `media_conn` query.
+	 */
+	const safeAwaitMediaConn = async (): Promise<MediaConnInfo | undefined> => {
+		if (!mediaConn) return undefined
+		try {
+			return await mediaConn
+		} catch (err) {
+			logger.warn({ err }, 'previous media_conn fetch failed, will retry')
+			mediaConn = undefined
+			return undefined
+		}
+	}
+
+	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
+		const cached = await safeAwaitMediaConn()
+		if (cached && !forceGet && new Date().getTime() - cached.fetchDate.getTime() <= cached.ttl * 1000) {
+			return cached
+		}
+
+		return mediaConnMutex.mutex(async () => {
+			// Re-check inside the lock: another caller may have refreshed while
+			// we were waiting on the mutex.
+			const after = await safeAwaitMediaConn()
+			if (after && !forceGet && new Date().getTime() - after.fetchDate.getTime() <= after.ttl * 1000) {
+				return after
+			}
+
 			mediaConn = (async () => {
 				const result = await query({
 					tag: 'iq',
@@ -154,9 +193,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				logger.debug('fetched media conn')
 				return node
 			})()
-		}
 
-		return mediaConn
+			return mediaConn
+		})
 	}
 
 	/**
@@ -378,14 +417,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			if (userDevicesCache.mset) {
-				// if the cache supports mset, we can set all devices in one go
-				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
-			} else {
-				for (const key in deviceMap) {
-					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+			await devicesMutex.mutex(async () => {
+				if (userDevicesCache.mset) {
+					// if the cache supports mset, we can set all devices in one go
+					await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+				} else {
+					for (const key in deviceMap) {
+						if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+					}
 				}
-			}
+			})
 
 			const userDeviceUpdates: { [userId: string]: string[] } = {}
 			for (const [userId, devices] of Object.entries(deviceMap)) {
@@ -2089,6 +2130,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		userDevicesCache,
+		devicesMutex,
 		getPrivacyTokens,
 		assertSessions,
 		relayMessage,

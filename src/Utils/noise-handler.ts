@@ -1,4 +1,5 @@
 import { Boom } from '@hapi/boom'
+import { Mutex } from 'async-mutex'
 import { proto } from '../../WAProto/index.js'
 import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import type { KeyPair } from '../Types'
@@ -11,17 +12,38 @@ const IV_LENGTH = 12
 
 const EMPTY_BUFFER = Buffer.alloc(0)
 
-const generateIV = (counter: number): Uint8Array => {
-	const iv = new ArrayBuffer(IV_LENGTH)
-	new DataView(iv).setUint32(8, counter)
-	return new Uint8Array(iv)
+/**
+ * Builds a fresh AES-GCM IV from the counter on every call. Stage 7 (M10):
+ * the previous implementation reused a single shared `Uint8Array` and mutated
+ * its bytes in place. Safe only because `aesEncryptGCM` is synchronous — any
+ * future move to an async/streaming AEAD silently reuses the IV with the same
+ * key, which is catastrophic for AES-GCM. The fresh allocation costs ~12
+ * bytes per call and removes the implicit "must stay sync" invariant.
+ *
+ * Single source of truth for handshake AND transport IV construction (the
+ * earlier `generateIV` ArrayBuffer+DataView variant was identical in output
+ * — 12 zero bytes with the counter written as big-endian uint32 at offset
+ * 8 — but a redundant second implementation; consolidating prevents the
+ * two from drifting apart in future edits).
+ */
+const ivForCounter = (counter: number): Uint8Array => {
+	const iv = new Uint8Array(IV_LENGTH)
+	iv[8] = (counter >>> 24) & 0xff
+	iv[9] = (counter >>> 16) & 0xff
+	iv[10] = (counter >>> 8) & 0xff
+	iv[11] = counter & 0xff
+	return iv
 }
+
+/**
+ * Test-only export of {@link ivForCounter}. Not part of the public API
+ * surface — the leading underscore + `__testOnly_` prefix flag that.
+ */
+export const __testOnly_ivForCounter = ivForCounter
 
 class TransportState {
 	private readCounter = 0
 	private writeCounter = 0
-
-	private readonly iv = new Uint8Array(IV_LENGTH)
 
 	constructor(
 		private readonly encKey: Uint8Array,
@@ -30,22 +52,12 @@ class TransportState {
 
 	encrypt(plaintext: Uint8Array): Uint8Array {
 		const c = this.writeCounter++
-		this.iv[8] = (c >>> 24) & 0xff
-		this.iv[9] = (c >>> 16) & 0xff
-		this.iv[10] = (c >>> 8) & 0xff
-		this.iv[11] = c & 0xff
-
-		return aesEncryptGCM(plaintext, this.encKey, this.iv, EMPTY_BUFFER)
+		return aesEncryptGCM(plaintext, this.encKey, ivForCounter(c), EMPTY_BUFFER)
 	}
 
 	decrypt(ciphertext: Uint8Array): Buffer {
 		const c = this.readCounter++
-		this.iv[8] = (c >>> 24) & 0xff
-		this.iv[9] = (c >>> 16) & 0xff
-		this.iv[10] = (c >>> 8) & 0xff
-		this.iv[11] = c & 0xff
-
-		return aesDecryptGCM(ciphertext, this.decKey, this.iv, EMPTY_BUFFER) as Buffer
+		return aesDecryptGCM(ciphertext, this.decKey, ivForCounter(c), EMPTY_BUFFER) as Buffer
 	}
 }
 
@@ -71,6 +83,16 @@ export const makeNoiseHandler = ({
 	let sentIntro = false
 
 	let inBytes: Buffer = Buffer.alloc(0)
+
+	/**
+	 * Serializes `decodeFrame` so concurrent socket reads don't interleave on
+	 * the shared `inBytes` buffer and the awaited `processData` loop (M10).
+	 * Critical because `processData` awaits `decodeBinaryNode` in transport
+	 * mode — a second `decodeFrame` invocation that arrives mid-await would
+	 * otherwise see a half-drained `inBytes` and either lose frames or
+	 * de-frame across two distinct payloads.
+	 */
+	const decodeFrameMutex = new Mutex()
 
 	let transport: TransportState | null = null
 	let isWaitingForTransport = false
@@ -101,7 +123,7 @@ export const makeNoiseHandler = ({
 			return transport.encrypt(plaintext)
 		}
 
-		const result = aesEncryptGCM(plaintext, encKey, generateIV(counter++), hash)
+		const result = aesEncryptGCM(plaintext, encKey, ivForCounter(counter++), hash)
 		authenticate(result)
 		return result
 	}
@@ -111,7 +133,7 @@ export const makeNoiseHandler = ({
 			return transport.decrypt(ciphertext)
 		}
 
-		const result = aesDecryptGCM(ciphertext, decKey, generateIV(counter++), hash)
+		const result = aesDecryptGCM(ciphertext, decKey, ivForCounter(counter++), hash)
 		authenticate(ciphertext)
 		return result
 	}
@@ -139,8 +161,17 @@ export const makeNoiseHandler = ({
 
 		if (pendingOnFrame) {
 			logger.trace({ length: inBytes.length }, 'Flushing buffered frames after transport ready')
-			await processData(pendingOnFrame)
-			pendingOnFrame = null
+			// M10 fix (PR #451 CodeRabbit follow-up): acquire decodeFrameMutex
+			// here too. Without it, a socket `data` event firing during the
+			// `await processData(...)` would re-enter `decodeFrame` (which
+			// holds the mutex) and race on `inBytes` with this flush (which
+			// previously didn't). The mutex's reentrancy isn't an issue here
+			// — finishInit is only called once, from the handshake completion
+			// path, so this acquire happens before any other decodeFrame call.
+			await decodeFrameMutex.runExclusive(async () => {
+				await processData(pendingOnFrame!)
+				pendingOnFrame = null
+			})
 		}
 	}
 
@@ -265,20 +296,23 @@ export const makeNoiseHandler = ({
 
 			return frame
 		},
-		decodeFrame: async (newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
-			if (isWaitingForTransport) {
-				inBytes = Buffer.concat([inBytes, newData])
-				pendingOnFrame = onFrame
-				return
-			}
+		decodeFrame: (newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
+			// M10: serialize the inBytes mutation + processData drain.
+			return decodeFrameMutex.runExclusive(async () => {
+				if (isWaitingForTransport) {
+					inBytes = Buffer.concat([inBytes, newData])
+					pendingOnFrame = onFrame
+					return
+				}
 
-			if (inBytes.length === 0) {
-				inBytes = Buffer.from(newData)
-			} else {
-				inBytes = Buffer.concat([inBytes, newData])
-			}
+				if (inBytes.length === 0) {
+					inBytes = Buffer.from(newData)
+				} else {
+					inBytes = Buffer.concat([inBytes, newData])
+				}
 
-			await processData(onFrame)
+				await processData(onFrame)
+			})
 		}
 	}
 }

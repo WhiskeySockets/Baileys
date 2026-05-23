@@ -86,6 +86,18 @@ export function makeCacheableSignalKeyStore(
 		},
 		async set(data) {
 			return cacheMutex.runExclusive(async () => {
+				// H6 closure (adapted from upstream #2574):
+				// Durable write FIRST; cache update only after success. If `store.set`
+				// throws, the cache stays untouched and subsequent `get` reads return
+				// the previous committed value (or fall back to the store), never an
+				// unpersisted one that would linger until TTL expiry.
+				//
+				// Note: we keep the existing global `cacheMutex` rather than adopting
+				// upstream's per-record LockManager — that change depends on Stage 1
+				// (#2571) which is not yet ported. The write-through inversion is the
+				// load-bearing part of the H6 fix.
+				await store.set(data)
+
 				let keys = 0
 				for (const type in data) {
 					for (const id in data[type as keyof SignalDataTypeMap]) {
@@ -95,7 +107,6 @@ export function makeCacheableSignalKeyStore(
 				}
 
 				logger?.trace({ keys }, 'updated cache')
-				await store.set(data)
 			})
 		},
 		async clear() {
