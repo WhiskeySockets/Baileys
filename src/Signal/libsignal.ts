@@ -747,7 +747,12 @@ export function makeLibSignalRepository(
 			})()
 
 			migrationInFlight.set(user, migrationPromise)
-			migrationPromise.finally(() => migrationInFlight.delete(user))
+			// `void` marks this finally chain as intentionally fire-and-forget.
+			// The original `migrationPromise` returned below is the awaited
+			// reference; this auxiliary chain only services the inFlight
+			// cleanup. Without `void`, no-floating-promises flags it (PR #451
+			// CodeRabbit lint nit).
+			void migrationPromise.finally(() => migrationInFlight.delete(user))
 			return migrationPromise
 		}
 	}
@@ -851,9 +856,32 @@ function signalStorage(
 	const pendingPreKeyDeletions = new Map<string, ReturnType<typeof setTimeout>>()
 
 	return {
+		/**
+		 * Flush pending PreKey deletions on socket close.
+		 *
+		 * PR #451 cubic-dev finding (P2): the previous implementation only
+		 * cancelled the 5-minute grace timers without running the actual
+		 * `keys.set({ 'pre-key': { [id]: null } })` they were scheduled to
+		 * perform. Consumed prekeys would then linger in persistent auth
+		 * storage across the close → reconnect cycle (and grow without bound
+		 * over many reconnects, defeating the leak-prevention work from
+		 * PR #448).
+		 *
+		 * The flush is best-effort. The grace period exists to handle the
+		 * race where two pkmsg arrive with the same preKeyId nearly
+		 * simultaneously, but during socket close no new pkmsg can arrive
+		 * (decryption path is dormant), so collapsing the wait is safe. If
+		 * the keystore is being torn down concurrently the .catch swallows
+		 * the failure — same contract the timer body itself used.
+		 */
 		clearPendingPreKeyDeletions: () => {
-			for (const timer of pendingPreKeyDeletions.values()) {
+			for (const [keyId, timer] of pendingPreKeyDeletions) {
 				clearTimeout(timer)
+				// `keys.set` return type is `Awaitable<void>` = `void | Promise<void>`,
+				// so we wrap in Promise.resolve to unify the failure-swallow path.
+				Promise.resolve(keys.set({ 'pre-key': { [Number(keyId)]: null } })).catch(() => {
+					// Keystore may be destroyed if connection closed — safe to ignore
+				})
 			}
 
 			pendingPreKeyDeletions.clear()
