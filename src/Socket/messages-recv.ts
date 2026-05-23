@@ -2065,6 +2065,58 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}, authState.creds.me?.id || 'session-operation')
 		}
 
+		/**
+		 * TEMPORARY DIAGNOSTIC (TODO: remove after the reg-id-mismatch root cause is identified).
+		 *
+		 * Verifies that deleteCanonicalSession actually removed the session. Reads the raw session
+		 * keys we just nulled (NOT getSessionInfo — that returns null in three different cases:
+		 * truly deleted, session exists but has no open chain, or session exists but is missing
+		 * baseKey/registrationId — would falsely look "deleted" in the latter two).
+		 *
+		 * Logging strategy (designed to be safe in production):
+		 *  - deleted === true  → debug (expected path, no noise during retry storms)
+		 *  - deleted === false → warn  (a real bug — silent transaction failure or LID/PN
+		 *                                resolution missed the stored copy)
+		 *
+		 * The expensive part (keystore read) only runs when a delete just happened, which is
+		 * naturally low-frequency in stable operation. Frequent only right after a fresh QR
+		 * pairing when sessions are first established.
+		 */
+		const verifyCanonicalDelete = async (reason: string) => {
+			try {
+				const lookupKeys: string[] = [sessionId]
+				if (!isLidUser(participant)) {
+					const lid = await signalRepository.lidMapping.getLIDForPN(participant)
+					if (lid) {
+						lookupKeys.push(signalRepository.jidToSignalProtocolAddress(lid))
+					}
+				}
+
+				const sessions = await authState.keys.get('session', lookupKeys)
+				const stillStoredKeys = lookupKeys.filter(k => sessions[k] !== undefined && sessions[k] !== null)
+				const deleted = stillStoredKeys.length === 0
+
+				if (deleted) {
+					logger.debug({ participant, reason }, '[DIAG] POST-DELETE canonical session removed')
+					return
+				}
+
+				// Not deleted — fetch registrationId for context (the real problem case).
+				const info = await signalRepository.getSessionInfo(participant)
+				logger.warn(
+					{
+						participant,
+						reason,
+						stillStoredKeys,
+						registrationId: info?.registrationId
+					},
+					'[DIAG] POST-DELETE canonical session STILL PRESENT — delete failed silently'
+				)
+			} catch (err) {
+				logger.debug({ err, participant, reason }, '[DIAG] POST-DELETE verification failed')
+			}
+		}
+
 		// Try to get messages from cache first, then fallback to getMessage
 		const msgs: (proto.IMessage | undefined)[] = []
 		for (const id of ids) {
@@ -2150,6 +2202,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						'reg id mismatch on retry without bundle, deleting session'
 					)
 					await deleteCanonicalSession()
+					await verifyCanonicalDelete('reg_id_mismatch')
 				}
 			}
 		}
@@ -2168,6 +2221,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
 						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
 						await deleteCanonicalSession()
+						await verifyCanonicalDelete('base_key_collision')
 					}
 
 					messageRetryManager.deleteBaseKey(sessionId, msgId)
@@ -2204,6 +2258,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					// The race-prevention via me?.id transaction key is preserved inside
 					// the helper, matching the original a3dd21c9 / 52aa6402 contract.
 					await deleteCanonicalSession()
+					await verifyCanonicalDelete('outgoing_retry_recreate')
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')

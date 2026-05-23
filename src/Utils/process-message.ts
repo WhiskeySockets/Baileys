@@ -408,11 +408,22 @@ const processMessage = async (
 
 	const protocolMsg = content?.protocolMessage
 	if (protocolMsg) {
+		// Self-only protocol messages legitimately arrive from OUR OWN account on any device — the
+		// primary phone (no device suffix) routinely sends APP_STATE_SYNC_KEY_SHARE / HISTORY_SYNC
+		// to its linked companions without `fromMe` being set, and may address us via PN or LID.
+		// Compare by user (same WhatsApp account, any device) instead of strict fromMe — otherwise
+		// we drop the keys the phone is trying to share and app state sync hangs on "missing key
+		// from v0, parking after 2 attempts".
+		const fromJid = message.key.participant || message.key.remoteJid || ''
+		const isFromOwnAccount =
+			message.key.fromMe ||
+			areJidsSameUser(fromJid, meId) ||
+			(meUser.lid ? areJidsSameUser(fromJid, meUser.lid) : false)
 		if (
 			protocolMsg.type !== null &&
 			protocolMsg.type !== undefined &&
 			SELF_ONLY_PROTOCOL_TYPES.has(protocolMsg.type) &&
-			!message.key.fromMe
+			!isFromOwnAccount
 		) {
 			logger?.warn(
 				{ msgId: message.key.id, type: protocolMsg.type, from: message.key.participant || message.key.remoteJid },
