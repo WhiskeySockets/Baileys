@@ -1,4 +1,4 @@
-import { BufferJSON } from '../../Utils/generics'
+import { BufferJSON, runDetached } from '../../Utils/generics'
 
 describe('BufferJSON', () => {
 	const originalObject = {
@@ -66,5 +66,49 @@ describe('BufferJSON', () => {
 	it('should correctly handle an empty object', () => {
 		const revived = JSON.parse('{}', BufferJSON.reviver)
 		expect(revived).toEqual({})
+	})
+})
+
+describe('runDetached', () => {
+	const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
+	it('schedules work on a microtask so the caller tick is not blocked', async () => {
+		const order: string[] = []
+		const logger = { error: () => {} }
+
+		runDetached(async () => {
+			order.push('work-prologue')
+			await delay(0)
+			order.push('work-after-await')
+		}, logger)
+
+		order.push('caller-sync')
+
+		await delay(20)
+
+		expect(order[0]).toBe('caller-sync')
+		expect(order).toContain('work-prologue')
+		expect(order).toContain('work-after-await')
+	})
+
+	it('logs the actual rejection even when context carries a colliding `err` key', async () => {
+		const errorCalls: Array<{ obj: unknown; msg?: string }> = []
+		const logger = { error: (obj: unknown, msg?: string) => errorCalls.push({ obj, msg }) }
+
+		runDetached(
+			async () => {
+				throw new Error('actual-detached-failure')
+			},
+			logger,
+			{ op: 'unit-test', err: 'caller-supplied-misleading-value' }
+		)
+
+		await delay(10)
+
+		expect(errorCalls).toHaveLength(1)
+		const payload = errorCalls[0]!.obj as { op: string; err: unknown }
+		expect(payload.op).toBe('unit-test')
+		expect(payload.err).toBeInstanceOf(Error)
+		expect((payload.err as Error).message).toBe('actual-detached-failure')
 	})
 })
