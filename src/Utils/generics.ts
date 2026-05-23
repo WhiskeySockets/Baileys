@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { createHash, randomBytes } from 'crypto'
+import type Long from 'long'
 import { proto } from '../../WAProto/index.js'
 // Single source of truth for WhatsApp Web version - imported from JSON
 import baileysVersionData from '../Defaults/baileys-version.json' with { type: 'json' }
