@@ -887,11 +887,20 @@ function signalStorage(
 			}
 
 			if (Object.keys(deletions).length > 0) {
-				// `keys.set` return type is `Awaitable<void>` = `void | Promise<void>`,
-				// so we wrap in Promise.resolve to unify the failure-swallow path.
-				Promise.resolve(keys.set({ 'pre-key': deletions })).catch(() => {
-					// Keystore may be destroyed if connection closed — safe to ignore
-				})
+				// `keys.set` return type is `Awaitable<void>` = `void | Promise<void>`.
+				// Defer the call into a `.then` (PR #451 CodeRabbit follow-up):
+				// a non-async implementation that throws SYNCHRONOUSLY would
+				// otherwise escape before `.catch` is attached. Wrapping with
+				// `Promise.resolve().then(() => keys.set(...))` converts any
+				// synchronous throw into a rejection that the `.catch` below
+				// can swallow uniformly with async rejections. Our in-repo
+				// implementations are all async, but the type allows non-async
+				// (third-party stores in Astra-Api etc).
+				void Promise.resolve()
+					.then(() => keys.set({ 'pre-key': deletions }))
+					.catch(() => {
+						// Keystore may be destroyed if connection closed — safe to ignore
+					})
 			}
 
 			pendingPreKeyDeletions.clear()
