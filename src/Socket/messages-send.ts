@@ -37,7 +37,6 @@ import {
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
-	runDetached,
 	unixTimestampSeconds
 } from '../Utils'
 import { logMessageSent, logTcToken } from '../Utils/baileys-logger'
