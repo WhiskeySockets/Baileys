@@ -87,6 +87,15 @@ export type SignalDataTypeMap = {
 
 export type SignalDataSet = { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null } }
 
+/** Names of the typed records a {@link SignalKeyStore} holds. */
+export type SignalDataType = keyof SignalDataTypeMap
+
+/** Identifies one (type, id) record in the key store — the unit of locking. */
+export type RecordRef = {
+	type: SignalDataType
+	id: string
+}
+
 type Awaitable<T> = T | Promise<T>
 
 export type SignalKeyStore = {
@@ -94,12 +103,32 @@ export type SignalKeyStore = {
 	set(data: SignalDataSet): Awaitable<void>
 	/** clear all the data in the store */
 	clear?(): Awaitable<void>
+	/**
+	 * Enumerate every (id, value) pair for a type. Optional so existing user-implemented
+	 * stores keep compiling; required by future auth-state migration / bulk operations
+	 * (Stage 5+ in the upstream concurrency rewrite — not yet ported to InfiniteAPI).
+	 * Adapters should stream rather than buffer the whole result set into memory.
+	 */
+	list?<T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<readonly [id: string, value: SignalDataTypeMap[T]]>
+	/**
+	 * Ids-only fast path for enumeration. Optional. Adapters that can satisfy this
+	 * without reading values (e.g. SQL `SELECT id`) should implement it; callers that
+	 * need values can still fall back to `list`.
+	 */
+	listIds?<T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<string>
 }
 
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
-	destroy?: () => void
+	/**
+	 * Cleanup hook called on socket close. Returns Promise so the caller can
+	 * await graceful drainage of in-flight transactions before tearing down
+	 * dependent resources (preKeyManager, etc.). PR #453 CodeRabbit fix —
+	 * widened from `() => void` to support the active-transaction drain loop
+	 * in `addTransactionCapability.destroy()`.
+	 */
+	destroy?: () => Awaitable<void>
 }
 
 export type TransactionCapabilityOptions = {

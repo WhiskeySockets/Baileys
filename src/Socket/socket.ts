@@ -1069,8 +1069,10 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		}
 
-		// Clean up transaction capability (PreKeyManager + queues)
-		keys.destroy?.()
+		// Clean up transaction capability (PreKeyManager). Await: destroy()
+		// drains in-flight transactions before tearing down preKeyManager
+		// (PR #453 CodeRabbit Major fix — active-transaction counter).
+		await keys.destroy?.()
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
