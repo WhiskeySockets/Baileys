@@ -47,8 +47,16 @@ export function makeCacheableSignalKeyStore(
 			deleteOnExpire: true
 		})
 
-	// Mutex for protecting cache operations
-	const cacheMutex = new Mutex()
+	// Note: no global mutex here. The cache is a read-through write-through
+	// layer over `store`; the worst a race can do is trigger a redundant
+	// `store.get` for the same missing id (idempotent) or have two writers
+	// repopulate the same cache entry with the same value. Serializing all
+	// signal key access through one mutex created contention on hot paths
+	// (decrypt fan-out, group sender keys) for no correctness benefit —
+	// the underlying store is the source of truth. Concurrency that must
+	// be serialized (read-modify-write of pre-keys, transactional sets)
+	// is handled by `addTransactionCapability` below, which uses per-key
+	// mutexes.
 
 	function getUniqueId(type: string, id: string) {
 		return `${type}.${id}`
@@ -56,48 +64,44 @@ export function makeCacheableSignalKeyStore(
 
 	return {
 		async get(type, ids) {
-			return cacheMutex.runExclusive(async () => {
-				const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
-				const idsToFetch: string[] = []
+			const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
+			const idsToFetch: string[] = []
 
-				for (const id of ids) {
-					const item = (await cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))) as any
-					if (typeof item !== 'undefined') {
+			for (const id of ids) {
+				const item = (await cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))) as any
+				if (typeof item !== 'undefined') {
+					data[id] = item
+				} else {
+					idsToFetch.push(id)
+				}
+			}
+
+			if (idsToFetch.length) {
+				logger?.trace({ items: idsToFetch.length }, 'loading from store')
+				const fetched = await store.get(type, idsToFetch)
+				for (const id of idsToFetch) {
+					const item = fetched[id]
+					if (item) {
 						data[id] = item
-					} else {
-						idsToFetch.push(id)
+						// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+						await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
 					}
 				}
+			}
 
-				if (idsToFetch.length) {
-					logger?.trace({ items: idsToFetch.length }, 'loading from store')
-					const fetched = await store.get(type, idsToFetch)
-					for (const id of idsToFetch) {
-						const item = fetched[id]
-						if (item) {
-							data[id] = item
-							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
-						}
-					}
-				}
-
-				return data
-			})
+			return data
 		},
 		async set(data) {
-			return cacheMutex.runExclusive(async () => {
-				let keys = 0
-				for (const type in data) {
-					for (const id in data[type as keyof SignalDataTypeMap]) {
-						await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
-						keys += 1
-					}
+			let keys = 0
+			for (const type in data) {
+				for (const id in data[type as keyof SignalDataTypeMap]) {
+					await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+					keys += 1
 				}
+			}
 
-				logger?.trace({ keys }, 'updated cache')
-				await store.set(data)
-			})
+			logger?.trace({ keys }, 'updated cache')
+			await store.set(data)
 		},
 		async clear() {
 			await cache.flushAll()
