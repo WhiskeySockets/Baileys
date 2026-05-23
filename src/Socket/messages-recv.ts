@@ -2067,12 +2067,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		/**
 		 * DIAGNOSTIC (temporary): verify that deleteCanonicalSession actually removed the session.
-		 * If `deleted` is false (session still loadable with same reg id), the transaction either
-		 * failed silently or the LID/PN resolution missed the actual stored copy → that is the
-		 * leak driving the reg-id-mismatch loop reported in production. If `deleted` is true but
-		 * future sends to the same participant keep hitting mismatch with the SAME stale
-		 * `stored` value, the WhatsApp server is serving a cached PreKeyBundle with an old
-		 * registrationId (out of our control, only mitigation is to keep retrying).
+		 * If `deleted` is false (raw key still present), the transaction either failed silently or
+		 * the LID/PN resolution missed the actual stored copy → that is the leak driving the
+		 * reg-id-mismatch loop reported in production. If `deleted` is true but future sends to
+		 * the same participant keep hitting mismatch with the SAME stale `stored` value, the
+		 * WhatsApp server is serving a cached PreKeyBundle with an old registrationId (out of our
+		 * control, only mitigation is to keep retrying).
+		 *
+		 * Reads the raw session keys we just nulled (NOT getSessionInfo, which also returns null
+		 * when an existing session merely lacks an open chain or baseKey/registrationId — would
+		 * falsely look "deleted"). [Copilot PR #449 review]
 		 *
 		 * Only fires when a delete just happened — naturally low-frequency in stable operation;
 		 * frequent only right after a fresh QR pairing when sessions are first established.
@@ -2080,13 +2084,33 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		 */
 		const verifyCanonicalDelete = async (reason: string) => {
 			try {
-				const verify = await signalRepository.getSessionInfo(participant)
+				const lookupKeys: string[] = [sessionId]
+				if (!isLidUser(participant)) {
+					const lid = await signalRepository.lidMapping.getLIDForPN(participant)
+					if (lid) {
+						lookupKeys.push(signalRepository.jidToSignalProtocolAddress(lid))
+					}
+				}
+
+				const sessions = await authState.keys.get('session', lookupKeys)
+				const stillStoredKeys = lookupKeys.filter(k => sessions[k] != null)
+				const deleted = stillStoredKeys.length === 0
+
+				// Only fetch registrationId when not deleted (for context) — avoids the noise of
+				// reading an open session right after a confirmed delete.
+				let registrationId: number | undefined
+				if (!deleted) {
+					const info = await signalRepository.getSessionInfo(participant)
+					registrationId = info?.registrationId
+				}
+
 				logger.info(
 					{
 						participant,
 						reason,
-						deleted: !verify,
-						stillStored: verify?.registrationId
+						deleted,
+						stillStoredKeys,
+						registrationId
 					},
 					'[DIAG] POST-DELETE canonical session state'
 				)

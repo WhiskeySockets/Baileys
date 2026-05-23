@@ -1630,6 +1630,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		if (ownsPlaceholderResendCache) {
 			placeholderResendCache.close?.()
 			placeholderResendCache.flushAll?.()
+			// Reset the back-assignment so a reconnect using the same config object doesn't pick
+			// our just-closed cache up as "consumer-provided" (ownership flip-flop) — that would
+			// leave the new socket using a timer-stopped cache where entries accumulate forever
+			// without TTL eviction. [Copilot PR #449 review]
+			if (config.placeholderResendCache === placeholderResendCache) {
+				config.placeholderResendCache = undefined
+			}
 		}
 	})
 
