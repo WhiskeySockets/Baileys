@@ -2602,35 +2602,43 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const primaryJid = msg.key.participant || msg.key.remoteJid!
 
 				if (altServer === 'lid') {
-					// Check if mapping already exists to avoid unnecessary storage operations
-					const existingMapping = await signalRepository.lidMapping.getPNForLID(alt)
-					if (!existingMapping) {
+					// HYBRID guard — covers two distinct bugs:
+					//   Bug B (upstream #2574 P1): equality check, not bare existence.
+					//     `if (!existingPn)` would freeze a STALE mapping forever — if
+					//     `alt` previously mapped to LID X and a new message announces
+					//     LID Y, the old "X" stays in the store and the user state
+					//     diverges from session state. Comparing against `primaryJid`
+					//     updates the mapping when stale and skips the store when it
+					//     already matches.
+					//   Bug A (our prior fix): mapping existence doesn't imply session
+					//     migration. USync device lookup (messages-send.ts:310-319) and
+					//     other paths call storeLIDPNMappings without migrateSession,
+					//     leaving sessions under the wrong key. Upstream's full guard
+					//     skips BOTH on match, relying on Stage 3 (#2573) libsignal
+					//     canonicalization which we don't have — so we keep the
+					//     ALWAYS-migrate safety even when the mapping was already
+					//     correct. `migrateSession` is idempotent via migratedSessionCache.
+					const existingPn = await signalRepository.lidMapping.getPNForLID(alt)
+					if (existingPn !== primaryJid) {
 						// MUST await: normalizeMessageJids() runs after this and needs the mapping
 						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
 						await signalRepository.lidMapping
 							.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-							.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
+							.catch(error => logger.warn({ error, alt, primaryJid, existingPn }, 'LID mapping storage failed'))
 					}
 
-					// CRITICAL: ALWAYS migrate session, even if mapping exists
-					// Other code paths (e.g., USync device lookup in messages-send.ts:310-319)
-					// may create mappings via storeLIDPNMappings() without calling migrateSession()
-					// This leaves sessions under PN format while decrypt() expects LID format
-					// Skipping migration based on mapping existence causes "No session record" errors
 					await signalRepository.migrateSession(primaryJid, alt)
 				} else {
-					// Check if reverse mapping exists
-					const existingMapping = await signalRepository.lidMapping.getLIDForPN(alt)
-					if (!existingMapping) {
+					// Symmetric hybrid guard for the PN-alt branch.
+					const existingLid = await signalRepository.lidMapping.getLIDForPN(alt)
+					if (existingLid !== primaryJid) {
 						// MUST await: normalizeMessageJids() runs after this and needs the mapping
 						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
 						await signalRepository.lidMapping
 							.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-							.catch(error => logger.warn({ error, alt, primaryJid }, 'LID mapping storage failed'))
+							.catch(error => logger.warn({ error, alt, primaryJid, existingLid }, 'LID mapping storage failed'))
 					}
 
-					// CRITICAL: ALWAYS migrate session, even if mapping exists
-					// Same reasoning as above - mapping existence doesn't guarantee session migration
 					await signalRepository.migrateSession(alt, primaryJid)
 				}
 			}
