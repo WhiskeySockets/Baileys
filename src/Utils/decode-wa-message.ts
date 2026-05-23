@@ -18,6 +18,37 @@ import {
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
+import { decodeDecryptedMsmsgMessage, decodeRichResponseMessage, decryptMsmsgBotMessage, type MsmsgMessageKey } from './meta-ai-msmsg'
+
+const MAX_SECRETS_PER_CHAT = 20
+
+const botMessageSecrets = new Map<string, Buffer>()
+const botRecentSecretsByChat = new Map<string, { id: string; secret: Buffer }[]>()
+
+const pushRecentChatSecret = (chatJid: string, id: string, secretBuf: Buffer): void => {
+	if (!chatJid || !secretBuf) return
+	const existing = botRecentSecretsByChat.get(chatJid) || []
+	const filtered = existing.filter(item => item.id !== id && !item.secret.equals(secretBuf))
+	filtered.unshift({ id, secret: secretBuf })
+	if (filtered.length > MAX_SECRETS_PER_CHAT) filtered.length = MAX_SECRETS_PER_CHAT
+	botRecentSecretsByChat.set(chatJid, filtered)
+}
+
+export const setBotMessageSecret = (id: string, secret: Uint8Array | Buffer | string, chatJid?: string): void => {
+	if (!id || !secret) return
+	let buf: Buffer
+	if (Buffer.isBuffer(secret)) {
+		buf = secret
+	} else if (secret instanceof Uint8Array) {
+		buf = Buffer.from(secret.buffer, secret.byteOffset, secret.byteLength)
+	} else if (typeof secret === 'string') {
+		buf = Buffer.from(secret, 'base64')
+	} else {
+		return
+	}
+	botMessageSecrets.set(id, buf)
+	if (chatJid) pushRecentChatSecret(chatJid, id, buf)
+}
 
 export const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
 	if (isLidUser(sender) || isHostedLidUser(sender)) {
@@ -269,6 +300,12 @@ export const decryptMessageNode = (
 	logger: ILogger
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
+
+	let metaTargetId: string | null = null
+	let botEditTargetId: string | null = null
+	let botType: string | null = null
+	let metaTargetSenderJid: string | null = null
+
 	return {
 		fullMessage,
 		category: stanza.attrs.category,
@@ -276,6 +313,17 @@ export const decryptMessageNode = (
 		async decrypt() {
 			let decryptables = 0
 			if (Array.isArray(stanza.content)) {
+				// Pre-scan for msmsg metadata nodes
+				const hasMsmsg = stanza.content.some(({ attrs }) => attrs?.type === 'msmsg')
+				if (hasMsmsg) {
+					for (const { tag, attrs } of stanza.content) {
+						if (tag === 'meta' && attrs?.target_id) metaTargetId = attrs.target_id
+						if (tag === 'meta' && attrs?.target_sender_jid) metaTargetSenderJid = attrs.target_sender_jid
+						if (tag === 'bot' && attrs && 'edit_target_id' in attrs) botEditTargetId = attrs.edit_target_id
+						if (tag === 'bot' && attrs?.edit) botType = attrs.edit
+					}
+				}
+
 				for (const { tag, attrs, content } of stanza.content) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
 						const cert = proto.VerifiedNameCertificate.decode(content)
@@ -301,7 +349,7 @@ export const decryptMessageNode = (
 
 					decryptables += 1
 
-					let msgBuffer: Uint8Array
+					let msgBuffer: Uint8Array | Buffer | undefined
 
 					const decryptionJid = await getDecryptionJid(author, repository)
 
@@ -329,6 +377,79 @@ export const decryptMessageNode = (
 									ciphertext: content
 								})
 								break
+							case 'msmsg': {
+								// 'first' = streaming partial — intentionally skip
+								if (botType !== null && !['full', 'last'].includes(botType)) break
+
+								const secretIdCandidates = [botEditTargetId, metaTargetId, fullMessage.key?.id].filter(Boolean) as string[]
+								const secretCandidates: { source: string; secret: Buffer }[] = []
+								const seenSecrets = new Set<string>()
+
+								for (const idCandidate of secretIdCandidates) {
+									const byId = botMessageSecrets.get(idCandidate)
+									if (!byId) continue
+									const fp = byId.toString('hex')
+									if (!seenSecrets.has(fp)) {
+										seenSecrets.add(fp)
+										secretCandidates.push({ source: `id:${idCandidate}`, secret: byId })
+									}
+								}
+
+								const chatRecent = botRecentSecretsByChat.get(sender) || []
+								for (const item of chatRecent) {
+									const fp = item.secret.toString('hex')
+									if (!seenSecrets.has(fp)) {
+										seenSecrets.add(fp)
+										secretCandidates.push({ source: `chat:${item.id}`, secret: item.secret })
+									}
+									if (secretCandidates.length >= 6) break
+								}
+
+								if (!secretCandidates.length) {
+									logger.warn({ metaTargetId, botType, secretIdCandidates }, 'msmsg: no candidate messageSecret found, skipping')
+									break
+								}
+
+								const msMsg = proto.MessageSecretMessage.decode(content)
+								const helperKey: MsmsgMessageKey = {
+									participant: author,
+									meId: metaTargetSenderJid || `${meLid.split(':')[0]}@lid`,
+									meLid,
+									conversationJid: sender,
+									senderJid: metaTargetSenderJid || undefined,
+									botType,
+									botEditTargetId,
+									metaTargetId,
+									stanzaId: stanza.attrs?.id,
+									targetId: botEditTargetId || metaTargetId || stanza.attrs?.id,
+									targetIdCandidates: secretIdCandidates
+								}
+
+								let decryptErr: unknown
+								const candidateAttemptSummaries: object[] = []
+
+								for (const candidate of secretCandidates) {
+									try {
+										msgBuffer = await decryptMsmsgBotMessage(candidate.secret, helperKey, msMsg)
+										logger.debug({ source: candidate.source }, 'msmsg: decrypted with candidate secret')
+										break
+									} catch (e: any) {
+										decryptErr = e
+										if (Array.isArray(e?.attemptedStrategies) && e.attemptedStrategies.length) {
+											candidateAttemptSummaries.push({ secretSource: candidate.source, attemptedStrategies: e.attemptedStrategies })
+										}
+									}
+								}
+
+								if (!msgBuffer && candidateAttemptSummaries.length) {
+									logger.warn(
+										{ secretCandidateSources: secretCandidates.map(c => c.source), attemptsBySecret: candidateAttemptSummaries },
+										'msmsg: helper decryption failed for all candidate secrets'
+									)
+								}
+								if (!msgBuffer && decryptErr) throw decryptErr
+								break
+							}
 							case 'plaintext':
 								msgBuffer = content
 								break
@@ -336,10 +457,20 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = proto.Message.decode(
-							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
-						)
+						if (!msgBuffer) continue
+
+						let msg: proto.IMessage =
+							e2eType === 'msmsg'
+								? decodeDecryptedMsmsgMessage(msgBuffer)
+								: proto.Message.decode(e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer)
+
+						const outerMessageContextInfo = msg.messageContextInfo
 						msg = msg.deviceSentMessage?.message || msg
+						// deviceSentMessage.message may not carry messageContextInfo — preserve it
+						if (outerMessageContextInfo && !msg.messageContextInfo) {
+							msg.messageContextInfo = outerMessageContextInfo
+						}
+
 						if (msg.senderKeyDistributionMessage) {
 							//eslint-disable-next-line max-depth
 							try {
@@ -356,6 +487,27 @@ export const decryptMessageNode = (
 							Object.assign(fullMessage.message, msg)
 						} else {
 							fullMessage.message = msg
+						}
+
+						// Auto-decode richResponseMessage text (stored as dynamic property — not in proto schema)
+						const rich = fullMessage.message?.richResponseMessage as any
+						if (rich && !rich.text) {
+							const decoded = decodeRichResponseMessage(rich)
+							if (decoded) rich.text = decoded
+						}
+						const editedRich = fullMessage.message?.protocolMessage?.editedMessage?.richResponseMessage as any
+						if (editedRich && !editedRich.text) {
+							const decoded = decodeRichResponseMessage(editedRich)
+							if (decoded) editedRich.text = decoded
+						}
+
+						// Cache messageSecret for future msmsg decryption
+						const secret = msg.messageContextInfo?.messageSecret
+						if (secret) {
+							const secretBuf = Buffer.isBuffer(secret)
+								? secret
+								: Buffer.from((secret as Uint8Array).buffer, (secret as Uint8Array).byteOffset, (secret as Uint8Array).byteLength)
+							setBotMessageSecret(fullMessage.key.id!, secretBuf, fullMessage.key.remoteJid!)
 						}
 					} catch (err: any) {
 						const errorContext = {
