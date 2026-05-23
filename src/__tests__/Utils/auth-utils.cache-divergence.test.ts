@@ -29,7 +29,11 @@ const silentLogger = (): ILogger =>
 	}) as unknown as ILogger
 
 describe('makeCacheableSignalKeyStore — cache divergence on store failure (H6)', () => {
-	it.failing('does not return uncommitted cache value after store.set throws', async () => {
+	// PR #453: flipped from `it.failing` — H6 is closed in our tree by Phase 8
+	// Batch 2 commit 756a83be2b (`fix(cache): close H6 cache divergence on
+	// durable-write failure`). `makeCacheableSignalKeyStore.set` now writes
+	// through to the durable store FIRST, then updates the cache only on success.
+	it('does not return uncommitted cache value after store.set throws', async () => {
 		const persisted: Record<string, Record<string, unknown>> = {}
 		let shouldThrow = true
 
@@ -73,7 +77,9 @@ describe('makeCacheableSignalKeyStore — cache divergence on store failure (H6)
 		expect(observed).toEqual({})
 	})
 
-	it.failing(
+	// PR #453: flipped from `it.failing` — same H6 fix (commit 756a83be2b)
+	// also closes the interleaved-get-after-failed-set window.
+	it(
 		'a get() interleaved between a failed set() and a successful retry does not return the failed value',
 		async () => {
 			const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))

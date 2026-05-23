@@ -120,7 +120,14 @@ export type SignalKeyStore = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
-	destroy?: () => void
+	/**
+	 * Cleanup hook called on socket close. Returns Promise so the caller can
+	 * await graceful drainage of in-flight transactions before tearing down
+	 * dependent resources (preKeyManager, etc.). PR #453 CodeRabbit fix —
+	 * widened from `() => void` to support the active-transaction drain loop
+	 * in `addTransactionCapability.destroy()`.
+	 */
+	destroy?: () => Awaitable<void>
 }
 
 export type TransactionCapabilityOptions = {

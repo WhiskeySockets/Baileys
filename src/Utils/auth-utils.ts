@@ -161,6 +161,22 @@ export const addTransactionCapability = (
 	let destroyed = false
 
 	/**
+	 * Active-transaction counter (PR #453 CodeRabbit Major fix).
+	 *
+	 * Tracks how many `transaction(work, key)` invocations are currently
+	 * past the destroyed-flag check and have not yet finished. `destroy()`
+	 * waits for this to reach 0 before calling `preKeyManager.destroy()`,
+	 * so an in-flight transaction never finds the prekey manager torn down
+	 * under it.
+	 *
+	 * The counter races safely with `destroyed`: a new caller that races
+	 * past `destroyed === false` will be observed by `destroy()` via this
+	 * counter and waited for. Subsequent callers see `destroyed === true`
+	 * and throw before incrementing.
+	 */
+	let activeTransactions = 0
+
+	/**
 	 * Check if currently in a transaction
 	 */
 	function isInTransaction(): boolean {
@@ -168,7 +184,18 @@ export const addTransactionCapability = (
 	}
 
 	/**
-	 * Commit transaction with retries
+	 * Commit transaction with retries.
+	 *
+	 * PR #453 CodeRabbit CRITICAL fix: acquire `__type__` locks for every
+	 * mutation type before `state.set`. Without this, a tx commit raced
+	 * against concurrent non-tx pre-key deletes — the non-tx path validated
+	 * deletions against one snapshot while this commit landed on a different
+	 * one, reopening the H2 atomicity hole for tx-vs-non-tx traffic.
+	 *
+	 * `LockManager.withLocks` sorts + dedupes the ref list so acquiring
+	 * `[{__type__, sender-key}, {__type__, pre-key}]` and the symmetric
+	 * `[{__type__, pre-key}, {__type__, sender-key}]` from two concurrent
+	 * commits cannot deadlock.
 	 */
 	async function commitWithRetry(mutations: SignalDataSet): Promise<void> {
 		if (Object.keys(mutations).length === 0) {
@@ -176,11 +203,16 @@ export const addTransactionCapability = (
 			return
 		}
 
+		const lockRefs = (Object.keys(mutations) as Array<keyof SignalDataTypeMap>).map(type => ({
+			namespace: '__type__',
+			id: type
+		}))
+
 		logger.trace('committing transaction')
 
 		for (let attempt = 0; attempt < maxCommitRetries; attempt++) {
 			try {
-				await state.set(mutations)
+				await locks.withLocks(lockRefs, () => state.set(mutations))
 				logger.trace({ mutationCount: Object.keys(mutations).length }, 'committed transaction')
 				return
 			} catch (error) {
@@ -317,6 +349,12 @@ export const addTransactionCapability = (
 					throw new Error('Transaction capability destroyed - cannot initiate new transactions')
 				}
 
+				// PR #453 CodeRabbit Major fix: increment ACTIVE counter while
+				// destroyed is still false. `destroy()` waits for this to reach
+				// 0 before tearing down preKeyManager, so this in-flight tx
+				// finishes before any teardown observes it.
+				activeTransactions++
+
 				const ctx: TransactionContext = {
 					cache: {},
 					mutations: {},
@@ -337,6 +375,8 @@ export const addTransactionCapability = (
 				} catch (err) {
 					logger.error({ err }, 'transaction failed, rolling back')
 					throw err
+				} finally {
+					activeTransactions--
 				}
 			})
 		},
@@ -362,9 +402,25 @@ export const addTransactionCapability = (
 		 * (LockManager doesn't expose the held-keys list). In production this
 		 * fired rarely and was informational, not load-bearing.
 		 */
-		destroy: () => {
+		destroy: async () => {
 			if (destroyed) return
 			destroyed = true
+
+			// PR #453 CodeRabbit Major fix: wait for in-flight transactions to
+			// drain BEFORE tearing down preKeyManager. Each `transaction()`
+			// invocation increments `activeTransactions` AFTER passing the
+			// destroyed-flag check; we wait here until that counter reaches 0
+			// so no tx is left holding a torn-down preKeyManager reference.
+			//
+			// New callers that race in see destroyed=true at the check above
+			// and throw before incrementing, so the counter monotonically
+			// decreases once `destroyed` flips. The poll is bounded by
+			// realistic tx duration (sub-second under normal load).
+			while (activeTransactions > 0) {
+				logger.trace({ activeTransactions }, 'destroy: waiting for in-flight transactions to drain')
+				await delay(10)
+			}
+
 			preKeyManager.destroy()
 			logger.debug('Transaction capability destroyed')
 		},
