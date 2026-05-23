@@ -875,11 +875,21 @@ function signalStorage(
 		 * the failure — same contract the timer body itself used.
 		 */
 		clearPendingPreKeyDeletions: () => {
+			// Collect all pending deletions, then issue ONE keys.set instead of
+			// N (PR #451 CodeRabbit quick-win). For SQL-backed stores this
+			// collapses N round-trips + N lock acquisitions into 1 and gives
+			// the batch atomic semantics. Same swallow contract as before —
+			// keystore may be destroyed concurrently with close, that's fine.
+			const deletions: Record<number, null> = {}
 			for (const [keyId, timer] of pendingPreKeyDeletions) {
 				clearTimeout(timer)
+				deletions[Number(keyId)] = null
+			}
+
+			if (Object.keys(deletions).length > 0) {
 				// `keys.set` return type is `Awaitable<void>` = `void | Promise<void>`,
 				// so we wrap in Promise.resolve to unify the failure-swallow path.
-				Promise.resolve(keys.set({ 'pre-key': { [Number(keyId)]: null } })).catch(() => {
+				Promise.resolve(keys.set({ 'pre-key': deletions })).catch(() => {
 					// Keystore may be destroyed if connection closed — safe to ignore
 				})
 			}
