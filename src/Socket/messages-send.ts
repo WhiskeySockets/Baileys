@@ -1989,7 +1989,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 			}
-		}, meId)
+		}, meId).catch(err => {
+			// cubic P1 (PR #457): tx may throw BEFORE we reach the deferred-invocation
+			// block below. `tcTokenFetchingJids.add(tcTokenJid)` happens INSIDE the tx
+			// (line ~1705) — without this cleanup, the jid stays in the set forever
+			// and future sends to that contact silently skip the fetch (the gating
+			// `!tcTokenFetchingJids.has(tcTokenJid)` always returns false). The
+			// .finally() on the deferred Promise can't help because the Promise is
+			// never created. Reissue path has no gating flag, so no leak there.
+			if (deferredTcTokenFetchStorageKey) {
+				tcTokenFetchingJids.delete(deferredTcTokenFetchStorageKey)
+			}
+
+			throw err
+		})
 
 		// Fire deferred tctoken fire-and-forget chains OUTSIDE the transaction so
 		// their .then() callbacks register under the caller's ALS ctx (no tx ctx →
@@ -2021,9 +2034,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				.then(async result => {
 					// Store any tokens received in the IQ response.
 					// onNewJidStored not passed — pruning index lives in messages-recv (higher layer).
+					// CodeRabbit PR #457: use original JID (reissueJid) as fallback so dual-key
+					// PN+LID storage works (tc-token-utils.ts:209-214). Passing reissueStorageKey
+					// (resolved LID) would make normalizedFallback === storageJid → no dual key
+					// stored → lookups under PN miss. Matches fetch path + messages-recv pattern.
 					await storeTcTokensFromIqResult({
 						result,
-						fallbackJid: reissueStorageKey,
+						fallbackJid: reissueJid,
 						keys: authState.keys,
 						getLIDForPN
 					})
