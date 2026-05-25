@@ -6,11 +6,13 @@ import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
 	CacheStore,
+	RecordRef,
 	SignalDataSet,
 	SignalDataTypeMap,
 	SignalKeyStore,
-	SignalKeyStoreWithTransaction,
-	TransactionCapabilityOptions
+	SignalKeyStoreWithRecordTransaction,
+	TransactionCapabilityOptions,
+	TransactionScope
 } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
@@ -19,13 +21,45 @@ import type { ILogger } from './logger'
 import { PreKeyManager } from './pre-key-manager'
 
 /**
- * Transaction context stored in AsyncLocalStorage
+ * Transaction context stored in AsyncLocalStorage.
+ *
+ * Stage 2 (upstream #2572) additions:
+ * - `heldLocks` tracks every `${namespace}\0${id}` lock acquired in the outer
+ *   scope (synthetic `__legacy__` namespace for the deprecated
+ *   `transaction(work, key)` API, record-typed namespaces for `transactWith`).
+ *   Inner calls consult this set to skip re-acquisition of a lock already held
+ *   by the same async context — preserves re-entry safety while closing the
+ *   H0 bypass for genuinely new lock keys.
+ * - `sealed` set after `work()` resolves; further writes from detached async
+ *   (setImmediate, process.nextTick, unawaited promises) become no-ops with
+ *   a structured warn instead of silently mutating already-committed state
+ *   (M5 hardening).
  */
 interface TransactionContext {
 	cache: SignalDataSet
 	mutations: SignalDataSet
 	dbQueries: number
+	heldLocks: Set<string>
+	sealed: boolean
 }
+
+/**
+ * Synthetic namespace for the deprecated legacy `transaction(work, key)` API.
+ * `__legacy__` is reserved — no real {@link SignalDataType} can collide with it.
+ */
+const LEGACY_NAMESPACE = '__legacy__'
+
+/**
+ * Build the canonical heldLocks key. Uses `\0` (NUL) separator so a namespace
+ * or id containing a space can't collide (e.g. `{namespace:'session', id:'a b'}`
+ * vs `{namespace:'session a', id:'b'}` both produce `'session a b'` with a
+ * space separator, letting the inner-scope re-entry check bypass acquisition
+ * for a record that isn't really held). NUL cannot appear in a valid
+ * {@link SignalDataType} or in our synthetic namespaces, so the encoding is
+ * one-to-one (Stage 2 CodeRabbit round 2 P1 fix).
+ */
+const lockKeyForRef = (namespace: string, id: string): string => `${namespace}\0${id}`
+const lockKeyForRecord = (r: RecordRef): string => lockKeyForRef(r.type, r.id)
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -149,7 +183,7 @@ export const addTransactionCapability = (
 	state: SignalKeyStore,
 	logger: ILogger,
 	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
-): SignalKeyStoreWithTransaction => {
+): SignalKeyStoreWithRecordTransaction => {
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
 
 	/**
@@ -310,6 +344,20 @@ export const addTransactionCapability = (
 				return
 			}
 
+			// M5 hardening (Stage 2 — upstream #2572): detached async
+			// (setImmediate, process.nextTick, unawaited promises) inherits
+			// the AsyncLocalStorage context. After the outer work() resolves
+			// the context is sealed; writes from such orphaned callbacks
+			// become no-ops with a structured warn rather than silently
+			// mutating already-committed state.
+			if (ctx.sealed) {
+				logger.warn(
+					{ types: Object.keys(data) },
+					'transaction context is sealed; ignoring detached write (M5 guard)'
+				)
+				return
+			}
+
 			// In transaction - update cache and mutations
 			logger.trace({ types: Object.keys(data) }, 'caching in transaction')
 
@@ -333,55 +381,148 @@ export const addTransactionCapability = (
 
 		isInTransaction,
 
+		/**
+		 * @deprecated Stage 2 (upstream #2572) — use `transactWith({ records }, work)`
+		 * for record-scoped locking with deadlock-free multi-acquire. The legacy
+		 * key-based API is preserved for back-compat but lacks the explicit scope
+		 * and same-context re-entry semantics of `transactWith`.
+		 *
+		 * H0 closure: re-entering with a key not already held by the outer scope
+		 * now acquires its own lock instead of silently sharing the outer's. Same-
+		 * key nested calls still bypass (re-entry safety).
+		 */
 		transaction: async (work, key) => {
+			const lockKey = lockKeyForRef(LEGACY_NAMESPACE, key)
 			const existing = txStorage.getStore()
 
-			// Nested transaction — reuse existing context. Note: this is the H0
-			// bypass that Stage 2's `transactWith` will fix by requiring the
-			// inner scope to be a subset of the outer scope.
-			if (existing) {
-				logger.trace('reusing existing transaction context')
+			// Re-entry on a lock the outer scope already holds: bypass to avoid
+			// self-deadlock. Different keys, however, must acquire their own lock
+			// (the H0 closure — the unconditional bypass was the bug).
+			if (existing?.heldLocks.has(lockKey)) {
+				logger.trace({ key }, 'reusing held legacy lock')
 				return work()
 			}
 
-			// New transaction — acquire the legacy-namespaced lock (Stage 1) and
-			// create a fresh AsyncLocalStorage context. LockManager handles
-			// refcount cleanup internally; no try/finally needed.
-			return locks.withLock({ namespace: '__legacy__', id: key }, async () => {
-				// CRITICAL (InfiniteAPI preservation): check destroyed flag INSIDE the
-				// lock to prevent race between `destroy()` and a concurrent new
-				// transaction. Atomic check-and-execute: if we hold the lock, the
+			return locks.withLock({ namespace: LEGACY_NAMESPACE, id: key }, async () => {
+				// CRITICAL (InfiniteAPI preservation, PR #453): check destroyed flag
+				// INSIDE the lock to prevent race between `destroy()` and a concurrent
+				// new transaction. Atomic check-and-execute: if we hold the lock, the
 				// destroy() observer either already saw destroyed=true (this throws),
-				// or hasn't run yet (we proceed, destroy() will wait or skip).
+				// or hasn't run yet (we proceed, destroy() will wait via active counter).
 				if (destroyed) {
 					throw new Error('Transaction capability destroyed - cannot initiate new transactions')
 				}
 
 				// PR #453 CodeRabbit Major fix: increment ACTIVE counter while
-				// destroyed is still false. `destroy()` waits for this to reach
-				// 0 before tearing down preKeyManager, so this in-flight tx
-				// finishes before any teardown observes it.
+				// destroyed is still false. `destroy()` waits for this to reach 0
+				// before tearing down preKeyManager.
 				activeTransactions++
+
+				if (existing) {
+					// Nested under an outer transaction we're now properly locked
+					// against. Share the outer's mutation accumulator so all writes
+					// commit together at the outermost level.
+					existing.heldLocks.add(lockKey)
+					try {
+						return await work()
+					} finally {
+						existing.heldLocks.delete(lockKey)
+						activeTransactions--
+					}
+				}
 
 				const ctx: TransactionContext = {
 					cache: {},
 					mutations: {},
-					dbQueries: 0
+					dbQueries: 0,
+					heldLocks: new Set([lockKey]),
+					sealed: false
 				}
 
 				logger.trace('entering transaction')
 
 				try {
 					const result = await txStorage.run(ctx, work)
-
-					// Commit mutations
+					ctx.sealed = true
 					await commitWithRetry(ctx.mutations)
-
 					logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
-
 					return result
 				} catch (err) {
+					ctx.sealed = true
 					logger.error({ err }, 'transaction failed, rolling back')
+					throw err
+				} finally {
+					activeTransactions--
+				}
+			})
+		},
+
+		/**
+		 * Stage 2 (upstream #2572) — record-scoped transaction API.
+		 *
+		 * Acquires locks on every `(type, id)` pair in `scope.records` via
+		 * `LockManager.withLocks` (sorted+deduped — deadlock-free against
+		 * concurrent overlapping scopes). On success, all mutations commit
+		 * atomically in a single `state.set`. On throw, mutations are
+		 * discarded (rollback).
+		 *
+		 * Re-entry: if the outer scope already holds some of the requested
+		 * record locks, only the new ones are acquired (no self-deadlock,
+		 * still serializes against external callers).
+		 *
+		 * InfiniteAPI preservation: same `destroyed` check + `activeTransactions`
+		 * counter as `transaction()` so PR #453's drain semantics in
+		 * `destroy()` cover BOTH transaction surfaces.
+		 */
+		transactWith: async <T>(scope: TransactionScope, work: () => Promise<T>): Promise<T> => {
+			const existing = txStorage.getStore()
+
+			// Determine which records still need a lock — outer scope may already
+			// hold some, in which case re-acquisition would self-deadlock.
+			const needsAcquire = scope.records.filter(r => !existing?.heldLocks.has(lockKeyForRecord(r)))
+			const newLockKeys = needsAcquire.map(lockKeyForRecord)
+			const lockRefs = needsAcquire.map(r => ({ namespace: r.type, id: r.id }))
+
+			return locks.withLocks(lockRefs, async () => {
+				// InfiniteAPI preservation (PR #453): same destroyed check that
+				// `transaction()` uses, so socket close drains transactWith too.
+				if (destroyed) {
+					throw new Error('Transaction capability destroyed - cannot initiate new transactions')
+				}
+
+				activeTransactions++
+
+				if (existing) {
+					// Nested transactWith — share outer's ctx, mark the newly held
+					// locks so deeper nesting sees them as held.
+					for (const k of newLockKeys) existing.heldLocks.add(k)
+					try {
+						return await work()
+					} finally {
+						for (const k of newLockKeys) existing.heldLocks.delete(k)
+						activeTransactions--
+					}
+				}
+
+				const ctx: TransactionContext = {
+					cache: {},
+					mutations: {},
+					dbQueries: 0,
+					heldLocks: new Set(newLockKeys),
+					sealed: false
+				}
+
+				logger.trace({ records: scope.records.length }, 'entering transactWith')
+
+				try {
+					const result = await txStorage.run(ctx, work)
+					ctx.sealed = true
+					await commitWithRetry(ctx.mutations)
+					logger.trace({ dbQueries: ctx.dbQueries }, 'transactWith completed')
+					return result
+				} catch (err) {
+					ctx.sealed = true
+					logger.error({ err }, 'transactWith failed, rolling back')
 					throw err
 				} finally {
 					activeTransactions--
