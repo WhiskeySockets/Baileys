@@ -21,6 +21,21 @@ type DecryptSignalProtoOpts = {
 type EncryptMessageOpts = {
 	jid: string
 	data: Uint8Array
+	/**
+	 * Workaround flag (2026-05-25) — when `true`, encryptMessage uses the
+	 * legacy `transaction(work, canonicalJid)` pattern instead of Stage 2's
+	 * `transactWith({records:[session:<addr>]}, work)`. Set this for
+	 * interactive message sends (buttons / CTA / list / carousel) where
+	 * relayMessage fans out per-device encryption via Promise.all, producing
+	 * SIBLING transactWith calls inside the outer `transaction(meId)` ctx — a
+	 * pattern Stage 2's own contract documents as unsafe (auth-utils.ts
+	 * around the transactWith definition).
+	 *
+	 * Non-interactive paths (text, media, poll, peer) continue to use
+	 * Stage 2's transactWith. Remove once the sibling-Promise.all issue is
+	 * solved properly.
+	 */
+	useLegacyLock?: boolean
 }
 
 type EncryptGroupMessageOpts = {

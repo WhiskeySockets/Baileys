@@ -649,7 +649,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		meLid,
 		meLidUser,
 		extraAttrs,
-		onPkmsg
+		onPkmsg,
+		useLegacyLock
 	}: {
 		jid: string
 		patchedMessage: proto.IMessage
@@ -659,6 +660,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		meLidUser: string | null | undefined
 		extraAttrs: BinaryNode['attrs'] | undefined
 		onPkmsg: () => void
+		useLegacyLock?: boolean
 	}) => {
 		if (!jid) return null
 
@@ -668,7 +670,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const mutexKey = jid
 
 			return await encryptionMutex.mutex(mutexKey, async () => {
-				const { type, ciphertext } = await signalRepository.encryptMessage({ jid, data: bytes })
+				const { type, ciphertext } = await signalRepository.encryptMessage({ jid, data: bytes, useLegacyLock })
 
 				if (type === 'pkmsg') {
 					onPkmsg()
@@ -696,7 +698,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		recipientJids: string[],
 		message: proto.IMessage,
 		extraAttrs?: BinaryNode['attrs'],
-		dsmMessage?: proto.IMessage
+		dsmMessage?: proto.IMessage,
+		useLegacyLock?: boolean
 	) => {
 		if (!recipientJids.length) {
 			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
@@ -726,7 +729,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					meLid,
 					meLidUser,
 					extraAttrs,
-					onPkmsg
+					onPkmsg,
+					useLegacyLock
 				})
 		)
 
@@ -1314,13 +1318,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				await assertSessions(effectiveAllRecipients)
 
+				// WORKAROUND (Stage 2 #2572 sibling-Promise.all regression — 2026-05-25):
+				// the two createParticipantNodes calls below run in Promise.all, each
+				// fanning out per-device encryption that ALSO uses Promise.all. Stage 2's
+				// transactWith documents this exact pattern as unsafe and it correlates
+				// with recipient devices sending retry receipts ("reg id mismatch on retry
+				// without bundle") for interactive messages (buttons / CTA / list /
+				// carousel), preventing Web rendering. Pass `useLegacyLock: true` so the
+				// per-device encryptMessage calls in this fanout use the master-style
+				// legacy `transaction(work, canonicalJid)` pattern. Non-interactive sends
+				// (text, media, poll, peer) keep transactWith and are unaffected.
+				const isInteractiveFanout = isCarouselFanout || getButtonType(message) !== undefined
+
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM (deviceSentMessage) wrapper
-					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs),
-					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs)
+					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs, undefined, isInteractiveFanout),
+					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs, undefined, isInteractiveFanout)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
