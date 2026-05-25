@@ -523,11 +523,19 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
-			// Stage 2 (upstream #2572): record-scoped session lock per the actual
-			// Signal address being initialized.
+			// PR #457 round-1 fix (Codex P1 + Copilot + CodeRabbit — 3 bots
+			// convergem): use the canonical (PN→LID resolved) address as the
+			// record lock id. `signalStorage.loadSession`/`storeSession`
+			// canonicalize PN→LID before touching storage, so a PN JID with a
+			// known mapping mutates `session.<lidAddr>` even when our cipher
+			// holds the PN address. Without this hybrid, a concurrent encrypt
+			// for the same logical contact (now using canonical addr in its
+			// lock) would NOT serialize against this injection.
 			const addr = jidToSignalProtocolAddress(jid)
+			const canonicalJid = await resolveCanonicalJid(jid)
+			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
 			const cipher = new libsignal.SessionBuilder(storage, addr)
-			return parsedKeys.transactWith({ records: [{ type: 'session', id: addr.toString() }] }, async () => {
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
 				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
 				// but the bundled .d.ts marks it required. Retry-receipt bundles can legitimately
 				// omit the one-time key — cast through unknown so TS lets us pass session through.
@@ -563,14 +571,24 @@ export function makeLibSignalRepository(
 		async deleteSession(jids: string[]) {
 			if (!jids.length) return
 
-			// Convert JIDs to signal addresses and prepare for bulk deletion
+			// PR #457 round-1 fix (Codex P1 + Copilot + CodeRabbit — 3 bots
+			// convergem): canonicalize each JID's address before locking AND
+			// before writing. `signalStorage` resolves PN→LID at the storage
+			// boundary, so an uncanonicalized delete on a PN JID would (a)
+			// lock `session.<pnAddr>` while concurrent encrypt/decrypt for
+			// the same logical contact locks `session.<lidAddr>` (race), AND
+			// (b) potentially leave the actual canonical LID session intact
+			// because the write goes to the canonical record via storage's
+			// own resolution. Lock + write both on canonical addr aligns
+			// with encrypt/decrypt/injectE2ESession.
 			const sessionUpdates: { [key: string]: null } = {}
 			const sessionAddrs: string[] = []
-			jids.forEach(jid => {
-				const addr = jidToSignalProtocolAddress(jid).toString()
-				sessionUpdates[addr] = null
-				sessionAddrs.push(addr)
-			})
+			for (const jid of jids) {
+				const canonicalJid = await resolveCanonicalJid(jid)
+				const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
+				sessionUpdates[canonicalAddr] = null
+				sessionAddrs.push(canonicalAddr)
+			}
 
 			// Stage 2 H4 fix (upstream #2572): lock the ACTUAL per-jid session
 			// records being deleted, not the synthetic `delete-N-sessions`

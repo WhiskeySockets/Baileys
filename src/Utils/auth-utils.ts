@@ -27,20 +27,50 @@ import { PreKeyManager } from './pre-key-manager'
  * - `heldLocks` tracks every `${namespace}\0${id}` lock acquired in the outer
  *   scope (synthetic `__legacy__` namespace for the deprecated
  *   `transaction(work, key)` API, record-typed namespaces for `transactWith`).
- *   Inner calls consult this set to skip re-acquisition of a lock already held
+ *   Inner calls consult this map to skip re-acquisition of a lock already held
  *   by the same async context — preserves re-entry safety while closing the
  *   H0 bypass for genuinely new lock keys.
  * - `sealed` set after `work()` resolves; further writes from detached async
  *   (setImmediate, process.nextTick, unawaited promises) become no-ops with
  *   a structured warn instead of silently mutating already-committed state
  *   (M5 hardening).
+ *
+ * PR #457 round-1 (cubic P1 defensive): heldLocks is a Map<key, refcount>
+ * rather than a Set. Refcount semantics matter under parallel nested calls
+ * that share the same AsyncLocalStorage context — Set's "single entry" model
+ * lets the first finally() delete a key still in use by a sibling branch.
+ * Refcount-aware delete only removes the entry when count drops to zero, so
+ * a sibling that observed the held lock continues to see it until ITS own
+ * acquisition releases.
+ *
+ * Not triggered by current InfiniteAPI code (libsignal calls are sequential,
+ * no Promise.all of transactWith inside same outer ctx). Defensive guard for
+ * future code paths that might do parallel branches.
  */
 interface TransactionContext {
 	cache: SignalDataSet
 	mutations: SignalDataSet
 	dbQueries: number
-	heldLocks: Set<string>
+	heldLocks: Map<string, number>
 	sealed: boolean
+}
+
+/** Increment refcount for a lock key. Returns the new count. */
+const heldLocksAcquire = (heldLocks: Map<string, number>, lockKey: string): number => {
+	const next = (heldLocks.get(lockKey) ?? 0) + 1
+	heldLocks.set(lockKey, next)
+	return next
+}
+
+/** Decrement refcount, removing the entry when it drops to zero. */
+const heldLocksRelease = (heldLocks: Map<string, number>, lockKey: string): void => {
+	const cur = heldLocks.get(lockKey)
+	if (cur === undefined) return
+	if (cur <= 1) {
+		heldLocks.delete(lockKey)
+	} else {
+		heldLocks.set(lockKey, cur - 1)
+	}
 }
 
 /**
@@ -390,6 +420,18 @@ export const addTransactionCapability = (
 		 * H0 closure: re-entering with a key not already held by the outer scope
 		 * now acquires its own lock instead of silently sharing the outer's. Same-
 		 * key nested calls still bypass (re-entry safety).
+		 *
+		 * Known limitation — cross-API nesting order (PR #457 CodeRabbit
+		 * theoretical): mixing `transaction()` and `transactWith()` in opposite
+		 * acquisition orders across two concurrent callers can theoretically
+		 * deadlock (caller A holds legacy → wants record; caller B holds record
+		 * → wants legacy). InfiniteAPI codebase enforces ONE direction in
+		 * practice: legacy `transaction(meId)` is the OUTER tx (only used in
+		 * messages-send and a few send-path callers), and `transactWith` is
+		 * INNER (libsignal). No code path calls `transaction()` from inside a
+		 * `transactWith()`. Documented here so future contributors don't
+		 * introduce inverse nesting; if such a pattern is needed, add a
+		 * canonical sort across namespaces or split the locks.
 		 */
 		transaction: async (work, key) => {
 			const lockKey = lockKeyForRef(LEGACY_NAMESPACE, key)
@@ -399,8 +441,17 @@ export const addTransactionCapability = (
 			// self-deadlock. Different keys, however, must acquire their own lock
 			// (the H0 closure — the unconditional bypass was the bug).
 			if (existing?.heldLocks.has(lockKey)) {
+				// Same-ctx re-entry: refcount up, run work, refcount down.
+				// Set-based code would have skipped both add/delete; refcount
+				// Map needs both so a sibling branch that observed the held
+				// lock keeps seeing it until its own decrement.
 				logger.trace({ key }, 'reusing held legacy lock')
-				return work()
+				heldLocksAcquire(existing.heldLocks, lockKey)
+				try {
+					return await work()
+				} finally {
+					heldLocksRelease(existing.heldLocks, lockKey)
+				}
 			}
 
 			return locks.withLock({ namespace: LEGACY_NAMESPACE, id: key }, async () => {
@@ -422,11 +473,11 @@ export const addTransactionCapability = (
 					// Nested under an outer transaction we're now properly locked
 					// against. Share the outer's mutation accumulator so all writes
 					// commit together at the outermost level.
-					existing.heldLocks.add(lockKey)
+					heldLocksAcquire(existing.heldLocks, lockKey)
 					try {
 						return await work()
 					} finally {
-						existing.heldLocks.delete(lockKey)
+						heldLocksRelease(existing.heldLocks, lockKey)
 						activeTransactions--
 					}
 				}
@@ -435,7 +486,7 @@ export const addTransactionCapability = (
 					cache: {},
 					mutations: {},
 					dbQueries: 0,
-					heldLocks: new Set([lockKey]),
+					heldLocks: new Map([[lockKey, 1]]),
 					sealed: false
 				}
 
@@ -493,13 +544,13 @@ export const addTransactionCapability = (
 				activeTransactions++
 
 				if (existing) {
-					// Nested transactWith — share outer's ctx, mark the newly held
-					// locks so deeper nesting sees them as held.
-					for (const k of newLockKeys) existing.heldLocks.add(k)
+					// Nested transactWith — share outer's ctx, refcount-up the
+					// newly held locks so deeper nesting sees them as held.
+					for (const k of newLockKeys) heldLocksAcquire(existing.heldLocks, k)
 					try {
 						return await work()
 					} finally {
-						for (const k of newLockKeys) existing.heldLocks.delete(k)
+						for (const k of newLockKeys) heldLocksRelease(existing.heldLocks, k)
 						activeTransactions--
 					}
 				}
@@ -508,7 +559,7 @@ export const addTransactionCapability = (
 					cache: {},
 					mutations: {},
 					dbQueries: 0,
-					heldLocks: new Set(newLockKeys),
+					heldLocks: new Map(newLockKeys.map(k => [k, 1] as [string, number])),
 					sealed: false
 				}
 

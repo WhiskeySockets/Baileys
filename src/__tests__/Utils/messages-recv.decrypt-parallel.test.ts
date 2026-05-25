@@ -61,7 +61,11 @@ const makeStore = (): SignalKeyStore => {
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 describe('messages-recv — per-JID ratchet serialization vs concurrent send (H10)', () => {
-	it.failing('decrypt for jid serializes against an encrypt for the same jid wrapped in an outer meId tx', async () => {
+	// PR #457: flipped from `it.failing` — H10 closed by Stage 2 hybrid port
+	// (commit d26053ccd5). `decryptMessage` and `encryptMessage` now use
+	// `transactWith` with canonical session record locks, so the outer meId
+	// legacy tx no longer suppresses inner per-jid serialization.
+	it('decrypt for jid serializes against an encrypt for the same jid wrapped in an outer meId tx', async () => {
 		const store = makeStore()
 		// Seed: a "session" with an integer counter standing in for ratchet chain index.
 		await store.set({ session: { 'peer@s.whatsapp.net': Buffer.from([0]) } })
@@ -108,7 +112,8 @@ describe('messages-recv — per-JID ratchet serialization vs concurrent send (H1
 		expect(finalCounter).toBe(2)
 	})
 
-	it.failing(
+	// PR #457: flipped — same Stage 2 transactWith record-scoped fix.
+	it(
 		'two parallel decrypts at the receive layer serialize even when one is nested in an outer meId tx',
 		async () => {
 			const store = makeStore()
