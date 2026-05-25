@@ -1491,6 +1491,29 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const hasQuickReply = allButtonNames.some((name: string) => name === 'quick_reply')
 					const isCTAOnly = hasCTA && !hasQuickReply
 
+					// Build the quality_control sub-node — required inside biz for ALL
+					// interactive surfaces to render on WhatsApp Web (not just carousel).
+					// Originally added for carousel only (CDP capture from Pastorini); staging
+					// 2026-05-25 confirmed buttons:reply / buttons:cta / list deliver to
+					// smartphone with LID-canonicalized stanzas BUT still fail to render on
+					// Web — the only remaining stanza-shape difference vs. carousel was the
+					// missing quality_control node. Extending it to all biz/native_flow/list
+					// paths matches what Pastorini sends for native_flow messages.
+					const buildQualityControl = (): BinaryNode => ({
+						tag: 'quality_control',
+						attrs: {
+							decision_id: randomBytes(20).toString('hex')
+						},
+						content: [
+							{
+								tag: 'decision_source',
+								attrs: {
+									value: 'df'
+								}
+							}
+						]
+					})
+
 					// For listMessage (legacy format), use direct <list> tag
 					// This matches the known working implementation
 					if (buttonType === 'list') {
@@ -1504,10 +1527,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 										type: 'product_list',
 										v: '2'
 									}
-								}
+								},
+								buildQualityControl()
 							]
 						})
-						logger.info({ msgId, to: destinationJid }, '[BIZ NODE] Injected biz > list (product_list, v=2)')
+						logger.info(
+							{ msgId, to: destinationJid },
+							'[BIZ NODE] Injected biz > list (product_list, v=2) + quality_control'
+						)
 					} else {
 						const SPECIAL_FLOW_NAMES: Record<string, string> = {
 							review_and_pay: 'payment_info',
@@ -1543,25 +1570,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						]
 
-						// CDP capture shows Pastorini includes quality_control inside biz for carousel
-						if (isCarousel) {
-							const decisionId = randomBytes(20).toString('hex')
-							bizContent.push({
-								tag: 'quality_control',
-								attrs: {
-									decision_id: decisionId
-								},
-								content: [
-									{
-										tag: 'decision_source',
-										attrs: {
-											value: 'df'
-										}
-									}
-								]
-							})
-							logger.info({ msgId, decisionId }, '[BIZ NODE] Added quality_control for carousel')
-						}
+						// quality_control inside biz — required for Web rendering of all
+						// native_flow / buttons interactive messages, not just carousel
+						// (see comment on buildQualityControl helper above).
+						const qcNode = buildQualityControl()
+						bizContent.push(qcNode)
+						logger.info(
+							{ msgId, decisionId: (qcNode.attrs as { decision_id: string }).decision_id, kind: isCarousel ? 'carousel' : buttonType },
+							'[BIZ NODE] Added quality_control'
+						)
 
 						deferredNodes.push({
 							tag: 'biz',
@@ -1866,7 +1883,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								biz: contentTags.includes('biz'),
 								bot: contentTags.includes('bot'),
 								deviceIdentity: contentTags.includes('device-identity'),
-								qualityControl: isCarousel
+								qualityControl: isCarousel || !!buttonType
 							},
 							participantDevices: participants.length
 						},
