@@ -460,7 +460,15 @@ export const addTransactionCapability = (
 				// new transaction. Atomic check-and-execute: if we hold the lock, the
 				// destroy() observer either already saw destroyed=true (this throws),
 				// or hasn't run yet (we proceed, destroy() will wait via active counter).
-				if (destroyed) {
+				//
+				// PR #457 round-2 (CodeRabbit Critical): only reject brand-new
+				// TOP-LEVEL entries. If we're nested inside an outer tx that
+				// passed the destroyed check at its own entry, draining must
+				// let us finish — otherwise destroy() racing an outer tx
+				// before it reaches an inner call would abort in-flight work
+				// instead of draining it normally. `existing` (outer ctx)
+				// presence means we're nested.
+				if (destroyed && !existing) {
 					throw new Error('Transaction capability destroyed - cannot initiate new transactions')
 				}
 
@@ -537,7 +545,12 @@ export const addTransactionCapability = (
 			return locks.withLocks(lockRefs, async () => {
 				// InfiniteAPI preservation (PR #453): same destroyed check that
 				// `transaction()` uses, so socket close drains transactWith too.
-				if (destroyed) {
+				//
+				// PR #457 round-2 (CodeRabbit Critical): same as `transaction()`
+				// above — only reject brand-new top-level entries, allow nested
+				// to drain. `existing` presence means we're inside an outer tx
+				// that already passed the destroyed check.
+				if (destroyed && !existing) {
 					throw new Error('Transaction capability destroyed - cannot initiate new transactions')
 				}
 

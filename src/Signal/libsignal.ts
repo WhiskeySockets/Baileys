@@ -285,6 +285,21 @@ export function makeLibSignalRepository(
 	// Stage 2 (upstream #2572): Baileys' `addTransactionCapability` returns a store
 	// with `transactWith` implemented; narrow to the record-transaction variant so
 	// the internal sites below can call it without null-checking the optional method.
+	//
+	// PR #457 round-2 (CodeRabbit Major): runtime guard. `SignalAuthState.keys`
+	// is typed as `SignalKeyStore | SignalKeyStoreWithTransaction`, with
+	// transactWith OPTIONAL. A legacy store reaching here would silently fail
+	// at the first migrated path with a confusing "transactWith is not a
+	// function" TypeError. Assert presence early with a clear message so the
+	// contract violation is obvious.
+	const keysCandidate = auth.keys as Partial<SignalKeyStoreWithRecordTransaction>
+	if (typeof keysCandidate.transactWith !== 'function') {
+		throw new Error(
+			'makeLibSignalRepository: auth.keys is missing the `transactWith` method. ' +
+				'Wrap your storage with `addTransactionCapability()` so it returns a ' +
+				'`SignalKeyStoreWithRecordTransaction` (Stage 2 record-scoped API).'
+		)
+	}
 	const parsedKeys = auth.keys as SignalKeyStoreWithRecordTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
 		ttl: 3 * 24 * 60 * 60 * 1000, // 3 days
@@ -693,24 +708,45 @@ export function makeLibSignalRepository(
 					return { migrated: 0, skipped: 0, total: userDevices.length }
 				}
 
-				// Bulk check session existence only for uncached devices
-				const deviceSessionKeys = uncachedDevices.map(device => `${user}.${device}`)
+				// Bulk check session existence only for uncached devices.
+				//
+				// PR #457 round-2 (CodeRabbit Major): build session keys via the
+				// canonical `jidToSignalProtocolAddress().toString()` instead of
+				// the manual `${user}.${device}` format. For most devices these
+				// are identical, BUT hosted device 99 (`${user}:99@hosted`)
+				// produces `${user}_hosted.99` — manual format would miss it
+				// because the storage key includes the domain prefix.
+				// Pre-existing bug surfaced by Stage 2 (records must use same
+				// canonical format as locks); aligning prefetch keys eliminates
+				// the mismatch entirely.
+				const deviceSessionKeyMap = new Map<string, string>() // sessionKey → originating JID
+				const deviceSessionKeys: string[] = []
+				for (const device of uncachedDevices) {
+					const deviceNum = parseInt(device)
+					const jid =
+						deviceNum === 99
+							? `${user}:99@hosted`
+							: deviceNum === 0
+								? `${user}@s.whatsapp.net`
+								: `${user}:${deviceNum}@s.whatsapp.net`
+					const sessionKey = jidToSignalProtocolAddress(jid).toString()
+					deviceSessionKeyMap.set(sessionKey, jid)
+					deviceSessionKeys.push(sessionKey)
+				}
+
 				const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
 
-				// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist)
+				// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist).
+				// PR #457 round-2: use the deviceSessionKeyMap to recover the JID we
+				// used to build each sessionKey — handles both canonical-format keys
+				// (hosted: `${user}_hosted.99`) and plain (`${user}.${device}`) uniformly.
 				const deviceJids: string[] = []
 				for (const [sessionKey, sessionData] of Object.entries(existingSessions)) {
 					if (sessionData) {
-						// Session exists in storage
-						const deviceStr = sessionKey.split('.')[1]
-						if (!deviceStr) continue
-						const deviceNum = parseInt(deviceStr)
-						let jid = deviceNum === 0 ? `${user}@s.whatsapp.net` : `${user}:${deviceNum}@s.whatsapp.net`
-						if (deviceNum === 99) {
-							jid = `${user}:99@hosted`
+						const originalJid = deviceSessionKeyMap.get(sessionKey)
+						if (originalJid) {
+							deviceJids.push(originalJid)
 						}
-
-						deviceJids.push(jid)
 					}
 				}
 
