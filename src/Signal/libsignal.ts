@@ -487,6 +487,10 @@ export function makeLibSignalRepository(
 			// paths (text, media, poll, peer) keep transactWith — they don't hit
 			// the multi-device fanout sibling pattern in a way that breaks render.
 			if (useLegacyLock) {
+				logger.debug(
+					{ jid, canonicalJid },
+					'[encryptMessage] using legacy transaction() lock (interactive send workaround)'
+				)
 				return parsedKeys.transaction(async () => {
 					const { type: sigType, body } = await cipher.encrypt(data)
 					const type = sigType === 3 ? 'pkmsg' : 'msg'
