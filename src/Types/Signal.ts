@@ -22,18 +22,27 @@ type EncryptMessageOpts = {
 	jid: string
 	data: Uint8Array
 	/**
-	 * Workaround flag (2026-05-25) — when `true`, encryptMessage uses the
-	 * legacy `transaction(work, canonicalJid)` pattern instead of Stage 2's
-	 * `transactWith({records:[session:<addr>]}, work)`. Set this for
-	 * interactive message sends (buttons / CTA / list / carousel) where
-	 * relayMessage fans out per-device encryption via Promise.all, producing
-	 * SIBLING transactWith calls inside the outer `transaction(meId)` ctx — a
-	 * pattern Stage 2's own contract documents as unsafe (auth-utils.ts
-	 * around the transactWith definition).
+	 * Workaround flag (2026-05-25) — when `true`, encryptMessage SKIPS the
+	 * inner transactional wrapper entirely (no `transactWith` and no legacy
+	 * `transaction()`) and calls `cipher.encrypt(data)` directly. The outer
+	 * `relayMessage` transaction context (or absence of one — see the
+	 * companion outer-transaction bypass in messages-send.ts) is the only
+	 * locking layer in effect.
 	 *
-	 * Non-interactive paths (text, media, poll, peer) continue to use
-	 * Stage 2's transactWith. Remove once the sibling-Promise.all issue is
-	 * solved properly.
+	 * Set this for interactive 1-on-1 sends (buttons / CTA / list / carousel).
+	 * `relayMessage` fans out per-device encryption via `Promise.all`,
+	 * producing SIBLING transactWith calls inside the outer `transaction(meId)`
+	 * ctx — Stage 2's own auth-utils.ts contract documents that pattern as
+	 * unsafe, and in production it correlated with WhatsApp Web failing to
+	 * render the resulting message. Bypassing the inner wrap mirrors the
+	 * pre-Stage-2 H0-bypass behavior that empirically worked.
+	 *
+	 * Trade-off: loses H10 (per-jid encrypt serialization) for the
+	 * interactive path. Never observed in production; acceptable.
+	 *
+	 * Non-interactive paths (text, media, poll, peer) continue to use Stage
+	 * 2's transactWith with full record-scoped locking. Remove this flag
+	 * once the underlying sibling-Promise.all issue is solved upstream.
 	 */
 	useLegacyLock?: boolean
 }

@@ -1072,25 +1072,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 		}
 
-		// WORKAROUND (Stage 2 #2572 — round 3): for interactive sends (buttons /
-		// CTA / list / carousel), DETECT here and choose between:
+		// WORKAROUND (Stage 2 #2572 — round 3, narrowed in round 4 per cubic P2):
+		// For interactive 1-ON-1 sends (buttons / CTA / list / carousel), DETECT
+		// here and choose between:
 		//  - Outer `transaction(meId)` wrap (default, Stage 2 semantics)
 		//  - NO outer wrap (run body() directly, master-like, full isolation
 		//    from Stage 2 transactWith semantics)
 		//
 		// Round 1 (dcdfc09683): isolate per-device encrypt with useLegacyLock.
 		// Round 2 (7f534d28b4): bypass inner tx wrap entirely for interactives.
-		// Both reduced but did not eliminate the recipient retry / 479 / Web
-		// "Aguardando mensagem" placeholder symptom. Round 3 bypasses the
-		// outer transaction wrap too — if Stage 2's `transaction(meId)` itself
-		// is participating in the regression, this isolates fully.
+		// Round 3 (bb0ab9653c): also bypass outer transaction(meId) — confirmed
+		//   working in staging 2026-05-25, Web renders interactive messages.
+		// Round 4 (this commit): narrow the gate to 1-on-1 ONLY. Group sends
+		//   still need the outer transaction(meId) because `sender-key-memory`
+		//   does a read-modify-write inside the group branch (line ~1233);
+		//   concurrent group sends without the outer lock would race on that
+		//   bucket per cubic dev review. 1-on-1 interactives never touch
+		//   `sender-key-memory`, so the bypass remains safe there.
 		//
-		// Trade-off: loses transactional atomicity for the interactive send
-		// (session writes commit individually via state.set rather than
-		// batched at outer-tx end). For interactives the only writes are
-		// per-device session updates inside encrypt — independent records,
+		// Trade-off: loses transactional atomicity for the interactive 1-on-1
+		// send (session writes commit individually via state.set rather than
+		// batched at outer-tx end). For 1-on-1 interactives the only writes
+		// are per-device session updates inside encrypt — independent records,
 		// no atomicity requirement between them.
-		const _isInteractiveSendBypass = isCarouselMessage(message) || getButtonType(message) !== undefined
+		const _isInteractiveSendBypass =
+			!isGroup &&
+			!isStatus &&
+			!isNewsletter &&
+			(isCarouselMessage(message) || getButtonType(message) !== undefined)
 
 		const runSendBody = async () => {
 			const mediaType = getMediaType(message)
@@ -2042,8 +2051,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		try {
 			if (_isInteractiveSendBypass) {
 				logger.info(
-					{ msgId, kind: isCarouselMessage(message) ? 'carousel' : getButtonType(message) },
-					'[relayMessage] WORKAROUND ACTIVE: bypassing outer transaction(meId) for interactive send'
+					{ msgId, kind: isCarouselMessage(message) ? 'carousel' : getButtonType(message), isGroup, isStatus, isNewsletter },
+					'[relayMessage] WORKAROUND ACTIVE: bypassing outer transaction(meId) for interactive 1-on-1 send'
 				)
 				await runSendBody()
 			} else {
