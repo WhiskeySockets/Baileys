@@ -1296,17 +1296,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(jid)
 				}
 
-				// LID canonicalization is required for ALL interactive messages to render
-				// on WhatsApp Web, not just carousel. Pre-existing diagnosis (validated
-				// staging 2026-05-25): buttons:reply, buttons:cta, list etc. render on
-				// smartphone with PN addressing but fail on Web — Web requires LID-canonicalized
-				// participants + matching LID envelope `to` (see CARROUSEL FIX note around
-				// line 1616). Carousel was fixed first; this extends the same fix.
-				const needsLidAddressing = isCarouselMessage(message) || getButtonType(message) !== undefined
-				const effectiveMeRecipients = needsLidAddressing
+				// LID canonicalization is required for carousel rendering on Web.
+				// Was experimentally extended to all interactive types (commit ae4de453bf)
+				// but reverted 2026-05-25 — extending it to legacy `buttonsMessage` /
+				// `listMessage` protos didn't fix Web rendering and risks routing buttons
+				// down a different Web pipeline that expects PN envelopes for legacy
+				// proto. Keep carousel-only until we have CDP evidence that another
+				// interactive type also benefits from LID addressing.
+				const isCarouselFanout = isCarouselMessage(message)
+				const effectiveMeRecipients = isCarouselFanout
 					? await canonicalizeCarouselRecipients(meRecipients)
 					: meRecipients
-				const effectiveOtherRecipients = needsLidAddressing
+				const effectiveOtherRecipients = isCarouselFanout
 					? await canonicalizeCarouselRecipients(otherRecipients)
 					: otherRecipients
 				const effectiveAllRecipients = [...effectiveMeRecipients, ...effectiveOtherRecipients]
@@ -1491,29 +1492,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const hasQuickReply = allButtonNames.some((name: string) => name === 'quick_reply')
 					const isCTAOnly = hasCTA && !hasQuickReply
 
-					// Build the quality_control sub-node — required inside biz for ALL
-					// interactive surfaces to render on WhatsApp Web (not just carousel).
-					// Originally added for carousel only (reference WA CDP capture); staging
-					// 2026-05-25 confirmed buttons:reply / buttons:cta / list deliver to
-					// smartphone with LID-canonicalized stanzas BUT still fail to render on
-					// Web — the only remaining stanza-shape difference vs. carousel was the
-					// missing quality_control node. Extending it to all biz/native_flow/list
-					// paths matches what the reference implementation sends for native_flow.
-					const buildQualityControl = (): BinaryNode => ({
-						tag: 'quality_control',
-						attrs: {
-							decision_id: randomBytes(20).toString('hex')
-						},
-						content: [
-							{
-								tag: 'decision_source',
-								attrs: {
-									value: 'df'
-								}
-							}
-						]
-					})
-
 					// For listMessage (legacy format), use direct <list> tag
 					// This matches the known working implementation
 					if (buttonType === 'list') {
@@ -1527,14 +1505,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 										type: 'product_list',
 										v: '2'
 									}
-								},
-								buildQualityControl()
+								}
 							]
 						})
-						logger.info(
-							{ msgId, to: destinationJid },
-							'[BIZ NODE] Injected biz > list (product_list, v=2) + quality_control'
-						)
+						logger.info({ msgId, to: destinationJid }, '[BIZ NODE] Injected biz > list (product_list, v=2)')
 					} else {
 						const SPECIAL_FLOW_NAMES: Record<string, string> = {
 							review_and_pay: 'payment_info',
@@ -1570,15 +1544,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						]
 
-						// quality_control inside biz — required for Web rendering of all
-						// native_flow / buttons interactive messages, not just carousel
-						// (see comment on buildQualityControl helper above).
-						const qcNode = buildQualityControl()
-						bizContent.push(qcNode)
-						logger.info(
-							{ msgId, decisionId: (qcNode.attrs as { decision_id: string }).decision_id, kind: isCarousel ? 'carousel' : buttonType },
-							'[BIZ NODE] Added quality_control'
-						)
+						// quality_control inside biz — required for carousel rendering on Web.
+						// Was experimentally extended to all native_flow / buttons messages
+						// (commit 61e4b564e3) but reverted 2026-05-25 — extending it did
+						// not fix Web rendering for buttons/CTA/list and may have triggered
+						// a different Web pipeline. Keep carousel-only until we have CDP
+						// evidence that other types benefit from this node.
+						if (isCarousel) {
+							const decisionId = randomBytes(20).toString('hex')
+							bizContent.push({
+								tag: 'quality_control',
+								attrs: {
+									decision_id: decisionId
+								},
+								content: [
+									{
+										tag: 'decision_source',
+										attrs: {
+											value: 'df'
+										}
+									}
+								]
+							})
+							logger.info({ msgId, decisionId }, '[BIZ NODE] Added quality_control for carousel')
+						}
 
 						deferredNodes.push({
 							tag: 'biz',
@@ -1636,32 +1625,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				} else {
 					stanza.attrs.to = participant.jid
 				}
-			} else if (isCarousel || buttonType) {
-				// LID envelope canonicalization — required for Web rendering of ALL
-				// interactive messages (carousel + buttons + CTA + list), not just carousel.
-				// canonicalizeCarouselRecipients() (called earlier in this transaction
-				// when needsLidAddressing is true) converted participant/enc nodes to LID;
-				// the envelope `to` must match or the server rejects with error 400 AND
-				// Web fails to render the message.
-				//
-				// Originally added for carousel only (PR fix carousel WhatsApp Web rendering);
-				// extended to all interactive types after staging 2026-05-25 confirmed
-				// buttons:reply / buttons:cta / list render on smartphone with PN but fail
-				// on Web. Reference WA CDP capture for carousel uses LID envelope; the same
-				// rule applies to other interactive surfaces.
-				//
+			} else if (isCarousel) {
+				// CARROUSEL FIX (Option B): keep the envelope `to` consistent with the
+				// LID-canonicalized participants. canonicalizeCarouselRecipients converts the
+				// participant/enc nodes to LID, but the envelope stayed PN — and a PN envelope
+				// wrapping LID participant enc nodes is a mismatch the server rejects with
+				// error 400. Resolve the envelope to the same LID; fall back to PN when no
+				// mapping exists (in which case participants also stayed PN, so still consistent).
 				// Normalize first so `@c.us` inputs also resolve — isAnyPnUser/getLIDForPN
 				// reject raw `@c.us`, which sendMessage() can pass directly (Codex P1).
 				const normalizedDest = jidNormalizedUser(destinationJid)
-				const interactiveLid = isAnyPnUser(normalizedDest) ? await getLIDForPN(normalizedDest) : null
+				const carouselLid = isAnyPnUser(normalizedDest) ? await getLIDForPN(normalizedDest) : null
 				// Prefer the LID, then the normalized jid (so an `@c.us` envelope matches the
 				// normalized participants), and finally the raw input — never an empty `to`, since
 				// jidNormalizedUser returns '' for a malformed JID (would yield a 400) (Copilot #440).
-				stanza.attrs.to = interactiveLid || normalizedDest || destinationJid
-				if (interactiveLid) {
+				stanza.attrs.to = carouselLid || normalizedDest || destinationJid
+				if (carouselLid) {
 					logger.info(
-						{ msgId, from: destinationJid, to: interactiveLid, kind: isCarousel ? 'carousel' : buttonType },
-						'[INTERACTIVE] Envelope addressing canonicalized to LID (match participants)'
+						{ msgId, from: destinationJid, to: carouselLid },
+						'[CAROUSEL] Envelope addressing canonicalized to LID (match participants)'
 					)
 				}
 			} else {
@@ -1883,7 +1865,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								biz: contentTags.includes('biz'),
 								bot: contentTags.includes('bot'),
 								deviceIdentity: contentTags.includes('device-identity'),
-								qualityControl: isCarousel || !!buttonType
+								qualityControl: isCarousel
 							},
 							participantDevices: participants.length
 						},
