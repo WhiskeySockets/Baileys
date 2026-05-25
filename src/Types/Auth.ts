@@ -121,10 +121,31 @@ export type SignalKeyStore = {
 /**
  * Scope declaration for {@link SignalKeyStoreWithTransaction.transactWith}.
  *
- * The records list names every (type, id) pair the transaction will read or
- * write. Locks are acquired in a deterministic sorted order via the
- * LockManager, so two transactions with overlapping scope acquired in opposite
- * orders cannot deadlock against each other.
+ * The records list names the (type, id) pairs the transaction's TOP-LEVEL
+ * `transactWith` call will read or write. Locks at this level are acquired
+ * in a deterministic sorted order via the LockManager, so two transactions
+ * with overlapping top-level scope acquired in opposite orders cannot
+ * deadlock against each other.
+ *
+ * Deadlock-freedom contract — PR #457 round-3 clarification (Copilot doc fix):
+ *
+ *   ✅ Two CONCURRENT top-level transactWith calls with the same record set
+ *      (or any overlapping pair) declared up-front: cannot deadlock.
+ *
+ *   ⚠️  Nested transactWith INSIDE another transactWith (the Stage 2 H0
+ *      closure permits this) extends the held scope at runtime. If two
+ *      concurrent top-level callers each later nest a transactWith that
+ *      acquires records IN OPPOSITE ORDERS not visible at the top-level
+ *      scope, deadlock is theoretically possible. Mitigations: declare the
+ *      full record set at the outer level when feasible, or ensure nested
+ *      scopes are subsets of the outer scope (which makes them no-op
+ *      acquisitions via heldLocks re-entry).
+ *
+ *   ⚠️  Mixing `transaction()` (legacy, `__legacy__` namespace) with
+ *      `transactWith()` in opposite orders across two concurrent callers
+ *      can deadlock. InfiniteAPI enforces ONE direction by convention:
+ *      legacy `transaction(meId)` is OUTER, transactWith is INNER. Never
+ *      call `transaction()` from inside a `transactWith()`.
  *
  * Stage 2 (upstream #2572) addition.
  */

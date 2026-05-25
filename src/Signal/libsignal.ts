@@ -260,6 +260,28 @@ export function makeLibSignalRepository(
 	options?: LibSignalRepositoryOptions
 ): SignalRepositoryWithLIDStore {
 	const { ev } = options || {}
+
+	// PR #457 round-3 (CodeRabbit Minor): runtime guard MOVED to the top of
+	// this function. Previously sat after setInterval() — if the guard
+	// threw, the minute-interval and identityKeyCache were already allocated
+	// and leaked (unref'd timer + LRU pinned in closure). Failing fast
+	// before any long-lived resource exists eliminates the startup leak.
+	//
+	// Stage 2 (upstream #2572): Baileys' `addTransactionCapability` returns a
+	// store with `transactWith` implemented. `SignalAuthState.keys` is typed
+	// `SignalKeyStore | SignalKeyStoreWithTransaction` (transactWith OPTIONAL).
+	// A legacy store reaching here would silently fail at the first migrated
+	// path with a confusing "transactWith is not a function" TypeError. The
+	// guard surfaces the contract violation immediately with a clear message.
+	const keysCandidate = auth.keys as Partial<SignalKeyStoreWithRecordTransaction>
+	if (typeof keysCandidate.transactWith !== 'function') {
+		throw new Error(
+			'makeLibSignalRepository: auth.keys is missing the `transactWith` method. ' +
+				'Wrap your storage with `addTransactionCapability()` so it returns a ' +
+				'`SignalKeyStoreWithRecordTransaction` (Stage 2 record-scoped API).'
+		)
+	}
+
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 
 	// Identity key cache to avoid repeated storage reads
@@ -282,24 +304,6 @@ export function makeLibSignalRepository(
 
 	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, logger)
 
-	// Stage 2 (upstream #2572): Baileys' `addTransactionCapability` returns a store
-	// with `transactWith` implemented; narrow to the record-transaction variant so
-	// the internal sites below can call it without null-checking the optional method.
-	//
-	// PR #457 round-2 (CodeRabbit Major): runtime guard. `SignalAuthState.keys`
-	// is typed as `SignalKeyStore | SignalKeyStoreWithTransaction`, with
-	// transactWith OPTIONAL. A legacy store reaching here would silently fail
-	// at the first migrated path with a confusing "transactWith is not a
-	// function" TypeError. Assert presence early with a clear message so the
-	// contract violation is obvious.
-	const keysCandidate = auth.keys as Partial<SignalKeyStoreWithRecordTransaction>
-	if (typeof keysCandidate.transactWith !== 'function') {
-		throw new Error(
-			'makeLibSignalRepository: auth.keys is missing the `transactWith` method. ' +
-				'Wrap your storage with `addTransactionCapability()` so it returns a ' +
-				'`SignalKeyStoreWithRecordTransaction` (Stage 2 record-scoped API).'
-		)
-	}
 	const parsedKeys = auth.keys as SignalKeyStoreWithRecordTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
 		ttl: 3 * 24 * 60 * 60 * 1000, // 3 days
@@ -636,6 +640,34 @@ export function makeLibSignalRepository(
 			lidMapping.destroy()
 		},
 
+		/**
+		 * Known limitation (PR #457 round-3 CodeRabbit Major heavy lift):
+		 *
+		 * `existingSessions`, `deviceJids`, and `migrationRecords` are derived
+		 * BEFORE the `transactWith` lock is acquired. In a strict reading,
+		 * a PN session created/deleted/updated between the prefetch and the
+		 * lock acquisition could be missed by this migration. Fully closing
+		 * this requires lock-then-read-then-decide — a refactor not done
+		 * here due to the migration's per-device complexity.
+		 *
+		 * Mitigations preserved by InfiniteAPI:
+		 * - `migrationInFlight` Map dedups concurrent callers for the SAME
+		 *   user, so the typical "two LID messages arrive at once" pattern
+		 *   only computes one snapshot.
+		 * - `migratedSessionCache` (3-day TTL) makes subsequent calls cheap
+		 *   and the cache is populated INSIDE the transaction (caching only
+		 *   committed state).
+		 * - The lock scope DOES cover every device we discovered, so
+		 *   in-transaction reads of `existingSessions` are correct for the
+		 *   devices that WERE in the snapshot.
+		 *
+		 * Worst-case impact: a PN session created in the gap between
+		 * prefetch and lock would be missed THIS round; next migration call
+		 * for the same user (after `migrationInFlight` settles) re-prefetches
+		 * and catches it.
+		 *
+		 * Deferred to a focused refactor PR with concurrent-migration tests.
+		 */
 		async migrateSession(
 			fromJid: string,
 			toJid: string

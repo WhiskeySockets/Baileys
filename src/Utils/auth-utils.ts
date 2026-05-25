@@ -532,6 +532,32 @@ export const addTransactionCapability = (
 		 * InfiniteAPI preservation: same `destroyed` check + `activeTransactions`
 		 * counter as `transaction()` so PR #453's drain semantics in
 		 * `destroy()` cover BOTH transaction surfaces.
+		 *
+		 * Known limitation (PR #457 round-3 CodeRabbit Major heavy lift) —
+		 * SEQUENTIAL nested calls only. The "re-entry skip" optimization (only
+		 * acquire newLockKeys, share heldLocks with outer) is safe when nested
+		 * `transactWith` invocations are SEQUENTIAL within the same async
+		 * context (the common case: libsignal calls into encryptMessage which
+		 * calls into another transactWith).
+		 *
+		 * It is NOT safe when two SIBLING transactWith calls in the same outer
+		 * ctx run via `Promise.all([transactWith({X}), transactWith({X})])`:
+		 * - Branch A acquires LockManager mutex for X, adds to heldLocks
+		 * - Branch B sees heldLocks has X, skips acquire (but doesn't HOLD
+		 *   the LockManager mutex)
+		 * - Branch A finishes first, LockManager mutex released
+		 * - Branch B still running with no real mutex protection
+		 *
+		 * Refcount heldLocks (PR #457 round-1) covers the heldLocks tracking
+		 * but cannot extend the underlying LockManager lease beyond branch A's
+		 * `withLocks()` callback.
+		 *
+		 * InfiniteAPI code paths NEVER do `Promise.all` of transactWith inside
+		 * the same outer ctx — libsignal calls are sequential. Documented here
+		 * so future code doesn't introduce parallel sibling patterns. If
+		 * needed, the correct pattern is to either declare the union scope at
+		 * the outer transactWith, OR have each branch be its own top-level
+		 * transactWith.
 		 */
 		transactWith: async <T>(scope: TransactionScope, work: () => Promise<T>): Promise<T> => {
 			const existing = txStorage.getStore()
