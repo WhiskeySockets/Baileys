@@ -63,6 +63,7 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { logMessageReceived, logTcToken } from '../Utils/baileys-logger'
+import { makeLockManager } from '../Utils/lock-manager'
 import { makeMutex } from '../Utils/make-mutex'
 import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
@@ -165,6 +166,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
+
+	// Stage 3 (upstream #2573 M11): in-flight Set for identity refreshes.
+	// Created ONCE per socket lifetime so handleIdentityChange can dedup
+	// concurrent refreshes that outlive the 5s debounce TTL above.
+	const identityInFlightRefreshes = new Set<string>()
+
+	// Stage 3 (upstream #2573 H8): per-(alt-jid) lock so two parallel inbound
+	// messages from the same alt-jid participant don't each observe a null
+	// mapping and each fire `storeLIDPNMappings` + `migrateSession` redundantly.
+	// Complements InfiniteAPI's existing dedup layers:
+	//   - libsignal `migrationInFlight` (Promise sharing for the SAME PN user
+	//     reaching `migrateSession` — covers intra-call dedup)
+	//   - libsignal `migratedSessionCache` (skip-if-already-migrated)
+	//   - lidMigrationLocks (this) covers the BLOCK above migrateSession,
+	//     not just the migrateSession call itself.
+	const lidMigrationLocks = makeLockManager()
 
 	let sendActiveReceipts = false
 
@@ -1503,6 +1520,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				validateSession: signalRepository.validateSession,
 				assertSessions,
 				debounceCache: identityAssertDebounce,
+				inFlightRefreshes: identityInFlightRefreshes,
 				logger
 			})
 
@@ -2606,50 +2624,64 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			// - Store mapping operation runs in background (non-critical for decrypt)
 			// - Session migration MUST complete before decrypt() to avoid "No session record" errors
 			// This addresses Codex/Copilot review concerns about race conditions with decrypt()
+			//
+			// Stage 3 (upstream #2573 H8): wrap the whole `getPN/LIDFor… →
+			// storeLIDPNMappings → migrateSession` block in a per-(alt-jid)
+			// `lidMigrationLocks` lock. Two parallel inbound messages from the
+			// same alt-jid participant previously each observed a null mapping
+			// and each fired the migration. The lock serializes the whole
+			// read-then-write so only one branch runs through the migration
+			// and the others see the post-mapping state.
 			if (!!alt) {
 				const altServer = jidDecode(alt)?.server
 				const primaryJid = msg.key.participant || msg.key.remoteJid!
 
-				if (altServer === 'lid') {
-					// HYBRID guard — covers two distinct bugs:
-					//   Bug B (upstream #2574 P1): equality check, not bare existence.
-					//     `if (!existingPn)` would freeze a STALE mapping forever — if
-					//     `alt` previously mapped to LID X and a new message announces
-					//     LID Y, the old "X" stays in the store and the user state
-					//     diverges from session state. Comparing against `primaryJid`
-					//     updates the mapping when stale and skips the store when it
-					//     already matches.
-					//   Bug A (our prior fix): mapping existence doesn't imply session
-					//     migration. USync device lookup (messages-send.ts:310-319) and
-					//     other paths call storeLIDPNMappings without migrateSession,
-					//     leaving sessions under the wrong key. Upstream's full guard
-					//     skips BOTH on match, relying on Stage 3 (#2573) libsignal
-					//     canonicalization which we don't have — so we keep the
-					//     ALWAYS-migrate safety even when the mapping was already
-					//     correct. `migrateSession` is idempotent via migratedSessionCache.
-					const existingPn = await signalRepository.lidMapping.getPNForLID(alt)
-					if (existingPn !== primaryJid) {
-						// MUST await: normalizeMessageJids() runs after this and needs the mapping
-						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
-						await signalRepository.lidMapping
-							.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-							.catch(error => logger.warn({ error, alt, primaryJid, existingPn }, 'LID mapping storage failed'))
-					}
+				await lidMigrationLocks.withLock({ namespace: 'lid-migration', id: alt }, async () => {
+					if (altServer === 'lid') {
+						// HYBRID guard — covers two distinct bugs:
+						//   Bug B (upstream #2574 P1): equality check, not bare existence.
+						//     `if (!existingPn)` would freeze a STALE mapping forever — if
+						//     `alt` previously mapped to LID X and a new message announces
+						//     LID Y, the old "X" stays in the store and the user state
+						//     diverges from session state. Comparing against `primaryJid`
+						//     updates the mapping when stale and skips the store when it
+						//     already matches.
+						//   Bug A (our prior fix): mapping existence doesn't imply session
+						//     migration. USync device lookup (messages-send.ts:310-319) and
+						//     other paths call storeLIDPNMappings without migrateSession,
+						//     leaving sessions under the wrong key. Upstream's full guard
+						//     skips BOTH on match, relying on Stage 3 (#2573) libsignal
+						//     canonicalization which we don't have — so we keep the
+						//     ALWAYS-migrate safety even when the mapping was already
+						//     correct. `migrateSession` is idempotent via migratedSessionCache.
+						const existingPn = await signalRepository.lidMapping.getPNForLID(alt)
+						if (existingPn !== primaryJid) {
+							// MUST await: normalizeMessageJids() runs after this and needs the mapping
+							// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
+							await signalRepository.lidMapping
+								.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+								.catch(error =>
+									logger.warn({ error, alt, primaryJid, existingPn }, 'LID mapping storage failed')
+								)
+						}
 
-					await signalRepository.migrateSession(primaryJid, alt)
-				} else {
-					// Symmetric hybrid guard for the PN-alt branch.
-					const existingLid = await signalRepository.lidMapping.getLIDForPN(alt)
-					if (existingLid !== primaryJid) {
-						// MUST await: normalizeMessageJids() runs after this and needs the mapping
-						// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
-						await signalRepository.lidMapping
-							.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-							.catch(error => logger.warn({ error, alt, primaryJid, existingLid }, 'LID mapping storage failed'))
-					}
+						await signalRepository.migrateSession(primaryJid, alt)
+					} else {
+						// Symmetric hybrid guard for the PN-alt branch.
+						const existingLid = await signalRepository.lidMapping.getLIDForPN(alt)
+						if (existingLid !== primaryJid) {
+							// MUST await: normalizeMessageJids() runs after this and needs the mapping
+							// in the LIDMappingStore to resolve LID→PN for events delivered to consumers
+							await signalRepository.lidMapping
+								.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+								.catch(error =>
+									logger.warn({ error, alt, primaryJid, existingLid }, 'LID mapping storage failed')
+								)
+						}
 
-					await signalRepository.migrateSession(alt, primaryJid)
-				}
+						await signalRepository.migrateSession(alt, primaryJid)
+					}
+				})
 			}
 
 			if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
