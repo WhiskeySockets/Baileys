@@ -2,7 +2,13 @@
 import { createHash } from 'crypto'
 import * as libsignal from 'libsignal'
 import { LRUCache } from 'lru-cache'
-import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
+import type {
+	LIDMapping,
+	RecordRef,
+	SignalAuthState,
+	SignalKeyStoreWithRecordTransaction,
+	SignalKeyStoreWithTransaction
+} from '../Types'
 import type { BaileysEventEmitter } from '../Types/Events'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
@@ -254,6 +260,28 @@ export function makeLibSignalRepository(
 	options?: LibSignalRepositoryOptions
 ): SignalRepositoryWithLIDStore {
 	const { ev } = options || {}
+
+	// PR #457 round-3 (CodeRabbit Minor): runtime guard MOVED to the top of
+	// this function. Previously sat after setInterval() — if the guard
+	// threw, the minute-interval and identityKeyCache were already allocated
+	// and leaked (unref'd timer + LRU pinned in closure). Failing fast
+	// before any long-lived resource exists eliminates the startup leak.
+	//
+	// Stage 2 (upstream #2572): Baileys' `addTransactionCapability` returns a
+	// store with `transactWith` implemented. `SignalAuthState.keys` is typed
+	// `SignalKeyStore | SignalKeyStoreWithTransaction` (transactWith OPTIONAL).
+	// A legacy store reaching here would silently fail at the first migrated
+	// path with a confusing "transactWith is not a function" TypeError. The
+	// guard surfaces the contract violation immediately with a clear message.
+	const keysCandidate = auth.keys as Partial<SignalKeyStoreWithRecordTransaction>
+	if (typeof keysCandidate.transactWith !== 'function') {
+		throw new Error(
+			'makeLibSignalRepository: auth.keys is missing the `transactWith` method. ' +
+				'Wrap your storage with `addTransactionCapability()` so it returns a ' +
+				'`SignalKeyStoreWithRecordTransaction` (Stage 2 record-scoped API).'
+		)
+	}
+
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 
 	// Identity key cache to avoid repeated storage reads
@@ -276,7 +304,7 @@ export function makeLibSignalRepository(
 
 	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, logger)
 
-	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
+	const parsedKeys = auth.keys as SignalKeyStoreWithRecordTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
 		ttl: 3 * 24 * 60 * 60 * 1000, // 3 days
 		ttlAutopurge: true,
@@ -340,10 +368,12 @@ export function makeLibSignalRepository(
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
 
-			// Use transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
+			// Stage 2 (upstream #2572): record-scoped lock on the actual sender-key
+			// being decrypted, not the synthetic group jid. Concurrent decrypts of
+			// different sender-keys in the same group now run in parallel.
+			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderName.toString() }] }, async () => {
 				return cipher.decrypt(msg)
-			}, group)
+			})
 		},
 		async processSenderKeyDistributionMessage({ item, authorJid }) {
 			const builder = new GroupSessionBuilder(storage)
@@ -352,6 +382,7 @@ export function makeLibSignalRepository(
 			}
 
 			const senderName = jidToSignalSenderKeyName(item.groupId, authorJid)
+			const senderNameStr = senderName.toString()
 
 			const senderMsg = new SenderKeyDistributionMessage(
 				null,
@@ -360,20 +391,22 @@ export function makeLibSignalRepository(
 				null,
 				item.axolotlSenderKeyDistributionMessage
 			)
-			const senderNameStr = senderName.toString()
-			const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-			if (!senderKey) {
-				await storage.storeSenderKey(senderName, new SenderKeyRecord())
-			}
 
-			return parsedKeys.transaction(async () => {
+			// Stage 2 (upstream #2572): removed the previous pre-lock
+			// `auth.keys.get('sender-key', ...) + conditional storeSenderKey`
+			// block. It was redundant (the same check + write runs inside the
+			// transactWith below) AND unsafe — a concurrent writer could commit
+			// a populated record between our pre-lock read and our pre-lock
+			// write, which we'd then clobber with an empty SenderKeyRecord.
+			// All initialization now happens atomically under the per-record lock.
+			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderNameStr }] }, async () => {
 				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
 				if (!senderKey) {
 					await storage.storeSenderKey(senderName, new SenderKeyRecord())
 				}
 
 				await builder.process(senderName, senderMsg)
-			}, item.groupId)
+			})
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
@@ -421,39 +454,100 @@ export function makeLibSignalRepository(
 				return result
 			}
 
-			// Use canonical JID (PN→LID resolved) as transaction key to prevent
-			// PN/LID race conditions on the same logical session.
+			// InfiniteAPI hybrid (Stage 2 #2572 + nosso PN/LID race fix):
+			// resolve PN→LID FIRST, then build the record id from the canonical
+			// address. Upstream Stage 2 used `addr.toString()` direct, which loses
+			// our PN→LID resolution and reintroduces the race where parallel
+			// decrypts of the same logical contact via PN vs LID acquire DIFFERENT
+			// session locks. We feed the canonical addr to transactWith so all
+			// variants of the same logical session serialize under one record lock.
 			const canonicalJid = await resolveCanonicalJid(jid)
-			return parsedKeys.transaction(async () => {
+			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
 				return await doDecrypt()
-			}, canonicalJid)
+			})
 		},
 
-		async encryptMessage({ jid, data }) {
+		async encryptMessage({ jid, data, useLegacyLock }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
-			const canonicalJid = await resolveCanonicalJid(jid)
-			return parsedKeys.transaction(async () => {
+			// WORKAROUND (Stage 2 #2572 regression — 2026-05-25): when caller
+			// sets `useLegacyLock` (interactive message sends — buttons / CTA /
+			// list / carousel), SKIP any inner transactional wrap and rely
+			// solely on the outer `transaction(meId)` from relayMessage.
+			//
+			// Why: master (pre-Stage-2) had the H0 bypass bug — nested
+			// `transaction(work, key)` calls ALWAYS reused the outer ctx
+			// without acquiring an inner lock, regardless of whether the
+			// inner key differed. Buttons / CTA / list rendering on Web
+			// historically relied on that behavior. Stage 2 closed H0:
+			// nested transaction with a different key now acquires its own
+			// LockManager mutex (correct) — but for the multi-device fanout
+			// pattern (Promise.all of per-device encrypts inside one outer
+			// meId tx), this lock acquisition correlates with WhatsApp Web
+			// failing to render the resulting message.
+			//
+			// Calling `cipher.encrypt(data)` directly (no inner wrap) mirrors
+			// what master's H0-bypass effectively did: the encrypt body runs
+			// inside the outer ctx's AsyncLocalStorage, all session reads /
+			// writes go into the outer ctx.mutations, and the outer tx
+			// commits them atomically. No inner lock → matches master's
+			// observed-working behavior for interactives.
+			//
+			// Non-interactive paths (text / media / poll / peer) keep
+			// Stage 2's transactWith — they don't exhibit the rendering
+			// regression and benefit from H10's per-jid decrypt
+			// serialization companion.
+			if (useLegacyLock) {
+				logger.info(
+					{ jid },
+					'[encryptMessage] WORKAROUND ACTIVE: running without inner tx wrap (interactive send, mirrors master H0 bypass)'
+				)
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
 				return { type, ciphertext: Buffer.from(body, 'binary') }
-			}, canonicalJid)
+			}
+
+			// InfiniteAPI hybrid (Stage 2 #2572 + nosso PN/LID race fix):
+			// same canonical-address pattern as decryptMessage — PN→LID resolution
+			// runs BEFORE we lock, so parallel encrypts to the same logical
+			// contact via PN vs LID variants serialize under one session record.
+			const canonicalJid = await resolveCanonicalJid(jid)
+			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
+				const { type: sigType, body } = await cipher.encrypt(data)
+				const type = sigType === 3 ? 'pkmsg' : 'msg'
+				return { type, ciphertext: Buffer.from(body, 'binary') }
+			})
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
-			return parsedKeys.transaction(async () => {
-				const { senderName, skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
-				const ciphertext = await new GroupCipher(storage, senderName).encrypt(data)
-				return { ciphertext, senderKeyDistributionMessage: skdm.serialize() }
-			}, group)
+			// Stage 2 (upstream #2572): hoist senderName computation out of the
+			// transaction so the record id is known before lock acquisition.
+			// Lock per (group, meId) sender-key instead of the synthetic group jid —
+			// concurrent encrypts for different group/meId pairs run in parallel.
+			const senderName = jidToSignalSenderKeyName(group, meId)
+			return parsedKeys.transactWith(
+				{ records: [{ type: 'sender-key', id: senderName.toString() }] },
+				async () => {
+					const { skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
+					const ciphertext = await new GroupCipher(storage, senderName).encrypt(data)
+					return { ciphertext, senderKeyDistributionMessage: skdm.serialize() }
+				}
+			)
 		},
 
 		async getSenderKeyDistributionMessage({ group, meId }) {
-			return parsedKeys.transaction(async () => {
-				const { skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
-				return skdm.serialize()
-			}, group)
+			// Stage 2: same record-scoped pattern as encryptGroupMessage.
+			const senderName = jidToSignalSenderKeyName(group, meId)
+			return parsedKeys.transactWith(
+				{ records: [{ type: 'sender-key', id: senderName.toString() }] },
+				async () => {
+					const { skdm } = await ensureSenderKeyAndCreateSkdm(group, meId)
+					return skdm.serialize()
+				}
+			)
 		},
 
 		async hasSenderKey({ group, meId }) {
@@ -483,13 +577,24 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
-			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
-			return parsedKeys.transaction(async () => {
+			// PR #457 round-1 fix (Codex P1 + Copilot + CodeRabbit — 3 bots
+			// convergem): use the canonical (PN→LID resolved) address as the
+			// record lock id. `signalStorage.loadSession`/`storeSession`
+			// canonicalize PN→LID before touching storage, so a PN JID with a
+			// known mapping mutates `session.<lidAddr>` even when our cipher
+			// holds the PN address. Without this hybrid, a concurrent encrypt
+			// for the same logical contact (now using canonical addr in its
+			// lock) would NOT serialize against this injection.
+			const addr = jidToSignalProtocolAddress(jid)
+			const canonicalJid = await resolveCanonicalJid(jid)
+			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
+			const cipher = new libsignal.SessionBuilder(storage, addr)
+			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
 				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
 				// but the bundled .d.ts marks it required. Retry-receipt bundles can legitimately
 				// omit the one-time key — cast through unknown so TS lets us pass session through.
 				await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
-			}, jid)
+			})
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()
@@ -520,17 +625,37 @@ export function makeLibSignalRepository(
 		async deleteSession(jids: string[]) {
 			if (!jids.length) return
 
-			// Convert JIDs to signal addresses and prepare for bulk deletion
+			// PR #457 round-1 fix (Codex P1 + Copilot + CodeRabbit — 3 bots
+			// convergem): canonicalize each JID's address before locking AND
+			// before writing. `signalStorage` resolves PN→LID at the storage
+			// boundary, so an uncanonicalized delete on a PN JID would (a)
+			// lock `session.<pnAddr>` while concurrent encrypt/decrypt for
+			// the same logical contact locks `session.<lidAddr>` (race), AND
+			// (b) potentially leave the actual canonical LID session intact
+			// because the write goes to the canonical record via storage's
+			// own resolution. Lock + write both on canonical addr aligns
+			// with encrypt/decrypt/injectE2ESession.
 			const sessionUpdates: { [key: string]: null } = {}
-			jids.forEach(jid => {
-				const addr = jidToSignalProtocolAddress(jid)
-				sessionUpdates[addr.toString()] = null
-			})
+			const sessionAddrs: string[] = []
+			for (const jid of jids) {
+				const canonicalJid = await resolveCanonicalJid(jid)
+				const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
+				sessionUpdates[canonicalAddr] = null
+				sessionAddrs.push(canonicalAddr)
+			}
 
-			// Single transaction for all deletions
-			return parsedKeys.transaction(async () => {
-				await auth.keys.set({ session: sessionUpdates })
-			}, `delete-${jids.length}-sessions`)
+			// Stage 2 H4 fix (upstream #2572): lock the ACTUAL per-jid session
+			// records being deleted, not the synthetic `delete-N-sessions`
+			// string. Now serializes correctly against concurrent
+			// encrypt/decrypt transactions on any of these jids — a delete
+			// can no longer race past an in-flight encrypt that's still
+			// reading the same session.
+			return parsedKeys.transactWith(
+				{ records: sessionAddrs.map(id => ({ type: 'session', id })) },
+				async () => {
+					await auth.keys.set({ session: sessionUpdates })
+				}
+			)
 		},
 
 		// Release in-memory caches and timers on socket close (adapted from #2191). Uses our own
@@ -550,6 +675,34 @@ export function makeLibSignalRepository(
 			lidMapping.destroy()
 		},
 
+		/**
+		 * Known limitation (PR #457 round-3 CodeRabbit Major heavy lift):
+		 *
+		 * `existingSessions`, `deviceJids`, and `migrationRecords` are derived
+		 * BEFORE the `transactWith` lock is acquired. In a strict reading,
+		 * a PN session created/deleted/updated between the prefetch and the
+		 * lock acquisition could be missed by this migration. Fully closing
+		 * this requires lock-then-read-then-decide — a refactor not done
+		 * here due to the migration's per-device complexity.
+		 *
+		 * Mitigations preserved by InfiniteAPI:
+		 * - `migrationInFlight` Map dedups concurrent callers for the SAME
+		 *   user, so the typical "two LID messages arrive at once" pattern
+		 *   only computes one snapshot.
+		 * - `migratedSessionCache` (3-day TTL) makes subsequent calls cheap
+		 *   and the cache is populated INSIDE the transaction (caching only
+		 *   committed state).
+		 * - The lock scope DOES cover every device we discovered, so
+		 *   in-transaction reads of `existingSessions` are correct for the
+		 *   devices that WERE in the snapshot.
+		 *
+		 * Worst-case impact: a PN session created in the gap between
+		 * prefetch and lock would be missed THIS round; next migration call
+		 * for the same user (after `migrationInFlight` settles) re-prefetches
+		 * and catches it.
+		 *
+		 * Deferred to a focused refactor PR with concurrent-migration tests.
+		 */
 		async migrateSession(
 			fromJid: string,
 			toJid: string
@@ -622,24 +775,45 @@ export function makeLibSignalRepository(
 					return { migrated: 0, skipped: 0, total: userDevices.length }
 				}
 
-				// Bulk check session existence only for uncached devices
-				const deviceSessionKeys = uncachedDevices.map(device => `${user}.${device}`)
+				// Bulk check session existence only for uncached devices.
+				//
+				// PR #457 round-2 (CodeRabbit Major): build session keys via the
+				// canonical `jidToSignalProtocolAddress().toString()` instead of
+				// the manual `${user}.${device}` format. For most devices these
+				// are identical, BUT hosted device 99 (`${user}:99@hosted`)
+				// produces `${user}_hosted.99` — manual format would miss it
+				// because the storage key includes the domain prefix.
+				// Pre-existing bug surfaced by Stage 2 (records must use same
+				// canonical format as locks); aligning prefetch keys eliminates
+				// the mismatch entirely.
+				const deviceSessionKeyMap = new Map<string, string>() // sessionKey → originating JID
+				const deviceSessionKeys: string[] = []
+				for (const device of uncachedDevices) {
+					const deviceNum = parseInt(device)
+					const jid =
+						deviceNum === 99
+							? `${user}:99@hosted`
+							: deviceNum === 0
+								? `${user}@s.whatsapp.net`
+								: `${user}:${deviceNum}@s.whatsapp.net`
+					const sessionKey = jidToSignalProtocolAddress(jid).toString()
+					deviceSessionKeyMap.set(sessionKey, jid)
+					deviceSessionKeys.push(sessionKey)
+				}
+
 				const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
 
-				// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist)
+				// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist).
+				// PR #457 round-2: use the deviceSessionKeyMap to recover the JID we
+				// used to build each sessionKey — handles both canonical-format keys
+				// (hosted: `${user}_hosted.99`) and plain (`${user}.${device}`) uniformly.
 				const deviceJids: string[] = []
 				for (const [sessionKey, sessionData] of Object.entries(existingSessions)) {
 					if (sessionData) {
-						// Session exists in storage
-						const deviceStr = sessionKey.split('.')[1]
-						if (!deviceStr) continue
-						const deviceNum = parseInt(deviceStr)
-						let jid = deviceNum === 0 ? `${user}@s.whatsapp.net` : `${user}:${deviceNum}@s.whatsapp.net`
-						if (deviceNum === 99) {
-							jid = `${user}:99@hosted`
+						const originalJid = deviceSessionKeyMap.get(sessionKey)
+						if (originalJid) {
+							deviceJids.push(originalJid)
 						}
-
-						deviceJids.push(jid)
 					}
 				}
 
@@ -663,39 +837,64 @@ export function makeLibSignalRepository(
 					return { migrated: 0, skipped: 0, total: userDevices.length }
 				}
 
-				// Single transaction for all migrations
-				return parsedKeys.transaction(
+				// Stage 2 H4 hybrid (upstream #2572 + InfiniteAPI migration caches):
+				// HOIST migrationOps computation OUT of the transaction so the
+				// record scope is known before lock acquisition. Upstream Stage 2
+				// requires this because `transactWith` needs the records list
+				// declared up-front (so LockManager can sort+dedupe before locking).
+				//
+				// Preserved from InfiniteAPI: deviceListCache, migrationInFlight,
+				// migratedSessionCache, existingSessions reuse, uncachedDevices
+				// filter, early-exit caching of fully-migrated users. The Stage 2
+				// upstream version has NONE of these — they're our perf custom and
+				// the hoist here is non-invasive (moves dataflow up, doesn't change
+				// semantics).
+				type MigrationOp = {
+					fromJid: string
+					toJid: string
+					pnUser: string
+					lidUser: string
+					deviceId: number
+					fromAddr: libsignal.ProtocolAddress
+					toAddr: libsignal.ProtocolAddress
+				}
+
+				const migrationOps: MigrationOp[] = deviceJids.map(jid => {
+					const lidWithDevice = transferDevice(jid, toJid)
+					const fromDecoded = jidDecode(jid)
+					const toDecoded = jidDecode(lidWithDevice)
+					if (!fromDecoded || !toDecoded) {
+						throw new Error(`Failed to decode JID during migration: ${jid} -> ${lidWithDevice}`)
+					}
+
+					return {
+						fromJid: jid,
+						toJid: lidWithDevice,
+						pnUser: fromDecoded.user,
+						lidUser: toDecoded.user,
+						deviceId: fromDecoded.device || 0,
+						fromAddr: jidToSignalProtocolAddress(jid),
+						toAddr: jidToSignalProtocolAddress(lidWithDevice)
+					}
+				})
+
+				// Stage 2 H4 fix: lock scope is the actual device-list + every PN/LID
+				// session pair we're touching. Replaces the synthetic
+				// `migrate-N-sessions-X` key. Now serializes correctly against
+				// concurrent decryptMessage/encryptMessage transactions on any of
+				// these session addresses — a migration can no longer race past an
+				// in-flight encrypt that's reading the same session.
+				const migrationRecords: RecordRef[] = [
+					{ type: 'device-list', id: user },
+					...migrationOps.flatMap(op => [
+						{ type: 'session' as const, id: op.fromAddr.toString() },
+						{ type: 'session' as const, id: op.toAddr.toString() }
+					])
+				]
+
+				return parsedKeys.transactWith(
+					{ records: migrationRecords },
 					async (): Promise<{ migrated: number; skipped: number; total: number }> => {
-						// Prepare migration operations with addressing metadata
-						type MigrationOp = {
-							fromJid: string
-							toJid: string
-							pnUser: string
-							lidUser: string
-							deviceId: number
-							fromAddr: libsignal.ProtocolAddress
-							toAddr: libsignal.ProtocolAddress
-						}
-
-						const migrationOps: MigrationOp[] = deviceJids.map(jid => {
-							const lidWithDevice = transferDevice(jid, toJid)
-							const fromDecoded = jidDecode(jid)
-							const toDecoded = jidDecode(lidWithDevice)
-							if (!fromDecoded || !toDecoded) {
-								throw new Error(`Failed to decode JID during migration: ${jid} -> ${lidWithDevice}`)
-							}
-
-							return {
-								fromJid: jid,
-								toJid: lidWithDevice,
-								pnUser: fromDecoded.user,
-								lidUser: toDecoded.user,
-								deviceId: fromDecoded.device || 0,
-								fromAddr: jidToSignalProtocolAddress(jid),
-								toAddr: jidToSignalProtocolAddress(lidWithDevice)
-							}
-						})
-
 						const totalOps = migrationOps.length
 						let migratedCount = 0
 
@@ -741,8 +940,7 @@ export function makeLibSignalRepository(
 
 						const skippedCount = totalOps - migratedCount
 						return { migrated: migratedCount, skipped: skippedCount, total: totalOps }
-					},
-					`migrate-${deviceJids.length}-sessions-${jidDecode(toJid)?.user}`
+					}
 				)
 			})()
 

@@ -649,7 +649,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		meLid,
 		meLidUser,
 		extraAttrs,
-		onPkmsg
+		onPkmsg,
+		useLegacyLock
 	}: {
 		jid: string
 		patchedMessage: proto.IMessage
@@ -659,6 +660,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		meLidUser: string | null | undefined
 		extraAttrs: BinaryNode['attrs'] | undefined
 		onPkmsg: () => void
+		useLegacyLock?: boolean
 	}) => {
 		if (!jid) return null
 
@@ -668,7 +670,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const mutexKey = jid
 
 			return await encryptionMutex.mutex(mutexKey, async () => {
-				const { type, ciphertext } = await signalRepository.encryptMessage({ jid, data: bytes })
+				const { type, ciphertext } = await signalRepository.encryptMessage({ jid, data: bytes, useLegacyLock })
 
 				if (type === 'pkmsg') {
 					onPkmsg()
@@ -696,7 +698,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		recipientJids: string[],
 		message: proto.IMessage,
 		extraAttrs?: BinaryNode['attrs'],
-		dsmMessage?: proto.IMessage
+		dsmMessage?: proto.IMessage,
+		useLegacyLock?: boolean
 	) => {
 		if (!recipientJids.length) {
 			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
@@ -726,7 +729,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					meLid,
 					meLidUser,
 					extraAttrs,
-					onPkmsg
+					onPkmsg,
+					useLegacyLock
 				})
 		)
 
@@ -969,6 +973,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useUserDevicesCache = useUserDevicesCache !== false
 		useCachedGroupMetadata = useCachedGroupMetadata !== false && !isStatus
 
+		// Stage 2 (PR #457) M5 guard fix: any tctoken fire-and-forget chain registered
+		// *inside* the outer authState.keys.transaction(...) below would inherit the
+		// transaction's AsyncLocalStorage ctx via .then()/promise continuations. When
+		// the tx returns, ctx.sealed=true → set({ tctoken }) becomes a no-op, breaking
+		// Web rendering of interactive messages (buttons / CTA / list) which need a
+		// persisted tctoken. Carousel uses a BLOCKING fetch inside the tx (intentional)
+		// so its writes go into mutations and commit normally; only the deferred chains
+		// need to escape. We collect the kick-offs here and invoke them AFTER the
+		// transaction completes — the .then() callbacks then register under the OUTER
+		// ALS ctx (no tx ctx → set() commits directly).
+		let deferredTcTokenFetchJid: string | null = null
+		let deferredTcTokenFetchStorageKey: string | null = null
+		let deferredTcTokenReissue: { jid: string; tcTokenJid: string; issueTimestamp: number } | null = null
+
 		// Convert nativeFlowMessage with single_select to direct listMessage (legacy format)
 		// This is required because WhatsApp expects listMessage format with biz > list node
 		// The viewOnceMessage > interactiveMessage > nativeFlowMessage wrapper causes error 479
@@ -1054,7 +1072,36 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 		}
 
-		await authState.keys.transaction(async () => {
+		// WORKAROUND (Stage 2 #2572 — round 3, narrowed in round 4 per cubic P2):
+		// For interactive 1-ON-1 sends (buttons / CTA / list / carousel), DETECT
+		// here and choose between:
+		//  - Outer `transaction(meId)` wrap (default, Stage 2 semantics)
+		//  - NO outer wrap (run body() directly, master-like, full isolation
+		//    from Stage 2 transactWith semantics)
+		//
+		// Round 1 (dcdfc09683): isolate per-device encrypt with useLegacyLock.
+		// Round 2 (7f534d28b4): bypass inner tx wrap entirely for interactives.
+		// Round 3 (bb0ab9653c): also bypass outer transaction(meId) — confirmed
+		//   working in staging 2026-05-25, Web renders interactive messages.
+		// Round 4 (this commit): narrow the gate to 1-on-1 ONLY. Group sends
+		//   still need the outer transaction(meId) because `sender-key-memory`
+		//   does a read-modify-write inside the group branch (line ~1233);
+		//   concurrent group sends without the outer lock would race on that
+		//   bucket per cubic dev review. 1-on-1 interactives never touch
+		//   `sender-key-memory`, so the bypass remains safe there.
+		//
+		// Trade-off: loses transactional atomicity for the interactive 1-on-1
+		// send (session writes commit individually via state.set rather than
+		// batched at outer-tx end). For 1-on-1 interactives the only writes
+		// are per-device session updates inside encrypt — independent records,
+		// no atomicity requirement between them.
+		const _isInteractiveSendBypass =
+			!isGroup &&
+			!isStatus &&
+			!isNewsletter &&
+			(isCarouselMessage(message) || getButtonType(message) !== undefined)
+
+		const runSendBody = async () => {
 			const mediaType = getMediaType(message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
@@ -1282,6 +1329,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(jid)
 				}
 
+				// LID canonicalization is required for carousel rendering on Web.
+				// Was experimentally extended to all interactive types (commit ae4de453bf)
+				// but reverted 2026-05-25 — extending it to legacy `buttonsMessage` /
+				// `listMessage` protos didn't fix Web rendering and risks routing buttons
+				// down a different Web pipeline that expects PN envelopes for legacy
+				// proto. Keep carousel-only until we have CDP evidence that another
+				// interactive type also benefits from LID addressing.
 				const isCarouselFanout = isCarouselMessage(message)
 				const effectiveMeRecipients = isCarouselFanout
 					? await canonicalizeCarouselRecipients(meRecipients)
@@ -1293,13 +1347,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				await assertSessions(effectiveAllRecipients)
 
+				// WORKAROUND (Stage 2 #2572 sibling-Promise.all regression — 2026-05-25):
+				// the two createParticipantNodes calls below run in Promise.all, each
+				// fanning out per-device encryption that ALSO uses Promise.all. Stage 2's
+				// transactWith documents this exact pattern as unsafe and it correlates
+				// with recipient devices sending retry receipts ("reg id mismatch on retry
+				// without bundle") for interactive messages (buttons / CTA / list /
+				// carousel), preventing Web rendering. Pass `useLegacyLock: true` so the
+				// per-device encryptMessage calls in this fanout use the master-style
+				// legacy `transaction(work, canonicalJid)` pattern. Non-interactive sends
+				// (text, media, poll, peer) keep transactWith and are unaffected.
+				const isInteractiveFanout = isCarouselFanout || getButtonType(message) !== undefined
+
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM (deviceSentMessage) wrapper
-					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs),
-					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs)
+					createParticipantNodes(effectiveMeRecipients, meMsg || message, extraAttrs, undefined, isInteractiveFanout),
+					createParticipantNodes(effectiveOtherRecipients, message, extraAttrs, undefined, isInteractiveFanout)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
@@ -1416,10 +1482,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Collect biz/bot nodes to append AFTER device-identity and tctoken
 			// Stanza order: participants → device-identity → tctoken → biz (when applicable)
-			// CDP capture confirms Pastorini INCLUDES biz node for carousel (native_flow v=9, name=mixed)
+			// Reference WA implementation includes biz node for carousel (native_flow v=9, name=mixed)
 			const deferredNodes: BinaryNode[] = []
 
-			// Inject biz node for interactive messages (including carousel — CDP evidence from Pastorini)
+			// Inject biz node for interactive messages (including carousel — confirmed via reverse-engineering)
 			if ((buttonType || isCarousel) && enableInteractiveMessages) {
 				const startTime = Date.now()
 				// When entering via isCarousel, buttonType may be undefined — default to 'native_flow'
@@ -1523,7 +1589,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						]
 
-						// CDP capture shows Pastorini includes quality_control inside biz for carousel
+						// quality_control inside biz — required for carousel rendering on Web.
+						// Was experimentally extended to all native_flow / buttons messages
+						// (commit 61e4b564e3) but reverted 2026-05-25 — extending it did
+						// not fix Web rendering for buttons/CTA/list and may have triggered
+						// a different Web pipeline. Keep carousel-only until we have CDP
+						// evidence that other types benefit from this node.
 						if (isCarousel) {
 							const decisionId = randomBytes(20).toString('hex')
 							bizContent.push({
@@ -1624,7 +1695,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				stanza.attrs.to = destinationJid
 			}
 
-			// Always include device-identity for carousel (Pastorini stanza always has it)
+			// Always include device-identity for carousel (reference WA stanza always has it)
 			if (shouldIncludeDeviceIdentity || isCarousel) {
 				;(stanza.content as BinaryNode[]).push({
 					tag: 'device-identity',
@@ -1755,22 +1826,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						tcTokenFetchingJids.delete(tcTokenJid)
 					}
 				} else {
-					// Fire-and-forget for non-carousel
-					getPrivacyTokens([destinationJid])
-						.then(async fetchResult => {
-							await storeTcTokensFromIqResult({
-								result: fetchResult,
-								fallbackJid: destinationJid,
-								keys: authState.keys,
-								getLIDForPN
-							})
-						})
-						.catch(err => {
-							logger.debug({ jid: destinationJid, err: err?.message }, 'fire-and-forget tctoken fetch failed')
-						})
-						.finally(() => {
-							tcTokenFetchingJids.delete(tcTokenJid)
-						})
+					// Fire-and-forget for non-carousel — DEFERRED to run after the outer
+					// transaction returns (see "Stage 2 (PR #457) M5 guard fix" note at top
+					// of relayMessage). Registering the .then() chain here would attach it
+					// to the tx's sealed ALS ctx and the persistence would silently no-op.
+					deferredTcTokenFetchJid = destinationJid
+					deferredTcTokenFetchStorageKey = tcTokenJid
 				}
 			}
 
@@ -1933,42 +1994,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// Gated only by shouldSendNewTcToken — removed tcTokenBuffer?.length guard so
 			// issuance fires even when we don't yet hold a token (bucket boundary crossed).
 			// IMPORTANT: must run AFTER sendNode — issuing before the message causes error 463.
+			//
+			// DEFERRED to run after the outer transaction returns (Stage 2 M5 guard fix).
+			// Registering the .then() chain inside the tx attaches it to the tx's sealed
+			// ALS ctx → keys.set({ tctoken }) silently no-ops → senderTimestamp never
+			// persists → shouldSendNewTcToken stays true forever → infinite reissue loop
+			// and Web cannot render interactive messages (no persisted token).
 			if (is1on1Send && shouldSendNewTcToken(existingTokenEntry?.senderTimestamp)) {
 				const issueTimestamp = unixTimestampSeconds()
 				logTcToken('reissue', { jid: destinationJid })
-				getPrivacyTokens([destinationJid], issueTimestamp)
-					.then(async result => {
-						// Store any tokens received in the IQ response.
-						// onNewJidStored not passed — pruning index lives in messages-recv (higher layer).
-						await storeTcTokensFromIqResult({
-							result,
-							fallbackJid: tcTokenJid,
-							keys: authState.keys,
-							getLIDForPN
-						})
-
-						// Persist senderTimestamp unconditionally — WA Web stores it in the chat table
-						// regardless of whether a token exists. Spread preserves token+timestamp if present.
-						// WABA Android: INSERT INTO wa_trusted_contacts_send (jid, sent_tc_token_timestamp, real_issue_timestamp)
-						// VALUES (?, ?, 0) — realIssueTimestamp=0 means issued but not yet confirmed by server
-						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
-						const currentEntry = currentData[tcTokenJid]
-						await authState.keys.set({
-							tctoken: {
-								[tcTokenJid]: {
-									...currentEntry,
-									token: currentEntry?.token ?? Buffer.alloc(0),
-									senderTimestamp: issueTimestamp,
-									realIssueTimestamp: 0
-								}
-							}
-						})
-
-						logTcToken('reissue_ok', { jid: destinationJid })
-					})
-					.catch(err => {
-						logTcToken('reissue_fail', { jid: destinationJid, error: err?.message })
-					})
+				deferredTcTokenReissue = { jid: destinationJid, tcTokenJid, issueTimestamp }
 			}
 
 			// Log with [BAILEYS] prefix
@@ -2011,7 +2046,97 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 			}
-		}, meId)
+		}
+
+		try {
+			if (_isInteractiveSendBypass) {
+				logger.info(
+					{ msgId, kind: isCarouselMessage(message) ? 'carousel' : getButtonType(message), isGroup, isStatus, isNewsletter },
+					'[relayMessage] WORKAROUND ACTIVE: bypassing outer transaction(meId) for interactive 1-on-1 send'
+				)
+				await runSendBody()
+			} else {
+				await authState.keys.transaction(runSendBody, meId)
+			}
+		} catch (err) {
+			// cubic P1 (PR #457): tx may throw BEFORE we reach the deferred-invocation
+			// block below. `tcTokenFetchingJids.add(tcTokenJid)` happens INSIDE the tx
+			// (line ~1705) — without this cleanup, the jid stays in the set forever
+			// and future sends to that contact silently skip the fetch (the gating
+			// `!tcTokenFetchingJids.has(tcTokenJid)` always returns false). The
+			// .finally() on the deferred Promise can't help because the Promise is
+			// never created. Reissue path has no gating flag, so no leak there.
+			if (deferredTcTokenFetchStorageKey) {
+				tcTokenFetchingJids.delete(deferredTcTokenFetchStorageKey)
+			}
+
+			throw err
+		}
+
+		// Fire deferred tctoken fire-and-forget chains OUTSIDE the transaction so
+		// their .then() callbacks register under the caller's ALS ctx (no tx ctx →
+		// keys.set commits directly, bypassing the M5 sealed-ctx guard).
+		// See "Stage 2 (PR #457) M5 guard fix" note inside relayMessage for details.
+		if (deferredTcTokenFetchJid) {
+			const fetchJid = deferredTcTokenFetchJid
+			const storageKey = deferredTcTokenFetchStorageKey!
+			getPrivacyTokens([fetchJid])
+				.then(async fetchResult => {
+					await storeTcTokensFromIqResult({
+						result: fetchResult,
+						fallbackJid: fetchJid,
+						keys: authState.keys,
+						getLIDForPN
+					})
+				})
+				.catch(err => {
+					logger.debug({ jid: fetchJid, err: err?.message }, 'fire-and-forget tctoken fetch failed')
+				})
+				.finally(() => {
+					tcTokenFetchingJids.delete(storageKey)
+				})
+		}
+
+		if (deferredTcTokenReissue) {
+			const { jid: reissueJid, tcTokenJid: reissueStorageKey, issueTimestamp } = deferredTcTokenReissue
+			getPrivacyTokens([reissueJid], issueTimestamp)
+				.then(async result => {
+					// Store any tokens received in the IQ response.
+					// onNewJidStored not passed — pruning index lives in messages-recv (higher layer).
+					// CodeRabbit PR #457: use original JID (reissueJid) as fallback so dual-key
+					// PN+LID storage works (tc-token-utils.ts:209-214). Passing reissueStorageKey
+					// (resolved LID) would make normalizedFallback === storageJid → no dual key
+					// stored → lookups under PN miss. Matches fetch path + messages-recv pattern.
+					await storeTcTokensFromIqResult({
+						result,
+						fallbackJid: reissueJid,
+						keys: authState.keys,
+						getLIDForPN
+					})
+
+					// Persist senderTimestamp unconditionally — WA Web stores it in the chat table
+					// regardless of whether a token exists. Spread preserves token+timestamp if present.
+					// WABA Android: INSERT INTO wa_trusted_contacts_send (jid, sent_tc_token_timestamp, real_issue_timestamp)
+					// VALUES (?, ?, 0) — realIssueTimestamp=0 means issued but not yet confirmed by server
+					const currentData = await authState.keys.get('tctoken', [reissueStorageKey])
+					const currentEntry = currentData[reissueStorageKey]
+					await authState.keys.set({
+						tctoken: {
+							[reissueStorageKey]: {
+								...currentEntry,
+								token: currentEntry?.token ?? Buffer.alloc(0),
+								senderTimestamp: issueTimestamp,
+								realIssueTimestamp: 0
+							}
+						}
+					})
+
+					logTcToken('reissue_ok', { jid: reissueJid })
+				})
+				.catch(err => {
+					logTcToken('reissue_fail', { jid: reissueJid, error: err?.message })
+				})
+		}
 
 		return msgId
 	}

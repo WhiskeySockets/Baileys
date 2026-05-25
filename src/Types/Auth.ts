@@ -118,9 +118,64 @@ export type SignalKeyStore = {
 	listIds?<T extends keyof SignalDataTypeMap>(type: T): AsyncIterable<string>
 }
 
+/**
+ * Scope declaration for {@link SignalKeyStoreWithTransaction.transactWith}.
+ *
+ * The records list names the (type, id) pairs the transaction's TOP-LEVEL
+ * `transactWith` call will read or write. Locks at this level are acquired
+ * in a deterministic sorted order via the LockManager, so two transactions
+ * with overlapping top-level scope acquired in opposite orders cannot
+ * deadlock against each other.
+ *
+ * Deadlock-freedom contract — PR #457 round-3 clarification (Copilot doc fix):
+ *
+ *   ✅ Two CONCURRENT top-level transactWith calls with the same record set
+ *      (or any overlapping pair) declared up-front: cannot deadlock.
+ *
+ *   ⚠️  Nested transactWith INSIDE another transactWith (the Stage 2 H0
+ *      closure permits this) extends the held scope at runtime. If two
+ *      concurrent top-level callers each later nest a transactWith that
+ *      acquires records IN OPPOSITE ORDERS not visible at the top-level
+ *      scope, deadlock is theoretically possible. Mitigations: declare the
+ *      full record set at the outer level when feasible, or ensure nested
+ *      scopes are subsets of the outer scope (which makes them no-op
+ *      acquisitions via heldLocks re-entry).
+ *
+ *   ⚠️  Mixing `transaction()` (legacy, `__legacy__` namespace) with
+ *      `transactWith()` in opposite orders across two concurrent callers
+ *      can deadlock. InfiniteAPI enforces ONE direction by convention:
+ *      legacy `transaction(meId)` is OUTER, transactWith is INNER. Never
+ *      call `transaction()` from inside a `transactWith()`.
+ *
+ * Stage 2 (upstream #2572) addition.
+ */
+export type TransactionScope = {
+	records: readonly RecordRef[]
+}
+
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
+	/**
+	 * @deprecated Use {@link SignalKeyStoreWithRecordTransaction.transactWith}
+	 * (available on stores built via Baileys' `addTransactionCapability`),
+	 * which acquires record-identifier-keyed locks rather than a single
+	 * caller-chosen string key. Scheduled for removal in v8.
+	 *
+	 * Stage 2 fixed the nested-bypass behavior (H0): re-entering this method
+	 * with a key not already held by an outer transaction now acquires its
+	 * own lock instead of silently sharing the outer's lock. Same-key nested
+	 * calls still bypass (re-entry safety).
+	 */
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	/**
+	 * Optional record-scoped transaction surface. Added in Stage 2 as an
+	 * additive capability — existing user-implemented stores that only
+	 * provide `transaction()` keep compiling. Baileys' own
+	 * `addTransactionCapability` returns a store that implements it; internal
+	 * callers narrow to {@link SignalKeyStoreWithRecordTransaction} when
+	 * they need a non-optional surface.
+	 */
+	transactWith?<T>(scope: TransactionScope, work: () => Promise<T>): Promise<T>
 	/**
 	 * Cleanup hook called on socket close. Returns Promise so the caller can
 	 * await graceful drainage of in-flight transactions before tearing down
@@ -129,6 +184,24 @@ export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	 * in `addTransactionCapability.destroy()`.
 	 */
 	destroy?: () => Awaitable<void>
+}
+
+/**
+ * Variant of {@link SignalKeyStoreWithTransaction} that requires
+ * `transactWith`. Baileys' own `addTransactionCapability` returns this
+ * concrete shape, so internal call sites (`libsignal`, `messages-send`, etc.)
+ * get the precise method signature without null-checking the optional
+ * `transactWith` field on every call.
+ *
+ * Third-party stores can opt in by implementing this interface explicitly
+ * when they're ready for the record-scoped API. Stores that only implement
+ * the legacy `transaction()` continue to satisfy
+ * {@link SignalKeyStoreWithTransaction}.
+ *
+ * Stage 2 (upstream #2572) addition.
+ */
+export type SignalKeyStoreWithRecordTransaction = SignalKeyStoreWithTransaction & {
+	transactWith<T>(scope: TransactionScope, work: () => Promise<T>): Promise<T>
 }
 
 export type TransactionCapabilityOptions = {

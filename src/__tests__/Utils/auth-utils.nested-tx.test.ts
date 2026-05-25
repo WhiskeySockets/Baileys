@@ -59,7 +59,10 @@ const makeInMemoryStore = (): SignalKeyStore => {
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 describe('addTransactionCapability — nested-transaction lock suppression (H0)', () => {
-	it.failing(
+	// PR #457: flipped from `it.failing` — H0 closed by Stage 2 (commit
+	// d26053ccd5). `transaction()` agora bypass nested SOMENTE quando o
+	// lock está em heldLocks; diferentes keys acquire próprio lock.
+	it(
 		'serializes inner jid-keyed work against parallel jid-keyed work, even inside an outer meId tx',
 		async () => {
 			const keys = addTransactionCapability(makeInMemoryStore(), silentLogger(), {
@@ -100,7 +103,8 @@ describe('addTransactionCapability — nested-transaction lock suppression (H0)'
 		}
 	)
 
-	it.failing('serializes nested encrypt-style writes within an outer meId tx against external jid txs', async () => {
+	// PR #457: flipped — same Stage 2 H0 fix.
+	it('serializes nested encrypt-style writes within an outer meId tx against external jid txs', async () => {
 		const keys = addTransactionCapability(makeInMemoryStore(), silentLogger(), {
 			maxCommitRetries: 1,
 			delayBetweenTriesMs: 1
