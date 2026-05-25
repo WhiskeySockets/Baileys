@@ -454,37 +454,42 @@ export function makeLibSignalRepository(
 				return result
 			}
 
-			// InfiniteAPI hybrid (Stage 2 #2572 + nosso PN/LID race fix):
-			// resolve PN→LID FIRST, then build the record id from the canonical
-			// address. Upstream Stage 2 used `addr.toString()` direct, which loses
-			// our PN→LID resolution and reintroduces the race where parallel
-			// decrypts of the same logical contact via PN vs LID acquire DIFFERENT
-			// session locks. We feed the canonical addr to transactWith so all
-			// variants of the same logical session serialize under one record lock.
+			// WORKAROUND (Stage 2 #2572 regression — 2026-05-25):
+			// `transactWith` is left in place AS AN API on auth-utils, but the
+			// hot encrypt/decrypt sites here go back to the legacy
+			// `transaction(work, canonicalJid)` pattern (same as master). Reason:
+			// `relayMessage` fans out per-device encryption via `Promise.all`,
+			// producing SIBLING `transactWith` calls that share the outer
+			// `transaction(meId)` ctx. The Stage 2 lock semantics under that
+			// pattern correlate with the recipient sending retry receipts for
+			// individual devices (see logs: "reg id mismatch on retry without
+			// bundle, deleting session" followed by re-encrypt to `:N@lid` →
+			// smax-invalid 479 → Web fails to render interactive messages).
+			// `transaction()` nests by reusing the outer ctx without a sibling-
+			// safe lock attempt — matches master, restores Web rendering.
+			// H10 (per-jid decrypt serialization under outer meId tx) regresses
+			// to "theoretical" status; it was never observed in production.
 			const canonicalJid = await resolveCanonicalJid(jid)
-			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
-			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
+			return parsedKeys.transaction(async () => {
 				return await doDecrypt()
-			})
+			}, canonicalJid)
 		},
 
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
-			// InfiniteAPI hybrid (Stage 2 #2572 + nosso PN/LID race fix):
-			// same canonical-address pattern as decryptMessage — PN→LID resolution
-			// runs BEFORE we lock, so parallel encrypts to the same logical
-			// contact via PN vs LID variants serialize under one session record
-			// (upstream's `addr.toString()` direct would acquire two distinct
-			// locks for the same logical session).
+			// WORKAROUND — see decryptMessage above for the full rationale.
+			// Legacy `transaction(work, canonicalJid)` restores master's
+			// per-device encrypt behavior under the outer `relayMessage`
+			// meId-keyed transaction. Required to keep interactive messages
+			// (buttons, CTA, list) rendering on WhatsApp Web.
 			const canonicalJid = await resolveCanonicalJid(jid)
-			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
-			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
+			return parsedKeys.transaction(async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
 				return { type, ciphertext: Buffer.from(body, 'binary') }
-			})
+			}, canonicalJid)
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
