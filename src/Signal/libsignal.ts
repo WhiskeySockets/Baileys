@@ -471,37 +471,49 @@ export function makeLibSignalRepository(
 		async encryptMessage({ jid, data, useLegacyLock }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
-			const canonicalJid = await resolveCanonicalJid(jid)
 
 			// WORKAROUND (Stage 2 #2572 regression — 2026-05-25): when caller
 			// sets `useLegacyLock` (interactive message sends — buttons / CTA /
-			// list / carousel), use the legacy `transaction(work, canonicalJid)`
-			// pattern instead of `transactWith({records:[session:<addr>]})`.
-			// Reason: `relayMessage` fans out per-device encryption via
-			// `Promise.all`, producing SIBLING transactWith calls that share the
-			// outer `transaction(meId)` ctx. Stage 2's own auth-utils.ts contract
-			// documents that pattern as unsafe; in production it correlates with
-			// the recipient sending retry receipts ("reg id mismatch on retry
-			// without bundle, deleting session" → re-encrypt to `:N@lid` →
-			// smax-invalid 479 → Web fails to render the message). Non-interactive
-			// paths (text, media, poll, peer) keep transactWith — they don't hit
-			// the multi-device fanout sibling pattern in a way that breaks render.
+			// list / carousel), SKIP any inner transactional wrap and rely
+			// solely on the outer `transaction(meId)` from relayMessage.
+			//
+			// Why: master (pre-Stage-2) had the H0 bypass bug — nested
+			// `transaction(work, key)` calls ALWAYS reused the outer ctx
+			// without acquiring an inner lock, regardless of whether the
+			// inner key differed. Buttons / CTA / list rendering on Web
+			// historically relied on that behavior. Stage 2 closed H0:
+			// nested transaction with a different key now acquires its own
+			// LockManager mutex (correct) — but for the multi-device fanout
+			// pattern (Promise.all of per-device encrypts inside one outer
+			// meId tx), this lock acquisition correlates with WhatsApp Web
+			// failing to render the resulting message.
+			//
+			// Calling `cipher.encrypt(data)` directly (no inner wrap) mirrors
+			// what master's H0-bypass effectively did: the encrypt body runs
+			// inside the outer ctx's AsyncLocalStorage, all session reads /
+			// writes go into the outer ctx.mutations, and the outer tx
+			// commits them atomically. No inner lock → matches master's
+			// observed-working behavior for interactives.
+			//
+			// Non-interactive paths (text / media / poll / peer) keep
+			// Stage 2's transactWith — they don't exhibit the rendering
+			// regression and benefit from H10's per-jid decrypt
+			// serialization companion.
 			if (useLegacyLock) {
 				logger.debug(
-					{ jid, canonicalJid },
-					'[encryptMessage] using legacy transaction() lock (interactive send workaround)'
+					{ jid },
+					'[encryptMessage] running without inner tx wrap (interactive send workaround, mirrors master H0 bypass)'
 				)
-				return parsedKeys.transaction(async () => {
-					const { type: sigType, body } = await cipher.encrypt(data)
-					const type = sigType === 3 ? 'pkmsg' : 'msg'
-					return { type, ciphertext: Buffer.from(body, 'binary') }
-				}, canonicalJid)
+				const { type: sigType, body } = await cipher.encrypt(data)
+				const type = sigType === 3 ? 'pkmsg' : 'msg'
+				return { type, ciphertext: Buffer.from(body, 'binary') }
 			}
 
 			// InfiniteAPI hybrid (Stage 2 #2572 + nosso PN/LID race fix):
 			// same canonical-address pattern as decryptMessage — PN→LID resolution
 			// runs BEFORE we lock, so parallel encrypts to the same logical
 			// contact via PN vs LID variants serialize under one session record.
+			const canonicalJid = await resolveCanonicalJid(jid)
 			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
 			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
