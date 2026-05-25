@@ -1072,7 +1072,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 		}
 
-		await authState.keys.transaction(async () => {
+		// WORKAROUND (Stage 2 #2572 — round 3): for interactive sends (buttons /
+		// CTA / list / carousel), DETECT here and choose between:
+		//  - Outer `transaction(meId)` wrap (default, Stage 2 semantics)
+		//  - NO outer wrap (run body() directly, master-like, full isolation
+		//    from Stage 2 transactWith semantics)
+		//
+		// Round 1 (dcdfc09683): isolate per-device encrypt with useLegacyLock.
+		// Round 2 (7f534d28b4): bypass inner tx wrap entirely for interactives.
+		// Both reduced but did not eliminate the recipient retry / 479 / Web
+		// "Aguardando mensagem" placeholder symptom. Round 3 bypasses the
+		// outer transaction wrap too — if Stage 2's `transaction(meId)` itself
+		// is participating in the regression, this isolates fully.
+		//
+		// Trade-off: loses transactional atomicity for the interactive send
+		// (session writes commit individually via state.set rather than
+		// batched at outer-tx end). For interactives the only writes are
+		// per-device session updates inside encrypt — independent records,
+		// no atomicity requirement between them.
+		const _isInteractiveSendBypass = isCarouselMessage(message) || getButtonType(message) !== undefined
+
+		const runSendBody = async () => {
 			const mediaType = getMediaType(message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
@@ -2017,7 +2037,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 			}
-		}, meId).catch(err => {
+		}
+
+		try {
+			if (_isInteractiveSendBypass) {
+				logger.info(
+					{ msgId, kind: isCarouselMessage(message) ? 'carousel' : getButtonType(message) },
+					'[relayMessage] WORKAROUND ACTIVE: bypassing outer transaction(meId) for interactive send'
+				)
+				await runSendBody()
+			} else {
+				await authState.keys.transaction(runSendBody, meId)
+			}
+		} catch (err) {
 			// cubic P1 (PR #457): tx may throw BEFORE we reach the deferred-invocation
 			// block below. `tcTokenFetchingJids.add(tcTokenJid)` happens INSIDE the tx
 			// (line ~1705) — without this cleanup, the jid stays in the set forever
@@ -2030,7 +2062,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			throw err
-		})
+		}
 
 		// Fire deferred tctoken fire-and-forget chains OUTSIDE the transaction so
 		// their .then() callbacks register under the caller's ALS ctx (no tx ctx →

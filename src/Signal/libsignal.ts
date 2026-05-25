@@ -500,9 +500,9 @@ export function makeLibSignalRepository(
 			// regression and benefit from H10's per-jid decrypt
 			// serialization companion.
 			if (useLegacyLock) {
-				logger.debug(
+				logger.info(
 					{ jid },
-					'[encryptMessage] running without inner tx wrap (interactive send workaround, mirrors master H0 bypass)'
+					'[encryptMessage] WORKAROUND ACTIVE: running without inner tx wrap (interactive send, mirrors master H0 bypass)'
 				)
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
