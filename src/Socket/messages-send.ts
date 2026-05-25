@@ -1436,10 +1436,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Collect biz/bot nodes to append AFTER device-identity and tctoken
 			// Stanza order: participants → device-identity → tctoken → biz (when applicable)
-			// CDP capture confirms Pastorini INCLUDES biz node for carousel (native_flow v=9, name=mixed)
+			// Reference WA implementation includes biz node for carousel (native_flow v=9, name=mixed)
 			const deferredNodes: BinaryNode[] = []
 
-			// Inject biz node for interactive messages (including carousel — CDP evidence from Pastorini)
+			// Inject biz node for interactive messages (including carousel — confirmed via reverse-engineering)
 			if ((buttonType || isCarousel) && enableInteractiveMessages) {
 				const startTime = Date.now()
 				// When entering via isCarousel, buttonType may be undefined — default to 'native_flow'
@@ -1493,12 +1493,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					// Build the quality_control sub-node — required inside biz for ALL
 					// interactive surfaces to render on WhatsApp Web (not just carousel).
-					// Originally added for carousel only (CDP capture from Pastorini); staging
+					// Originally added for carousel only (reference WA CDP capture); staging
 					// 2026-05-25 confirmed buttons:reply / buttons:cta / list deliver to
 					// smartphone with LID-canonicalized stanzas BUT still fail to render on
 					// Web — the only remaining stanza-shape difference vs. carousel was the
 					// missing quality_control node. Extending it to all biz/native_flow/list
-					// paths matches what Pastorini sends for native_flow messages.
+					// paths matches what the reference implementation sends for native_flow.
 					const buildQualityControl = (): BinaryNode => ({
 						tag: 'quality_control',
 						attrs: {
@@ -1647,7 +1647,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Originally added for carousel only (PR fix carousel WhatsApp Web rendering);
 				// extended to all interactive types after staging 2026-05-25 confirmed
 				// buttons:reply / buttons:cta / list render on smartphone with PN but fail
-				// on Web. Pastorini CDP capture for carousel uses LID envelope; the same
+				// on Web. Reference WA CDP capture for carousel uses LID envelope; the same
 				// rule applies to other interactive surfaces.
 				//
 				// Normalize first so `@c.us` inputs also resolve — isAnyPnUser/getLIDForPN
@@ -1668,7 +1668,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				stanza.attrs.to = destinationJid
 			}
 
-			// Always include device-identity for carousel (Pastorini stanza always has it)
+			// Always include device-identity for carousel (reference WA stanza always has it)
 			if (shouldIncludeDeviceIdentity || isCarousel) {
 				;(stanza.content as BinaryNode[]).push({
 					tag: 'device-identity',

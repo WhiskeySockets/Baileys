@@ -721,7 +721,7 @@ export const generateCarouselMessage = async (
 				if (card.image) {
 					const { imageMessage } = await prepareWAMessageMedia({ image: card.image }, mediaOptions)
 
-					// Mirror the working Pastorini-style result: every carousel image card should
+					// Mirror the known-working reference result: every carousel image card should
 					// carry a jpegThumbnail and dimensions before it reaches the Web live renderer.
 					await recoverCarouselImageMetadata(imageMessage, card.image, card.title, mediaOptions)
 
@@ -1317,7 +1317,7 @@ export const generateWAMessageContent = async (
 		// Pass options for media processing if cards have images/videos
 		const generated = await generateCarouselMessage(carouselOptions, options)
 		// Frida capture shows interactiveMessage DIRECT (field 45) in DSM — no viewOnceMessage wrapper
-		// Testing without wrapper: biz node + quality_control already match Pastorini CDP stanza
+		// Testing without wrapper: biz node + quality_control already match reference WA CDP stanza
 		m.interactiveMessage = generated.interactiveMessage
 		return m
 	}
