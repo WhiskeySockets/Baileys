@@ -1296,11 +1296,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(jid)
 				}
 
-				const isCarouselFanout = isCarouselMessage(message)
-				const effectiveMeRecipients = isCarouselFanout
+				// LID canonicalization is required for ALL interactive messages to render
+				// on WhatsApp Web, not just carousel. Pre-existing diagnosis (validated
+				// staging 2026-05-25): buttons:reply, buttons:cta, list etc. render on
+				// smartphone with PN addressing but fail on Web — Web requires LID-canonicalized
+				// participants + matching LID envelope `to` (see CARROUSEL FIX note around
+				// line 1616). Carousel was fixed first; this extends the same fix.
+				const needsLidAddressing = isCarouselMessage(message) || getButtonType(message) !== undefined
+				const effectiveMeRecipients = needsLidAddressing
 					? await canonicalizeCarouselRecipients(meRecipients)
 					: meRecipients
-				const effectiveOtherRecipients = isCarouselFanout
+				const effectiveOtherRecipients = needsLidAddressing
 					? await canonicalizeCarouselRecipients(otherRecipients)
 					: otherRecipients
 				const effectiveAllRecipients = [...effectiveMeRecipients, ...effectiveOtherRecipients]
@@ -1613,25 +1619,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				} else {
 					stanza.attrs.to = participant.jid
 				}
-			} else if (isCarousel) {
-				// CARROUSEL FIX (Option B): keep the envelope `to` consistent with the
-				// LID-canonicalized participants. canonicalizeCarouselRecipients converts the
-				// participant/enc nodes to LID, but the envelope stayed PN — and a PN envelope
-				// wrapping LID participant enc nodes is a mismatch the server rejects with
-				// error 400. Resolve the envelope to the same LID; fall back to PN when no
-				// mapping exists (in which case participants also stayed PN, so still consistent).
+			} else if (isCarousel || buttonType) {
+				// LID envelope canonicalization — required for Web rendering of ALL
+				// interactive messages (carousel + buttons + CTA + list), not just carousel.
+				// canonicalizeCarouselRecipients() (called earlier in this transaction
+				// when needsLidAddressing is true) converted participant/enc nodes to LID;
+				// the envelope `to` must match or the server rejects with error 400 AND
+				// Web fails to render the message.
+				//
+				// Originally added for carousel only (PR fix carousel WhatsApp Web rendering);
+				// extended to all interactive types after staging 2026-05-25 confirmed
+				// buttons:reply / buttons:cta / list render on smartphone with PN but fail
+				// on Web. Pastorini CDP capture for carousel uses LID envelope; the same
+				// rule applies to other interactive surfaces.
+				//
 				// Normalize first so `@c.us` inputs also resolve — isAnyPnUser/getLIDForPN
 				// reject raw `@c.us`, which sendMessage() can pass directly (Codex P1).
 				const normalizedDest = jidNormalizedUser(destinationJid)
-				const carouselLid = isAnyPnUser(normalizedDest) ? await getLIDForPN(normalizedDest) : null
+				const interactiveLid = isAnyPnUser(normalizedDest) ? await getLIDForPN(normalizedDest) : null
 				// Prefer the LID, then the normalized jid (so an `@c.us` envelope matches the
 				// normalized participants), and finally the raw input — never an empty `to`, since
 				// jidNormalizedUser returns '' for a malformed JID (would yield a 400) (Copilot #440).
-				stanza.attrs.to = carouselLid || normalizedDest || destinationJid
-				if (carouselLid) {
+				stanza.attrs.to = interactiveLid || normalizedDest || destinationJid
+				if (interactiveLid) {
 					logger.info(
-						{ msgId, from: destinationJid, to: carouselLid },
-						'[CAROUSEL] Envelope addressing canonicalized to LID (match participants)'
+						{ msgId, from: destinationJid, to: interactiveLid, kind: isCarousel ? 'carousel' : buttonType },
+						'[INTERACTIVE] Envelope addressing canonicalized to LID (match participants)'
 					)
 				}
 			} else {
