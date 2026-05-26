@@ -37,6 +37,7 @@ import {
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
+	runDetached,
 	unixTimestampSeconds
 } from '../Utils'
 import { logMessageSent, logTcToken } from '../Utils/baileys-logger'
@@ -2414,19 +2415,31 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 
 			// Emit own event for album root if configured
+			// Stage 9 (upstream #2579) hybrid: wrap fire-and-forget in `runDetached`
+			// for structured error logging; PRESERVE InfiniteAPI's custom mutex-key
+			// logic (remoteJid || id fallback) so concurrent emits for the same
+			// chat serialize under one mutex. Upstream wraps a single site without
+			// the fallback — we keep ours because album emit can be invoked
+			// without remoteJid in retry/recovery paths.
 			if (config.emitOwnEvents) {
-				process.nextTick(async () => {
-					let mutexKey = albumRootMsg.key.remoteJid
-					if (!mutexKey) {
-						logger.warn(
-							{ msgId: albumRootMsg.key.id },
-							'Missing remoteJid in albumRootMsg, using msg.key.id as fallback'
-						)
-						mutexKey = albumRootMsg.key.id || 'unknown'
-					}
+				process.nextTick(() =>
+					runDetached(
+						() => {
+							let mutexKey = albumRootMsg.key.remoteJid
+							if (!mutexKey) {
+								logger.warn(
+									{ msgId: albumRootMsg.key.id },
+									'Missing remoteJid in albumRootMsg, using msg.key.id as fallback'
+								)
+								mutexKey = albumRootMsg.key.id || 'unknown'
+							}
 
-					await messageMutex.mutex(mutexKey, () => upsertMessage(albumRootMsg, 'append'))
-				})
+							return messageMutex.mutex(mutexKey, () => upsertMessage(albumRootMsg, 'append'))
+						},
+						logger,
+						{ op: 'emitOwnEvents.upsertMessage.album', msgId: albumRootMsg.key.id }
+					)
+				)
 			}
 
 			logger.debug({ albumKeyId: albumKey.id }, 'Album root message relayed')
@@ -2520,16 +2533,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						})
 
 						// Emit own event if configured
+						// Stage 9 hybrid: runDetached for structured logging + preserve mutex-key fallback
 						if (config.emitOwnEvents) {
-							process.nextTick(async () => {
-								let mutexKey = mediaMsg.key.remoteJid
-								if (!mutexKey) {
-									logger.warn({ msgId: mediaMsg.key.id }, 'Missing remoteJid in mediaMsg, using msg.key.id as fallback')
-									mutexKey = mediaMsg.key.id || 'unknown'
-								}
+							process.nextTick(() =>
+								runDetached(
+									() => {
+										let mutexKey = mediaMsg.key.remoteJid
+										if (!mutexKey) {
+											logger.warn(
+												{ msgId: mediaMsg.key.id },
+												'Missing remoteJid in mediaMsg, using msg.key.id as fallback'
+											)
+											mutexKey = mediaMsg.key.id || 'unknown'
+										}
 
-								await messageMutex.mutex(mutexKey, () => upsertMessage(mediaMsg, 'append'))
-							})
+										return messageMutex.mutex(mutexKey, () => upsertMessage(mediaMsg, 'append'))
+									},
+									logger,
+									{ op: 'emitOwnEvents.upsertMessage.media', msgId: mediaMsg.key.id }
+								)
+							)
 						}
 
 						logger.debug({ index, msgId: mediaMsg.key.id, attempts }, 'Album media item sent successfully')
@@ -2720,16 +2743,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					statusJidList: options.statusJidList,
 					additionalNodes
 				})
+				// Stage 9 hybrid: runDetached for structured logging + preserve mutex-key fallback
 				if (config.emitOwnEvents) {
-					process.nextTick(async () => {
-						let mutexKey = fullMsg.key.remoteJid
-						if (!mutexKey) {
-							logger.warn({ msgId: fullMsg.key.id }, 'Missing remoteJid in fullMsg, using msg.key.id as fallback')
-							mutexKey = fullMsg.key.id || 'unknown'
-						}
+					process.nextTick(() =>
+						runDetached(
+							() => {
+								let mutexKey = fullMsg.key.remoteJid
+								if (!mutexKey) {
+									logger.warn(
+										{ msgId: fullMsg.key.id },
+										'Missing remoteJid in fullMsg, using msg.key.id as fallback'
+									)
+									mutexKey = fullMsg.key.id || 'unknown'
+								}
 
-						await messageMutex.mutex(mutexKey, () => upsertMessage(fullMsg, 'append'))
-					})
+								return messageMutex.mutex(mutexKey, () => upsertMessage(fullMsg, 'append'))
+							},
+							logger,
+							{ op: 'emitOwnEvents.upsertMessage.fullMsg', msgId: fullMsg.key.id }
+						)
+					)
 				}
 
 				return fullMsg
