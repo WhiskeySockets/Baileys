@@ -21,6 +21,46 @@ import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
+/**
+ * Stage 3 (upstream #2573): module-scope PN→LID resolver for signal-protocol
+ * address strings (`user[_domainType].device` form).
+ *
+ * Lifted from `signalStorage()`'s closure so the repository methods can
+ * pre-resolve BEFORE acquiring `transactWith` locks. Without pre-resolution
+ * `transactWith` would lock the raw PN id while `loadSession` /
+ * `storeSession` / `saveIdentity` internally re-resolve to the LID form —
+ * two callers would each think they're touching different records while
+ * actually mutating the same underlying row.
+ *
+ * Same PN→LID mapping lookup as the closure-bound `resolveLIDSignalAddress`
+ * inside `signalStorage()`, with one intentional difference in error handling:
+ * this helper returns `id` unchanged on a malformed signal address (no `.`
+ * separator, empty deviceId), whereas the closure version throws on a missing
+ * deviceId. Both code paths fall through to the standard lookup for well-formed
+ * input — the divergence only matters for malformed input, where this helper
+ * degrades gracefully rather than failing the surrounding `transactWith`.
+ */
+async function resolveSignalAddressId(id: string, lidMapping: LIDMappingStore): Promise<string> {
+	if (!id.includes('.')) return id
+
+	const [deviceId, device] = id.split('.')
+	if (!deviceId) return id
+
+	const [user, domainType_] = deviceId.split('_')
+	const domainType = parseInt(domainType_ || '0')
+
+	if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
+
+	const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
+	const lidForPN = await lidMapping.getLIDForPN(pnJid)
+	if (lidForPN) {
+		const lidAddr = jidToSignalProtocolAddress(lidForPN)
+		return lidAddr.toString()
+	}
+
+	return id
+}
+
 // NOTE: Console.log suppression has been moved to src/index.ts
 // to ensure it runs BEFORE libsignal is loaded
 
@@ -304,6 +344,40 @@ export function makeLibSignalRepository(
 
 	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, logger)
 
+	/**
+	 * Stage 3 (upstream #2573): wrap the shared `storage` adapter with a
+	 * pinned resolver. The wrapper intercepts `loadSession` / `storeSession` /
+	 * `saveIdentity` calls — when the caller-passed `id` matches `rawAddr`,
+	 * we substitute `wireJid` instead of letting the inner adapter re-resolve.
+	 *
+	 * Closes the TOCTOU on resolved-address divergence: `decryptMessage`
+	 * pre-resolves `wireJid` ONCE, acquires `transactWith` locks on it,
+	 * then uses the pinned storage so all subsequent reads/writes for that
+	 * `addr` land on the locked row even if a parallel migration mutates
+	 * the underlying PN→LID mapping mid-flight.
+	 *
+	 * Wrapper approach (vs. upstream's per-call `signalStorage()` instance):
+	 * we preserve InfiniteAPI's pendingPreKeyDeletions Map + identityKeyCache
+	 * shared state across all callers (they live in the outer `storage`
+	 * closure). Recreating signalStorage per call would split that state.
+	 */
+	const pinResolutionForStorage = (rawAddr: string, wireJid: string): ExtendedSignalStorage => {
+		// PR #461 review (Copilot): avoid `{...storage}` spread on a hot path
+		// (every decrypt). Prototype-delegated wrapper iterates ZERO props and
+		// allocates a single new object with 3 method overrides. Other storage
+		// methods (loadIdentityKey, loadPreKey, etc.) resolve via prototype
+		// chain to the shared `storage` instance — safe because none of
+		// storage's methods rely on `this` (they all close over captured
+		// variables from `signalStorage()`'s closure).
+		const pinned = Object.create(storage) as ExtendedSignalStorage
+		pinned.loadSession = (id: string) => storage.loadSession(id === rawAddr ? wireJid : id)
+		pinned.storeSession = (id: string, sess: libsignal.SessionRecord) =>
+			storage.storeSession(id === rawAddr ? wireJid : id, sess)
+		pinned.saveIdentity = (id: string, identityKey: Uint8Array) =>
+			storage.saveIdentity(id === rawAddr ? wireJid : id, identityKey)
+		return pinned
+	}
+
 	const parsedKeys = auth.keys as SignalKeyStoreWithRecordTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
 		ttl: 3 * 24 * 60 * 60 * 1000, // 3 days
@@ -410,17 +484,45 @@ export function makeLibSignalRepository(
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const session = new libsignal.SessionCipher(storage, addr)
+			const addrStr = addr.toString()
 
-			async function doDecrypt() {
-				// For PreKeyWhisperMessage, extract and verify identity key BEFORE decryption
-				// This handles the case where a contact reinstalled WhatsApp (new identity key)
+			// Stage 3 (upstream #2573 H1): pre-resolve wire JID ONCE so the
+			// identity save AND the decrypt itself land on the SAME storage row,
+			// and the lock scope below pins both. Without pre-resolution
+			// `loadSession`/`storeSession`/`saveIdentity` each independently
+			// re-resolve via lidMapping — if a mapping change lands between
+			// our pre-resolve (for the lock) and any of those internal calls,
+			// the actual row can drift away from the locked record.
+			//
+			// Uses the module-scope `resolveSignalAddressId` (Stage 3 vocabulary)
+			// directly on the signal address string — same end result as upstream
+			// and as our older `resolveCanonicalJid(jid)` + `jidToSignalProtocolAddress`
+			// pipeline, but expressed as a single signal-level call so the same
+			// helper is reused inside `pinResolutionForStorage` below.
+			const wireJid = await resolveSignalAddressId(addrStr, lidMapping)
+
+			// Pin the resolver for every internal storage call so they all hit `wireJid`.
+			const pinnedStorage = pinResolutionForStorage(addrStr, wireJid)
+			const session = new libsignal.SessionCipher(pinnedStorage, addr)
+
+			// Stage 3 H1: include `identity-key:wireJid` in the lock scope so the
+			// pkmsg identity-save (now folded INSIDE the same transactWith) and
+			// the decrypt share both session AND identity-key locks. Previously
+			// the identity save ran BEFORE the per-jid transaction opened — a
+			// concurrent encrypt for the same jid could load the stale session
+			// under its own meId-keyed lock and commit it back over the cleared
+			// one (H1 race).
+			const records: RecordRef[] = [
+				{ type: 'session', id: wireJid },
+				{ type: 'identity-key', id: wireJid }
+			]
+			return parsedKeys.transactWith({ records }, async () => {
+				// H1: identity save now happens INSIDE the tx scope.
 				if (type === 'pkmsg') {
 					const identityKey = extractIdentityFromPkmsg(ciphertext, logger)
 					if (identityKey) {
-						const addrStr = addr.toString()
 						try {
-							const saveResult = await storage.saveIdentity(addrStr, identityKey)
+							const saveResult = await pinnedStorage.saveIdentity(addrStr, identityKey)
 							if (saveResult.changed) {
 								logger.info(
 									{
@@ -438,8 +540,11 @@ export function makeLibSignalRepository(
 								)
 							}
 						} catch (error) {
-							// Log but don't fail decryption - identity tracking is best-effort
-							logger.warn({ jid, error: (error as Error).message }, 'Failed to save identity key during decryption')
+							// Log but don't fail decryption — identity tracking is best-effort.
+							logger.warn(
+								{ jid, error: (error as Error).message },
+								'Failed to save identity key during decryption'
+							)
 						}
 					}
 				}
@@ -452,19 +557,6 @@ export function makeLibSignalRepository(
 				}
 
 				return result
-			}
-
-			// InfiniteAPI hybrid (Stage 2 #2572 + nosso PN/LID race fix):
-			// resolve PN→LID FIRST, then build the record id from the canonical
-			// address. Upstream Stage 2 used `addr.toString()` direct, which loses
-			// our PN→LID resolution and reintroduces the race where parallel
-			// decrypts of the same logical contact via PN vs LID acquire DIFFERENT
-			// session locks. We feed the canonical addr to transactWith so all
-			// variants of the same logical session serialize under one record lock.
-			const canonicalJid = await resolveCanonicalJid(jid)
-			const canonicalAddr = jidToSignalProtocolAddress(canonicalJid).toString()
-			return parsedKeys.transactWith({ records: [{ type: 'session', id: canonicalAddr }] }, async () => {
-				return await doDecrypt()
 			})
 		},
 
@@ -1224,119 +1316,142 @@ function signalStorage(
 		/**
 		 * Save identity key for a contact with change detection
 		 * Implements Trust On First Use (TOFU) and emits events on changes
+		 *
+		 * Stage 3 (upstream #2573 H3 local): the read+compare+write below is
+		 * now wrapped in `transactWith({ records: [session, identity-key] })`
+		 * so the whole sequence is atomic w.r.t. concurrent decrypts /
+		 * identity-saves for the same `wireJid`. Re-entry is safe: when
+		 * called from inside `decryptMessage`'s outer transactWith (which
+		 * already holds these same record locks), `transactWith` detects the
+		 * locks in `existing.heldLocks` and bypasses re-acquisition.
 		 */
 		saveIdentity: async (id: string, identityKey: Uint8Array): Promise<IdentitySaveResult> => {
 			const timer = metrics.signalIdentityKeyOperations?.startTimer({ operation: 'save' })
 
 			try {
+				// PR #459 Copilot round-3: keep ALL awaits that can throw inside
+				// the try block so the Prometheus timer is always closed in
+				// `finally`. Previously `resolveLIDSignalAddress` and its inner
+				// `lidMapping.getLIDForPN` ran before the try — a throw there
+				// would leak the timer.
 				const wireJid = await resolveLIDSignalAddress(id)
-				const currentFingerprint = generateKeyFingerprint(identityKey)
+				const parsedKeys = keys as SignalKeyStoreWithRecordTransaction
 
-				// Load existing key (from cache or storage)
-				const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
+				const records: RecordRef[] = [
+					{ type: 'session', id: wireJid },
+					{ type: 'identity-key', id: wireJid }
+				]
 
-				// Check if keys match
-				const keysMatch =
-					existingKey?.length === identityKey.length && existingKey.every((byte, i) => byte === identityKey[i])
+				return await parsedKeys.transactWith({ records }, async () => {
+					const currentFingerprint = generateKeyFingerprint(identityKey)
 
-				if (existingKey && !keysMatch) {
-					// IDENTITY KEY CHANGED - contact reinstalled WhatsApp or switched devices
-					const previousFingerprint = generateKeyFingerprint(existingKey)
+					// Load existing key (from cache or storage)
+					const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
 
-					// Delete old session and save new identity key atomically.
-					// Store identity in BOTH LID and PN addresses (WABA stores in both
-					// recipient_account_type=0 and type=1 with CONFLICT_REPLACE).
-					const identityUpdates: Record<string, Uint8Array> = { [wireJid]: identityKey }
-					if (wireJid !== id) {
-						identityUpdates[id] = identityKey
-					}
+					// Check if keys match
+					const keysMatch =
+						existingKey?.length === identityKey.length &&
+						existingKey.every((byte, i) => byte === identityKey[i])
 
-					await keys.set({
-						session: { [wireJid]: null },
-						'identity-key': identityUpdates
-					})
+					if (existingKey && !keysMatch) {
+						// IDENTITY KEY CHANGED - contact reinstalled WhatsApp or switched devices
+						const previousFingerprint = generateKeyFingerprint(existingKey)
 
-					// Update cache for both addresses
-					identityKeyCache.set(wireJid, identityKey)
-					if (wireJid !== id) {
-						identityKeyCache.set(id, identityKey)
-					}
+						// Delete old session and save new identity key atomically.
+						// Store identity in BOTH LID and PN addresses (WABA stores in both
+						// recipient_account_type=0 and type=1 with CONFLICT_REPLACE).
+						const identityUpdates: Record<string, Uint8Array> = { [wireJid]: identityKey }
+						if (wireJid !== id) {
+							identityUpdates[id] = identityKey
+						}
 
-					// Record metrics
-					metrics.signalIdentityChanges?.inc({ type: 'changed' })
-
-					// Emit event for application to notify user
-					if (ev) {
-						ev.emit('identity.changed', {
-							jid: wireJid,
-							previousKeyFingerprint: previousFingerprint,
-							newKeyFingerprint: currentFingerprint,
-							timestamp: Date.now(),
-							isNewContact: false
+						await keys.set({
+							session: { [wireJid]: null },
+							'identity-key': identityUpdates
 						})
-					}
 
-					logger?.warn(
-						{
-							event: 'identity_key_changed',
-							jid: wireJid,
+						// Update cache for both addresses
+						identityKeyCache.set(wireJid, identityKey)
+						if (wireJid !== id) {
+							identityKeyCache.set(id, identityKey)
+						}
+
+						// Record metrics
+						metrics.signalIdentityChanges?.inc({ type: 'changed' })
+
+						// Emit event for application to notify user
+						if (ev) {
+							ev.emit('identity.changed', {
+								jid: wireJid,
+								previousKeyFingerprint: previousFingerprint,
+								newKeyFingerprint: currentFingerprint,
+								timestamp: Date.now(),
+								isNewContact: false
+							})
+						}
+
+						logger?.warn(
+							{
+								event: 'identity_key_changed',
+								jid: wireJid,
+								previousFingerprint,
+								newFingerprint: currentFingerprint
+							},
+							'Contact identity key changed - security code changed'
+						)
+
+						return {
+							changed: true,
+							isNew: false,
 							previousFingerprint,
-							newFingerprint: currentFingerprint
-						},
-						'Contact identity key changed - security code changed'
-					)
-
-					return {
-						changed: true,
-						isNew: false,
-						previousFingerprint,
-						currentFingerprint
-					}
-				}
-
-				if (!existingKey) {
-					// NEW CONTACT - Trust On First Use (TOFU)
-					// Store in both LID and PN addresses (aligned with WABA dual identity storage)
-					const identityUpdates: Record<string, Uint8Array> = { [wireJid]: identityKey }
-					if (wireJid !== id) {
-						identityUpdates[id] = identityKey
+							currentFingerprint
+						}
 					}
 
-					await keys.set({ 'identity-key': identityUpdates })
+					if (!existingKey) {
+						// NEW CONTACT - Trust On First Use (TOFU)
+						// Store in both LID and PN addresses (aligned with WABA dual identity storage)
+						const identityUpdates: Record<string, Uint8Array> = { [wireJid]: identityKey }
+						if (wireJid !== id) {
+							identityUpdates[id] = identityKey
+						}
 
-					// Update cache for both addresses
-					identityKeyCache.set(wireJid, identityKey)
-					if (wireJid !== id) {
-						identityKeyCache.set(id, identityKey)
+						await keys.set({ 'identity-key': identityUpdates })
+
+						// Update cache for both addresses
+						identityKeyCache.set(wireJid, identityKey)
+						if (wireJid !== id) {
+							identityKeyCache.set(id, identityKey)
+						}
+
+						// Record metrics
+						metrics.signalIdentityChanges?.inc({ type: 'new' })
+
+						// Emit event for new contact
+						if (ev) {
+							ev.emit('identity.changed', {
+								jid: wireJid,
+								previousKeyFingerprint: null,
+								newKeyFingerprint: currentFingerprint,
+								timestamp: Date.now(),
+								isNewContact: true
+							})
+						}
+
+						return {
+							changed: false,
+							isNew: true,
+							currentFingerprint
+						}
 					}
 
-					// Record metrics
-					metrics.signalIdentityChanges?.inc({ type: 'new' })
-
-					// Emit event for new contact
-					if (ev) {
-						ev.emit('identity.changed', {
-							jid: wireJid,
-							previousKeyFingerprint: null,
-							newKeyFingerprint: currentFingerprint,
-							timestamp: Date.now(),
-							isNewContact: true
-						})
-					}
-
+					// Key unchanged
 					return {
 						changed: false,
-						isNew: true,
+						isNew: false,
 						currentFingerprint
 					}
-				}
-
-				// Key unchanged
-				return {
-					changed: false,
-					isNew: false,
-					currentFingerprint
-				}
+				})
 			} finally {
 				timer?.()
 			}
