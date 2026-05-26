@@ -164,6 +164,55 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
+	/**
+	 * Stage 9 (upstream #2579): single-flight guard for `requestPlaceholderResend`.
+	 * The previous cache-based dedupe (`get → set`) had a race window: two
+	 * concurrent calls for the same message id could both observe the cache
+	 * as empty and both issue the placeholder resend. The lock collapses the
+	 * get + set into one critical section per id.
+	 *
+	 * Coexists with Stage 3's `lidMigrationLocks` and Stage 6's `retryLocks` —
+	 * disjoint namespaces (`__placeholder_resend__` vs `__lid_migration__` vs
+	 * `msg-retry`), no deadlock risk.
+	 */
+	const placeholderResendLocks = makeLockManager()
+
+	/**
+	 * Stage 6 H9 (upstream #2576): per-(msgId, participant) keyed lock for
+	 * the `msgRetryCache` read-modify-write. The cache is mutated by two call
+	 * paths — `sendRetryRequest` and `updateSendMessageAgainCount` — and the
+	 * classic `await get → +1 → await set` sequence loses increments without
+	 * a shared lock chain. `incrementRetryAndGet` collapses get+inc+set into
+	 * one critical section per `(msgId, participant)` so both paths cannot
+	 * step on each other.
+	 *
+	 * InfiniteAPI hybrid: we KEEP the outer `retryMutex` (line ~145) that
+	 * wraps the inbound dispatch's retry handler — it serializes the whole
+	 * preKey-upload-+-sendRetryRequest critical section, which is broader
+	 * than per-msgId. Upstream removes retryMutex (their dispatch is already
+	 * serialized by `messageMutex`); we preserve it because our custom
+	 * pre-key error recovery logic depends on that broader serialization.
+	 */
+	const retryLocks = makeLockManager()
+	// PR #462 review (Copilot): double-underscore prefix on the namespace
+	// avoids future collisions with any real `SignalDataType` value.
+	// LockManager docs (lock-manager.ts:9) require this convention for
+	// namespaces that aren't backed by a record type. Matches the convention
+	// already used by `__lid_migration__` (Stage 3 H8) and
+	// `__placeholder_resend__` (Stage 9 — see above).
+	const retryLockRef = (msgId: string, participant: string) => ({
+		namespace: '__msg_retry__',
+		id: `${msgId}:${participant}`
+	})
+	const incrementRetryAndGet = async (msgId: string, participant: string): Promise<number> => {
+		return retryLocks.withLock(retryLockRef(msgId, participant), async () => {
+			const key = `${msgId}:${participant}`
+			const next = ((await msgRetryCache.get<number>(key)) ?? 0) + 1
+			await msgRetryCache.set(key, next)
+			return next
+		})
+	}
+
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
 
@@ -312,20 +361,42 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		// Check if already requested using message ID to prevent duplicate PDO requests
-		const alreadyRequested = await placeholderResendCache.get<PlaceholderMessageData | boolean>(messageKey?.id!)
-		if (alreadyRequested) {
-			logger.debug({ messageKey }, 'already requested resend')
+		// Stage 9 (upstream #2579): guard against an undefined `messageKey.id`.
+		// Without this, the lock would acquire on the empty-string id
+		// (serializing every id-less caller through a single bucket) and the
+		// cache get/set would hit `undefined` as a key. Up the call stack
+		// `messageKey` is non-optional so the `id` check is the only real
+		// concern.
+		if (!messageKey.id) {
+			logger.warn({ messageKey }, 'requestPlaceholderResend called with undefined message id')
 			return
 		}
 
-		// Temporarily mark as requested using message ID to prevent race conditions
-		await placeholderResendCache.set(messageKey?.id!, true)
+		const resendId = messageKey.id
+
+		// Stage 9 (upstream #2579): collapse the previous `get → set` cache-
+		// dedupe into one per-id critical section so two concurrent callers
+		// can't both observe an empty cache and both fire the resend.
+		const alreadyHandled = await placeholderResendLocks.withLock(
+			{ namespace: '__placeholder_resend__', id: resendId },
+			async () => {
+				const alreadyRequested = await placeholderResendCache.get<PlaceholderMessageData | boolean>(resendId)
+				if (alreadyRequested) {
+					logger.debug({ messageKey }, 'already requested resend')
+					return true
+				}
+
+				// Temporarily mark as requested using message ID to prevent race conditions
+				await placeholderResendCache.set(resendId, true)
+				return false
+			}
+		)
+		if (alreadyHandled) return
 
 		await delay(2000)
 
 		// Check if message was received during delay
-		if (!(await placeholderResendCache.get<PlaceholderMessageData | boolean>(messageKey?.id!))) {
+		if (!(await placeholderResendCache.get<PlaceholderMessageData | boolean>(resendId))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -353,7 +424,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		// Clean up message ID marker after storing with stanzaId
-		await placeholderResendCache.del(messageKey?.id!)
+		await placeholderResendCache.del(resendId)
 
 		// Cleanup timeout: if no response after 8s, assume phone is offline
 		setTimeout(async () => {
@@ -1334,14 +1405,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			recordMessageRetry('retry')
 
-			// Mirror the retry count to the durable cache.
-			// Upstream #2576 H9 wraps this in retryLocks.withLock (LockManager) — we
-			// skip that wrap (LockManager arrives with Stage 1 #2571). The
-			// surrounding messageMutex.mutex(mutexKey, ...) at the call site of
-			// sendRetryRequest already serializes by (jid, msgId), so the residual
-			// race window is narrower than upstream's pre-#2576 state.
-			const key = `${msgId}:${msgKey?.participant}`
-			await msgRetryCache.set(key, attempt.count)
+			// Stage 6 H9 (upstream #2576): mirror the retry count to the durable
+			// cache via `retryLocks` so this set cannot race against
+			// `updateSendMessageAgainCount`'s increment for the same key. Both
+			// paths now route through `retryLocks.withLock` on the same
+			// `(msgId, participant)` ref.
+			await retryLocks.withLock(retryLockRef(msgId, String(msgKey?.participant)), async () => {
+				const key = `${msgId}:${msgKey?.participant}`
+				await msgRetryCache.set(key, attempt.count)
+			})
 		} else {
 			// Fallback to old system
 			const key = `${msgId}:${msgKey?.participant}`
@@ -2152,9 +2224,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const updateSendMessageAgainCount = async (id: string, participant: string) => {
-		const key = `${id}:${participant}`
-		const newValue = ((await msgRetryCache.get<number>(key)) || 0) + 1
-		await msgRetryCache.set(key, newValue)
+		// Stage 6 H9 (upstream #2576): route through `incrementRetryAndGet` so
+		// this increment cannot race against `sendRetryRequest`'s update to the
+		// same key. Both paths share `retryLocks` keyed by `(msgId, participant)`.
+		await incrementRetryAndGet(id, participant)
 	}
 
 	const sendMessagesAgain = async (
