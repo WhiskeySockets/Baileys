@@ -1063,22 +1063,26 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	/** sending non-abt props may fix QR scan fail if server expects */
+	/** fetch AB props */
 	const fetchProps = async () => {
-		//TODO: implement both protocol 1 and protocol 2 prop fetching, specially for abKey for WM
+		// Upstream #2473: query AB props using `abt` xmlns with protocol 1.
+		// Previously used `w` xmlns + protocol 2 which the server rejects with
+		// "bad-request" on current WA versions. Hash is now conditionally
+		// included only when we have one stored (vs. always sending empty
+		// string), matching server expectations.
 		const resultNode = await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
-				xmlns: 'w',
+				xmlns: 'abt',
 				type: 'get'
 			},
 			content: [
 				{
 					tag: 'props',
 					attrs: {
-						protocol: '2',
-						hash: authState?.creds?.lastPropHash || ''
+						protocol: '1',
+						...(authState?.creds?.lastPropHash ? { hash: authState.creds.lastPropHash } : {})
 					}
 				}
 			]
