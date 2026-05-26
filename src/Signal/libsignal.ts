@@ -361,14 +361,22 @@ export function makeLibSignalRepository(
 	 * shared state across all callers (they live in the outer `storage`
 	 * closure). Recreating signalStorage per call would split that state.
 	 */
-	const pinResolutionForStorage = (rawAddr: string, wireJid: string): ExtendedSignalStorage => ({
-		...storage,
-		loadSession: (id: string) => storage.loadSession(id === rawAddr ? wireJid : id),
-		storeSession: (id: string, sess: libsignal.SessionRecord) =>
-			storage.storeSession(id === rawAddr ? wireJid : id, sess),
-		saveIdentity: (id: string, identityKey: Uint8Array) =>
+	const pinResolutionForStorage = (rawAddr: string, wireJid: string): ExtendedSignalStorage => {
+		// PR #461 review (Copilot): avoid `{...storage}` spread on a hot path
+		// (every decrypt). Prototype-delegated wrapper iterates ZERO props and
+		// allocates a single new object with 3 method overrides. Other storage
+		// methods (loadIdentityKey, loadPreKey, etc.) resolve via prototype
+		// chain to the shared `storage` instance — safe because none of
+		// storage's methods rely on `this` (they all close over captured
+		// variables from `signalStorage()`'s closure).
+		const pinned = Object.create(storage) as ExtendedSignalStorage
+		pinned.loadSession = (id: string) => storage.loadSession(id === rawAddr ? wireJid : id)
+		pinned.storeSession = (id: string, sess: libsignal.SessionRecord) =>
+			storage.storeSession(id === rawAddr ? wireJid : id, sess)
+		pinned.saveIdentity = (id: string, identityKey: Uint8Array) =>
 			storage.saveIdentity(id === rawAddr ? wireJid : id, identityKey)
-	})
+		return pinned
+	}
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithRecordTransaction
 	const migratedSessionCache = new LRUCache<string, true>({

@@ -2636,7 +2636,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const altServer = jidDecode(alt)?.server
 				const primaryJid = msg.key.participant || msg.key.remoteJid!
 
-				await lidMigrationLocks.withLock({ namespace: 'lid-migration', id: alt }, async () => {
+				// PR #461 review (Copilot): double-underscore prefix on the namespace
+				// avoids future collisions with any real `SignalDataType` value.
+				// LockManager docs (lock-manager.ts:9) require this convention for
+				// namespaces that aren't backed by a record type.
+				await lidMigrationLocks.withLock({ namespace: '__lid_migration__', id: alt }, async () => {
 					if (altServer === 'lid') {
 						// HYBRID guard — covers two distinct bugs:
 						//   Bug B (upstream #2574 P1): equality check, not bare existence.
