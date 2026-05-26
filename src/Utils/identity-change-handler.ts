@@ -170,56 +170,67 @@ export async function handleIdentityChange(
 		return { action: 'debounced' }
 	}
 
-	// Stage 3 (upstream #2573 M11): even if the debounce TTL has elapsed, a
-	// previous refresh for this jid may still be running. Skip rather than
-	// racing it. This catches the case where assertSessions takes longer than
-	// the debounce TTL (e.g. slow network, retry storms) and would otherwise
-	// overlap with a new identity-change notification for the same jid.
+	// Stage 3 (upstream #2573 M11) + PR #461 round-2 (cubic P1 + Copilot):
+	// ATOMIC check-and-set BEFORE any await. The previous version checked `has`
+	// here but only called `add` after `await ctx.validateSession(from)` —
+	// two concurrent invocations for the same jid both passed the `has` guard
+	// (false), both awaited validateSession in parallel, then both reached
+	// `add` and `assertSessions`, defeating the M11 dedup.
+	//
+	// JS runs to completion between awaits, so check + add in the SAME tick
+	// (no await between them) is race-free. The marker is claimed here, then
+	// the rest of the function runs inside try/finally so the marker is
+	// always released even on early-exit (offline) or thrown assertSessions.
+	//
 	// Optional Set (see IdentityChangeContext JSDoc) — if absent, this guard
 	// degrades gracefully and only the debounceCache TTL provides dedup.
-	if (ctx.inFlightRefreshes?.has(from)) {
-		ctx.logger.debug({ jid: from }, 'skipping identity assert (refresh already in flight)')
-		return { action: 'skipped_in_flight' }
+	if (ctx.inFlightRefreshes) {
+		if (ctx.inFlightRefreshes.has(from)) {
+			ctx.logger.debug({ jid: from }, 'skipping identity assert (refresh already in flight)')
+			return { action: 'skipped_in_flight' }
+		}
+
+		ctx.inFlightRefreshes.add(from)
 	}
 
-	// Skip refresh during offline notification processing
-	// Offline notifications are processed in batch and shouldn't trigger immediate refreshes
-	// FIX: Check this BEFORE setting debounce cache to avoid incorrect debouncing
-	const isOfflineNotification = !isStringNullOrEmpty(node.attrs.offline)
-	if (isOfflineNotification) {
-		ctx.logger.debug({ jid: from }, 'skipping session refresh during offline processing')
-		return { action: 'skipped_offline' }
-	}
-
-	// Check if we have an existing session (for logging purposes only)
-	// FIX: We no longer skip refresh when no session exists - identity change is the
-	// signal to rebuild the session, which is critical after key reset or device restore
-	const hasExistingSession = await ctx.validateSession(from)
-
-	if (hasExistingSession.exists) {
-		ctx.logger.debug({ jid: from }, 'existing session found, will refresh')
-	} else {
-		ctx.logger.debug({ jid: from }, 'no existing session, will create new session')
-	}
-
-	// FIX: Set debounce cache only immediately before the actual refresh attempt
-	// This ensures we don't incorrectly debounce when we exit early (offline, etc.)
-	ctx.debounceCache.set(from, true)
-
-	// Stage 3 M11: mark in-flight BEFORE assertSessions, release in finally.
-	// If assertSessions throws, the finally still runs — no stuck marker.
-	// Optional chaining: if no Set was provided (backward-compat path), the
-	// add/delete become no-ops and the in-flight guard above is also skipped.
-	ctx.inFlightRefreshes?.add(from)
-
-	// Attempt session refresh/creation
 	try {
-		await ctx.assertSessions([from], true)
-		return { action: 'session_refreshed', hadExistingSession: hasExistingSession.exists }
-	} catch (error) {
-		ctx.logger.warn({ error, jid: from }, 'failed to assert sessions after identity change')
-		return { action: 'session_refresh_failed', error }
+		// Skip refresh during offline notification processing
+		// Offline notifications are processed in batch and shouldn't trigger immediate refreshes
+		// FIX: Check this BEFORE setting debounce cache to avoid incorrect debouncing
+		const isOfflineNotification = !isStringNullOrEmpty(node.attrs.offline)
+		if (isOfflineNotification) {
+			ctx.logger.debug({ jid: from }, 'skipping session refresh during offline processing')
+			return { action: 'skipped_offline' }
+		}
+
+		// Check if we have an existing session (for logging purposes only)
+		// FIX: We no longer skip refresh when no session exists - identity change is the
+		// signal to rebuild the session, which is critical after key reset or device restore
+		const hasExistingSession = await ctx.validateSession(from)
+
+		if (hasExistingSession.exists) {
+			ctx.logger.debug({ jid: from }, 'existing session found, will refresh')
+		} else {
+			ctx.logger.debug({ jid: from }, 'no existing session, will create new session')
+		}
+
+		// FIX: Set debounce cache only immediately before the actual refresh attempt
+		// This ensures we don't incorrectly debounce when we exit early (offline, etc.)
+		ctx.debounceCache.set(from, true)
+
+		// Attempt session refresh/creation
+		try {
+			await ctx.assertSessions([from], true)
+			return { action: 'session_refreshed', hadExistingSession: hasExistingSession.exists }
+		} catch (error) {
+			ctx.logger.warn({ error, jid: from }, 'failed to assert sessions after identity change')
+			return { action: 'session_refresh_failed', error }
+		}
 	} finally {
+		// Release the in-flight marker — covers ALL exit paths (offline early
+		// return, validateSession throw, assertSessions throw, normal return).
+		// Without this in the outer finally, an early return for 'skipped_offline'
+		// would leak the marker forever.
 		ctx.inFlightRefreshes?.delete(from)
 	}
 }

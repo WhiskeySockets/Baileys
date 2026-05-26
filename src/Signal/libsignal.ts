@@ -32,8 +32,13 @@ import { LIDMappingStore } from './lid-mapping'
  * two callers would each think they're touching different records while
  * actually mutating the same underlying row.
  *
- * Identical PN→LID logic to the closure-bound `resolveLIDSignalAddress`
- * inside `signalStorage()` (kept for backward compat with internal callers).
+ * Same PN→LID mapping lookup as the closure-bound `resolveLIDSignalAddress`
+ * inside `signalStorage()`, with one intentional difference in error handling:
+ * this helper returns `id` unchanged on a malformed signal address (no `.`
+ * separator, empty deviceId), whereas the closure version throws on a missing
+ * deviceId. Both code paths fall through to the standard lookup for well-formed
+ * input — the divergence only matters for malformed input, where this helper
+ * degrades gracefully rather than failing the surrounding `transactWith`.
  */
 async function resolveSignalAddressId(id: string, lidMapping: LIDMappingStore): Promise<string> {
 	if (!id.includes('.')) return id
