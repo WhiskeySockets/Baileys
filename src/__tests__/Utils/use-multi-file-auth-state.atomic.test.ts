@@ -51,14 +51,18 @@ describe('useMultiFileAuthState — atomic write & corruption recovery (H7)', ()
 		expect(reopened.state.creds.advSecretKey).toBe('sentinel-value-B')
 	})
 
-	it.failing(
+	it(
 		'reading a corrupted creds.json throws (or recovers), never silently returns a fresh-init state',
 		async () => {
 			// Pre-seed dir with a deliberately corrupt creds.json.
 			await writeFile(join(dir, 'creds.json'), '{ "this is": not val')
 
-			// Today: useMultiFileAuthState swallows the error and returns initAuthCreds()
-			// — caller can't tell corruption apart from a brand new install.
+			// Stage 5 H7 fix: useMultiFileAuthState now throws `AuthFileCorruptError`
+			// when both `creds.json` AND `creds.json.bak` fail to parse — caller
+			// can distinguish corruption from a brand new install (which returns
+			// initAuthCreds() silently). With no `.bak` present (first boot), the
+			// throw must surface so the operator can recover the file or re-pair
+			// deliberately rather than discovering it silently regenerated.
 			await expect(useMultiFileAuthState(dir)).rejects.toThrow()
 		}
 	)
@@ -95,5 +99,34 @@ describe('useMultiFileAuthState — atomic write & corruption recovery (H7)', ()
 		const persisted = await state.keys.get('session', [jid])
 		// Desired contract: the partial write was rolled back / never observable.
 		expect(persisted[jid]).toBeUndefined()
+	})
+
+	it('round-7 regression: repeated writes survive a pre-existing .bak (Windows EEXIST guard)', async () => {
+		// Copilot round-7 fix guard: on Windows, `fs.rename(filePath, bakPath)`
+		// fails with EEXIST/EPERM if `bakPath` already exists. Before the
+		// `renameOverwrite` wrapper, the second `saveCreds()` would throw and
+		// permanently break auth persistence on Windows. POSIX gets the same
+		// behaviour for free (atomic replace); this test exercises both via
+		// repeated rewrites that each must rotate the previous `.bak`.
+		const { state, saveCreds } = await useMultiFileAuthState(dir)
+
+		// 1st write — primary only, no .bak yet.
+		state.creds.advSecretKey = 'gen-1'
+		await saveCreds()
+
+		// 2nd write — first one created the .bak, this must overwrite it.
+		state.creds.advSecretKey = 'gen-2'
+		await saveCreds()
+
+		// 3rd write — proves the overwrite continues to work, not just a
+		// "first overwrite happens to succeed" edge case.
+		state.creds.advSecretKey = 'gen-3'
+		await saveCreds()
+
+		// Reopen and read — must observe the latest generation. Recovery
+		// from .bak would surface 'gen-2' instead; only a working rotate
+		// surfaces 'gen-3'.
+		const reopened = await useMultiFileAuthState(dir)
+		expect(reopened.state.creds.advSecretKey).toBe('gen-3')
 	})
 })

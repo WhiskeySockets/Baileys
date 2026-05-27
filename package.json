@@ -58,12 +58,14 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.31.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.19.33",
     "@types/ws": "^8.0.0",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "@whiskeysockets/eslint-config": "^1.0.0",
+    "better-sqlite3": "^11.0.0",
     "conventional-changelog": "^7.1.1",
     "conventional-changelog-angular": "^8.0.0",
     "esbuild-register": "^3.6.0",
@@ -90,12 +92,16 @@
   },
   "peerDependencies": {
     "audio-decode": "^2.2.3",
+    "better-sqlite3": "^11.0.0",
     "jimp": "^1.6.0",
     "link-preview-js": "^4.0.0",
     "sharp": "*"
   },
   "peerDependenciesMeta": {
     "audio-decode": {
+      "optional": true
+    },
+    "better-sqlite3": {
       "optional": true
     },
     "jimp": {

@@ -125,7 +125,12 @@ export function makeCacheableSignalKeyStore(
 
 				for (const id of ids) {
 					const item = (await cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))) as any
-					if (typeof item !== 'undefined') {
+					// Stage 5 null tombstone fix (adapted from upstream #2575):
+					// `null` is the SignalDataSet delete sentinel. A cached `null`
+					// must be treated as a miss — `get` returns "absent" by
+					// omitting the id, not "present with value null". Without
+					// this filter, libsignal would observe tombstones.
+					if (typeof item !== 'undefined' && item !== null) {
 						data[id] = item
 					} else {
 						idsToFetch.push(id)
@@ -137,7 +142,11 @@ export function makeCacheableSignalKeyStore(
 					const fetched = await store.get(type, idsToFetch)
 					for (const id of idsToFetch) {
 						const item = fetched[id]
-						if (item) {
+						// Treat null/undefined uniformly — only populate `data` and the
+						// cache when there's a real value. Caching `null` would
+						// re-introduce the tombstone-as-cache-hit bug for the next
+						// reader within TTL.
+						if (item !== null && item !== undefined) {
 							data[id] = item
 							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
@@ -165,7 +174,19 @@ export function makeCacheableSignalKeyStore(
 				let keys = 0
 				for (const type in data) {
 					for (const id in data[type as keyof SignalDataTypeMap]) {
-						await cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
+						const value = data[type as keyof SignalDataTypeMap]![id]
+						// Stage 5 null tombstone fix (adapted from upstream #2575):
+						// `null` is the delete sentinel — evict rather than caching
+						// `null`. Otherwise the read path (post-tombstone filter)
+						// would treat the slot as a cache hit and short-circuit the
+						// store lookup, masking later writes from sibling adapters
+						// until TTL expiry.
+						if (value === null || value === undefined) {
+							await cache.del(getUniqueId(type, id))
+						} else {
+							await cache.set(getUniqueId(type, id), value)
+						}
+
 						keys += 1
 					}
 				}
