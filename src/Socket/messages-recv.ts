@@ -1127,9 +1127,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				break
-			case 'link_code_companion_reg':
-				const linkCodeCompanionReg = getBinaryNodeChild(node, 'link_code_companion_reg')
-				const ref = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_ref'))
+		case 'link_code_companion_reg':
+			const linkCodeCompanionReg = getBinaryNodeChild(node, 'link_code_companion_reg')
+			if(!getBinaryNodeChildBuffer(linkCodeCompanionReg, 'primary_identity_pub')) {
+				logger.debug({ node }, 'link_code_companion_reg notification without pairing data, skipping')
+				break
+			}
+
+			const ref = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_ref'))
 				const primaryIdentityPublicKey = toRequiredBuffer(
 					getBinaryNodeChildBuffer(linkCodeCompanionReg, 'primary_identity_pub')
 				)
