@@ -48,6 +48,16 @@ jobs:
       - name: Build baileys
         run: pnpm --filter baileys build
 
+      # npm publish does NOT rewrite the `workspace:` protocol (only pnpm/yarn do) and the
+      # root has no `workspaces` field, so the published manifest would keep `workspace:^`
+      # literally and be uninstallable. Resolve it to the bridge's real version first.
+      - name: Pin workspace deps for publish
+        working-directory: packages/baileys
+        run: |
+          bridge_version="$(node -p "require('../whatsapp-rust-bridge/package.json').version")"
+          npx json -I -f package.json -e "this.dependencies['whatsapp-rust-bridge']='^${bridge_version}'"
+          echo "Pinned whatsapp-rust-bridge -> ^${bridge_version}"
+
       - name: Publish in NPM (as `baileys`)
         working-directory: packages/baileys
         run: npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
@@ -56,7 +66,7 @@ jobs:
         working-directory: packages/baileys
         run: |
           npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
-          npm publish --access public --provenance --tag latest
+          npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
           npx json -I -f package.json -e "this.name='baileys'"
 
       - name: Generate Changelog
