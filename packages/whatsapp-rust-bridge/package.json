@@ -40,7 +40,7 @@
         "@types/node": "^24.10.1",
         "@whiskeysockets/libsignal-node": "git+https://github.com/whiskeysockets/libsignal-node",
         "audio-decode": "^2.1.3",
-        "baileys": "workspace:*",
+        "baileys": "7.0.0-rc.9",
         "mitata": "^1.0.34",
         "sharp": "^0.34.5",
         "typescript": "^5.9.3"
