@@ -13,6 +13,7 @@ describe('resolveContactPictureIdentity', () => {
 	const ME_ID = 'myuser@s.whatsapp.net'
 	const ME_LID = 'mylid@lid'
 
+	/** Build a resolver context wired to the per-test mock resolvers and our own identity. */
 	function createContext(): ContactPictureIdentityContext {
 		return {
 			getPNForLID: mockGetPNForLID,
