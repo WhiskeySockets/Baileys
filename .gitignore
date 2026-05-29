@@ -24,4 +24,6 @@ Proxy
 test.ts
 TestData
 wa-logs*
+wa-bench-logs*
+test.db
 coverage

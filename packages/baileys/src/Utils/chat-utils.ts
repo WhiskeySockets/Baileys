@@ -1,6 +1,29 @@
 import { Boom } from '@hapi/boom'
 import { expandAppStateKeys } from 'whatsapp-rust-bridge'
 import { proto } from '../../WAProto/index.js'
+
+/**
+ * Thrown by `decodePatches` when the LTHash MAC computed locally does not
+ * match the server-supplied MAC for a patch.
+ *
+ * Stage 8 (M7): the previous implementation logged a `warn` and silently
+ * `break`-ed the patch loop, leaving `state` partially advanced. Subsequent
+ * server patches at higher versions then failed verification permanently
+ * because the stored hash had diverged. Throwing here surfaces the
+ * divergence to the caller (in practice, the app-state sync orchestrator)
+ * so it can choose to resync from a snapshot rather than silently degrading.
+ */
+export class LTHashMismatchError extends Error {
+	readonly patchName: string
+	readonly version: number
+	constructor(patchName: string, version: number) {
+		super(`LTHash verification failed for patch "${patchName}" at version ${version}`)
+		this.name = 'LTHashMismatchError'
+		this.patchName = patchName
+		this.version = version
+	}
+}
+
 import type {
 	BaileysEventEmitter,
 	Chat,
@@ -351,7 +374,20 @@ export const decodeSyncdPatch = async (
 	return result
 }
 
-export const extractSyncdPatches = async (result: BinaryNode, options: RequestInit) => {
+/**
+ * Decode the `<sync>` IQ result returned by the app-state-sync endpoint.
+ * When a collection's mutations are too large to fit inline, they're
+ * carried as an `ExternalBlobReference`; we fetch the blob via
+ * `downloadExternalBlob` — which in turn calls
+ * `downloadContentFromMessage` to hit the WhatsApp media CDN.
+ *
+ * `host` is the optional per-socket media-CDN hostname (from
+ * `sock.getMediaHost()`). Passing it threads through to the download so
+ * we hit the correct shard for this socket's region; omit it and the
+ * download falls back to `DEF_MEDIA_HOST` (`mmg.whatsapp.net`) which
+ * may 400 on regions WhatsApp routed to a different host.
+ */
+export const extractSyncdPatches = async (result: BinaryNode, options: RequestInit, host?: string) => {
 	const syncNode = getBinaryNodeChild(result, 'sync')
 	const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
 
@@ -377,7 +413,7 @@ export const extractSyncdPatches = async (result: BinaryNode, options: RequestIn
 				}
 
 				const blobRef = proto.ExternalBlobReference.decode(snapshotNode.content as Buffer)
-				const data = await downloadExternalBlob(blobRef, options)
+				const data = await downloadExternalBlob(blobRef, options, host)
 				snapshot = proto.SyncdSnapshot.decode(data)
 			}
 
@@ -403,8 +439,8 @@ export const extractSyncdPatches = async (result: BinaryNode, options: RequestIn
 	return final
 }
 
-export const downloadExternalBlob = async (blob: proto.IExternalBlobReference, options: RequestInit) => {
-	const stream = await downloadContentFromMessage(blob, 'md-app-state', { options })
+export const downloadExternalBlob = async (blob: proto.IExternalBlobReference, options: RequestInit, host?: string) => {
+	const stream = await downloadContentFromMessage(blob, 'md-app-state', { options, host })
 	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
 		bufferArray.push(chunk)
@@ -413,8 +449,12 @@ export const downloadExternalBlob = async (blob: proto.IExternalBlobReference, o
 	return Buffer.concat(bufferArray)
 }
 
-export const downloadExternalPatch = async (blob: proto.IExternalBlobReference, options: RequestInit) => {
-	const buffer = await downloadExternalBlob(blob, options)
+export const downloadExternalPatch = async (
+	blob: proto.IExternalBlobReference,
+	options: RequestInit,
+	host?: string
+) => {
+	const buffer = await downloadExternalBlob(blob, options, host)
 	const syncData = proto.SyncdMutations.decode(buffer)
 	return syncData
 }
@@ -484,7 +524,8 @@ export const decodePatches = async (
 	options: RequestInit,
 	minimumVersionNumber?: number,
 	logger?: ILogger,
-	validateMacs = true
+	validateMacs = true,
+	host?: string
 ) => {
 	const newState: LTHashState = {
 		...initial,
@@ -497,7 +538,7 @@ export const decodePatches = async (
 		const { version, keyId, snapshotMac } = syncd
 		if (syncd.externalMutations) {
 			logger?.trace({ name, version }, 'downloading external patch')
-			const ref = await downloadExternalPatch(syncd.externalMutations, options)
+			const ref = await downloadExternalPatch(syncd.externalMutations, options, host)
 			logger?.debug({ name, version, mutations: ref.mutations.length }, 'downloaded external patch')
 			syncd.mutations?.push(...ref.mutations)
 		}
@@ -541,8 +582,11 @@ export const decodePatches = async (
 			const result = mutationKeys(keyEnc.keyData!)
 			const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 			if (Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
-				logger?.warn({ name, version: newState.version }, 'LTHash verification failed, skipping remaining patches')
-				break
+				logger?.warn(
+					{ name, version: newState.version },
+					'LTHash verification failed — throwing LTHashMismatchError (M7) so caller can resync from snapshot'
+				)
+				throw new LTHashMismatchError(name, newState.version)
 			}
 		}
 

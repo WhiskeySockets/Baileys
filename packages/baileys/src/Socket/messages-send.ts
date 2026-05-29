@@ -4,7 +4,6 @@ import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMessageContent,
-	MediaConnInfo,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MiscMessageGenerationOptions,
@@ -18,7 +17,8 @@ import {
 	assertMeId,
 	bindWaitForEvent,
 	decryptMediaRetryData,
-	DEF_MEDIA_HOST,
+	downloadContentFromMessage,
+	downloadMediaMessage,
 	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
@@ -33,13 +33,14 @@ import {
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
+	runDetached,
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
-	buildMergedTcTokenIndexWrite,
+	commitTcTokenWithIndex,
 	isTcTokenExpired,
 	resolveIssuanceJid,
 	resolveTcTokenJid,
@@ -51,8 +52,6 @@ import {
 	type BinaryNode,
 	type BinaryNodeAttributes,
 	type FullJid,
-	getBinaryNodeChild,
-	getBinaryNodeChildren,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidBot,
@@ -93,7 +92,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendNode,
 		groupMetadata,
 		groupToggleEphemeral,
-		registerSocketEndHandler
+		registerSocketEndHandler,
+		refreshMediaConn,
+		getMediaHost
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -120,44 +121,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
-	let mediaConn: Promise<MediaConnInfo> | undefined
-	/** Per-socket media host; updated whenever media_conn is fetched. Defaults to the public WhatsApp host. */
-	let mediaHost: string = DEF_MEDIA_HOST
-	const refreshMediaConn = async (forceGet = false): Promise<MediaConnInfo> => {
-		const media = await mediaConn
-		if (!media || forceGet || new Date().getTime() - media.fetchDate.getTime() > media.ttl * 1000) {
-			mediaConn = (async () => {
-				const result = await query({
-					tag: 'iq',
-					attrs: {
-						type: 'set',
-						xmlns: 'w:m',
-						to: S_WHATSAPP_NET
-					},
-					content: [{ tag: 'media_conn', attrs: {} }]
-				})
-				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
-				// TODO: explore full length of data that whatsapp provides
-				const node: MediaConnInfo = {
-					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
-						hostname: attrs.hostname!,
-						maxContentLengthBytes: +attrs.maxContentLengthBytes!
-					})),
-					auth: mediaConnNode.attrs.auth!,
-					ttl: +mediaConnNode.attrs.ttl!,
-					fetchDate: new Date()
-				}
-				logger.debug('fetched media conn')
-				if (node.hosts[0]) {
-					mediaHost = node.hosts[0].hostname
-				}
-
-				return node
-			})()
-		}
-
-		return mediaConn!
-	}
+	// `mediaConn` / `mediaHost` / `refreshMediaConn` moved to the base
+	// socket in Stage 11 so chats.ts (which is BELOW this layer in the
+	// socket layering) can also route its app-state / history-sync
+	// downloads through the correct CDN shard. We just pull the helpers
+	// out of `sock`.
 
 	/**
 	 * generic send receipt function
@@ -552,6 +520,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const meLid = authState.creds.me?.lid
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
+		// Per-recipient failures are accumulated rather than masked: the
+		// final result tells the caller exactly which recipients didn't
+		// get the message and why, so they can decide between
+		// "best-effort, log and move on" (the existing behavior) and
+		// "fail the whole send" (a stricter caller-side policy).
+		const failures: Array<{ jid: string; cause: unknown }> = []
+
 		const encryptionPromises = (patchedMessages as any).map(
 			async ({ recipientJid: jid, message: patchedMessage }: any) => {
 				try {
@@ -598,6 +573,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					return node
 				} catch (err) {
+					failures.push({ jid, cause: err })
 					logger.error({ jid, err }, 'Failed to encrypt for recipient')
 					return null
 				}
@@ -607,10 +583,36 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 
 		if (recipientJids.length > 0 && nodes.length === 0) {
-			throw new Boom('All encryptions failed', { statusCode: 500 })
+			// All recipients failed — attach the per-recipient causes via
+			// `data` so the caller's log shows which underlying errors
+			// (key-store failure, session corruption, etc.) caused the
+			// total failure instead of just the generic "All encryptions
+			// failed" string. `data.firstCause` is the most likely
+			// repeated root cause for quick diagnosis.
+			throw new Boom('All encryptions failed', {
+				statusCode: 500,
+				data: {
+					failed: failures.map(f => ({ jid: f.jid, error: String(f.cause) })),
+					firstCause: failures[0]?.cause ? String(failures[0].cause) : undefined
+				}
+			})
 		}
 
-		return { nodes, shouldIncludeDeviceIdentity }
+		if (failures.length > 0) {
+			// Partial failure: some recipients didn't get the message.
+			// Log structured so operators can grep / alert on this without
+			// trawling individual "Failed to encrypt for recipient" lines.
+			logger.warn(
+				{
+					succeededCount: nodes.length,
+					failedCount: failures.length,
+					failed: failures.map(f => ({ jid: f.jid, error: String(f.cause) }))
+				},
+				'createParticipantNodes: partial encryption failure'
+			)
+		}
+
+		return { nodes, shouldIncludeDeviceIdentity, failures }
 	}
 
 	const relayMessage = async (
@@ -673,7 +675,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 		}
 
-		await authState.keys.transaction(async () => {
+		// H0 fix: NO outer `keys.transaction` here. Wrapping relayMessage in an
+		// outer legacy transaction makes every inner `transactWith` (e.g. the
+		// per-session lock in `encryptMessage`) NESTED. Nested transactWiths
+		// release their per-record lock when `work()` returns but defer the
+		// durable commit to the outermost transaction. While the outer is still
+		// running between encrypt-release and outer-commit, a concurrent inbound
+		// decrypt for the same wireJid can acquire `session:wireJid`, load the
+		// pre-commit state from durable storage, advance its receiving chain,
+		// and commit — clobbering the sending-chain advance the encrypt was
+		// going to commit later. The bench trace shows this directly: same
+		// `wireJid`, encrypt stages `BacNgC: N+1`, concurrent decrypt's commit
+		// lands with `BacNgC: N` (the pre-encrypt value), and the next encrypt
+		// re-emits counter N → peer reports "old counter N+1 / N".
+		//
+		// The inner `transactWith({ records: [{ type: 'session', id: wireJid }] })`
+		// in `signalRepository.encryptMessage` is the correct serialization
+		// scope: it commits atomically per encrypt and naturally serializes
+		// against inbound decrypts on the same wireJid.
+		await (async () => {
 			const mediaType = getMediaType(message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
@@ -1122,15 +1142,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						const currentData = await authState.keys.get('tctoken', [tcTokenJid])
 						const currentEntry = currentData[tcTokenJid]
-						const indexWrite = await buildMergedTcTokenIndexWrite(authState.keys, [tcTokenJid])
-						await authState.keys.set({
-							tctoken: {
-								[tcTokenJid]: {
-									token: Buffer.alloc(0),
-									...currentEntry,
-									senderTimestamp: issueTimestamp
-								},
-								...indexWrite
+						// Stage 10 (closure of deferred tc-token item): atomic
+						// read-merge-write through `commitTcTokenWithIndex` so a
+						// concurrent `flushTcTokenIndex` on the recv path can't
+						// race the index update.
+						await commitTcTokenWithIndex(authState.keys, [tcTokenJid], {
+							[tcTokenJid]: {
+								token: Buffer.alloc(0),
+								...currentEntry,
+								senderTimestamp: issueTimestamp
 							}
 						})
 					})
@@ -1146,7 +1166,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (messageRetryManager && !participant) {
 				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
 			}
-		}, meId)
+		})()
 
 		return msgId
 	}
@@ -1252,11 +1272,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			userDevicesCache.close()
 		}
 
-		mediaConn = undefined
+		// `mediaConn` clearing now lives in the base socket's own
+		// teardown — moved alongside the rest of the media-conn
+		// machinery in Stage 11.
 		if (messageRetryManager) {
 			messageRetryManager.clear()
 		}
 	})
+
+	/**
+	 * Download helpers that auto-inject the per-socket `mediaHost` (the
+	 * hostname WhatsApp returned in the last `media_conn` IQ — see
+	 * `refreshMediaConn` above). Routing downloads through the assigned
+	 * host avoids hitting the wrong shard / regional CDN and matches the
+	 * behavior the upload path already has via `getWAUploadToServer`.
+	 *
+	 * Callers can still pass `options.host` to override (e.g. to follow a
+	 * redirect to a different shard); the auto-injection only fills the
+	 * default. Callers can also still import the standalone utilities
+	 * `downloadMediaMessage` / `downloadContentFromMessage` if they want
+	 * to bypass the socket binding entirely (e.g. historical messages
+	 * downloaded after the socket has closed).
+	 */
+	const downloadMediaMessageWithHost = <Type extends 'buffer' | 'stream'>(
+		...[message, type, options, ctx]: Parameters<typeof downloadMediaMessage<Type>>
+	) => downloadMediaMessage<Type>(message, type, { host: getMediaHost(), ...options }, ctx)
+
+	const downloadContentFromMessageWithHost: typeof downloadContentFromMessage = (message, type, opts = {}) =>
+		downloadContentFromMessage(message, type, { host: getMediaHost(), ...opts })
 
 	return {
 		...sock,
@@ -1269,8 +1312,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendReceipts,
 		readMessages,
 		refreshMediaConn,
-		// Function (not getter) so the spread in chats.ts preserves the live closure binding.
-		getMediaHost: () => mediaHost,
+		// `getMediaHost` is already re-exported from the base socket via
+		// the `...sock` spread above. Keeping the explicit re-export here
+		// so the typed return shape from this layer is unchanged.
+		getMediaHost,
+		/** Build a media URL using the socket's current `media_conn` host. */
+		getMediaUrl: (directPath: string) => getUrlFromDirectPath(directPath, getMediaHost()),
+		/**
+		 * Download a media message via the per-socket `media_conn` host. Same
+		 * signature as the standalone utility; pass `options.host` to
+		 * override the auto-injected default.
+		 */
+		downloadMediaMessage: downloadMediaMessageWithHost,
+		/**
+		 * Lower-level helper if you already have a `DownloadableMessage`
+		 * (e.g. extracted from a quoted message). Auto-injects the
+		 * socket's `mediaHost`.
+		 */
+		downloadContentFromMessage: downloadContentFromMessageWithHost,
 		waUploadToServer,
 		fetchPrivacySettings,
 		sendPeerDataOperationMessage,
@@ -1304,7 +1363,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								}
 
 								content.directPath = media.directPath
-								content.url = getUrlFromDirectPath(content.directPath!, mediaHost)
+								content.url = getUrlFromDirectPath(content.directPath!, getMediaHost())
 
 								logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 							} catch (err: any) {
@@ -1407,9 +1466,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalNodes
 				})
 				if (config.emitOwnEvents) {
-					process.nextTick(async () => {
-						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
-					})
+					// Detached on purpose — `relayMessage` already returned. The
+					// upsert is a best-effort projection into the local event
+					// stream. Stage 9: route through `runDetached` so a
+					// rejection becomes a structured `error` log instead of an
+					// `unhandledRejection`.
+					process.nextTick(() =>
+						runDetached(
+							() =>
+								// Stage 10: keyed-mutex variant. The upsert is a
+								// per-chat operation (appends to that chat's
+								// history projection), so we acquire under the
+								// outgoing chat's remoteJid — same key the
+								// inbound receive path uses, ensuring upsertMessage
+								// ordering stays consistent with any concurrent
+								// inbound message for the same chat.
+								messageMutex.mutex(fullMsg.key.remoteJid ?? '__no-chat__', () => upsertMessage(fullMsg, 'append')),
+							logger,
+							{ op: 'emitOwnEvents.upsertMessage', msgId: fullMsg.key.id }
+						)
+					)
 				}
 
 				return fullMsg

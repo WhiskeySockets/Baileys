@@ -482,3 +482,45 @@ export function bytesToCrockford(buffer: Buffer): string {
 export function encodeNewsletterMessage(message: proto.IMessage): Uint8Array {
 	return proto.Message.encode(message).finish()
 }
+
+/**
+ * Schedule an async function to run without blocking the caller (`fire and
+ * forget`) — but always log rejections at `warn`/`error` instead of letting
+ * them become silent `unhandledRejection`.
+ *
+ * Used throughout the socket layer to replace ad-hoc patterns like
+ * `void (async () => { ... })()` and `process.nextTick(async () => { ... })`
+ * whose rejections previously only debug-logged (or never surfaced at all).
+ *
+ * @param work the async work to run detached
+ * @param logger child logger to use for error reporting
+ * @param context structured context attached to the log entry (operation
+ *                name, ids, etc.) so operators can correlate the failure
+ *                with the call site
+ */
+export function runDetached(
+	work: () => Promise<unknown>,
+	logger: { warn?: (obj: unknown, msg?: string) => void; error?: (obj: unknown, msg?: string) => void },
+	context: Record<string, unknown> = {}
+): void {
+	// Schedule `work()` on a microtask rather than calling it inline. An
+	// `async` function still runs its synchronous prologue (variable
+	// initialization, the first chunk before any await) in the caller's
+	// tick when invoked directly, which defeats the "detached" name: a
+	// caller firing many runDetached calls in a hot loop would still feel
+	// the prologue cost on its own clock. Scheduling via
+	// `Promise.resolve().then(work)` defers the entire body — sync
+	// prologue included — to the microtask queue, and additionally folds
+	// synchronous throws from `work` into the same rejection-handling
+	// path as async rejections (the `.catch` below handles both
+	// uniformly, so the previous try/catch around the synchronous call
+	// is no longer needed).
+	//
+	// `err` goes LAST in the log spread so a caller-supplied `context.err`
+	// can't shadow the actual exception in the structured log.
+	Promise.resolve()
+		.then(work)
+		.catch((err: unknown) => {
+			logger.error?.({ ...context, err }, 'runDetached: detached work rejected')
+		})
+}

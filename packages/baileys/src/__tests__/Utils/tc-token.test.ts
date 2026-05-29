@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals'
-import { type SignalKeyStoreWithTransaction } from '../../Types'
+import { type SignalKeyStoreWithRecordTransaction, type SignalKeyStoreWithTransaction } from '../../Types'
 import { SERVER_ERROR_CODES } from '../../Utils'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -26,10 +26,13 @@ const computeCutoff = () => {
 	return cutoffBucket * BUCKET_DURATION
 }
 
-const createMockKeys = (): jest.Mocked<SignalKeyStoreWithTransaction> => ({
+const createMockKeys = (): jest.Mocked<SignalKeyStoreWithRecordTransaction> => ({
 	get: jest.fn<SignalKeyStoreWithTransaction['get']>() as any,
 	set: jest.fn<SignalKeyStoreWithTransaction['set']>(),
 	transaction: jest.fn<SignalKeyStoreWithTransaction['transaction']>(async (work: () => any) => await work()) as any,
+	transactWith: jest.fn<SignalKeyStoreWithRecordTransaction['transactWith']>(
+		async (_scope, work) => await work()
+	) as any,
 	isInTransaction: jest.fn<SignalKeyStoreWithTransaction['isInTransaction']>()
 })
 
@@ -40,7 +43,7 @@ describe('storeTcTokensFromIqResult', () => {
 	const TOKEN_BYTES = new Uint8Array([4, 1, 33, 254, 110])
 	const RECENT_TS = String(nowSeconds() - 86400)
 
-	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
+	let mockKeys: jest.Mocked<SignalKeyStoreWithRecordTransaction>
 	const noopGetLID = async () => null
 
 	beforeEach(() => {
@@ -388,7 +391,7 @@ describe('buildTcTokenFromJid', () => {
 	const EXPIRED_TS = String(nowSeconds() - 30 * 86400) // 30 days ago
 	const noopGetLID = async (): Promise<string | null> => null
 
-	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
+	let mockKeys: jest.Mocked<SignalKeyStoreWithRecordTransaction>
 
 	beforeEach(() => {
 		mockKeys = createMockKeys()
@@ -545,7 +548,7 @@ describe('tctoken integration scenarios', () => {
 	const TOKEN_B = Buffer.from([4, 2, 44, 128, 200, 12])
 	const noopGetLID = async (): Promise<string | null> => null
 
-	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
+	let mockKeys: jest.Mocked<SignalKeyStoreWithRecordTransaction>
 
 	beforeEach(() => {
 		mockKeys = createMockKeys()
@@ -1041,7 +1044,7 @@ describe('PSA and bot JID detection', () => {
 })
 
 describe('tctoken index helpers', () => {
-	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
+	let mockKeys: jest.Mocked<SignalKeyStoreWithRecordTransaction>
 
 	beforeEach(() => {
 		mockKeys = createMockKeys()

@@ -1,4 +1,4 @@
-import { BufferJSON } from '../../Utils/generics'
+import { BufferJSON, runDetached } from '../../Utils/generics'
 
 describe('BufferJSON', () => {
 	const originalObject = {
@@ -66,5 +66,66 @@ describe('BufferJSON', () => {
 	it('should correctly handle an empty object', () => {
 		const revived = JSON.parse('{}', BufferJSON.reviver)
 		expect(revived).toEqual({})
+	})
+})
+
+describe('runDetached', () => {
+	const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
+	it('schedules work on a microtask so the caller tick is not blocked', async () => {
+		// Pre-fix `runDetached` called `work()` inline, so even an `async`
+		// work function ran its synchronous prologue in the caller's tick.
+		// Post-fix it goes through `Promise.resolve().then(work)`, which
+		// defers ALL of `work` (including the sync prologue) to a
+		// microtask. The marker below records observation order: the
+		// caller's "after runDetached" line must observe its own
+		// synchronous statement BEFORE work's prologue runs.
+		const order: string[] = []
+		const logger = { error: () => {} }
+
+		runDetached(async () => {
+			order.push('work-prologue')
+			await delay(0)
+			order.push('work-after-await')
+		}, logger)
+
+		// Synchronous: runs immediately after `runDetached` returns. Must
+		// land in `order` BEFORE the work's prologue (which is now
+		// microtask-scheduled).
+		order.push('caller-sync')
+
+		await delay(20)
+
+		expect(order[0]).toBe('caller-sync')
+		expect(order).toContain('work-prologue')
+		expect(order).toContain('work-after-await')
+	})
+
+	it('logs the actual rejection even when context carries a colliding `err` key', async () => {
+		// Stage 9 round 2 fix: the logger payload spreads `context` BEFORE
+		// `err` so a caller-supplied `context.err` (e.g. a previous failure
+		// they're carrying through) can't shadow the actual exception that
+		// just fired. Pre-fix the order was `{ err, ...context }` which
+		// would let `context.err` overwrite the real one in the log.
+		const errorCalls: Array<{ obj: unknown; msg?: string }> = []
+		const logger = { error: (obj: unknown, msg?: string) => errorCalls.push({ obj, msg }) }
+
+		runDetached(
+			async () => {
+				throw new Error('actual-detached-failure')
+			},
+			logger,
+			{ op: 'unit-test', err: 'caller-supplied-misleading-value' }
+		)
+
+		// Detached rejection lands on a microtask later.
+		await delay(10)
+
+		expect(errorCalls).toHaveLength(1)
+		const payload = errorCalls[0]!.obj as { op: string; err: unknown }
+		expect(payload.op).toBe('unit-test')
+		// The REAL Error must win — not the caller's misleading string.
+		expect(payload.err).toBeInstanceOf(Error)
+		expect((payload.err as Error).message).toBe('actual-detached-failure')
 	})
 })
