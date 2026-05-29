@@ -1,0 +1,42 @@
+{
+    "name": "Baileys",
+    "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "configureZshAsDefault": true
+        }
+    },
+    "onCreateCommand": "sudo corepack enable && corepack prepare yarn@4.9.2 --activate",
+    "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg && yarn install",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "ms-vscode.vscode-typescript-next",
+                "Orta.vscode-jest"
+            ],
+            "settings": {
+                "editor.defaultFormatter": "esbenp.prettier-vscode",
+                "editor.formatOnSave": true,
+                "editor.tabSize": 2,
+                "editor.insertSpaces": false,
+                "js/ts.tsdk.path": "node_modules/typescript/lib",
+                "eslint.useFlatConfig": true,
+                "jest.jestCommandLine": "yarn jest",
+                "jest.testMatch": [
+                    "**/*.test.ts"
+                ],
+                "jest.runMode": "on-demand"
+            }
+        }
+    },
+    "remoteEnv": {
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+    },
+    "forwardPorts": [],
+    "mounts": [
+        "source=baileys-yarn-cache,target=/usr/local/share/.cache/yarn,type=volume"
+    ]
+}
