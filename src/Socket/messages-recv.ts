@@ -47,6 +47,7 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	resolveContactPictureIdentity,
 	SERVER_ERROR_CODES,
 	toNumber,
 	unixTimestampSeconds,
@@ -139,6 +140,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
+	const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
@@ -740,7 +742,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 
 			logger.debug({ jid: normalizedJid, senderTimestamp: senderTs }, 'identity changed, re-issuing tctoken')
-			const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 			const issueJid = await resolveIssuanceJid(
 				normalizedJid,
 				sock.serverProps.lidTrustedTokenIssueToLid,
@@ -1075,28 +1076,34 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'picture':
 				const setPicture = getBinaryNodeChild(node, 'set')
 				const delPicture = getBinaryNodeChild(node, 'delete')
-
-				// TODO: WAJIDHASH stuff proper support inhouse
-				ev.emit('contacts.update', [
-					{
-						id: jidNormalizedUser(node?.attrs?.from) || (setPicture || delPicture)?.attrs?.hash || '',
-						imgUrl: setPicture ? 'changed' : 'removed'
-					}
-				])
+				const pictureNode = setPicture || delPicture
+				const pictureImgUrl = setPicture ? 'changed' : 'removed'
 
 				if (isJidGroup(from)) {
-					const node = setPicture || delPicture
+					// group icon change: `from` is the group jid, never resolve LID<->PN
+					ev.emit('contacts.update', [{ id: from, imgUrl: pictureImgUrl }])
+
 					result.messageStubType = WAMessageStubType.GROUP_CHANGE_ICON
 
 					if (setPicture) {
 						result.messageStubParameters = [setPicture.attrs.id!]
 					}
 
-					result.participant = node?.attrs.author
+					result.participant = pictureNode?.attrs.author
 					result.key = {
 						...(result.key || {}),
-						participant: setPicture?.attrs.author
+						participant: pictureNode?.attrs.author
 					}
+				} else if (from) {
+					// individual contact picture change: enrich with LID<->PN so consumers can
+					// correlate the change with a cached contact regardless of addressing form
+					const identity = await resolveContactPictureIdentity(from, {
+						getPNForLID,
+						getLIDForPN,
+						meId: authState.creds.me?.id,
+						meLid: authState.creds.me?.lid
+					})
+					ev.emit('contacts.update', [{ ...identity, imgUrl: pictureImgUrl }])
 				}
 
 				break
@@ -1883,7 +1890,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					inFlight463Recoveries.add(ackFrom)
 					void (async () => {
 						try {
-							const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
 							const tcStorageJid = await resolveTcTokenJid(ackFrom, getLIDForPN)
 							const issueJid = await resolveIssuanceJid(
 								ackFrom,
