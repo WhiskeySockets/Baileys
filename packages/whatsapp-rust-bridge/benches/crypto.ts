@@ -1,13 +1,13 @@
 import { bench, do_not_optimize, boxplot, summary, run } from "mitata";
-import { randomBytes } from "crypto";
+import { createHash, hkdfSync, randomBytes } from "crypto";
 import {
   md5 as wasmMd5,
   hkdf as wasmHkdf,
 } from "../dist/index.js";
-import {
-  md5 as baileysMd5,
-  hkdf as baileysHkdf,
-} from "baileys/lib/Utils/crypto.js";
+
+// Compare the Rust/WASM bridge against Node's native crypto. Importing the md5/hkdf
+// re-exported by Baileys is pointless: current Baileys re-exports them straight from
+// this very bridge, so both sides would be the identical WASM implementation.
 
 // Test data
 const plaintext = Buffer.from("Benchmark test data for crypto operations ".repeat(10));
@@ -21,8 +21,8 @@ boxplot(() => {
       do_not_optimize(result);
     });
 
-    bench("MD5 Baileys (Node)", () => {
-      const result = baileysMd5(plaintext);
+    bench("MD5 Node", () => {
+      const result = createHash("md5").update(plaintext).digest();
       do_not_optimize(result);
     });
   });
@@ -33,8 +33,8 @@ boxplot(() => {
       do_not_optimize(result);
     });
 
-    bench("HKDF Baileys (Node)", async () => {
-      const result = await baileysHkdf(key, 64, { salt, info: "test" });
+    bench("HKDF Node", () => {
+      const result = hkdfSync("sha256", key, salt, Buffer.from("test"), 64);
       do_not_optimize(result);
     });
   });

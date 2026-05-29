@@ -37,6 +37,7 @@ const { name, version } = pkg
 const distDir = join(root, 'dist')
 const pkgDir = join(root, 'pkg')
 const distEntry = join(distDir, 'index.js')
+const distTypes = join(distDir, 'index.d.ts')
 const checksumFile = join(root, 'dist.sha256')
 
 if (process.env.WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT === '1') {
@@ -44,8 +45,10 @@ if (process.env.WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT === '1') {
 	process.exit(0)
 }
 
-if (existsSync(distEntry)) {
-	console.log('[whatsapp-rust-bridge] dist/index.js already present, skipping prebuilt fetch.')
+// Require the runtime bundle AND its declaration file: a partial build (e.g. dist/index.js
+// without index.d.ts) would otherwise be left unrepaired and break type consumers.
+if (existsSync(distEntry) && existsSync(distTypes)) {
+	console.log('[whatsapp-rust-bridge] dist artifacts already present, skipping prebuilt fetch.')
 	process.exit(0)
 }
 
@@ -58,8 +61,12 @@ try {
 	const packResult = spawnSync(
 		'npm',
 		['pack', `${name}@${version}`, '--silent', '--pack-destination', tmpDir],
-		{ stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' }
+		{ stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8', timeout: 120_000 }
 	)
+	if (packResult.error) {
+		// ENOENT => npm not on PATH; ETIMEDOUT => the 120s registry timeout fired.
+		throw new Error(`could not run \`npm pack\` (${packResult.error.code ?? packResult.error.message})`)
+	}
 	if (packResult.status !== 0) {
 		throw new Error(`npm pack exited with status ${packResult.status}`)
 	}
@@ -90,8 +97,12 @@ try {
 	mkdirSync(pkgDir, { recursive: true })
 
 	const tarResult = spawnSync('tar', ['-xzf', tarballPath, '-C', tmpDir], {
-		stdio: 'inherit'
+		stdio: 'inherit',
+		timeout: 120_000
 	})
+	if (tarResult.error) {
+		throw new Error(`could not run \`tar\` (${tarResult.error.code ?? tarResult.error.message})`)
+	}
 	if (tarResult.status !== 0) {
 		throw new Error(`tar -xzf exited with status ${tarResult.status}`)
 	}

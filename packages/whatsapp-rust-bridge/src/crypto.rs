@@ -28,6 +28,17 @@ pub struct HkdfInfo {
 
 #[wasm_bindgen(js_name = hkdf)]
 pub fn hkdf(buffer: &[u8], expanded_length: usize, info: HkdfInfo) -> Result<Uint8Array, JsValue> {
+    // HKDF-SHA256 (RFC 5869) can derive at most 255 * HashLen bytes. Reject oversize
+    // requests up front so a bogus length can't trigger a huge allocation before
+    // `expand` would itself fail with InvalidLength.
+    const MAX_HKDF_OUTPUT: usize = 255 * 32;
+    if expanded_length > MAX_HKDF_OUTPUT {
+        return Err(JsValue::from_str(&format!(
+            "HKDF expanded_length {} exceeds maximum {}",
+            expanded_length, MAX_HKDF_OUTPUT
+        )));
+    }
+
     let salt_bytes = info.salt.as_deref();
     let info_bytes = info.info.as_deref().map(|s| s.as_bytes()).unwrap_or(&[]);
 
