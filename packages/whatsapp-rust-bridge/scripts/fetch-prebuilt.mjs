@@ -36,18 +36,23 @@ const { name, version } = pkg
 
 const distDir = join(root, 'dist')
 const pkgDir = join(root, 'pkg')
-const distEntry = join(distDir, 'index.js')
-const distTypes = join(distDir, 'index.d.ts')
 const checksumFile = join(root, 'dist.sha256')
+
+// Every artifact the published tarball is expected to contribute. The skip-guard and the
+// post-copy validation both key off this single list, so a partial install (e.g. dist/index.js
+// present but pkg/whatsapp_rust_bridge.d.ts missing after a crash) is neither treated as
+// complete nor silently left unrepaired.
+const REQUIRED_ARTIFACTS = ['dist/index.js', 'dist/index.d.ts', 'pkg/whatsapp_rust_bridge.d.ts']
 
 if (process.env.WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT === '1') {
 	console.log('[whatsapp-rust-bridge] WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1, skipping prebuilt fetch.')
 	process.exit(0)
 }
 
-// Require the runtime bundle AND its declaration file: a partial build (e.g. dist/index.js
-// without index.d.ts) would otherwise be left unrepaired and break type consumers.
-if (existsSync(distEntry) && existsSync(distTypes)) {
+// Require every artifact (runtime bundle + both declaration files): a partial build —
+// e.g. dist/index.js without pkg/whatsapp_rust_bridge.d.ts — would otherwise be treated
+// as complete and left unrepaired, breaking type consumers.
+if (REQUIRED_ARTIFACTS.every(file => existsSync(join(root, file)))) {
 	console.log('[whatsapp-rust-bridge] dist artifacts already present, skipping prebuilt fetch.')
 	process.exit(0)
 }
@@ -108,7 +113,7 @@ try {
 	}
 
 	const pkgRoot = join(tmpDir, 'package')
-	for (const file of ['dist/index.js', 'dist/index.d.ts', 'pkg/whatsapp_rust_bridge.d.ts']) {
+	for (const file of REQUIRED_ARTIFACTS) {
 		const src = join(pkgRoot, file)
 		if (!existsSync(src)) continue
 		const dst = join(root, file)
@@ -116,8 +121,9 @@ try {
 		copyFileSync(src, dst)
 	}
 
-	if (!existsSync(distEntry)) {
-		throw new Error(`tarball did not contain dist/index.js`)
+	const missing = REQUIRED_ARTIFACTS.filter(file => !existsSync(join(root, file)))
+	if (missing.length) {
+		throw new Error(`tarball did not contain expected artifact(s): ${missing.join(', ')}`)
 	}
 
 	console.log('[whatsapp-rust-bridge] prebuilt artifacts installed.')
