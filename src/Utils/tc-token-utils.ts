@@ -156,7 +156,7 @@ export async function buildTcTokenFromJid({
 
 		baseContent.push({
 			tag: 'tctoken',
-			attrs: {},
+			attrs: { t: String(entry?.timestamp) },
 			content: tcTokenBuffer
 		})
 

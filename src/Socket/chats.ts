@@ -64,6 +64,18 @@ import {
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeSocket } from './socket.js'
 
+export const buildProfilePictureQueryContent = (
+	type: 'preview' | 'image',
+	tcTokenContent?: BinaryNode[]
+): BinaryNode[] => {
+	const picture: BinaryNode = { tag: 'picture', attrs: { type, query: 'url' } }
+	if (tcTokenContent?.length) {
+		picture.content = tcTokenContent
+	}
+
+	return [picture]
+}
+
 export const makeChatsSocket = (config: SocketConfig) => {
 	const {
 		logger,
@@ -736,8 +748,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		const baseContent: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
-
 		// WA Web only includes tctoken for user JIDs (not groups/newsletters)
 		// and never for own profile pic (Chat model for self has no tcToken).
 		// Including tctoken for own JID causes the server to never respond.
@@ -746,13 +756,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const me = authState.creds.me
 		const isSelf =
 			me && (normalizedJid === jidNormalizedUser(me.id) || (me.lid && normalizedJid === jidNormalizedUser(me.lid)))
-		let content: BinaryNode[] | undefined = baseContent
+		let tcTokenContent: BinaryNode[] | undefined
 
 		if (serverProps.profilePicPrivacyToken && isUserJid && !isSelf) {
-			content = await buildTcTokenFromJid({
+			tcTokenContent = await buildTcTokenFromJid({
 				authState,
 				jid: normalizedJid,
-				baseContent,
 				getLIDForPN
 			})
 		}
@@ -767,7 +776,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type: 'get',
 					xmlns: 'w:profile:picture'
 				},
-				content
+				content: buildProfilePictureQueryContent(type, tcTokenContent)
 			},
 			timeoutMs
 		)
