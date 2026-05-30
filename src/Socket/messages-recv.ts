@@ -107,6 +107,30 @@ function isValidEnforcementType(value: string | undefined): value is ReachoutTim
 	return typeof value === 'string' && ENFORCEMENT_TYPE_VALUES.has(value)
 }
 
+export const extractLinkCodeCompanionRegBuffers = (node: BinaryNode) => {
+	const linkCodeCompanionReg = getBinaryNodeChild(node, 'link_code_companion_reg')
+	const ref = getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_ref')
+	const primaryIdentityPublicKey = getBinaryNodeChildBuffer(linkCodeCompanionReg, 'primary_identity_pub')
+	const primaryEphemeralPublicKeyWrapped = getBinaryNodeChildBuffer(
+		linkCodeCompanionReg,
+		'link_code_pairing_wrapped_primary_ephemeral_pub'
+	)
+
+	if (ref === undefined || primaryIdentityPublicKey === undefined || primaryEphemeralPublicKeyWrapped === undefined) {
+		return undefined
+	}
+
+	return {
+		ref: ref instanceof Buffer ? ref : Buffer.from(ref),
+		primaryIdentityPublicKey:
+			primaryIdentityPublicKey instanceof Buffer ? primaryIdentityPublicKey : Buffer.from(primaryIdentityPublicKey),
+		primaryEphemeralPublicKeyWrapped:
+			primaryEphemeralPublicKeyWrapped instanceof Buffer
+				? primaryEphemeralPublicKeyWrapped
+				: Buffer.from(primaryEphemeralPublicKeyWrapped)
+	}
+}
+
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
 		config
@@ -1127,15 +1151,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				break
-			case 'link_code_companion_reg':
-				const linkCodeCompanionReg = getBinaryNodeChild(node, 'link_code_companion_reg')
-				const ref = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_ref'))
-				const primaryIdentityPublicKey = toRequiredBuffer(
-					getBinaryNodeChildBuffer(linkCodeCompanionReg, 'primary_identity_pub')
-				)
-				const primaryEphemeralPublicKeyWrapped = toRequiredBuffer(
-					getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_wrapped_primary_ephemeral_pub')
-				)
+			case 'link_code_companion_reg': {
+				const linkCodeCompanionRegBuffers = extractLinkCodeCompanionRegBuffers(node)
+				if (!linkCodeCompanionRegBuffers) {
+					logger.debug(
+						{ id: node.attrs.id, type: node.attrs.type },
+						'link_code_companion_reg notification without pairing data, skipping'
+					)
+					break
+				}
+
+				const { ref, primaryIdentityPublicKey, primaryEphemeralPublicKeyWrapped } = linkCodeCompanionRegBuffers
 				const codePairingPublicKey = await decipherLinkPublicKey(primaryEphemeralPublicKeyWrapped)
 				const companionSharedKey = Curve.sharedKey(
 					authState.creds.pairingEphemeralKeyPair.private,
@@ -1196,6 +1222,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				authState.creds.registered = true
 				ev.emit('creds.update', authState.creds)
 				break
+			}
+
 			case 'privacy_token':
 				await handlePrivacyTokenNotification(node)
 				break
