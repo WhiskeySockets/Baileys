@@ -19,6 +19,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      BINARYEN_VERSION: "129"
+      # SHA-256 of the official binaryen-version_<N>-x86_64-linux.tar.gz release asset.
+      # Bump together with BINARYEN_VERSION; verified before extraction (supply-chain guard).
+      BINARYEN_SHA256: 50b9fa62b9abea752da92ec57e0c555fee578760cd237c40107957715d2976ba
     defaults:
       run:
         working-directory: packages/whatsapp-rust-bridge
@@ -44,15 +49,32 @@ jobs:
         run: rustup show
 
       - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
 
-      - name: Install Binaryen (wasm-opt)
-        # Ubuntu repo Binaryen is too old for `--gufa-optimizing` and similar flags
-        # used by scripts/build-wasm.mjs. Pin to a known-good upstream release.
+      # Ubuntu's Binaryen is too old for `--gufa-optimizing` and the other flags
+      # scripts/build-wasm.mjs passes to wasm-opt. wasm-pack ships no compatible
+      # wasm-opt and taiki-e/install-action doesn't package binaryen, so fetch a
+      # pinned upstream release — cached across runs, checksum-verified on a miss.
+      - name: Cache Binaryen
+        id: cache-binaryen
+        uses: actions/cache@v4
+        with:
+          path: /tmp/binaryen-version_${{ env.BINARYEN_VERSION }}
+          key: binaryen-${{ env.BINARYEN_VERSION }}-x86_64-linux
+
+      - name: Download & verify Binaryen (wasm-opt)
+        if: steps.cache-binaryen.outputs.cache-hit != 'true'
         run: |
-          BINARYEN_VERSION=129
-          curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz" | tar -xz -C /tmp
-          echo "/tmp/binaryen-version_${BINARYEN_VERSION}/bin" >> "$GITHUB_PATH"
+          tarball="binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz"
+          curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/${tarball}" -o "${tarball}"
+          echo "${BINARYEN_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "${tarball}" -C /tmp
+          rm -f "${tarball}"
+
+      - name: Add Binaryen to PATH
+        run: echo "/tmp/binaryen-version_${BINARYEN_VERSION}/bin" >> "$GITHUB_PATH"
 
       - name: Cache cargo registry + target
         uses: actions/cache@v4
