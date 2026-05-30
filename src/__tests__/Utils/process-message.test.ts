@@ -1,5 +1,9 @@
+import { jest } from '@jest/globals'
+import { proto } from '../../../WAProto'
 import type { WAMessage } from '../../Types'
-import { cleanMessage, getChatId } from '../../Utils/process-message'
+import processMessage, { cleanMessage, getChatId } from '../../Utils/process-message'
+
+type ProcessMessageContext = Parameters<typeof processMessage>[1]
 
 const createBaseMessage = (key: Partial<WAMessage['key']>, message?: Partial<WAMessage['message']>): WAMessage => {
 	return {
@@ -185,5 +189,84 @@ describe('getChatId', () => {
 
 	it('throws when broadcast key has no participant', () => {
 		expect(() => getChatId({ remoteJid: '12345@broadcast', fromMe: false, id: 'X' })).toThrow(/missing participant/)
+	})
+})
+
+const makeProcessContext = (): ProcessMessageContext =>
+	({
+		shouldProcessHistoryMsg: false,
+		creds: {
+			me: { id: 'me@s.whatsapp.net' },
+			accountSettings: {}
+		},
+		keyStore: {
+			get: jest.fn(),
+			set: jest.fn(),
+			transaction: jest.fn(async (code: () => unknown) => code())
+		},
+		ev: {
+			emit: jest.fn()
+		},
+		logger: {
+			warn: jest.fn(),
+			info: jest.fn(),
+			debug: jest.fn()
+		},
+		options: {},
+		signalRepository: {
+			lidMapping: {
+				storeLIDPNMappings: jest.fn(),
+				getLIDForPN: jest.fn()
+			}
+		},
+		getMessage: jest.fn()
+	}) as unknown as ProcessMessageContext
+
+const makeMemberLabelMessage = (label?: string): WAMessage => ({
+	key: {
+		remoteJid: '120363000000000000@g.us',
+		participant: '123456789@s.whatsapp.net',
+		participantAlt: '123456789@lid',
+		id: 'ABCDEF'
+	},
+	messageTimestamp: 1770000000,
+	message: {
+		protocolMessage: {
+			type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
+			memberLabel: {
+				label,
+				labelTimestamp: 1770000000
+			}
+		}
+	}
+})
+
+describe('processMessage member labels', () => {
+	it('emits group.member-tag.update when a label is set', async () => {
+		const context = makeProcessContext()
+
+		await processMessage(makeMemberLabelMessage('moderator'), context)
+
+		expect(context.ev.emit).toHaveBeenCalledWith('group.member-tag.update', {
+			groupId: '120363000000000000@g.us',
+			label: 'moderator',
+			participant: '123456789@s.whatsapp.net',
+			participantAlt: '123456789@lid',
+			messageTimestamp: 1770000000
+		})
+	})
+
+	it('emits group.member-tag.update with empty label when a label is removed', async () => {
+		const context = makeProcessContext()
+
+		await processMessage(makeMemberLabelMessage(), context)
+
+		expect(context.ev.emit).toHaveBeenCalledWith('group.member-tag.update', {
+			groupId: '120363000000000000@g.us',
+			label: '',
+			participant: '123456789@s.whatsapp.net',
+			participantAlt: '123456789@lid',
+			messageTimestamp: 1770000000
+		})
 	})
 })

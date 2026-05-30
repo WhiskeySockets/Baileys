@@ -530,10 +530,10 @@ const processMessage = async (
 				break
 			case proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE:
 				const labelAssociationMsg = protocolMsg.memberLabel
-				if (labelAssociationMsg?.label) {
+				if (labelAssociationMsg) {
 					ev.emit('group.member-tag.update', {
 						groupId: chat.id!,
-						label: labelAssociationMsg.label,
+						label: labelAssociationMsg.label || '',
 						participant: message.key.participant!,
 						participantAlt: message.key.participantAlt!,
 						messageTimestamp: Number(message.messageTimestamp)
