@@ -1,0 +1,50 @@
+{
+	"name": "Baileys",
+	"image": "mcr.microsoft.com/devcontainers/javascript-node:24-bullseye",
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"configureZshAsDefault": true
+		}
+	},
+	"onCreateCommand": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none --no-modify-path && /home/node/.cargo/bin/rustup toolchain install nightly-2026-01-30 --component rustfmt --component clippy --target wasm32-unknown-unknown && /home/node/.cargo/bin/rustup default nightly-2026-01-30 && /home/node/.cargo/bin/cargo install wasm-pack",
+	"postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg python3-dev && bash -c 'BINARYEN_VERSION=129; tarball=\"binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz\"; curl -fsSL \"https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/${tarball}\" -o \"/tmp/${tarball}\" && tar -xzf \"/tmp/${tarball}\" -C /tmp && sudo cp /tmp/binaryen-version_${BINARYEN_VERSION}/bin/wasm-opt /usr/local/bin/ && rm -rf \"/tmp/${tarball}\" \"/tmp/binaryen-version_${BINARYEN_VERSION}\"' && curl -fsSL https://bun.sh/install | bash && export PATH=\"$HOME/.bun/bin:$HOME/.cargo/bin:$PATH\" && sudo corepack enable && corepack prepare pnpm@10.28.2 --activate && pnpm install --ignore-scripts && pnpm rebuild better-sqlite3 && pnpm build:bridge && pnpm build",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"dbaeumer.vscode-eslint",
+				"esbenp.prettier-vscode",
+				"ms-vscode.vscode-typescript-next",
+				"Orta.vscode-jest",
+				"rust-lang.rust-analyzer",
+				"tamasfe.even-better-toml",
+				"vadimcn.vscode-lldb",
+				"yy0931.vscode-sqlite3-editor"
+			],
+			"settings": {
+				"editor.defaultFormatter": "esbenp.prettier-vscode",
+				"editor.formatOnSave": true,
+				"editor.tabSize": 2,
+				"editor.insertSpaces": false,
+				"js/ts.tsdk.path": "node_modules/typescript/lib",
+				"eslint.useFlatConfig": true,
+				"jest.jestCommandLine": "pnpm --filter baileys jest",
+				"jest.testMatch": [
+					"**/*.test.ts"
+				],
+				"jest.runMode": "on-demand",
+				"rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+				"rust-analyzer.check.command": "clippy"
+			}
+		}
+	},
+	"remoteEnv": {
+		"NODE_TLS_REJECT_UNAUTHORIZED": "0",
+		"WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT": "1",
+		"PATH": "${containerEnv:PATH}:/home/node/.cargo/bin:/home/node/.bun/bin",
+		"RUSTUP_TOOLCHAIN": "nightly-2026-01-30"
+	},
+	"mounts": [
+		"source=baileys-pnpm-cache,target=/usr/local/share/.cache/pnpm,type=volume"
+	]
+}
