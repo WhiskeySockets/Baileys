@@ -24,3 +24,5 @@ test.ts
 TestData
 wa-logs*
 coverage
+/.pnpm-store
+/.vscode
