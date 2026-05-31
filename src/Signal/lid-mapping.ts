@@ -109,6 +109,29 @@ export class LIDMappingStore {
 		return (await this.getLIDsForPNs([pn]))?.[0]?.lid || null
 	}
 
+	async getKnownLIDForPN(pn: string): Promise<string | null> {
+		if (!isPnUser(pn) && !isHostedPnUser(pn)) return null
+
+		const decoded = jidDecode(pn)
+		if (!decoded) return null
+
+		const pnUser = decoded.user
+		let lidUser = this.mappingCache.get(`pn:${pnUser}`)
+		if (!lidUser) {
+			const stored = await this.keys.get('lid-mapping', [pnUser])
+			lidUser = stored[pnUser]
+			if (lidUser) {
+				this.mappingCache.set(`pn:${pnUser}`, lidUser)
+				this.mappingCache.set(`lid:${lidUser}`, pnUser)
+			}
+		}
+
+		if (!lidUser) return null
+
+		const pnDevice = decoded.device !== undefined ? decoded.device : 0
+		return `${lidUser}${!!pnDevice ? `:${pnDevice}` : ''}@${decoded.server === 'hosted' ? 'hosted.lid' : 'lid'}`
+	}
+
 	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
 		if (pns.length === 0) return null
 
