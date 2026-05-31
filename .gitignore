@@ -27,3 +27,5 @@ wa-logs*
 wa-bench-logs*
 test.db
 coverage
+/.pnpm-store
+/.vscode
