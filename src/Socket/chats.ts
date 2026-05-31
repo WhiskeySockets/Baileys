@@ -89,6 +89,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
+	const getKnownLIDForPN = signalRepository.lidMapping.getKnownLIDForPN.bind(signalRepository.lidMapping)
 
 	let privacySettings: { [_: string]: string } | undefined
 
@@ -736,7 +737,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		const baseContent: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
+		const pictureNode: BinaryNode = { tag: 'picture', attrs: { type, query: 'url' } }
+		const content: BinaryNode[] = [pictureNode]
 
 		// WA Web only includes tctoken for user JIDs (not groups/newsletters)
 		// and never for own profile pic (Chat model for self has no tcToken).
@@ -746,15 +748,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const me = authState.creds.me
 		const isSelf =
 			me && (normalizedJid === jidNormalizedUser(me.id) || (me.lid && normalizedJid === jidNormalizedUser(me.lid)))
-		let content: BinaryNode[] | undefined = baseContent
 
 		if (serverProps.profilePicPrivacyToken && isUserJid && !isSelf) {
-			content = await buildTcTokenFromJid({
+			const tcTokenContent = await buildTcTokenFromJid({
 				authState,
 				jid: normalizedJid,
-				baseContent,
-				getLIDForPN
+				getLIDForPN: getKnownLIDForPN
 			})
+			if (tcTokenContent?.length) {
+				pictureNode.content = tcTokenContent
+			}
 		}
 
 		jid = jidNormalizedUser(jid)
