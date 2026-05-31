@@ -119,8 +119,9 @@ export class LIDMappingStore {
 		let lidUser = this.mappingCache.get(`pn:${pnUser}`)
 		if (!lidUser) {
 			const stored = await this.keys.get('lid-mapping', [pnUser])
-			lidUser = stored[pnUser]
-			if (lidUser) {
+			const storedLidUser = stored[pnUser]
+			if (typeof storedLidUser === 'string' && storedLidUser) {
+				lidUser = storedLidUser
 				this.mappingCache.set(`pn:${pnUser}`, lidUser)
 				this.mappingCache.set(`lid:${lidUser}`, pnUser)
 			}
