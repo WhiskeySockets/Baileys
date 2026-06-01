@@ -1,16 +1,21 @@
 #!/usr/bin/env node
-// Postinstall hook for whatsapp-rust-bridge.
+// Prebuilt fetcher for whatsapp-rust-bridge (run from the monorepo ROOT postinstall).
 //
-// Goal: a fresh clone of the Baileys monorepo should "just work" with
-// `pnpm install`, even on machines without the Rust/wasm toolchain.
+// Goal: a fresh clone of the Baileys monorepo should "just work" with `pnpm install`,
+// even on machines without the Rust/wasm toolchain. We download the prebuilt artifacts
+// from the registry and copy dist/ + pkg/ into the workspace package. If the bridge has
+// already been built (or fetched) locally, we leave it alone.
 //
-// We download the prebuilt artifacts from the registry (the same tarball
-// `npm install whatsapp-rust-bridge` would pull) and copy dist/ + pkg/
-// into the workspace package. If the bridge has been built locally
-// already, we leave it alone.
+// This is intentionally NOT the published package's postinstall: the npm tarball ships a
+// self-contained dist/index.js (WASM inlined), so registry consumers never run this — and
+// `scripts/` isn't even in the published `files`. It only ever runs inside the monorepo.
+//
+// The version fetched comes from dist.sha256 (the last *published*, checksummed release),
+// NOT package.json — so bumping the in-repo version before cutting its release can't make
+// every install try to pull an unpublished tarball.
 //
 // Skip the download if:
-//   - dist/index.js already exists, or
+//   - all prebuilt artifacts already exist, or
 //   - WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1.
 
 import { spawnSync } from 'node:child_process'
@@ -32,7 +37,7 @@ const __filename = fileURLToPath(import.meta.url)
 const root = resolve(dirname(__filename), '..')
 
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
-const { name, version } = pkg
+const { name } = pkg
 
 const distDir = join(root, 'dist')
 const pkgDir = join(root, 'pkg')
@@ -55,6 +60,27 @@ if (process.env.WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT === '1') {
 if (REQUIRED_ARTIFACTS.every(file => existsSync(join(root, file)))) {
 	console.log('[whatsapp-rust-bridge] dist artifacts already present, skipping prebuilt fetch.')
 	process.exit(0)
+}
+
+// Resolve which published version to fetch from dist.sha256 (its tarball name), NOT from
+// package.json. bridge-release.yml only writes dist.sha256 AFTER a version is published, so
+// the version named here is always available on npm and always matches the pinned hash.
+let version = pkg.version
+let expectedSha = ''
+if (existsSync(checksumFile)) {
+	const [sha, file = ''] = readFileSync(checksumFile, 'utf8').trim().split(/\s+/)
+	expectedSha = sha
+	const m = file.match(/whatsapp-rust-bridge-(.+)\.tgz$/)
+	if (m) {
+		version = m[1]
+	} else {
+		console.warn(
+			`[whatsapp-rust-bridge] could not parse a version from dist.sha256 ("${file}"); ` +
+				`falling back to package.json version ${version}.`
+		)
+	}
+} else {
+	console.warn('[whatsapp-rust-bridge] No dist.sha256 found; using package.json version and skipping integrity check.')
 }
 
 console.log(`[whatsapp-rust-bridge] Fetching prebuilt ${name}@${version} from npm...`)
@@ -82,20 +108,15 @@ try {
 	}
 	const tarballPath = join(tmpDir, tarballName)
 
-	if (existsSync(checksumFile)) {
-		const expected = readFileSync(checksumFile, 'utf8').trim().split(/\s+/)[0]
+	if (expectedSha) {
 		const actual = await sha256File(tarballPath)
-		if (expected !== actual) {
+		if (expectedSha !== actual) {
 			throw new Error(
-				`prebuilt tarball SHA-256 mismatch:\n  expected ${expected}\n  got      ${actual}\n` +
+				`prebuilt tarball SHA-256 mismatch:\n  expected ${expectedSha}\n  got      ${actual}\n` +
 					'If this is intentional, regenerate dist.sha256 ' +
 					'(or set WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1).'
 			)
 		}
-	} else {
-		console.warn(
-			'[whatsapp-rust-bridge] No dist.sha256 to verify against; skipping integrity check.'
-		)
 	}
 
 	mkdirSync(distDir, { recursive: true })
@@ -113,17 +134,19 @@ try {
 	}
 
 	const pkgRoot = join(tmpDir, 'package')
-	for (const file of REQUIRED_ARTIFACTS) {
-		const src = join(pkgRoot, file)
-		if (!existsSync(src)) continue
-		const dst = join(root, file)
-		mkdirSync(dirname(dst), { recursive: true })
-		copyFileSync(src, dst)
-	}
 
-	const missing = REQUIRED_ARTIFACTS.filter(file => !existsSync(join(root, file)))
+	// Validate against the SOURCE (the freshly-extracted tarball), not the destination: a
+	// stale artifact left in dist/ or pkg/ from an earlier build must not mask a truncated
+	// tarball and let a partial fetch report success.
+	const missing = REQUIRED_ARTIFACTS.filter(file => !existsSync(join(pkgRoot, file)))
 	if (missing.length) {
 		throw new Error(`tarball did not contain expected artifact(s): ${missing.join(', ')}`)
+	}
+
+	for (const file of REQUIRED_ARTIFACTS) {
+		const dst = join(root, file)
+		mkdirSync(dirname(dst), { recursive: true })
+		copyFileSync(join(pkgRoot, file), dst)
 	}
 
 	console.log('[whatsapp-rust-bridge] prebuilt artifacts installed.')
