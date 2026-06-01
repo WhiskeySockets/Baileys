@@ -12,29 +12,19 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node and Corepack
-        uses: actions/setup-node@v3.6.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
-
-      - name: Enable Corepack and Set Yarn Version
-        run: |
-          corepack enable
-          corepack prepare yarn@4.x --activate
-
-      - name: Restore Yarn Cache
-        uses: actions/cache@v3
-        id: yarn-cache
-        with:
-          path: .yarn/cache
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
 
       - name: Build project
-        run: yarn build
+        run: pnpm build

@@ -1,2 +1,16 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Binary asset fixtures
+packages/whatsapp-rust-bridge/assets/** binary
+packages/baileys/Media/** binary
+
+# Generated protobuf bundles — keep them in git (so a fresh clone builds
+# without protoc) but don't surface diffs in PR review.
+packages/baileys/WAProto/index.js linguist-generated=true
+packages/baileys/WAProto/index.d.ts linguist-generated=true
+
+# Bridge WASM-inline JS bundle is a build artifact when present locally;
+# it is not committed to git, but flag it as generated for the cases
+# where someone forces it into a PR.
+packages/whatsapp-rust-bridge/dist/** linguist-generated=true

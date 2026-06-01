@@ -30,34 +30,54 @@ jobs:
       - name: Upgrade npm to a version that supports Trusted Publishers
         run: npm install -g npm@latest
 
-      - name: Enable Corepack and Set Yarn Version
-        run: |
-          corepack enable
-          corepack prepare yarn@4.x --activate
-
-      - name: Restore Yarn Cache
-        uses: actions/cache@v4
-        id: yarn-cache
+      - uses: pnpm/action-setup@v4
         with:
-          path: .yarn/cache
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          version: 10.28.2
 
       - name: Install Dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
+
+      # rc / beta / alpha → that dist-tag; stable → latest. Avoids clobbering `latest` with a prerelease.
+      - name: Resolve npm dist-tag from version
+        id: dist_tag
+        run: |
+          tag=$(node -p "const v=require('./packages/baileys/package.json').version; const m=v.match(/-([a-zA-Z]+)/); m?m[1]:'latest';")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing with dist-tag: $tag"
+
+      - name: Build baileys
+        run: pnpm --filter baileys build
+
+      # npm publish does NOT rewrite the `workspace:` protocol (only pnpm/yarn do) and the
+      # root has no `workspaces` field, so the published manifest would keep `workspace:^`
+      # literally and be uninstallable. Resolve it to the bridge's real version first.
+      - name: Pin workspace deps for publish
+        working-directory: packages/baileys
+        run: |
+          bridge_version="$(node -p "require('../whatsapp-rust-bridge/package.json').version")"
+          # Don't publish baileys depending on a bridge version that isn't on npm yet:
+          # the tarball would be correct but uninstallable (ETARGET). Tag/publish the bridge first.
+          if ! npm view "whatsapp-rust-bridge@${bridge_version}" version >/dev/null 2>&1; then
+            echo "::error::whatsapp-rust-bridge@${bridge_version} is not published on npm. Publish the bridge (tag whatsapp-rust-bridge@${bridge_version}) before releasing baileys." >&2
+            exit 1
+          fi
+          npx json -I -f package.json -e "this.dependencies['whatsapp-rust-bridge']='^${bridge_version}'"
+          echo "Pinned whatsapp-rust-bridge -> ^${bridge_version}"
 
       - name: Publish in NPM (as `baileys`)
-        run: npm publish --access public --provenance --tag latest
+        working-directory: packages/baileys
+        run: npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
 
       - name: Publish in NPM (whiskeysockets scope)
+        working-directory: packages/baileys
         run: |
           npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
-          npm publish --access public --provenance --tag latest
+          npm publish --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
           npx json -I -f package.json -e "this.name='baileys'"
 
       - name: Generate Changelog
         id: generate_changelog
+        working-directory: packages/baileys
         run: |
           changelog=$(npm run changelog:last --silent)
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
@@ -65,9 +85,11 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Make Package
-        run: yarn pack
+        working-directory: packages/baileys
+        run: pnpm pack
 
       - name: Rename Pack
+        working-directory: packages/baileys
         run: mv *.tgz baileys.tgz
 
       - name: Create Release
@@ -83,6 +105,6 @@ jobs:
           draft: false
           prerelease: false
           files: >
-            baileys.tgz
+            packages/baileys/baileys.tgz
           gzip: folders
           allow_override: true

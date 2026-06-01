@@ -1,0 +1,111 @@
+[package]
+name = "whatsapp-rust-bridge"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/WhiskeySockets/Baileys"
+description = "Rust → WebAssembly utilities for WhatsApp (binary protocol, Signal helpers, app-state)"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = [
+    "-O4",
+    "--gufa-optimizing",
+    "--inlining-optimizing",
+    "--ignore-implicit-traps",
+    "--traps-never-happen",
+    "--coalesce-locals-learning",
+    "--converge",
+    # Enable modern WASM features for better optimization
+    "--enable-simd",
+    "--enable-bulk-memory",
+    "--enable-nontrapping-float-to-int",
+    "--enable-sign-ext",
+    "--enable-mutable-globals",
+    "--enable-multivalue",
+    # Additional optimization passes
+    "--fast-math",
+    "--zero-filled-memory",
+    "--dce",
+    "--vacuum",
+    "--directize",
+    "--optimize-stack-ir",
+    "--strip-debug",
+]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+audio = ["dep:symphonia"]
+image = ["dep:image"]
+sticker = ["dep:img-parts"]
+
+[dependencies]
+async-trait = "0.1.89"
+base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
+curve25519-dalek = { version = "4.1.3", default-features = false, features = [
+  "alloc",
+  "digest",
+  "precomputed-tables",
+] }
+getrandom = { version = "0.4", features = ["wasm_js"] }
+hashify = { version = "0.2.9", default-features = false, features = ["force-32bit"] }
+hkdf = "0.12"
+hmac = "0.12"
+image = { version = "0.25.5", default-features = false, features = [
+  "jpeg",
+  "png",
+  "webp",
+], optional = true }
+
+img-parts = { version = "0.4", default-features = false, optional = true }
+js-sys = "0.3"
+log = "0.4"
+md-5 = "0.10"
+prost = { version = "0.14.1", default-features = false }
+rand = { version = "0.10", default-features = false, features = [
+  "std",
+  "std_rng",
+  "sys_rng",
+] }
+serde = { version = "1.0.228", default-features = false, features = [
+  "derive",
+  "alloc",
+] }
+serde-wasm-bindgen = "0.6.5"
+serde_bytes = "0.11"
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+sha2 = "0.10"
+simd-adler32 = { version = "0.3.7", default-features = false, features = [
+  "std",
+] }
+symphonia = { version = "0.5.4", default-features = false, features = [
+  "mp3",
+  "aac",
+  "isomp4",
+  "ogg",
+], optional = true }
+tsify-next = { version = "0.5", default-features = false, features = ["js"] }
+uuid = { version = "1.18.1", default-features = false, features = ["v4", "js"] }
+
+wacore-appstate = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "wacore-appstate" }
+wacore-binary = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", default-features = false, features = [
+  "serde",
+] }
+wacore-libsignal = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "wacore-libsignal" }
+wacore-noise = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "wacore-noise" }
+waproto = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "waproto" }
+wasm-bindgen = "0.2.100"
+wasm-bindgen-futures = "0.4.55"
+web-sys = { version = "0.3", features = [
+  "ReadableStream",
+  "ReadableStreamDefaultReader",
+] }
+
+[profile.release]
+lto = "fat"
+opt-level = 3
+codegen-units = 1
+panic = "abort"
+strip = true

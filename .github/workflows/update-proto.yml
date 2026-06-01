@@ -15,40 +15,39 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v3
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
-
-      - name: Enable Corepack and Set Yarn Version
-        run: |
-          corepack enable
-          corepack prepare yarn@4.x --activate
+          cache: 'pnpm'
 
       - name: Install packages
         run: |
-          yarn install --immutable
-          yarn --cwd proto-extract install --immutable
+          pnpm install --frozen-lockfile
+          npm --prefix proto-extract install
 
       - name: Update WAProto.proto
         id: wa_proto_info
         run: |
-          yarn --cwd proto-extract start > wa-logs.txt
+          npm --prefix proto-extract start > wa-logs.txt
           WA_VERSION=$(cat wa-logs.txt | perl -n -e'/Current version\: (.+)/ && print $1')
           WA_JS_URL=$(cat wa-logs.txt | perl -n -e'/Found source JS URL\: (.+)/ && print $1')
           echo "wa_version=$WA_VERSION" >> $GITHUB_OUTPUT
           echo "wa_js_url=$WA_JS_URL" >> $GITHUB_OUTPUT
 
       - name: GenerateStatics
-        run: yarn gen:protobuf
+        run: pnpm --filter baileys gen:protobuf
 
       - name: Update baileys-version.json
         run: |
           WA_VERSION="${{steps.wa_proto_info.outputs.wa_version}}"
           WA_NUMBERS=$(echo $WA_VERSION | sed "s/\./, /g")
-          echo -e "{\n\t\"version\": [$WA_NUMBERS]\n}" > src/Defaults/baileys-version.json
+          echo -e "{\n\t\"version\": [$WA_NUMBERS]\n}" > packages/baileys/src/Defaults/baileys-version.json
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
@@ -60,5 +59,5 @@ jobs:
           labels: 'update-proto'
           body: "Automated changes\nFound source JS URL: ${{steps.wa_proto_info.outputs.wa_js_url}}\nCurrent version: v${{steps.wa_proto_info.outputs.wa_version}}"
           add-paths: |
-            WAProto/*
-            src/Defaults/baileys-version.json
+            packages/baileys/WAProto/*
+            packages/baileys/src/Defaults/baileys-version.json

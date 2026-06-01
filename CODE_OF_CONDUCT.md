@@ -45,7 +45,7 @@ This project welcomes AI-assisted contributions. Most of us use them. The rules:
 
 3. **Review before you submit.** Don't open PRs with code you haven't read. Don't open PRs with code you don't understand well enough to defend in review. If a reviewer asks "why does this work?" and your answer is "the AI suggested it," the PR will be closed.
 
-4. **Test what the AI produced.** Run `yarn lint` and `yarn test` locally. AI tools confidently generate code that doesn't compile or doesn't pass existing tests — catch that before it hits CI.
+4. **Test what the AI produced.** Run `pnpm lint` and `pnpm test` locally. AI tools confidently generate code that doesn't compile or doesn't pass existing tests — catch that before it hits CI.
 
 5. **Don't paste secrets into AI tools.** This includes:
    - `baileys_auth_info/` and any other auth/session state — these contain Signal identity keys equivalent to long-lived credentials
