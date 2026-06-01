@@ -1,7 +1,11 @@
 import { readFileSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
 import { exit } from 'process';
+import { fileURLToPath } from 'url';
 
-const filePath = './index.js'
+// Resolve relative to this script's own directory (WAProto/), not the caller's CWD —
+// GenerateStatics.sh runs it from the baileys package root.
+const filePath = join(dirname(fileURLToPath(import.meta.url)), 'index.js')
 
 try {
   let content = readFileSync(filePath, 'utf8')
