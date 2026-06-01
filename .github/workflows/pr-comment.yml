@@ -39,15 +39,16 @@ jobs:
 
             ### 📦 To test this PR locally:
 
-            ```
-            # NPM
-            npm install @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
+            Baileys is now a pnpm monorepo, so installing the branch directly
+            (`npm/yarn/pnpm add <owner/repo>#<branch>`) no longer works — that resolves the
+            private monorepo root instead of the `baileys` package. Clone the branch, build,
+            and pack the package, then install the resulting tarball:
 
-            # Yarn (v2+)
-            yarn add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
-
-            # PNPM
-            pnpm add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
+            ```bash
+            git clone --branch ${{ github.event.pull_request.head.ref }} --single-branch https://github.com/${{ github.event.pull_request.head.repo.full_name }}.git baileys-pr
+            cd baileys-pr && pnpm install && pnpm --filter baileys pack
+            # then, in your own project, install the tarball it produced:
+            #   npm install /absolute/path/to/baileys-pr/packages/baileys/baileys-*.tgz
             ```
 
             If you encounter any issues or have feedback, feel free to comment as well.
