@@ -24,7 +24,6 @@
     },
     "scripts": {
         "fetch-prebuilt": "node scripts/fetch-prebuilt.mjs",
-        "postinstall": "node scripts/fetch-prebuilt.mjs",
         "bench": "bun run build && bun run benches/binary.ts && bun run benches/signal.ts && bun run benches/curve.ts && bun run benches/crypto.ts",
         "bench:node": "bun run build && node --expose-gc benches/binary.ts && node --expose-gc benches/signal.ts && node --expose-gc benches/curve.ts && node --expose-gc benches/crypto.ts",
         "build:wasm": "node scripts/build-wasm.mjs",

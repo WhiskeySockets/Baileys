@@ -16,7 +16,8 @@
     "lint": "pnpm --filter baileys lint",
     "lint:fix": "pnpm --filter baileys lint:fix",
     "format": "pnpm --filter baileys format",
-    "example": "pnpm --filter baileys example"
+    "example": "pnpm --filter baileys example",
+    "postinstall": "node packages/whatsapp-rust-bridge/scripts/fetch-prebuilt.mjs"
   },
   "pnpm": {
     "overrides": {
