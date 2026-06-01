@@ -55,6 +55,12 @@ jobs:
         working-directory: packages/baileys
         run: |
           bridge_version="$(node -p "require('../whatsapp-rust-bridge/package.json').version")"
+          # Don't publish baileys depending on a bridge version that isn't on npm yet:
+          # the tarball would be correct but uninstallable (ETARGET). Tag/publish the bridge first.
+          if ! npm view "whatsapp-rust-bridge@${bridge_version}" version >/dev/null 2>&1; then
+            echo "::error::whatsapp-rust-bridge@${bridge_version} is not published on npm. Publish the bridge (tag whatsapp-rust-bridge@${bridge_version}) before releasing baileys." >&2
+            exit 1
+          fi
           npx json -I -f package.json -e "this.dependencies['whatsapp-rust-bridge']='^${bridge_version}'"
           echo "Pinned whatsapp-rust-bridge -> ^${bridge_version}"
 
