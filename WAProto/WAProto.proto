@@ -2159,6 +2159,7 @@ message Message {
     optional PollCreationMessage pollCreationMessageV5 = 111;
     optional NewsletterFollowerInviteMessage newsletterFollowerInviteMessageV2 = 113;
     optional PollResultSnapshotMessage pollResultSnapshotMessageV3 = 114;
+    optional PollCreationMessage pollCreationMessageV6 = 119; // hidden-voter-names poll
     message AlbumMessage {
         optional uint32 expectedImageCount = 2;
         optional uint32 expectedVideoCount = 3;
@@ -3241,6 +3242,7 @@ message Message {
             optional string optionHash = 2;
         }
 
+        optional bool hideVoterNames = 10;
     }
 
     message PollEncValue {
