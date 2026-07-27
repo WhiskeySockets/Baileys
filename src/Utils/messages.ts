@@ -1051,11 +1051,15 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 	ctx?: DownloadMediaMessageContext
 ) => {
 	const result = await downloadMsg().catch(async error => {
-		if (
-			ctx &&
-			typeof error?.status === 'number' && // treat errors with status as HTTP failures requiring reupload
-			REUPLOAD_REQUIRED_STATUS.includes(error.status as number)
-		) {
+		// treat errors with status as HTTP failures requiring reupload
+		// getHttpStream throws a Boom, which exposes the HTTP status on output.statusCode
+		const errorStatus =
+			typeof error?.status === 'number'
+				? error.status
+				: typeof error?.output?.statusCode === 'number'
+					? error.output.statusCode
+					: undefined
+		if (ctx && typeof errorStatus === 'number' && REUPLOAD_REQUIRED_STATUS.includes(errorStatus)) {
 			ctx.logger.info({ key: message.key }, 'sending reupload media request...')
 			// request reupload
 			message = await ctx.reuploadRequest(message)
