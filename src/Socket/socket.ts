@@ -1051,11 +1051,13 @@ export const makeSocket = (config: SocketConfig) => {
 	ev.on('creds.update', update => {
 		const name = update.me?.name
 		// if name has just been received
-		if (creds.me?.name !== name) {
+		// a partial update carries no `me`, which is not a name change: announcing it
+		// sends a typeless <presence /> that reads as "available" and marks the account online
+		if (typeof name === 'string' && name.length > 0 && creds.me?.name !== name) {
 			logger.debug({ name }, 'updated pushName')
 			sendNode({
 				tag: 'presence',
-				attrs: { name: name! }
+				attrs: { name }
 			}).catch(err => {
 				logger.warn({ trace: err.stack }, 'error in sending presence update on name change')
 			})
