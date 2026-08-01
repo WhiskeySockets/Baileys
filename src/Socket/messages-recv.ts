@@ -1622,18 +1622,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// populated, so consumers still get the PN instead of only a bare LID.
 				const primaryJid = msg.key.participant || msg.key.remoteJid!
 				if (isLidUser(primaryJid)) {
-					const pn = await signalRepository.lidMapping.getPNForLID(primaryJid)
-					if (pn) {
-						// getPNForLID returns a device-scoped JID, while the stanza
-						// attributes carry it without the device — normalize to match.
-						const pnJid = jidNormalizedUser(pn)
-						if (isJidGroup(msg.key.remoteJid!)) {
-							msg.key.participantAlt = pnJid
-						} else {
-							msg.key.remoteJidAlt = pnJid
-						}
+					try {
+						const pn = await signalRepository.lidMapping.getPNForLID(primaryJid)
+						// getPNForLID returns a device-scoped JID, while the stanza attributes
+						// carry it without the device — normalize to match. jidNormalizedUser
+						// yields '' for an undecodable JID, so guard before assigning.
+						const pnJid = pn ? jidNormalizedUser(pn) : ''
+						if (pnJid) {
+							if (isJidGroup(msg.key.remoteJid!)) {
+								msg.key.participantAlt = pnJid
+							} else {
+								msg.key.remoteJidAlt = pnJid
+							}
 
-						logger.debug({ lid: primaryJid, pn: pnJid }, 'recovered alt JID from LID mapping store')
+							logger.debug({ lid: primaryJid, pn: pnJid }, 'recovered alt JID from LID mapping store')
+						}
+					} catch (err) {
+						// Best-effort: a mapping-store failure must not cost us the message.
+						// Without this the outer catch would NACK it and skip decryption.
+						logger.warn({ err, lid: primaryJid }, 'failed to recover alt JID from LID mapping store')
 					}
 				}
 			}
