@@ -37,9 +37,6 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 
 const PLATFORM_MAP = {
 	'Mac OS': proto.ClientPayload.WebInfo.WebSubPlatform.DARWIN,
-	// WIN32 is the legacy Electron WhatsApp Desktop. Since ~2026-06-30 the server
-	// rejects the handshake that advertises it, closing with 428 before any QR is
-	// emitted. The modern native Desktop advertises WIN_HYBRID. See #2677.
 	Windows: proto.ClientPayload.WebInfo.WebSubPlatform.WIN_HYBRID
 }
 
