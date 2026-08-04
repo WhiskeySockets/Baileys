@@ -345,6 +345,41 @@ describe('processSyncAction', () => {
 		})
 	})
 
+	describe('nctSaltSyncAction', () => {
+		it('emits creds.update with nctSalt when salt is present', () => {
+			const salt = new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05])
+			const syncAction = createSyncAction({ nctSaltSyncAction: { salt } }, ['nct_salt_sync'])
+			processSyncAction(syncAction, ev, mockMe, undefined, logger)
+			expect(ev.emit).toHaveBeenCalledWith('creds.update', {
+				nctSalt: new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05])
+			})
+		})
+
+		it('emits creds.update with undefined nctSalt when salt is empty', () => {
+			const syncAction = createSyncAction({ nctSaltSyncAction: { salt: new Uint8Array(0) } }, ['nct_salt_sync'])
+			processSyncAction(syncAction, ev, mockMe, undefined, logger)
+			expect(ev.emit).toHaveBeenCalledWith('creds.update', { nctSalt: undefined })
+		})
+
+		it('emits creds.update with undefined nctSalt when salt is null', () => {
+			const syncAction = createSyncAction({ nctSaltSyncAction: { salt: null } }, ['nct_salt_sync'])
+			processSyncAction(syncAction, ev, mockMe, undefined, logger)
+			expect(ev.emit).toHaveBeenCalledWith('creds.update', { nctSalt: undefined })
+		})
+
+		it('preserves salt bytes correctly (32-byte salt)', () => {
+			const salt = new Uint8Array(32)
+			for (let i = 0; i < 32; i++) salt[i] = i
+			const syncAction = createSyncAction({ nctSaltSyncAction: { salt } }, ['nct_salt_sync'])
+			processSyncAction(syncAction, ev, mockMe, undefined, logger)
+			const emittedSalt = ((ev.emit as jest.Mock).mock.calls[0]?.[1] as any)?.nctSalt
+			expect(emittedSalt).toBeInstanceOf(Uint8Array)
+			expect(emittedSalt.length).toBe(32)
+			expect(emittedSalt[0]).toBe(0)
+			expect(emittedSalt[31]).toBe(31)
+		})
+	})
+
 	describe('unprocessable actions', () => {
 		it('logs debug for unknown action', () => {
 			const syncAction = createSyncAction({ unknownAction: {} } as unknown as proto.ISyncActionValue, [

@@ -407,6 +407,11 @@ const processMessage = async (
 
 					await storeTcTokensFromHistorySync(data.chats, signalRepository, keyStore, logger)
 
+					if (data.nctSalt?.length) {
+						logger?.info('nctSalt received from history sync')
+						ev.emit('creds.update', { nctSalt: data.nctSalt })
+					}
+
 					ev.emit('messaging-history.set', {
 						...data,
 						isLatest: histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND ? isLatest : undefined,

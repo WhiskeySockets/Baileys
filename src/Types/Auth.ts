@@ -69,6 +69,8 @@ export type AuthenticationCreds = SignalCreds & {
 	lastPropHash: string | undefined
 	routingInfo: Buffer | undefined
 	additionalData?: any | undefined
+	/** NCT salt for cstoken computation, provisioned via nctSaltSync app state */
+	nctSalt?: Uint8Array | undefined
 }
 
 export type SignalDataTypeMap = {
