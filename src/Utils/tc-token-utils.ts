@@ -216,3 +216,59 @@ export async function storeTcTokensFromIqResult({
 		onNewJidStored?.(storageJid)
 	}
 }
+
+type StoreTcTokenFromMessageParams = {
+	node: BinaryNode
+	keys: SignalKeyStoreWithTransaction
+	getLIDForPN: (pn: string) => Promise<string | null>
+}
+
+/**
+ * Opportunistically captures a `<tctoken>` child riding along on an incoming `<message>`
+ * stanza — mirrors WA Web's `WAWebSetTcTokenChatAction.handleIncomingTcToken`. Distinct from
+ * `storeTcTokensFromIqResult` (which handles `<tokens>` wrappers from IQ results / privacy_token
+ * notifications): this is the proactive path, so a later reply to an already-warm contact
+ * doesn't need to hit a 463 and reactively recover a token we should already have had.
+ *
+ * Returns the storage JID written, or `undefined` if nothing was stored (no token present,
+ * stale timestamp, or the sender isn't a regular user).
+ */
+export async function storeTcTokenFromMessageNode({
+	node,
+	keys,
+	getLIDForPN
+}: StoreTcTokenFromMessageParams): Promise<string | undefined> {
+	const tcTokenNode = getBinaryNodeChild(node, 'tctoken')
+	if (!tcTokenNode || !(tcTokenNode.content instanceof Uint8Array)) return undefined
+
+	const rawJid = jidNormalizedUser(node.attrs.from)
+	if (!isRegularUser(rawJid)) return undefined
+
+	// WA Web uses: senderLid ?? toLid(from) for the storage key — same as handlePrivacyTokenNotification
+	const senderLid =
+		node.attrs.sender_lid && isLidUser(jidNormalizedUser(node.attrs.sender_lid))
+			? jidNormalizedUser(node.attrs.sender_lid)
+			: undefined
+	const storageJid = senderLid ?? (await resolveTcTokenJid(rawJid, getLIDForPN))
+
+	const existingTcData = await keys.get('tctoken', [storageJid])
+	const existingEntry = existingTcData[storageJid]
+
+	const existingTs = existingEntry?.timestamp ? Number(existingEntry.timestamp) : 0
+	const incomingTs = tcTokenNode.attrs.t ? Number(tcTokenNode.attrs.t) : 0
+	// timestamp-less tokens would be immediately expired
+	if (!incomingTs) return undefined
+	if (existingTs > 0 && existingTs >= incomingTs) return undefined
+
+	await keys.set({
+		tctoken: {
+			[storageJid]: {
+				...existingEntry,
+				token: Buffer.from(tcTokenNode.content),
+				timestamp: tcTokenNode.attrs.t
+			}
+		}
+	})
+
+	return storageJid
+}

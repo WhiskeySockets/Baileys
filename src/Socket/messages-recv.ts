@@ -62,6 +62,7 @@ import {
 	readTcTokenIndex,
 	resolveIssuanceJid,
 	resolveTcTokenJid,
+	storeTcTokenFromMessageNode,
 	storeTcTokensFromIqResult,
 	TC_TOKEN_INDEX_KEY
 } from '../Utils/tc-token-utils'
@@ -1583,6 +1584,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
+		// Opportunistically capture a tctoken riding along on this message, independent of
+		// whether the body itself decrypts — a later reply to this contact shouldn't have to
+		// hit a 463 and reactively recover a token we should already have had. Fire-and-forget:
+		// non-critical background bookkeeping, doesn't gate message processing/ack.
+		void storeTcTokenFromMessageNode({ node, keys: authState.keys, getLIDForPN })
+			.then(storedJid => {
+				if (storedJid) trackTcTokenJid(storedJid)
+			})
+			.catch(err => logger.debug({ err: err?.message }, 'failed to store tctoken from incoming message'))
+
 		const encNode = getBinaryNodeChild(node, 'enc')
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 		if (encNode?.attrs.type === 'msmsg') {
