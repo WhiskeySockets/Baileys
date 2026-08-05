@@ -28,6 +28,12 @@ export type IdentityChangeContext = {
 	 * Must not throw; implementations are responsible for their own error handling.
 	 */
 	onBeforeSessionRefresh?: (jid: string) => void
+	/**
+	 * Invoked immediately when a participant's identity change is processed,
+	 * regardless of whether the session refresh is skipped or offline.
+	 * Used to invalidate caches (e.g., sender-key-memory).
+	 */
+	onParticipantIdentityChange?: (jid: string, me: boolean) => void | Promise<void>
 }
 
 export async function handleIdentityChange(
@@ -53,6 +59,15 @@ export async function handleIdentityChange(
 	}
 
 	const isSelfPrimary = ctx.meId && (areJidsSameUser(from, ctx.meId) || (ctx.meLid && areJidsSameUser(from, ctx.meLid)))
+
+	if (ctx.onParticipantIdentityChange) {
+		try {
+			await ctx.onParticipantIdentityChange(from, !!isSelfPrimary)
+		} catch (error) {
+			ctx.logger.warn({ err: error, jid: from }, 'onParticipantIdentityChange callback failed')
+		}
+	}
+
 	if (isSelfPrimary) {
 		ctx.logger.info({ jid: from }, 'self primary identity changed')
 		return { action: 'skipped_self_primary' }
@@ -86,7 +101,7 @@ export async function handleIdentityChange(
 		await ctx.assertSessions([from], true)
 		return { action: 'session_refreshed' }
 	} catch (error) {
-		ctx.logger.warn({ error, jid: from }, 'failed to assert sessions after identity change')
+		ctx.logger.warn({ err: error, jid: from }, 'failed to assert sessions after identity change')
 		return { action: 'session_refresh_failed', error }
 	}
 }

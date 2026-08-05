@@ -8,6 +8,7 @@ import {
 	readTcTokenIndex,
 	resolveIssuanceJid,
 	shouldSendNewTcToken,
+	storeTcTokenFromMessageNode,
 	storeTcTokensFromIqResult,
 	TC_TOKEN_INDEX_KEY
 } from '../../Utils/tc-token-utils'
@@ -1106,5 +1107,105 @@ describe('tctoken index helpers', () => {
 		const write = await buildMergedTcTokenIndexWrite(mockKeys, [TC_TOKEN_INDEX_KEY, '', 'a@lid'])
 		const merged = JSON.parse(write[TC_TOKEN_INDEX_KEY].token.toString())
 		expect(merged).toEqual(['a@lid'])
+	})
+})
+
+describe('storeTcTokenFromMessageNode', () => {
+	const CONTACT_JID = 'contact@s.whatsapp.net'
+	const CONTACT_LID = 'contact@lid'
+	const TOKEN_BYTES = new Uint8Array([4, 1, 33, 254, 110])
+	const RECENT_TS = String(nowSeconds() - 86400)
+
+	let mockKeys: jest.Mocked<SignalKeyStoreWithTransaction>
+	const noopGetLID = async (): Promise<string | null> => null
+
+	beforeEach(() => {
+		mockKeys = createMockKeys()
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({})
+	})
+
+	const makeMessageNode = (from: string, opts: { t?: string; senderLid?: string; noToken?: boolean } = {}): BinaryNode => ({
+		tag: 'message',
+		attrs: { from, ...(opts.senderLid ? { sender_lid: opts.senderLid } : {}) },
+		content: opts.noToken
+			? []
+			: [
+					{
+						tag: 'tctoken',
+						attrs: opts.t ? { t: opts.t } : {},
+						content: TOKEN_BYTES
+					}
+				]
+	})
+
+	it('stores the token on first sight, keyed by the resolved storage JID', async () => {
+		const node = makeMessageNode(CONTACT_JID, { t: RECENT_TS })
+
+		const stored = await storeTcTokenFromMessageNode({ node, keys: mockKeys, getLIDForPN: noopGetLID })
+
+		expect(stored).toBe(CONTACT_JID)
+		expect(mockKeys.set).toHaveBeenCalledTimes(1)
+		const setCall = mockKeys.set.mock.calls[0]![0] as any
+		expect(Buffer.from(setCall.tctoken[CONTACT_JID].token)).toEqual(Buffer.from(TOKEN_BYTES))
+		expect(setCall.tctoken[CONTACT_JID].timestamp).toBe(RECENT_TS)
+	})
+
+	it('prefers sender_lid over resolving from attrs.from when present', async () => {
+		const node = makeMessageNode(CONTACT_JID, { t: RECENT_TS, senderLid: CONTACT_LID })
+		const getLIDForPN = jest.fn(noopGetLID)
+
+		const stored = await storeTcTokenFromMessageNode({ node, keys: mockKeys, getLIDForPN })
+
+		expect(stored).toBe(CONTACT_LID)
+		expect(getLIDForPN).not.toHaveBeenCalled()
+		const setCall = mockKeys.set.mock.calls[0]![0] as any
+		expect(setCall.tctoken[CONTACT_LID]).toBeDefined()
+	})
+
+	it('no-ops when there is no tctoken child', async () => {
+		const node = makeMessageNode(CONTACT_JID, { noToken: true })
+
+		const stored = await storeTcTokenFromMessageNode({ node, keys: mockKeys, getLIDForPN: noopGetLID })
+
+		expect(stored).toBeUndefined()
+		expect(mockKeys.set).not.toHaveBeenCalled()
+	})
+
+	it('no-ops when the token has no timestamp (would be immediately expired)', async () => {
+		const node = makeMessageNode(CONTACT_JID)
+
+		const stored = await storeTcTokenFromMessageNode({ node, keys: mockKeys, getLIDForPN: noopGetLID })
+
+		expect(stored).toBeUndefined()
+		expect(mockKeys.set).not.toHaveBeenCalled()
+	})
+
+	it('ignores an incoming token that is not strictly newer than the stored one', async () => {
+		const existingTs = String(nowSeconds() - 86400)
+		// @ts-ignore
+		mockKeys.get.mockResolvedValue({
+			[CONTACT_JID]: { token: Buffer.from([9, 9, 9]), timestamp: existingTs }
+		})
+		const node = makeMessageNode(CONTACT_JID, { t: existingTs })
+
+		const stored = await storeTcTokenFromMessageNode({ node, keys: mockKeys, getLIDForPN: noopGetLID })
+
+		expect(stored).toBeUndefined()
+		expect(mockKeys.set).not.toHaveBeenCalled()
+	})
+
+	it.each([
+		['PSA', '0@c.us'],
+		['bot', '13135550001@c.us'],
+		['MetaAI', '13135550002@bot'],
+		['group', 'abc-def@g.us']
+	])('skips storage for non-regular user (%s)', async (_label, from) => {
+		const node = makeMessageNode(from, { t: RECENT_TS })
+
+		const stored = await storeTcTokenFromMessageNode({ node, keys: mockKeys, getLIDForPN: noopGetLID })
+
+		expect(stored).toBeUndefined()
+		expect(mockKeys.set).not.toHaveBeenCalled()
 	})
 })
