@@ -27,8 +27,9 @@ export const Curve = {
 	sign: (privateKey: Uint8Array, buf: Uint8Array) => curve.calculateSignature(privateKey, buf),
 	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
 		try {
-			curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
-			return true
+			// verifySignature returns false for a well-formed but wrong signature
+			// and only throws on malformed input, so the result has to be returned.
+			return curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
 		} catch (error) {
 			return false
 		}
