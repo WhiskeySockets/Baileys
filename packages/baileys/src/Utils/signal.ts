@@ -192,7 +192,7 @@ export const extractDeviceJids = (
 		const { devices, id } = userResult as { devices: ParsedDeviceInfo; id: string }
 		const decoded = jidDecode(id)!,
 			{ user, server } = decoded
-		let { domainType } = decoded
+		const { domainType: userDomainType } = decoded
 		const deviceList = devices?.deviceList as DeviceListData[]
 		if (!Array.isArray(deviceList)) continue
 		for (const { id: device, keyIndex, isHosted } of deviceList) {
@@ -201,6 +201,9 @@ export const extractDeviceJids = (
 				((myUser !== user && myLid !== user) || myDevice !== device) && // either different user or if me user, not this device
 				(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 			) {
+				// Per device on purpose: one shared variable let a hosted device
+				// leave the domain rewritten for every device listed after it.
+				let domainType = userDomainType
 				if (isHosted) {
 					domainType = domainType === WAJIDDomains.LID ? WAJIDDomains.HOSTED_LID : WAJIDDomains.HOSTED
 				}
