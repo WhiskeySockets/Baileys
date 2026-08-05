@@ -1,3 +1,4 @@
+import { createCipheriv } from 'crypto'
 import * as fs from 'fs'
 import * as http from 'http'
 import { Agent } from 'https'
@@ -6,7 +7,14 @@ import * as path from 'path'
 import { Readable } from 'stream'
 import type { MediaConnInfo, SocketConfig } from '../../Types'
 import type { ILogger } from '../../Utils/logger'
-import { encryptedStream, getWAUploadToServer, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import {
+	downloadEncryptedContent,
+	encryptedStream,
+	getWAUploadToServer,
+	toBuffer,
+	type UploadParams,
+	uploadWithNodeHttp
+} from '../../Utils/messages-media'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -365,6 +373,84 @@ describe('getWAUploadToServer', () => {
 			ts: undefined
 		})
 		expect((fetchInit as (RequestInit & { dispatcher?: unknown }) | undefined)?.dispatcher).toBeUndefined()
+	})
+})
+
+describe('downloadEncryptedContent', () => {
+	let originalFetch: typeof globalThis.fetch
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch
+	})
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch
+	})
+
+	it('forwards response body errors to the returned decrypt stream', async () => {
+		let failResponseBody: ((reason: unknown) => void) | undefined
+		const response = new Response(
+			new ReadableStream<Uint8Array>({
+				start(controller) {
+					failResponseBody = reason => controller.error(reason)
+				}
+			})
+		)
+		globalThis.fetch = (async () => response) as typeof fetch
+
+		const stream = await downloadEncryptedContent('https://mmg.whatsapp.net/media', {
+			cipherKey: Buffer.alloc(32),
+			iv: Buffer.alloc(16)
+		})
+		const consumption = toBuffer(stream)
+		const terminated = new TypeError('terminated')
+
+		if (!failResponseBody) {
+			throw new Error('response body controller was not initialized')
+		}
+
+		failResponseBody(terminated)
+
+		await expect(consumption).rejects.toBe(terminated)
+	})
+
+	it('continues to decrypt a complete response body', async () => {
+		const cipherKey = Buffer.alloc(32, 1)
+		const iv = Buffer.alloc(16, 2)
+		const plaintext = Buffer.from('media payload')
+		const cipher = createCipheriv('aes-256-cbc', cipherKey, iv)
+		const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()])
+		globalThis.fetch = (async () => new Response(encrypted)) as typeof fetch
+
+		const stream = await downloadEncryptedContent('https://mmg.whatsapp.net/media', { cipherKey, iv })
+
+		await expect(toBuffer(stream)).resolves.toEqual(plaintext)
+	})
+
+	it('destroys the response body when the returned stream is cancelled', async () => {
+		let markResponseCancelled: (() => void) | undefined
+		let cancelCount = 0
+		const responseCancelled = new Promise<void>(resolve => {
+			markResponseCancelled = resolve
+		})
+		const response = new Response(
+			new ReadableStream({
+				cancel() {
+					cancelCount += 1
+					markResponseCancelled?.()
+				}
+			})
+		)
+		globalThis.fetch = (async () => response) as typeof fetch
+		const stream = await downloadEncryptedContent('https://mmg.whatsapp.net/media', {
+			cipherKey: Buffer.alloc(32),
+			iv: Buffer.alloc(16)
+		})
+
+		stream.destroy()
+
+		await responseCancelled
+		expect(cancelCount).toBe(1)
 	})
 })
 
