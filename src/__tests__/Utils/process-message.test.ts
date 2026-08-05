@@ -1,5 +1,13 @@
+import { randomBytes } from 'crypto'
+import { proto } from '../../../WAProto/index.js'
 import type { WAMessage } from '../../Types'
-import { cleanMessage, getChatId } from '../../Utils/process-message'
+import { aesEncryptGCM, hmacSign } from '../../Utils/crypto'
+import {
+	cleanMessage,
+	decryptMessageEdit,
+	getChatId,
+	unwrapSecretEncryptedMessage
+} from '../../Utils/process-message'
 
 const createBaseMessage = (key: Partial<WAMessage['key']>, message?: Partial<WAMessage['message']>): WAMessage => {
 	return {
@@ -185,5 +193,116 @@ describe('getChatId', () => {
 
 	it('throws when broadcast key has no participant', () => {
 		expect(() => getChatId({ remoteJid: '12345@broadcast', fromMe: false, id: 'X' })).toThrow(/missing participant/)
+	})
+})
+
+describe('secretEncryptedMessage edits', () => {
+	const origMsgId = '3EB0C8712CC1E53869085F'
+	const authorJid = '211459040641230@lid'
+	const msgEncKey = randomBytes(32)
+
+	const sealEdit = (innerMessage: any, jid = authorJid, key: Buffer = msgEncKey) => {
+		const sign = Buffer.concat([
+			Buffer.from(origMsgId),
+			Buffer.from(jid),
+			Buffer.from(jid),
+			Buffer.from('Message Edit'),
+			new Uint8Array([1])
+		])
+		const key0 = hmacSign(key, new Uint8Array(32), 'sha256')
+		const encKey = hmacSign(sign, key0, 'sha256')
+		const plaintext = proto.Message.encode(proto.Message.fromObject(innerMessage)).finish()
+		const encIv = randomBytes(12)
+		const encPayload = aesEncryptGCM(plaintext, encKey, encIv, new Uint8Array(0))
+		return { encPayload, encIv }
+	}
+
+	const innerEdit = {
+		protocolMessage: {
+			key: { remoteJid: authorJid, fromMe: true, id: origMsgId },
+			type: proto.Message.ProtocolMessage.Type.MESSAGE_EDIT,
+			editedMessage: { conversation: 'edited text' }
+		}
+	}
+
+	it('round-trips a sealed MESSAGE_EDIT payload', () => {
+		const { encPayload, encIv } = sealEdit(innerEdit)
+		const decoded = decryptMessageEdit(
+			{ encPayload, encIv },
+			{ origMsgId, origMsgSenderJid: authorJid, editorJid: authorJid, msgEncKey }
+		)
+		expect(decoded.protocolMessage?.editedMessage?.conversation).toBe('edited text')
+	})
+
+	it('fails on a wrong key', () => {
+		const { encPayload, encIv } = sealEdit(innerEdit)
+		expect(() =>
+			decryptMessageEdit(
+				{ encPayload, encIv },
+				{ origMsgId, origMsgSenderJid: authorJid, editorJid: authorJid, msgEncKey: randomBytes(32) }
+			)
+		).toThrow()
+	})
+
+	const makeEnvelope = (sealed: { encPayload: Uint8Array; encIv: Uint8Array }): WAMessage => ({
+		key: {
+			remoteJid: '5511999999999@s.whatsapp.net',
+			remoteJidAlt: authorJid,
+			fromMe: false,
+			id: 'ENVELOPE1'
+		},
+		message: {
+			secretEncryptedMessage: {
+				targetMessageKey: { remoteJid: authorJid, fromMe: true, id: origMsgId },
+				encPayload: sealed.encPayload,
+				encIv: sealed.encIv,
+				secretEncType: proto.Message.SecretEncryptedMessage.SecretEncType.MESSAGE_EDIT
+			}
+		},
+		messageTimestamp: 1675888000
+	})
+
+	const creds: any = { me: { id: '5513900000000:3@s.whatsapp.net', lid: '999@lid' } }
+
+	it('unwraps in place, trying LID/PN identities', async () => {
+		const msg = makeEnvelope(sealEdit(innerEdit))
+		await unwrapSecretEncryptedMessage(msg, {
+			creds,
+			getMessage: async () => ({ messageContextInfo: { messageSecret: msgEncKey } })
+		})
+		expect(msg.message?.secretEncryptedMessage).toBeFalsy()
+		expect(msg.message?.protocolMessage?.editedMessage?.conversation).toBe('edited text')
+		expect(msg.message?.protocolMessage?.type).toBe(proto.Message.ProtocolMessage.Type.MESSAGE_EDIT)
+	})
+
+	it('accepts a base64 messageSecret from JSON-backed stores', async () => {
+		const msg = makeEnvelope(sealEdit(innerEdit))
+		await unwrapSecretEncryptedMessage(msg, {
+			creds,
+			// JSON-backed stores hand the secret back as a base64 string
+			getMessage: async () =>
+				({ messageContextInfo: { messageSecret: msgEncKey.toString('base64') } }) as unknown as proto.IMessage
+		})
+		expect(msg.message?.protocolMessage?.editedMessage?.conversation).toBe('edited text')
+	})
+
+	it('wraps a bare inner message into a MESSAGE_EDIT protocolMessage', async () => {
+		const msg = makeEnvelope(sealEdit({ conversation: 'bare edited text' }))
+		await unwrapSecretEncryptedMessage(msg, {
+			creds,
+			getMessage: async () => ({ messageContextInfo: { messageSecret: msgEncKey } })
+		})
+		expect(msg.message?.protocolMessage?.type).toBe(proto.Message.ProtocolMessage.Type.MESSAGE_EDIT)
+		expect(msg.message?.protocolMessage?.editedMessage?.conversation).toBe('bare edited text')
+		expect(msg.message?.protocolMessage?.key?.id).toBe(origMsgId)
+	})
+
+	it('leaves the message untouched when the secret is unavailable', async () => {
+		const msg = makeEnvelope(sealEdit(innerEdit))
+		await unwrapSecretEncryptedMessage(msg, {
+			creds,
+			getMessage: async () => undefined
+		})
+		expect(msg.message?.secretEncryptedMessage).toBeTruthy()
 	})
 })
