@@ -14,3 +14,6 @@ packages/baileys/WAProto/index.d.ts linguist-generated=true
 # it is not committed to git, but flag it as generated for the cases
 # where someone forces it into a PR.
 packages/whatsapp-rust-bridge/dist/** linguist-generated=true
+
+# TypeScript is always text, even if a stray control byte sneaks in.
+*.ts diff
