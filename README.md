@@ -229,6 +229,10 @@ if (!sock.authState.creds.registered) {
 }
 ```
 
+You can call `requestPairingCode()` after the first `connection.update` with `qr`, or call it earlier and Baileys will wait until WhatsApp sends the `pair-device` readiness stanza. After a successful first pair, WhatsApp normally closes the socket with `515 restartRequired`; reconnect with the saved creds instead of treating that as a failed pair.
+
+If you use a custom `browser[0]` label, Baileys keeps that label for the linked-device registration, but normalizes the pairing-code `companion_platform_display` to a WhatsApp-accepted browser/OS pair such as `Chrome (Mac OS)` or `Chrome (Ubuntu)`.
+
 ### Receive Full History
 
 1. Set `syncFullHistory` as `true`
