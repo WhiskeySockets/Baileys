@@ -19,6 +19,7 @@ on:
       - 'package.json'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/bridge-build.yml'
+      - '.github/actions/setup-workspace/**'
   pull_request:
     paths:
       - 'packages/whatsapp-rust-bridge/**'
@@ -26,20 +27,16 @@ on:
       - 'package.json'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/bridge-build.yml'
+      - '.github/actions/setup-workspace/**'
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
-    env:
-      BINARYEN_VERSION: "129"
-      # SHA-256 of the official binaryen-version_<N>-x86_64-linux.tar.gz release asset.
-      # Bump together with BINARYEN_VERSION; verified before extraction (supply-chain guard).
-      BINARYEN_SHA256: 50b9fa62b9abea752da92ec57e0c555fee578760cd237c40107957715d2976ba
 
     defaults:
       run:
@@ -50,56 +47,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      # Compiles the crate and installs the workspace against it.
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
         with:
-          version: 10.28.2
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'pnpm'
-
-      - name: Install Rust toolchain (pinned via rust-toolchain.toml)
-        run: rustup show
-
-      - name: Install wasm-pack
-        uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-pack
-
-      # Ubuntu's Binaryen is too old for `--gufa-optimizing` and the other flags
-      # scripts/build-wasm.mjs passes to wasm-opt. wasm-pack ships no compatible
-      # wasm-opt and taiki-e/install-action doesn't package binaryen, so fetch a
-      # pinned upstream release — cached across runs, checksum-verified on a miss.
-      - name: Cache Binaryen
-        id: cache-binaryen
-        uses: actions/cache@v4
-        with:
-          path: /tmp/binaryen-version_${{ env.BINARYEN_VERSION }}
-          key: binaryen-${{ env.BINARYEN_VERSION }}-x86_64-linux
-
-      - name: Download & verify Binaryen (wasm-opt)
-        if: steps.cache-binaryen.outputs.cache-hit != 'true'
-        run: |
-          tarball="binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz"
-          curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/${tarball}" -o "${tarball}"
-          echo "${BINARYEN_SHA256}  ${tarball}" | sha256sum -c -
-          tar -xzf "${tarball}" -C /tmp
-          rm -f "${tarball}"
-
-      - name: Add Binaryen to PATH
-        run: echo "/tmp/binaryen-version_${BINARYEN_VERSION}/bin" >> "$GITHUB_PATH"
-
-      - name: Cache cargo registry + target
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/whatsapp-rust-bridge/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/whatsapp-rust-bridge/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          # This job exists to compile the crate, so it must never fall back to
+          # the prebuilt: a lockfile-only PR still triggers it and would then
+          # reach `pnpm build` with no wasm-pack installed.
+          force-bridge-build: 'true'
 
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
@@ -107,19 +62,8 @@ jobs:
       - name: Lint Rust
         run: cargo clippy --target wasm32-unknown-unknown --all-features -- -D warnings
 
-      - name: Skip postinstall download
-        working-directory: ${{ github.workspace }}
-        run: echo "WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1" >> "$GITHUB_ENV"
-
-      - name: Install workspace dependencies
-        working-directory: ${{ github.workspace }}
-        run: pnpm install --frozen-lockfile
-
-      - name: Build bridge from source
-        run: pnpm build
-
-      - name: Run bridge typecheck and Jest tests
-        run: pnpm test:typecheck && pnpm test:jest
+      - name: Run bridge typecheck, Rust unit tests and Jest tests
+        run: pnpm test:typecheck && pnpm test:rust && pnpm test:jest
 
       - name: Test installed package, ESM/CommonJS, and WASM selection
         run: pnpm test:package

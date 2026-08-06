@@ -40,11 +40,14 @@
         "prebuild": "node scripts/clean.mjs",
         "postbuild": "tsc -p tsconfig.json --outDir dist",
         "build": "pnpm run prebuild && pnpm run build:wasm && pnpm run build:ts && pnpm run postbuild",
+        "build:profile": "WHATSAPP_RUST_BRIDGE_PROFILE=1 pnpm run build",
         "test:typecheck": "tsc -p tsconfig.test.json --noEmit",
+        "test:rust": "wasm-pack test --node",
+        "test:rust:if-available": "node scripts/test-rust.mjs",
         "test:jest": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.mjs --runInBand",
         "test:modules": "node --test test/module-formats.test.mjs test/module-formats.test.cjs",
         "test:package": "pnpm run test:modules && node scripts/check-package.mjs",
-        "test": "pnpm run test:typecheck && pnpm run test:jest && pnpm run test:package",
+        "test": "pnpm run test:typecheck && pnpm run test:rust:if-available && pnpm run test:jest && pnpm run test:package",
         "prepublishOnly": "pnpm run build"
     },
     "devDependencies": {

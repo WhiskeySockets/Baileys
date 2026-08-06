@@ -119,12 +119,12 @@ boxplot(() => {
         undefined,
       );
       do_not_optimize(session);
-    }).gc("inner");
+    });
 
     bench("NoiseSession JS - constructor", () => {
       const session = new JSNoiseSession(testPublicKey, testNoiseHeader);
       do_not_optimize(session);
-    }).gc("inner");
+    });
   });
 });
 
@@ -137,13 +137,13 @@ boxplot(() => {
       wasmSession = new NoiseSession(testPublicKey, testNoiseHeader, undefined);
       const result = wasmSession.encrypt(testPlaintext);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("NoiseSession JS - encrypt (256 bytes)", () => {
       jsSession = new JSNoiseSession(testPublicKey, testNoiseHeader);
       const result = jsSession.encrypt(testPlaintext);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 });
 
@@ -157,13 +157,13 @@ boxplot(() => {
       );
       const result = session.encodeFrameRaw(testPlaintext);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("NoiseSession JS - encodeFrameRaw (no encryption)", () => {
       const session = new JSNoiseSession(testPublicKey, testNoiseHeader);
       const result = session.encodeFrameRaw(testPlaintext);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 });
 
@@ -177,13 +177,13 @@ boxplot(() => {
       );
       const result = session.encodeFrame(testNode);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("NoiseSession JS - encodeFrame (separate ops)", () => {
       const session = new JSNoiseSession(testPublicKey, testNoiseHeader);
       const result = session.encodeFrame(testNode);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 });
 
@@ -199,14 +199,14 @@ boxplot(() => {
       session.finishInit();
       const result = session.encodeFrame(testNode);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("NoiseSession JS - encodeFrame after finishInit", async () => {
       const session = new JSNoiseSession(testPublicKey, testNoiseHeader);
       await session.finishInit();
       const result = session.encodeFrame(testNode);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 });
 
@@ -226,7 +226,7 @@ boxplot(() => {
         undefined,
       );
       session.decodeFrame(frameData);
-    }).gc("inner");
+    });
 
     bench("Buffer parsing JS - decodeFrame equivalent", () => {
       let inBytes = Buffer.alloc(0);
@@ -234,7 +234,7 @@ boxplot(() => {
       const size = (inBytes.readUInt8() << 16) | inBytes.readUInt16BE(1);
       const frame = inBytes.slice(3, size + 3);
       do_not_optimize(frame);
-    }).gc("inner");
+    });
   });
 });
 
@@ -251,7 +251,7 @@ boxplot(() => {
         const result = session.encrypt(testPlaintext);
         do_not_optimize(result);
       }
-    }).gc("inner");
+    });
 
     bench("NoiseSession JS - 10 encrypts", () => {
       const session = new JSNoiseSession(testPublicKey, testNoiseHeader);
@@ -259,7 +259,7 @@ boxplot(() => {
         const result = session.encrypt(testPlaintext);
         do_not_optimize(result);
       }
-    }).gc("inner");
+    });
   });
 });
 

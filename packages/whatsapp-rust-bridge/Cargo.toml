@@ -44,64 +44,81 @@ sticker = ["dep:img-parts"]
 [dependencies]
 async-trait = "0.1.89"
 base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
-curve25519-dalek = { version = "4.1.3", default-features = false, features = [
-  "alloc",
-  "digest",
-  "precomputed-tables",
-] }
-getrandom = { version = "0.4", features = ["wasm_js"] }
-hashify = { version = "0.2.9", default-features = false, features = ["force-32bit"] }
-hkdf = "0.12"
-hmac = "0.12"
-image = { version = "0.25.5", default-features = false, features = [
-  "jpeg",
-  "png",
-  "webp",
-], optional = true }
 
+buffa = { version = "0.9.1", default-features = false }
+bytes = { version = "1.11", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false, features = [
+    "alloc",
+    "digest",
+    "precomputed-tables",
+] }
+# Not used directly: pulled in to turn on the wasm_js backend, which the
+# wasm32 target refuses to build without.
+getrandom = { version = "0.4", features = ["wasm_js"] }
+hkdf = "0.12"
+image = { version = "0.25.5", default-features = false, features = [
+    "jpeg",
+    "png",
+    "webp",
+], optional = true }
 img-parts = { version = "0.4", default-features = false, optional = true }
 js-sys = "0.3"
 log = "0.4"
 md-5 = "0.10"
-prost = { version = "0.14.1", default-features = false }
+# sys_rng is what make_rng falls back to for seeding; another crate happens to
+# turn it on today, but key generation must not depend on that staying true.
 rand = { version = "0.10", default-features = false, features = [
-  "std",
-  "std_rng",
-  "sys_rng",
+    "std",
+    "std_rng",
+    "sys_rng",
 ] }
 serde = { version = "1.0.228", default-features = false, features = [
-  "derive",
-  "alloc",
+    "derive",
+    "alloc",
 ] }
-serde-wasm-bindgen = "0.6.5"
 serde_bytes = "0.11"
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 sha2 = "0.10"
-simd-adler32 = { version = "0.3.7", default-features = false, features = [
-  "std",
-] }
 symphonia = { version = "0.5.4", default-features = false, features = [
-  "mp3",
-  "aac",
-  "isomp4",
-  "ogg",
+    "mp3",
+    "aac",
+    "isomp4",
+    "ogg",
 ], optional = true }
 tsify = { version = "0.5.6", default-features = false, features = ["js"] }
 uuid = { version = "1.18.1", default-features = false, features = ["v4", "js"] }
 
 wacore-appstate = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "wacore-appstate" }
 wacore-binary = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", default-features = false, features = [
-  "serde",
+    "serde",
 ] }
-wacore-libsignal = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "wacore-libsignal" }
+wacore-libsignal = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "wacore-libsignal", features = [
+    "legacy-session-interop",
+] }
 wacore-noise = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "wacore-noise" }
 waproto = { git = "https://github.com/jlucaso1/whatsapp-rust.git", branch = "main", package = "waproto" }
 wasm-bindgen = "0.2.100"
 wasm-bindgen-futures = "0.4.55"
 web-sys = { version = "0.3", features = [
-  "ReadableStream",
-  "ReadableStreamDefaultReader",
+    "ReadableStream",
+    "ReadableStreamDefaultReader",
 ] }
+
+# Runs the crate's `#[test]` unit tests on wasm32 in Node via
+# `wasm-pack test --node` — plain `cargo test` cannot, because the crate only
+# builds for wasm32 (no native test harness). The test modules alias
+# `#[test]` -> `#[wasm_bindgen_test]`, so there is no per-test annotation churn.
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+# Keeps the name section and debug info so a CPU profile shows real symbols
+# instead of wasm-function[N]. `pnpm build:profile` selects it through cargo
+# directly, since wasm-pack's own --profiling still builds the release profile.
+[profile.profiling]
+inherits = "release"
+debug = 2
+strip = false
+lto = false
 
 [profile.release]
 lto = "fat"

@@ -32,7 +32,7 @@ impl ProtocolAddress {
         }
 
         Ok(ProtocolAddress(CoreProtocolAddress::new(
-            id_str,
+            &id_str,
             DeviceId::from(device_id_num),
         )))
     }
@@ -56,7 +56,7 @@ impl ProtocolAddress {
             .map_err(|_| JsValue::from_str(INVALID_ENCODING))?;
 
         Ok(ProtocolAddress(CoreProtocolAddress::new(
-            id_str.to_string(),
+            id_str,
             DeviceId::from(device_id_num),
         )))
     }

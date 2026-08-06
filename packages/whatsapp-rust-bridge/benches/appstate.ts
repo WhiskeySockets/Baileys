@@ -114,19 +114,19 @@ boxplot(() => {
     bench("Key Expansion (Rust WASM)", () => {
       const result = expandAppStateKeys(masterKey);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("Key Expansion (Baileys)", async () => {
       const result = await baileysExpandKeys(masterKey);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
     bench("LT-Hash subtractThenAdd - 3 adds (Rust WASM)", () => {
       const result = ltHashWasm.subtractThenAdd(baseHash, [], addItems);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("LT-Hash subtractThenAdd - 3 adds (Baileys)", async () => {
       const result = await LT_HASH_ANTI_TAMPERING.subtractThenAdd(
@@ -135,7 +135,7 @@ boxplot(() => {
         []
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
@@ -146,7 +146,7 @@ boxplot(() => {
         addItems
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("LT-Hash subtractThenAdd - mixed ops (Baileys)", async () => {
       const result = await LT_HASH_ANTI_TAMPERING.subtractThenAdd(
@@ -155,7 +155,7 @@ boxplot(() => {
         subtractItems.map((i) => i.buffer as ArrayBuffer)
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
@@ -167,7 +167,7 @@ boxplot(() => {
         wasmKeys.valueMacKey
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("Content MAC generation (Baileys)", () => {
       const result = baileysGenerateContentMac(
@@ -177,19 +177,19 @@ boxplot(() => {
         baileysKeys.valueMacKey
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
     bench("Index MAC generation (Rust WASM)", () => {
       const result = generateIndexMac(indexBytes, wasmKeys.indexKey);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("Index MAC generation (Baileys)", () => {
       const result = hmacSign(indexBytes, baileysKeys.indexKey);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
@@ -201,7 +201,7 @@ boxplot(() => {
         wasmKeys.snapshotMacKey
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("Snapshot MAC generation (Baileys)", () => {
       const result = baileysGenerateSnapshotMac(
@@ -211,7 +211,7 @@ boxplot(() => {
         baileysKeys.snapshotMacKey
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
@@ -224,7 +224,7 @@ boxplot(() => {
         wasmKeys.patchMacKey
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("Patch MAC generation (Baileys)", () => {
       const result = baileysGeneratePatchMac(
@@ -235,7 +235,7 @@ boxplot(() => {
         baileysKeys.patchMacKey
       );
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
@@ -268,7 +268,7 @@ boxplot(() => {
       do_not_optimize(newHash);
       do_not_optimize(snapMac);
       do_not_optimize(patchMac);
-    }).gc("inner");
+    });
 
     bench("Full mutation encode flow (Baileys)", async () => {
       const keys = await baileysExpandKeys(masterKey);
@@ -303,7 +303,7 @@ boxplot(() => {
       do_not_optimize(newHash);
       do_not_optimize(snapMac);
       do_not_optimize(patchMac);
-    }).gc("inner");
+    });
   });
 });
 

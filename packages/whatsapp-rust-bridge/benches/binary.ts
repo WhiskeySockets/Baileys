@@ -79,48 +79,48 @@ boxplot(() => {
     bench("encodeNode Rust WASM", () => {
       const result = encodeNode(testNode);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("encodeNode Old Baileys", () => {
       const result = encodeBinaryNodeOld(testNode);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
     bench("decodeNode Rust WASM", () => {
       const handle = decodeNode(legacyEncoded);
       do_not_optimize(handle);
-    }).gc("inner");
+    });
 
     bench("decodeNode Old Baileys", async () => {
       const handle = await decodeBinaryNodeOld(legacyEncoded);
       do_not_optimize(handle);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
     bench("decode and attrs Rust WASM", () => {
       const handle = decodeNode(legacyEncoded);
       touchHotPath(handle);
-    }).gc("inner");
+    });
 
     bench("decode and attrs Old Baileys", async () => {
       const handle = await decodeBinaryNodeOld(legacyEncoded);
       touchHotPath(handle);
-    }).gc("inner");
+    });
   });
 
   summary(() => {
     bench("decode and attrs (compressed) Rust WASM", () => {
       const handle = decodeNode(compressedEncoded);
       touchHotPath(handle);
-    }).gc("inner");
+    });
 
     bench("decode and attrs (compressed) Old Baileys", async () => {
       const handle = await decodeBinaryNodeOld(compressedEncoded);
       touchHotPath(handle);
-    }).gc("inner");
+    });
   });
 });
 

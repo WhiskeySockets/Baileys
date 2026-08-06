@@ -204,8 +204,12 @@ export const extractDeviceJids = (
 				// Per device on purpose: one shared variable let a hosted device
 				// leave the domain rewritten for every device listed after it.
 				let domainType = userDomainType
-				if (isHosted) {
-					domainType = domainType === WAJIDDomains.LID ? WAJIDDomains.HOSTED_LID : WAJIDDomains.HOSTED
+				// Device 99 must always be on the hosted domain. An already-hosted
+				// LID stays on the LID side: mapping it to plain HOSTED would move
+				// the JID into the PN namespace and address the wrong session.
+				if (isHosted || device === 99) {
+					const isLidSide = domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID
+					domainType = isLidSide ? WAJIDDomains.HOSTED_LID : WAJIDDomains.HOSTED
 				}
 
 				extracted.push({

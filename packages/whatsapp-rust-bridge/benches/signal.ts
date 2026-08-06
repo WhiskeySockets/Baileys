@@ -1,10 +1,13 @@
 import { run, bench, do_not_optimize, boxplot, summary } from "mitata";
 import {
   ProtocolAddress,
-  SessionBuilder,
-  SessionCipher,
+  decryptPreKeyWithSnapshot,
+  decryptWhisperWithSnapshot,
+  encryptWithSnapshot,
   generateSignedPreKey,
   generatePreKey,
+  processBundleWithSnapshot,
+  type SignalSnapshot,
 } from "../dist/index.js";
 import { FakeStorage } from "../test/helpers/fake_storage.ts";
 
@@ -101,9 +104,62 @@ class LibsignalStore implements SignalStorage {
 // has a chance to catch up.
 // ============================================================================
 
+/**
+ * The snapshot calls are pure functions over a caller-held state, so this keeps
+ * that state and applies each changeset, which is what the consumer does. The
+ * shape mirrors libsignal-node's cipher so both sides of the comparison read
+ * the same.
+ */
+class SnapshotCipher {
+  constructor(
+    private snapshot: SignalSnapshot,
+    private peer: ProtocolAddress,
+  ) {}
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private apply(changes: any) {
+    // A replaced peer identity voids the ratchet built on the old one, and the
+    // core reports that by clearing rather than by handing back a new session.
+    // Keeping the old bytes would leave every later operation on a session the
+    // core has already disowned, which is what the Baileys store avoids by
+    // deleting the row.
+    if (changes.sessionCleared) {
+      this.snapshot = { ...this.snapshot, session: undefined };
+    } else if (changes.session) {
+      this.snapshot = { ...this.snapshot, session: changes.session };
+    }
+
+    if (changes.identity) this.snapshot = { ...this.snapshot, peerIdentity: changes.identity };
+    if (changes.removedPreKeyId !== undefined) {
+      this.snapshot = {
+        ...this.snapshot,
+        preKeys: this.snapshot.preKeys.filter((k) => k.id !== changes.removedPreKeyId),
+      };
+    }
+  }
+
+  async encrypt(plaintext: Uint8Array) {
+    const out = await encryptWithSnapshot(this.snapshot, this.peer, plaintext);
+    this.apply(out.changes);
+    return { body: out.ciphertext, type: out.messageType };
+  }
+
+  async decryptWhisperMessage(ciphertext: Uint8Array) {
+    const out = await decryptWhisperWithSnapshot(this.snapshot, this.peer, ciphertext);
+    this.apply(out.changes);
+    return out.plaintext;
+  }
+
+  async decryptPreKeyWhisperMessage(ciphertext: Uint8Array) {
+    const out = await decryptPreKeyWithSnapshot(this.snapshot, this.peer, ciphertext);
+    this.apply(out.changes);
+    return out.plaintext;
+  }
+}
+
 type WasmPair = {
-  alice: SessionCipher;
-  bob: SessionCipher;
+  alice: SnapshotCipher;
+  bob: SnapshotCipher;
 };
 
 async function makeWasmPair(): Promise<WasmPair> {
@@ -112,27 +168,42 @@ async function makeWasmPair(): Promise<WasmPair> {
   const bobAddr = new ProtocolAddress("bob", 1);
   const aliceAddr = new ProtocolAddress("alice", 1);
 
-  aliceStorage.trustIdentity("bob", bobStorage.ourIdentityKeyPair.pubKey);
-  bobStorage.trustIdentity("alice", aliceStorage.ourIdentityKeyPair.pubKey);
-
   const sk = generateSignedPreKey(bobStorage.ourIdentityKeyPair, 1);
   const pk = generatePreKey(100);
-  bobStorage.storeSignedPreKey(sk.keyId, sk);
-  bobStorage.storePreKey(pk.keyId, pk.keyPair);
 
-  await new SessionBuilder(aliceStorage, bobAddr).processPreKeyBundle({
+  const snapshotOf = (storage: FakeStorage, withKeys: boolean): SignalSnapshot =>
+    ({
+      identity: {
+        public: storage.ourIdentityKeyPair.pubKey,
+        private: storage.ourIdentityKeyPair.privKey,
+      },
+      registrationId: storage.ourRegistrationId,
+      preKeys: withKeys ? [{ id: pk.keyId, keyPair: { public: pk.keyPair.pubKey, private: pk.keyPair.privKey } }] : [],
+      signedPreKeys: withKeys
+        ? [
+            {
+              id: sk.keyId,
+              keyPair: { public: sk.keyPair.pubKey, private: sk.keyPair.privKey },
+              signature: sk.signature,
+            },
+          ]
+        : [],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any;
+
+  const opened = await processBundleWithSnapshot(snapshotOf(aliceStorage, false), bobAddr, {
     registrationId: bobStorage.ourRegistrationId,
     identityKey: bobStorage.ourIdentityKeyPair.pubKey,
-    signedPreKey: {
-      keyId: sk.keyId,
-      publicKey: sk.keyPair.pubKey,
-      signature: sk.signature,
-    },
+    signedPreKey: { keyId: sk.keyId, publicKey: sk.keyPair.pubKey, signature: sk.signature },
     preKey: { keyId: pk.keyId, publicKey: pk.keyPair.pubKey },
-  });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
 
-  const alice = new SessionCipher(aliceStorage, bobAddr);
-  const bob = new SessionCipher(bobStorage, aliceAddr);
+  const alice = new SnapshotCipher(
+    { ...snapshotOf(aliceStorage, false), session: opened.changes.session } as SignalSnapshot,
+    bobAddr,
+  );
+  const bob = new SnapshotCipher(snapshotOf(bobStorage, true), aliceAddr);
 
   // PreKey handshake + reply so both sides have established sessions
   const first = await alice.encrypt(Buffer.from("hi"));
@@ -220,12 +291,12 @@ boxplot(() => {
     bench("Encrypt typical message (Rust WASM)", async () => {
       const result = await encWasm.alice.encrypt(typicalMessage);
       do_not_optimize(result);
-    }).gc("inner");
+    });
 
     bench("Encrypt typical message (libsignal-node)", async () => {
       const result = await encLib.alice.encrypt(typicalMessage);
       do_not_optimize(result);
-    }).gc("inner");
+    });
   });
 });
 
@@ -249,7 +320,7 @@ boxplot(() => {
           do_not_optimize(result);
         },
       };
-    }).gc("inner");
+    });
 
     bench("Decrypt WhisperMessage (libsignal-node)", function* () {
       yield {
@@ -261,7 +332,7 @@ boxplot(() => {
           do_not_optimize(result);
         },
       };
-    }).gc("inner");
+    });
   });
 });
 
@@ -282,7 +353,7 @@ boxplot(() => {
       );
       do_not_optimize(decryptedByBob);
       do_not_optimize(decryptedByAlice);
-    }).gc("inner");
+    });
 
     bench("Full round-trip encrypt+decrypt (libsignal-node)", async () => {
       const toBob = await rtLib.alice.encrypt(typicalMessage);
@@ -295,7 +366,7 @@ boxplot(() => {
       );
       do_not_optimize(decryptedByBob);
       do_not_optimize(decryptedByAlice);
-    }).gc("inner");
+    });
   });
 });
 

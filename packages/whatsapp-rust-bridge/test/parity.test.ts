@@ -2,7 +2,7 @@ import { describe, it, expect } from "@jest/globals";
 import {
   encodeBinaryNode,
   decodeBinaryNode as legacyDecodeNode,
-} from "baileys";
+} from "./helpers/legacy-wire";
 import { decodeNode, encodeNode, type BinaryNode } from "../dist/index.js";
 
 // Helper to visualize buffer differences

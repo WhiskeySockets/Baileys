@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { delimiter, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -47,20 +47,96 @@ function run(cmd, args, env = {}) {
 	}
 }
 
+// A profiling build keeps the name section so a CPU profile resolves symbols;
+// wasm-opt would strip it, and its rewrites make the remaining frames hard to
+// map back to source. Never used for a release artifact.
+const profiling = process.env.WHATSAPP_RUST_BRIDGE_PROFILE === '1'
+
+// wasm-pack downloads the wasm-bindgen matching the crate's schema; a globally
+// installed one usually does not match and refuses the module.
+function wasmBindgen() {
+	const wanted = readFileSync(resolve(root, 'Cargo.lock'), 'utf8').match(
+		/name = "wasm-bindgen"\nversion = "([^"]+)"/
+	)?.[1]
+
+	const matches = candidate => {
+		if (!existsSync(candidate)) return false
+
+		const version = spawnSync(candidate, ['--version'], { encoding: 'utf8' }).stdout?.trim()
+		return Boolean(wanted) && Boolean(version?.endsWith(wanted))
+	}
+
+	const cacheRoot = resolve(process.env.HOME ?? '', '.cache/.wasm-pack')
+	if (wanted && existsSync(cacheRoot)) {
+		for (const entry of readdirSync(cacheRoot)) {
+			const candidate = resolve(cacheRoot, entry, 'wasm-bindgen')
+			if (matches(candidate)) return candidate
+		}
+	}
+
+	// Then PATH, which is the other remedy the error below names. Only an exact
+	// version match is accepted, so this cannot silently reintroduce the schema
+	// mismatch that made the cache the first choice.
+	const extensions = process.platform === 'win32' ? (process.env.PATHEXT ?? '.EXE;.CMD;.BAT').split(';') : ['']
+	for (const directory of (process.env.PATH ?? '').split(delimiter)) {
+		if (!directory) continue
+
+		for (const extension of extensions) {
+			const candidate = resolve(directory, `wasm-bindgen${extension}`)
+			if (matches(candidate)) return candidate
+		}
+	}
+
+	// Falling through to a global wasm-bindgen is worse than stopping: it is
+	// almost never the version the crate was linked against, and the failure it
+	// produces talks about schema numbers rather than what to do about it.
+	throw new Error(
+		`no wasm-bindgen ${wanted ?? '(version unknown)'} in ${cacheRoot} or on PATH. ` +
+			'Run `pnpm build` once so wasm-pack downloads the matching CLI, or ' +
+			`install it with \`cargo install wasm-bindgen-cli --version ${wanted ?? 'X.Y.Z'}\` ` +
+			'and put it on PATH.'
+	)
+}
+
 function build(variant) {
 	const isSimd = variant === 'simd'
 	const rustflags = isSimd ? '-C target-feature=+simd128' : '-C target-feature=-simd128'
 
 	console.log(`\n=== Building ${variant} ===`)
-	const wasmPackArgs = ['build', '--target', 'web', '--out-dir', 'pkg', '--no-pack', '--no-opt']
-	if (cargoFeatures) {
-		wasmPackArgs.push('--features', cargoFeatures)
+	if (profiling) {
+		// wasm-pack's --profiling still builds the release profile, which strips.
+		// Drive cargo and wasm-bindgen directly so the custom profile applies and
+		// the name section survives.
+		const cargoArgs = ['build', '--profile', 'profiling', '--target', 'wasm32-unknown-unknown']
+		if (cargoFeatures) {
+			cargoArgs.push('--features', cargoFeatures)
+		}
+
+		run('cargo', cargoArgs, { RUSTFLAGS: rustflags })
+		run(wasmBindgen(), [
+			'--target',
+			'web',
+			'--out-dir',
+			'pkg',
+			'--keep-debug',
+			'target/wasm32-unknown-unknown/profiling/whatsapp_rust_bridge.wasm'
+		])
+	} else {
+		const wasmPackArgs = ['build', '--target', 'web', '--out-dir', 'pkg', '--no-pack', '--no-opt']
+		if (cargoFeatures) {
+			wasmPackArgs.push('--features', cargoFeatures)
+		}
+
+		run('wasm-pack', wasmPackArgs, { RUSTFLAGS: rustflags })
 	}
-	run('wasm-pack', wasmPackArgs, { RUSTFLAGS: rustflags })
 
 	const outFile = resolve(outDir, `${variant}.wasm`)
-	const optFlags = [...wasmOptFlags, isSimd ? '--enable-simd' : '--disable-simd', pkgWasm, '-o', outFile]
-	run('wasm-opt', optFlags)
+	if (profiling) {
+		copyFileSync(pkgWasm, outFile)
+	} else {
+		const optFlags = [...wasmOptFlags, isSimd ? '--enable-simd' : '--disable-simd', pkgWasm, '-o', outFile]
+		run('wasm-opt', optFlags)
+	}
 
 	const size = statSync(outFile).size
 	console.log(`  → ${outFile} (${(size / 1024).toFixed(1)} KB)`)

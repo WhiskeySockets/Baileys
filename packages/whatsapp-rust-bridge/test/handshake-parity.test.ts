@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { encodeBinaryNode } from "baileys";
+import { encodeBinaryNode } from "./helpers/legacy-wire";
 import { encodeNode, decodeNode, type BinaryNode } from "../dist/index.js";
 
 function hex(buffer: Uint8Array): string {
