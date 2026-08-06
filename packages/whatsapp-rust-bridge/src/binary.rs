@@ -273,7 +273,7 @@ impl InternalBinaryNode {
     }
 
     fn content_to_json(node: &NodeRef<'_>) -> Option<JsValue> {
-        match node.content.as_deref() {
+        match node.content.as_ref() {
             Some(NodeContentRef::Bytes(bytes)) => Some(Uint8Array::from(bytes.as_ref()).into()),
             Some(NodeContentRef::String(s)) => Some(JsValue::from_str(s)),
             Some(NodeContentRef::Nodes(nodes)) => {
@@ -315,7 +315,7 @@ impl InternalBinaryNode {
             return Some(content.clone());
         }
 
-        let result: Option<Content> = match self.node_ref().content.as_deref() {
+        let result: Option<Content> = match self.node_ref().content.as_ref() {
             Some(NodeContentRef::Bytes(bytes)) => {
                 Some(Uint8Array::from(bytes.as_ref()).unchecked_into())
             }
@@ -639,7 +639,7 @@ impl FlatBuilder {
             self.layout.push(value);
         }
 
-        match node.content.as_deref() {
+        match node.content.as_ref() {
             None => self.layout.push(0),
             Some(NodeContentRef::Bytes(blob)) => {
                 self.layout.push(1);
@@ -736,11 +736,11 @@ impl<'a> FlatReader<'a> {
                 let offset = self.next()? as usize;
                 let len = self.next()? as usize;
                 let bytes = self.blobs.get(offset..offset + len).ok_or_else(bad_index)?;
-                Some(Box::new(NodeContentRef::Bytes(Cow::Borrowed(bytes))))
+                Some(NodeContentRef::Bytes(Cow::Borrowed(bytes)))
             }
             2 => {
                 let index = self.next()?;
-                Some(Box::new(NodeContentRef::String(self.str_at(index)?)))
+                Some(NodeContentRef::String(self.str_at(index)?))
             }
             3 => {
                 let count = self.next()? as usize;
@@ -748,7 +748,7 @@ impl<'a> FlatReader<'a> {
                 for _ in 0..count {
                     children.push(self.read()?);
                 }
-                Some(Box::new(NodeContentRef::Nodes(children.into_boxed_slice())))
+                Some(NodeContentRef::Nodes(children.into_boxed_slice()))
             }
             _ => return Err(JsValue::from_str("flat encode: unknown content kind")),
         };
