@@ -157,6 +157,29 @@ function hasInlineWasm(path) {
 	return existsSync(path) && readFileSync(path, 'utf8').includes('AGFzbQ')
 }
 
+/**
+ * Every relative re-export in a packed declaration has to resolve inside the
+ * tarball.
+ *
+ * A missing one does not fail loudly: TypeScript drops the unresolvable
+ * re-export and reports the names as simply not exported, so the package
+ * installs, runs, and fails to typecheck with an error pointing somewhere
+ * else. `dist/flat.d.ts` shipped that way, and the runtime worked because
+ * esbuild had inlined the module into the bundle.
+ */
+function assertDeclarationsResolve(packedFiles) {
+	const declarations = [...packedFiles.keys()].filter(path => path.endsWith('.d.ts'))
+	for (const declaration of declarations) {
+		const source = readFileSync(join(root, declaration), 'utf8')
+		for (const [, specifier] of source.matchAll(/(?:from|import)\s*["'](\.[^"']+)["']/g)) {
+			const target = join(dirname(declaration), specifier).replace(/\.js$/, '.d.ts')
+			if (!packedFiles.has(target)) {
+				throw new Error(`${declaration} re-exports ${specifier}, but ${target} is not packed`)
+			}
+		}
+	}
+}
+
 const temporaryDirectory = mkdtempSync(join(tmpdir(), 'whatsapp-rust-bridge-package-'))
 try {
 	const packDirectory = join(temporaryDirectory, 'pack')
@@ -174,6 +197,8 @@ try {
 	if (missing.length) {
 		throw new Error(`npm package is missing: ${missing.join(', ')}`)
 	}
+
+	assertDeclarationsResolve(packedFiles)
 
 	for (const entry of entryFiles) {
 		const size = packedFiles.get(entry)

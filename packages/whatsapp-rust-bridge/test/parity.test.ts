@@ -140,8 +140,8 @@ describe("Decode Parity: Legacy TS vs Rust WASM", () => {
     const wasmDecoded = decodeNode(new Uint8Array(encoded));
 
     // The 'to' attribute should be '@s.whatsapp.net' in both
-    expect(`@${wasmDecoded.attrs.to}`).toBe(legacyDecoded.attrs.to);
-    expect(wasmDecoded.attrs.to).toBe("s.whatsapp.net");
+    expect(wasmDecoded.attrs.to).toBe(legacyDecoded.attrs.to);
+    expect(wasmDecoded.attrs.to).toBe("@s.whatsapp.net");
   });
 
   it("should decode server-only JID (@g.us) identically", async () => {
@@ -161,8 +161,8 @@ describe("Decode Parity: Legacy TS vs Rust WASM", () => {
     const legacyDecoded = await legacyDecodeNode(Buffer.from(encoded));
     const wasmDecoded = decodeNode(new Uint8Array(encoded));
 
-    expect(`@${wasmDecoded.attrs.to}`).toBe(legacyDecoded.attrs.to);
-    expect(wasmDecoded.attrs.to).toBe("g.us");
+    expect(wasmDecoded.attrs.to).toBe(legacyDecoded.attrs.to);
+    expect(wasmDecoded.attrs.to).toBe("@g.us");
   });
 
   it("should decode standard user JID identically", async () => {
@@ -274,8 +274,8 @@ describe("Decode Parity: Legacy TS vs Rust WASM", () => {
     const legacyDecoded = await legacyDecodeNode(Buffer.from(encoded));
     const wasmDecoded = decodeNode(new Uint8Array(encoded));
 
-    expect(`@${wasmDecoded.attrs.to}`).toBe(legacyDecoded.attrs.to);
-    expect(`@${wasmDecoded.attrs.to}`).toBe("@s.whatsapp.net");
+    expect(wasmDecoded.attrs.to).toBe(legacyDecoded.attrs.to);
+    expect(wasmDecoded.attrs.to).toBe("@s.whatsapp.net");
 
     const legacyChildren = legacyDecoded.content as BinaryNode[];
     const wasmChildren = wasmDecoded.content as BinaryNode[];
@@ -305,7 +305,7 @@ describe("JSON Serialization Parity", () => {
     const parsed = JSON.parse(jsonStr);
 
     expect(parsed.tag).toBe("iq");
-    expect(`@${parsed.attrs.to}`).toBe("@s.whatsapp.net");
+    expect(parsed.attrs.to).toBe("@s.whatsapp.net");
     expect(parsed.attrs.type).toBe("get");
     expect(parsed.attrs.id).toBe("test-json");
     // Empty content arrays are encoded as no content, so they decode to undefined

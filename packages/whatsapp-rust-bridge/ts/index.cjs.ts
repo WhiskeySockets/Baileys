@@ -12,3 +12,4 @@ function resolveWasm(variant: WasmVariant): string {
 
 export const __wasmSimdActive: boolean = initializeWasm(resolveWasm);
 export * from "../pkg/whatsapp_rust_bridge.js";
+export * from "./flat.js";
