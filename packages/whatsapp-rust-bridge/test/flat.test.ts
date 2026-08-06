@@ -408,3 +408,39 @@ describe("flat codec regressions", () => {
     expect(json.attrs).toEqual({ x: "1" });
   });
 });
+
+describe("flat codec intern table", () => {
+  it("does not grow across decodes that share no strings", () => {
+    // The table used to age entries out by round rather than remove them, so
+    // every distinct message id and jid a socket saw stayed in it: two million
+    // decodes took linear memory from 1.3 MB to 274 MB, and WASM never returns
+    // memory. `words` is a view over the whole heap, so its length is the heap.
+    const frameFor = (i: number) =>
+      frameOf({
+        tag: "ack",
+        attrs: { to: `55119${String(i).padStart(8, "0")}@s.whatsapp.net`, id: i.toString(16).padStart(20, "0") },
+      });
+
+    const before = decodeNodeFlat(frameFor(0)).words.length;
+    for (let i = 1; i <= 60_000; i++) decodeNodeFlat(frameFor(i));
+
+    expect(decodeNodeFlat(frameFor(0)).words.length).toBe(before);
+  });
+
+  it("still dedups within one decode after the table has been evicted through", () => {
+    const repeated = "a_value_that_is_not_a_token";
+    for (let i = 0; i < 5_000; i++) {
+      decodeNodeFlat(frameOf({ tag: "ack", attrs: { id: i.toString(16).padStart(20, "0") } }));
+    }
+
+    const flat = decodeNodeFlat(
+      frameOf({
+        tag: "sync",
+        attrs: {},
+        content: [1, 2].map(() => ({ tag: "c", attrs: { k: repeated } })),
+      })
+    );
+
+    expect(poolOf(flat)).toEqual(["k", repeated]);
+  });
+});

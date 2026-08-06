@@ -489,8 +489,12 @@ pub fn decode_node_flat(data: &[u8]) -> Result<(), JsValue> {
 
 thread_local! {
     static FLAT_BUILDER: RefCell<FlatBuilder> = RefCell::new(FlatBuilder {
+        strings: Vec::new(),
         string_offsets: vec![0],
-        ..Default::default()
+        seen: Box::new([Seen::default(); SEEN_SLOTS]),
+        round: 0,
+        layout: Vec::new(),
+        bytes: Vec::new(),
     });
 }
 
@@ -552,21 +556,32 @@ impl std::hash::Hasher for FxHasher {
     }
 }
 
-type FxBuild = std::hash::BuildHasherDefault<FxHasher>;
+/// One slot per hash, so the table cannot grow and never has to be cleared.
+///
+/// A `HashMap` here leaked: entries were aged out by `round` rather than
+/// removed, so every distinct message id and jid a socket ever saw stayed in
+/// it. Two million decodes took linear memory from 1.3 MB to 274 MB, and WASM
+/// memory is never returned. Clearing instead would bound it, but then every
+/// small stanza pays to wipe the buckets a group stanza left behind.
+///
+/// Dedup is best effort, which is what makes this sound: a collision evicts,
+/// the caller writes the string twice, and the only cost is a longer pool.
+#[derive(Clone, Copy, Default)]
+struct Seen {
+    hash: u64,
+    round: u32,
+    index: u32,
+}
 
-#[derive(Default)]
+const SEEN_SLOTS: usize = 512;
+
 struct FlatBuilder {
     strings: Vec<u8>,
     string_offsets: Vec<u32>,
-    /// Content hash to the decode that wrote it and the string index. Keyed by
-    /// hash rather than by an owned String: the bytes are already in `strings`,
-    /// and allocating a String per distinct tag on every decode showed up as
-    /// allocator time.
-    ///
-    /// Entries are aged out by `round` rather than cleared, because clearing
-    /// costs the whole table: one group stanza grows it, and every small stanza
-    /// after that pays to wipe the buckets it left behind.
-    seen: HashMap<u64, (u32, u32), FxBuild>,
+    /// Keyed by content hash rather than by an owned String: the bytes are
+    /// already in `strings`, and allocating a String per distinct tag on every
+    /// decode showed up as allocator time.
+    seen: Box<[Seen; SEEN_SLOTS]>,
     round: u32,
     layout: Vec<u32>,
     bytes: Vec<u8>,
@@ -609,20 +624,29 @@ impl FlatBuilder {
         std::hash::Hasher::write(&mut hasher, &self.strings[start..]);
         let key = std::hash::Hasher::finish(&hasher);
 
-        if let Some(&(round, index)) = self.seen.get(&key)
-            && round == self.round
+        let slot = key as usize & (SEEN_SLOTS - 1);
+        let hit = self.seen[slot];
+        // The index bound also covers `round` wrapping back onto a stale entry
+        // after four billion decodes, which would otherwise index out of range.
+        if hit.round == self.round
+            && hit.hash == key
+            && hit.index as usize + 1 < self.string_offsets.len()
         {
-            let from = self.string_offsets[index as usize] as usize;
-            let to = self.string_offsets[index as usize + 1] as usize;
+            let from = self.string_offsets[hit.index as usize] as usize;
+            let to = self.string_offsets[hit.index as usize + 1] as usize;
             if self.strings[from..to] == self.strings[start..] {
                 self.strings.truncate(start);
-                return index;
+                return hit.index;
             }
         }
 
         let index = self.string_offsets.len() as u32 - 1;
         self.string_offsets.push(self.strings.len() as u32);
-        self.seen.insert(key, (self.round, index));
+        self.seen[slot] = Seen {
+            hash: key,
+            round: self.round,
+            index,
+        };
         index
     }
 
