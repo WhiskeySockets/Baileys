@@ -1,4 +1,6 @@
-import { BufferJSON, runDetached } from '../../Utils/generics'
+import type { Boom } from '@hapi/boom'
+import { DisconnectReason } from '../../Types'
+import { BufferJSON, promiseTimeout, runDetached } from '../../Utils/generics'
 
 describe('BufferJSON', () => {
 	const originalObject = {
@@ -127,5 +129,43 @@ describe('runDetached', () => {
 		// The REAL Error must win — not the caller's misleading string.
 		expect(payload.err).toBeInstanceOf(Error)
 		expect((payload.err as Error).message).toBe('actual-detached-failure')
+	})
+})
+
+describe('promiseTimeout', () => {
+	it('still reports where the caller was when it times out', async () => {
+		// The stack is captured eagerly and formatted lazily, so the frames must
+		// still be the caller's and not the timer callback's.
+		let err: Boom | undefined
+		try {
+			await promiseTimeout<void>(1, () => {})
+		} catch (caught) {
+			err = caught as Boom
+		}
+
+		expect(err?.output.statusCode).toBe(DisconnectReason.timedOut)
+		expect((err?.data as { stack: string }).stack).toContain('generics.test')
+	})
+
+	it('does not format a stack on the path that succeeds', async () => {
+		// Settling used to run `cancel`, which built a Boom and read its stack
+		// on every successful call: about 22us per send, nearly all of it the
+		// formatting. Nothing may touch `Error.prototype.stack` here.
+		// V8 calls `prepareStackTrace` the first time a stack is read, which is
+		// the formatting this change defers, not the capture.
+		const previous = Error.prepareStackTrace
+		let formatted = 0
+		Error.prepareStackTrace = (err, frames) => {
+			formatted++
+			return previous ? previous(err, frames) : frames.join('\n')
+		}
+
+		try {
+			await promiseTimeout(20_000, resolve => resolve(1))
+		} finally {
+			Error.prepareStackTrace = previous
+		}
+
+		expect(formatted).toBe(0)
 	})
 })

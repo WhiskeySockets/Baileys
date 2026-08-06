@@ -125,27 +125,43 @@ export const debouncedTimeout = (intervalMs = 1000, task?: () => void) => {
 
 export const delay = (ms: number) => delayCancellable(ms).delay
 
+/**
+ * Where the caller was, kept unformatted.
+ *
+ * Constructing the error captures the frames; it is reading `.stack` that
+ * makes V8 format them, and that costs about 11us against 1.2us for the
+ * capture. Every outbound frame goes through `promiseTimeout`, which pays for
+ * two of these, so formatting eagerly cost more per send than encoding the
+ * stanza does. These are read only when the timeout actually fires.
+ */
+const callerFrames = () => new Error()
+
 export const delayCancellable = (ms: number) => {
-	const stack = new Error().stack
 	let timeout: NodeJS.Timeout
 	let reject: (error: any) => void
 	const delay: Promise<void> = new Promise((resolve, _reject) => {
 		timeout = setTimeout(resolve, ms)
 		reject = _reject
 	})
+
+	/** Drops the timer without settling `delay`, for a caller that is done. */
+	const clear = () => clearTimeout(timeout)
 	const cancel = () => {
-		clearTimeout(timeout)
+		const origin = callerFrames()
+		clear()
 		reject(
 			new Boom('Cancelled', {
 				statusCode: 500,
 				data: {
-					stack
+					get stack() {
+						return origin.stack
+					}
 				}
 			})
 		)
 	}
 
-	return { delay, cancel }
+	return { delay, cancel, clear }
 }
 
 export async function promiseTimeout<T>(
@@ -156,9 +172,9 @@ export async function promiseTimeout<T>(
 		return new Promise(promise)
 	}
 
-	const stack = new Error().stack
+	const origin = callerFrames()
 	// Create a promise that rejects in <ms> milliseconds
-	const { delay, cancel } = delayCancellable(ms)
+	const { delay, clear } = delayCancellable(ms)
 	const p = new Promise((resolve, reject) => {
 		delay
 			.then(() =>
@@ -166,7 +182,9 @@ export async function promiseTimeout<T>(
 					new Boom('Timed Out', {
 						statusCode: DisconnectReason.timedOut,
 						data: {
-							stack
+							get stack() {
+								return origin.stack
+							}
 						}
 					})
 				)
@@ -174,7 +192,7 @@ export async function promiseTimeout<T>(
 			.catch(err => reject(err))
 
 		promise(resolve, reject)
-	}).finally(cancel)
+	}).finally(clear)
 	return p as Promise<T>
 }
 
