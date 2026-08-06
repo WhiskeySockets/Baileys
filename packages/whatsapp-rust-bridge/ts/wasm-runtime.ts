@@ -55,6 +55,31 @@ export function wasmMemory(): WebAssembly.Memory {
 	return memory;
 }
 
+/**
+ * The flat codec caches views over linear memory and rebuilds them when a
+ * growth detaches them, which it detects as a length of zero. Two kinds of
+ * buffer break that: a `SharedArrayBuffer` is never detached, and a resizable
+ * one tracks the growth in some views but not others. Either would be read as
+ * "still valid" and quietly serve truncated strings, so refuse them here
+ * rather than at the point where a stanza comes out wrong.
+ */
+function assertDetachOnGrowth(buffer: ArrayBufferLike) {
+	// The two properties are checked directly rather than through `instanceof`,
+	// which does not hold across realms: under a VM context the host's
+	// ArrayBuffer is not the context's, and the check would reject a buffer
+	// that is perfectly fine. `resizable` and `growable` predate the lib target
+	// this package compiles against.
+	const flags = buffer as { resizable?: boolean; growable?: boolean };
+	const shared = Object.prototype.toString.call(buffer) === "[object SharedArrayBuffer]";
+	const elastic = flags.resizable === true || flags.growable === true;
+	if (!shared && !elastic) return;
+
+	throw new Error(
+		"whatsapp-rust-bridge needs a WASM memory whose buffer detaches when it " +
+			`grows, and this one is ${shared ? "shared" : "resizable"}.`,
+	);
+}
+
 export function initializeWasm(
 	resolveWasm: (variant: WasmVariant) => WasmLocation,
 ): boolean {
@@ -65,6 +90,7 @@ export function initializeWasm(
 		try {
 			const module = compileWasm(resolveWasm("simd"));
 			memory = initSync({ module }).memory;
+			assertDetachOnGrowth(memory.buffer);
 			return true;
 		} catch (error) {
 			// A SIMD compile failure can still happen if the probe and the actual
@@ -78,5 +104,6 @@ export function initializeWasm(
 
 	const module = compileWasm(resolveWasm("nosimd"));
 	memory = initSync({ module }).memory;
+	assertDetachOnGrowth(memory.buffer);
 	return false;
 }

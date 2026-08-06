@@ -444,3 +444,4 @@ describe("flat codec intern table", () => {
     expect(poolOf(flat)).toEqual(["k", repeated]);
   });
 });
+

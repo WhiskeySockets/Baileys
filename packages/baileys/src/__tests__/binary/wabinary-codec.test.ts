@@ -63,3 +63,29 @@ describe('WABinary encoder guards', () => {
 		expect((decoded.content as BinaryNode[]).map(child => child.tag)).toEqual(['b'])
 	})
 })
+
+describe('decoded byte content', () => {
+	it('gives empty content its own backing store', async () => {
+		// The blob section is copied out of WASM memory, but with nothing to
+		// copy the decoder stood in the whole-memory view, handing the caller a
+		// zero-length Buffer whose `buffer` was all of WASM memory at offset 0.
+		const node: BinaryNode = { tag: 'a', attrs: {}, content: new Uint8Array(0) }
+		const content = (await decodeBinaryNode(encodeBinaryNode(node))).content as Buffer
+
+		expect(content.length).toBe(0)
+		expect(content.buffer.byteLength).toBe(0)
+	})
+
+	it('survives the decodes that come after it', async () => {
+		// The sections a decode reads from are reused by the next one, so the
+		// leaves have to be views into a copy rather than into WASM memory.
+		const node: BinaryNode = { tag: 'a', attrs: {}, content: Buffer.alloc(8, 3) }
+		const content = (await decodeBinaryNode(encodeBinaryNode(node))).content as Buffer
+
+		for (let i = 0; i < 4; i++) {
+			await decodeBinaryNode(encodeBinaryNode({ tag: 'b', attrs: {}, content: Buffer.alloc(4096, i) }))
+		}
+
+		expect([...content]).toEqual([3, 3, 3, 3, 3, 3, 3, 3])
+	})
+})

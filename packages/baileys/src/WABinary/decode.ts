@@ -23,6 +23,11 @@ let words: Uint32Array<ArrayBufferLike> = new Uint32Array(0)
 let blobs: Buffer<ArrayBufferLike> = Buffer.alloc(0)
 let cursor = 0
 
+// Stands in for the blob section when a stanza has none, so a node whose byte
+// content is empty does not hand the caller a view whose backing store is the
+// whole of WASM memory.
+const NO_BLOBS = Buffer.alloc(0)
+
 const read = (): BinaryNode => {
 	let index = words[cursor++]!
 	const tag = index >= TOKEN_BASE ? TOKENS[index - TOKEN_BASE]! : pool[index]!
@@ -79,7 +84,7 @@ export const decodeBinaryNode = async (buff: Buffer): Promise<BinaryNode> => {
 	}
 
 	// One copy for the whole section, so the leaves stay views into it.
-	blobs = blobBytes ? Buffer.from(bytes.subarray(blobsAt, blobsAt + blobBytes)) : bytes
+	blobs = blobBytes ? Buffer.from(bytes.subarray(blobsAt, blobsAt + blobBytes)) : NO_BLOBS
 	cursor = flat.layoutAt
 	return read()
 }
