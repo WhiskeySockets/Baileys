@@ -1,127 +1,201 @@
-import { decodeNode, encodeNode, type BinaryNode } from "../dist/index.js";
-import { run, bench, do_not_optimize, boxplot, summary } from "mitata";
+/**
+ * What the WABinary path costs on the stanzas the socket actually moves.
+ *
+ * The encoder and decoder come in by path rather than through the package: the
+ * bridge cannot depend on the workspace Baileys, and a copy of the flat
+ * assembly here would drift from the one that runs. The baseline is
+ * `baileys@7.0.0-rc.9`, the pure TypeScript implementation this replaces.
+ *
+ * Both sides now hand back the same plain tree, so decode compares directly.
+ * That was not true of `decodeNode`, which returns a handle that materializes
+ * on access and so reports a decode it has not done; the last section keeps it
+ * visible for what it is.
+ */
+import { bench, boxplot, do_not_optimize, run, summary } from "mitata";
 import {
-  encodeBinaryNode as encodeBinaryNodeOld,
-  decodeBinaryNode as decodeBinaryNodeOld,
+  decodeBinaryNode as decodeOld,
+  encodeBinaryNode as encodeOld,
 } from "baileys";
 import { deflateSync } from "node:zlib";
+import { decodeBinaryNode } from "../../baileys/src/WABinary/decode.ts";
+import { encodeBinaryNode } from "../../baileys/src/WABinary/encode.ts";
+import { decodeNode, type BinaryNode } from "../dist/index.js";
 
-const testNode: BinaryNode = {
+/** `<ack>`, the smallest thing the socket sends and the one it sends most. */
+const ack: BinaryNode = {
+  tag: "ack",
+  attrs: {
+    to: "5511900000001@s.whatsapp.net",
+    id: "3EB0622825A79604144A",
+    class: "message",
+  },
+};
+
+/** A one to one text message, inbound shape. */
+const direct: BinaryNode = {
   tag: "message",
   attrs: {
-    to: "1234567890@s.whatsapp.net",
-    from: "1234567890-123456@g.us",
-    participant: "2345678901@s.whatsapp.net",
+    from: "5511900000001@s.whatsapp.net",
     id: "3EB0622825A79604144A",
     type: "text",
-    t: String(Math.floor(Date.now() / 1000)),
+    t: "1785984009",
+    notify: "someone",
   },
   content: [
-    {
-      tag: "conversation",
-      attrs: {},
-      content:
-        "Hello from a benchmark test! This is a slightly longer message to ensure the test is not trivial.",
+    { tag: "enc", attrs: { v: "2", type: "msg", count: "0" }, content: new Uint8Array(220).fill(7) },
+    { tag: "device-identity", attrs: {}, content: new Uint8Array(64).fill(9) },
+  ],
+};
+
+/** A device fanout, the shape `createParticipantNodes` builds on every send. */
+function fanout(devices: number): BinaryNode {
+  return {
+    tag: "message",
+    attrs: {
+      to: "120363021033254949@g.us",
+      id: "3EB0622825A79604144A",
+      type: "text",
+      t: "1785984009",
     },
-    {
-      tag: "ephemeral_setting",
-      attrs: {
-        timestamp: String(Date.now()),
-        expiration: "604800",
+    content: [
+      { tag: "enc", attrs: { v: "2", type: "skmsg", count: "0" }, content: new Uint8Array(256).fill(7) },
+      {
+        tag: "participants",
+        attrs: {},
+        content: Array.from({ length: devices }, (_, i) => ({
+          tag: "to",
+          attrs: { jid: `55119000${String(i).padStart(5, "0")}.${i % 4}@s.whatsapp.net` },
+          content: [
+            {
+              tag: "enc",
+              attrs: { v: "2", type: i % 3 === 0 ? "pkmsg" : "msg", count: "0" },
+              content: new Uint8Array(96).fill(3),
+            },
+          ],
+        })),
       },
-      content: undefined,
+      { tag: "device-identity", attrs: {}, content: new Uint8Array(64).fill(9) },
+    ],
+  };
+}
+
+/** An app state patch, the payload the server sends compressed. */
+const appState: BinaryNode = {
+  tag: "iq",
+  attrs: { from: "@s.whatsapp.net", type: "result", id: "48261745", xmlns: "w:sync:app:state" },
+  content: [
+    {
+      tag: "sync",
+      attrs: {},
+      content: Array.from({ length: 24 }, (_, i) => ({
+        tag: "collection",
+        attrs: { name: "regular_high", version: String(i), return_snapshot: "false" },
+        content: [{ tag: "patch", attrs: {}, content: new Uint8Array(512).fill(i & 0xff) }],
+      })),
     },
   ],
 };
 
-const legacyEncoded = encodeBinaryNodeOld(testNode);
-const compressedEncoded = Buffer.concat([
-  Buffer.from([0x02]),
-  deflateSync(legacyEncoded.subarray(1)),
-]);
+/** Sends arrive with a leading 0x02 and the body deflated. */
+function compress(frame: Buffer): Buffer {
+  return Buffer.concat([Buffer.from([0x02]), deflateSync(frame.subarray(1))]);
+}
 
-const touchHotPath = (node: BinaryNode) => {
-  const attrs = node.attrs;
-  do_not_optimize(attrs.id);
-  do_not_optimize(attrs.from);
-  do_not_optimize(attrs.participant);
+/** Reads every tag, attribute and leaf, the way the socket eventually does. */
+function walk(node: BinaryNode): number {
+  let seen = 0;
+  do_not_optimize(node.tag);
+  for (const key of Object.keys(node.attrs)) {
+    do_not_optimize(node.attrs[key]);
+    seen++;
+  }
 
   const content = node.content;
   if (Array.isArray(content)) {
-    const first = content[0];
-    if (first) {
-      do_not_optimize(first.tag);
-      const firstAttrs = first.attrs;
-      do_not_optimize(firstAttrs);
-      do_not_optimize(first.content);
-    }
-    const second = content[1];
-    if (second) {
-      const secondAttrs = second.attrs;
-      do_not_optimize(secondAttrs.timestamp);
-      do_not_optimize(secondAttrs.expiration);
-      do_not_optimize(second.content);
-    }
-  } else {
-    do_not_optimize(content);
+    for (const child of content) seen += walk(child as BinaryNode);
+  } else if (content) {
+    do_not_optimize((content as Uint8Array).length ?? content);
+    seen++;
   }
 
-  const attrsAgain = node.attrs;
-  do_not_optimize(attrsAgain.id);
-  const contentAgain = node.content;
-  do_not_optimize(contentAgain);
-  const attrsThird = node.attrs;
-  do_not_optimize(attrsThird.from);
-};
+  return seen;
+}
 
-boxplot(() => {
-  summary(() => {
-    bench("encodeNode Rust WASM", () => {
-      const result = encodeNode(testNode);
-      do_not_optimize(result);
+const cases: [string, BinaryNode][] = [
+  ["ack", ack],
+  ["direct", direct],
+  ["fanout 8", fanout(8)],
+  ["fanout 64", fanout(64)],
+  ["app state", appState],
+];
+
+for (const [name, node] of cases) {
+  const frame = encodeOld(node) as Buffer;
+  const packed = compress(frame);
+
+  console.log(`\n--- ${name}: ${frame.length} byte frame, ${packed.length} compressed ---`);
+
+  boxplot(() => {
+    summary(() => {
+      bench(`encode ${name} (wasm)`, () => {
+        do_not_optimize(encodeBinaryNode(node));
+      });
+
+      bench(`encode ${name} (js)`, () => {
+        do_not_optimize(encodeOld(node));
+      });
     });
 
-    bench("encodeNode Old Baileys", () => {
-      const result = encodeBinaryNodeOld(testNode);
-      do_not_optimize(result);
+    summary(() => {
+      bench(`decode ${name} (wasm)`, async () => {
+        do_not_optimize(await decodeBinaryNode(frame));
+      });
+
+      bench(`decode ${name} (js)`, async () => {
+        do_not_optimize(await decodeOld(frame));
+      });
+    });
+
+    summary(() => {
+      bench(`decode+walk ${name} (wasm)`, async () => {
+        do_not_optimize(walk(await decodeBinaryNode(frame)));
+      });
+
+      bench(`decode+walk ${name} (js)`, async () => {
+        do_not_optimize(walk((await decodeOld(frame)) as BinaryNode));
+      });
+    });
+
+    summary(() => {
+      bench(`decode ${name} compressed (wasm)`, async () => {
+        do_not_optimize(await decodeBinaryNode(packed));
+      });
+
+      bench(`decode ${name} compressed (js)`, async () => {
+        do_not_optimize(await decodeOld(packed));
+      });
     });
   });
+}
 
-  summary(() => {
-    bench("decodeNode Rust WASM", () => {
-      const handle = decodeNode(legacyEncoded);
-      do_not_optimize(handle);
-    });
+// The handle API is no longer on the Baileys path. It stays exported, and a
+// caller that reads more than a couple of fields pays a crossing per field, so
+// keep the cost of a full read on the record.
+{
+  const frame = encodeOld(fanout(8)) as Buffer;
+  boxplot(() => {
+    summary(() => {
+      bench("decode+walk fanout 8 (wasm flat)", async () => {
+        do_not_optimize(walk(await decodeBinaryNode(frame)));
+      });
 
-    bench("decodeNode Old Baileys", async () => {
-      const handle = await decodeBinaryNodeOld(legacyEncoded);
-      do_not_optimize(handle);
-    });
-  });
-
-  summary(() => {
-    bench("decode and attrs Rust WASM", () => {
-      const handle = decodeNode(legacyEncoded);
-      touchHotPath(handle);
-    });
-
-    bench("decode and attrs Old Baileys", async () => {
-      const handle = await decodeBinaryNodeOld(legacyEncoded);
-      touchHotPath(handle);
+      bench("decode+walk fanout 8 (wasm handle)", () => {
+        const handle = decodeNode(frame);
+        do_not_optimize(walk(handle as unknown as BinaryNode));
+        handle.free();
+      });
     });
   });
-
-  summary(() => {
-    bench("decode and attrs (compressed) Rust WASM", () => {
-      const handle = decodeNode(compressedEncoded);
-      touchHotPath(handle);
-    });
-
-    bench("decode and attrs (compressed) Old Baileys", async () => {
-      const handle = await decodeBinaryNodeOld(compressedEncoded);
-      touchHotPath(handle);
-    });
-  });
-});
+}
 
 await run();
