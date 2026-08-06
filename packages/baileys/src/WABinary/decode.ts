@@ -5,11 +5,6 @@ import type { BinaryNode } from './types'
 
 const inflatePromise = promisify(inflate)
 
-/**
- * Inflation stays here rather than in the bridge: node runs zlib on the thread
- * pool, and doing it inside the WASM call blocks the loop long enough on a
- * compressed group stanza to miss deadlines.
- */
 export const decompressingIfRequired = async (buffer: Buffer) =>
 	2 & buffer.readUInt8() ? await inflatePromise(buffer.subarray(1)) : buffer.subarray(1)
 
@@ -19,66 +14,72 @@ export const decompressingIfRequired = async (buffer: Buffer) =>
 const TOKENS = tokenTable() as (string | undefined)[]
 const TOKEN_BASE = 1 << 24
 
+// Reader state lives here rather than in a closure the decode captures: V8
+// allocates a context object per call for that, and on a small stanza the
+// allocation is a fifth of the decode. Everything below runs synchronously
+// within one `decodeBinaryNode` call.
+let pool: string[] = []
+let words: Uint32Array<ArrayBufferLike> = new Uint32Array(0)
+let blobs: Buffer<ArrayBufferLike> = Buffer.alloc(0)
+let cursor = 0
+
+const read = (): BinaryNode => {
+	let index = words[cursor++]!
+	const tag = index >= TOKEN_BASE ? TOKENS[index - TOKEN_BASE]! : pool[index]!
+
+	const attrCount = words[cursor++]!
+	const attrs: { [key: string]: string } = {}
+	for (let i = 0; i < attrCount; i++) {
+		index = words[cursor++]!
+		const key = index >= TOKEN_BASE ? TOKENS[index - TOKEN_BASE]! : pool[index]!
+		index = words[cursor++]!
+		attrs[key] = index >= TOKEN_BASE ? TOKENS[index - TOKEN_BASE]! : pool[index]!
+	}
+
+	const kind = words[cursor++]
+	let content: BinaryNode['content']
+	if (kind === 1) {
+		const offset = words[cursor++]!
+		content = blobs.subarray(offset, offset + words[cursor++]!)
+	} else if (kind === 2) {
+		index = words[cursor++]!
+		content = index >= TOKEN_BASE ? TOKENS[index - TOKEN_BASE]! : pool[index]!
+	} else if (kind === 3) {
+		const count = words[cursor++]!
+		const children = new Array<BinaryNode>(count)
+		for (let i = 0; i < count; i++) children[i] = read()
+		content = children
+	}
+
+	return { tag, attrs, content }
+}
+
 /**
- * The bridge hands the tree over as one buffer and this assembles it, rather
- * than exposing a handle whose every field crosses the boundary. Measured
- * against the TypeScript decoder it replaces, on a group stanza: 1.05x faster
- * at one participant, 1.12x at eight, 1.20x at sixty-four.
+ * Assembles the tree from the sections the bridge exposes, rather than from a
+ * handle whose every field crosses the boundary.
  *
- * Layout, sections aligned to 4 so the views cost nothing:
- *   u32 stringBytes, u32 offsetCount, u32 layoutCount, u32 blobBytes
- *   string data | u32 offsets | u32 layout | blob data
+ * Those sections point straight into WASM memory and only live until the next
+ * bridge call. Strings are materialised here and the layout is read here, so
+ * the one thing that escapes is byte content, and that gets its own copy.
+ *
+ * Inflation is inlined rather than awaited through `decompressingIfRequired`:
+ * an uncompressed frame is the common case and it does not need the second
+ * async hop, which on a small stanza costs more than the decode.
  */
 export const decodeBinaryNode = async (buff: Buffer): Promise<BinaryNode> => {
-	const buf = decodeNodeFlat(await decompressingIfRequired(buff))
-	const header = new Uint32Array(buf.buffer, buf.byteOffset, 4)
-	const stringBytes = header[0]!
-	const offsetCount = header[1]!
-	const layoutCount = header[2]!
+	const body = 2 & buff.readUInt8() ? await inflatePromise(buff.subarray(1)) : buff.subarray(1)
+	const flat = decodeNodeFlat(body)
+	const { bytes, stringsAt, offsetsAt, offsetCount, blobsAt, blobBytes } = flat
+	words = flat.words
 
-	const all = Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength)
-	let at = 16
-	const stringsAt = at
-	at += stringBytes
-	at += (4 - (at % 4)) % 4
-	const offsets = new Uint32Array(buf.buffer, buf.byteOffset + at, offsetCount)
-	at += offsetCount * 4
-	const layout = new Uint32Array(buf.buffer, buf.byteOffset + at, layoutCount)
-	at += layoutCount * 4
-	const blobsAt = at
-
-	const pool = new Array<string>(offsetCount - 1)
-	for (let i = 0; i < pool.length; i++) {
-		pool[i] = all.toString('utf8', stringsAt + offsets[i]!, stringsAt + offsets[i + 1]!)
+	const count = offsetCount - 1
+	pool = new Array<string>(count)
+	for (let i = 0; i < count; i++) {
+		pool[i] = bytes.toString('utf8', stringsAt + words[offsetsAt + i]!, stringsAt + words[offsetsAt + i + 1]!)
 	}
 
-	const str = (index: number) => (index >= TOKEN_BASE ? TOKENS[index - TOKEN_BASE]! : pool[index]!)
-
-	let cursor = 0
-	const read = (): BinaryNode => {
-		const tag = str(layout[cursor++]!)
-		const attrCount = layout[cursor++]!
-		const attrs: { [key: string]: string } = {}
-		for (let i = 0; i < attrCount; i++) {
-			attrs[str(layout[cursor++]!)] = str(layout[cursor++]!)
-		}
-
-		const kind = layout[cursor++]
-		let content: BinaryNode['content']
-		if (kind === 1) {
-			const offset = layout[cursor++]!
-			content = all.subarray(blobsAt + offset, blobsAt + offset + layout[cursor++]!)
-		} else if (kind === 2) {
-			content = str(layout[cursor++]!)
-		} else if (kind === 3) {
-			const count = layout[cursor++]!
-			const children = new Array<BinaryNode>(count)
-			for (let i = 0; i < count; i++) children[i] = read()
-			content = children
-		}
-
-		return { tag, attrs, content }
-	}
-
+	// One copy for the whole section, so the leaves stay views into it.
+	blobs = blobBytes ? Buffer.from(bytes.subarray(blobsAt, blobsAt + blobBytes)) : bytes
+	cursor = flat.layoutAt
 	return read()
 }

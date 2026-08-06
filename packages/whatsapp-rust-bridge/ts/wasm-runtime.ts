@@ -47,6 +47,14 @@ function compileWasm(location: WasmLocation): WebAssembly.Module {
 	return new WebAssembly.Module(readWasm(location));
 }
 
+let memory: WebAssembly.Memory | undefined;
+
+/** Linear memory of the instantiated module, for the flat codec views. */
+export function wasmMemory(): WebAssembly.Memory {
+	if (!memory) throw new Error("whatsapp-rust-bridge WASM is not initialized");
+	return memory;
+}
+
 export function initializeWasm(
 	resolveWasm: (variant: WasmVariant) => WasmLocation,
 ): boolean {
@@ -56,7 +64,7 @@ export function initializeWasm(
 	if (simdSupported) {
 		try {
 			const module = compileWasm(resolveWasm("simd"));
-			initSync({ module });
+			memory = initSync({ module }).memory;
 			return true;
 		} catch (error) {
 			// A SIMD compile failure can still happen if the probe and the actual
@@ -69,6 +77,6 @@ export function initializeWasm(
 	}
 
 	const module = compileWasm(resolveWasm("nosimd"));
-	initSync({ module });
+	memory = initSync({ module }).memory;
 	return false;
 }

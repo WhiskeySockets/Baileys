@@ -12,62 +12,71 @@ const TOKEN_INDEX = new Map<string, number>()
 	}
 }
 
+// Held across calls for the same reason the decoder holds its reader state:
+// the four collections and the closures capturing them were a fifth of the
+// cost of encoding a small stanza. `flatten` runs to completion synchronously.
+const layout: number[] = []
+const strings: Buffer[] = []
+const offsets: number[] = [0]
+const seen = new Map<string, number>()
+const blobs: Buffer[] = []
+let stringLen = 0
+let blobLen = 0
+
+const intern = (value: string): number => {
+	const token = TOKEN_INDEX.get(value)
+	if (token !== undefined) return token
+
+	const hit = seen.get(value)
+	if (hit !== undefined) return hit
+
+	const index = offsets.length - 1
+	const bytes = Buffer.from(value, 'utf8')
+	strings.push(bytes)
+	stringLen += bytes.length
+	offsets.push(stringLen)
+	seen.set(value, index)
+	return index
+}
+
+const push = (node: BinaryNode) => {
+	layout.push(intern(node.tag))
+	const keys = Object.keys(node.attrs)
+	layout.push(keys.length)
+	for (const key of keys) {
+		layout.push(intern(key), intern(String(node.attrs[key])))
+	}
+
+	const content = node.content
+	if (content === undefined || content === null) {
+		layout.push(0)
+	} else if (typeof content === 'string') {
+		layout.push(2, intern(content))
+	} else if (Array.isArray(content)) {
+		layout.push(3, content.length)
+		for (const child of content) push(child)
+	} else {
+		const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content)
+		layout.push(1, blobLen, bytes.length)
+		blobs.push(bytes)
+		blobLen += bytes.length
+	}
+}
+
 /**
  * Serialises the tree into one buffer for the bridge to read.
  *
  * Letting Rust pull the node apart through `Reflect` was 56% of the encode
- * profile: a crossing per tag, key and value. This crosses once. Measured
- * against the TypeScript encoder it replaces: 2.11x faster at one participant,
- * 2.80x at eight, 3.04x at sixty-four.
+ * profile: a crossing per tag, key and value. This crosses once.
  */
 const flatten = (root: BinaryNode): Buffer => {
-	const layout: number[] = []
-	const strings: Buffer[] = []
-	const offsets: number[] = [0]
-	const seen = new Map<string, number>()
-	const blobs: Buffer[] = []
-	let stringLen = 0
-	let blobLen = 0
-
-	const intern = (value: string) => {
-		const token = TOKEN_INDEX.get(value)
-		if (token !== undefined) return token
-
-		const hit = seen.get(value)
-		if (hit !== undefined) return hit
-
-		const index = offsets.length - 1
-		const bytes = Buffer.from(value, 'utf8')
-		strings.push(bytes)
-		stringLen += bytes.length
-		offsets.push(stringLen)
-		seen.set(value, index)
-		return index
-	}
-
-	const push = (node: BinaryNode) => {
-		layout.push(intern(node.tag))
-		const keys = Object.keys(node.attrs)
-		layout.push(keys.length)
-		for (const key of keys) {
-			layout.push(intern(key), intern(String(node.attrs[key])))
-		}
-
-		const content = node.content
-		if (content === undefined || content === null) {
-			layout.push(0)
-		} else if (typeof content === 'string') {
-			layout.push(2, intern(content))
-		} else if (Array.isArray(content)) {
-			layout.push(3, content.length)
-			for (const child of content) push(child)
-		} else {
-			const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content)
-			layout.push(1, blobLen, bytes.length)
-			blobs.push(bytes)
-			blobLen += bytes.length
-		}
-	}
+	layout.length = 0
+	strings.length = 0
+	offsets.length = 1
+	blobs.length = 0
+	seen.clear()
+	stringLen = 0
+	blobLen = 0
 
 	push(root)
 
@@ -105,4 +114,4 @@ const flatten = (root: BinaryNode): Buffer => {
 	return out
 }
 
-export const encodeBinaryNode = (node: BinaryNode): Buffer => Buffer.from(encodeNodeFlat(flatten(node)))
+export const encodeBinaryNode = (node: BinaryNode): Buffer => encodeNodeFlat(flatten(node))

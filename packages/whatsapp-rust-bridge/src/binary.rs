@@ -2,10 +2,11 @@ use js_sys::{Array, Object, Uint8Array};
 use std::borrow::Cow;
 use std::cell::{RefCell, UnsafeCell};
 use std::collections::HashMap;
+use std::io::Write;
 use std::mem;
 use std::rc::Rc;
 use wacore_binary::{
-    marshal::{marshal_ref, unmarshal_ref},
+    marshal::{marshal_ref, marshal_ref_to_vec, unmarshal_ref},
     node::{AttrsRef, NodeContentRef, NodeRef, NodeStr, ValueRef},
     token::{TokenKind, get_double_token, get_single_token, index_of_token},
     util::unpack,
@@ -353,12 +354,44 @@ fn token_index(value: &str) -> Option<u32> {
     }
 }
 
+/// Where the last flat call left its output, as four `(offset, length)` pairs
+/// into linear memory: strings, string offsets, layout, blobs. The address is
+/// fixed, so the JS side reads it without a second crossing.
+///
+/// Handing back a `Uint8Array` instead cost around 500ns a call in JS object
+/// churn, which on a small stanza was most of the decode, and forced the four
+/// sections to be concatenated into a fifth buffer first.
+type FlatResult = [u32; 8];
+
+thread_local! {
+    static FLAT_RESULT: UnsafeCell<FlatResult> = const { UnsafeCell::new([0; 8]) };
+}
+
+#[wasm_bindgen(js_name = __flatResultPtr)]
+pub fn flat_result_ptr() -> u32 {
+    FLAT_RESULT.with(|cell| cell.get() as u32)
+}
+
+/// The sections stay borrowed from thread-local buffers that live until the
+/// next call, which is the window the caller is given to read them.
+fn publish(sections: [&[u8]; 4]) {
+    let mut result: FlatResult = [0; 8];
+    for (i, section) in sections.iter().enumerate() {
+        result[i * 2] = section.as_ptr() as u32;
+        result[i * 2 + 1] = section.len() as u32;
+    }
+
+    // SAFETY: wasm32 is single threaded and nothing holds a reference across
+    // this write.
+    FLAT_RESULT.with(|cell| unsafe { *cell.get() = result });
+}
+
 /// Takes the frame already inflated and without its prefix byte. Inflating
 /// here would do it synchronously on the main thread, and a compressed group
 /// stanza is large enough that the stall shows up as missed deadlines; node's
 /// zlib runs on the thread pool instead.
-#[wasm_bindgen(js_name = decodeNodeFlat)]
-pub fn decode_node_flat(data: &[u8]) -> Result<Uint8Array, JsValue> {
+#[wasm_bindgen(js_name = __decodeNodeFlat)]
+pub fn decode_node_flat(data: &[u8]) -> Result<(), JsValue> {
     if data.is_empty() {
         return Err(JsValue::from_str("Input data cannot be empty"));
     }
@@ -371,8 +404,15 @@ pub fn decode_node_flat(data: &[u8]) -> Result<Uint8Array, JsValue> {
         let mut builder = cell.borrow_mut();
         builder.reset();
         builder.push(&node);
-        Ok(builder.finish())
-    })
+        publish([
+            &builder.strings,
+            as_bytes(&builder.string_offsets),
+            as_bytes(&builder.layout),
+            &builder.bytes,
+        ]);
+    });
+
+    Ok(())
 }
 
 thread_local! {
@@ -387,31 +427,15 @@ impl FlatBuilder {
         self.strings.clear();
         self.string_offsets.clear();
         self.string_offsets.push(0);
-        self.seen.clear();
         self.layout.clear();
         self.bytes.clear();
-    }
-
-    fn finish(&mut self) -> Uint8Array {
-        let pad = (4 - (self.strings.len() % 4)) % 4;
-        let out = &mut self.out;
-        out.clear();
-        out.extend_from_slice(&(self.strings.len() as u32).to_le_bytes());
-        out.extend_from_slice(&(self.string_offsets.len() as u32).to_le_bytes());
-        out.extend_from_slice(&(self.layout.len() as u32).to_le_bytes());
-        out.extend_from_slice(&(self.bytes.len() as u32).to_le_bytes());
-        out.extend_from_slice(&self.strings);
-        out.resize(out.len() + pad, 0);
-        out.extend_from_slice(as_bytes(&self.string_offsets));
-        out.extend_from_slice(as_bytes(&self.layout));
-        out.extend_from_slice(&self.bytes);
-
-        Uint8Array::from(out.as_slice())
+        self.round = self.round.wrapping_add(1);
     }
 }
 
 /// u32 slice as bytes. wasm32 is little endian, which is the layout the JS
-/// side reads back with a `Uint32Array` view.
+/// side reads back with a `Uint32Array` view. Alignment carries over from the
+/// element type, which is what lets that view exist.
 fn as_bytes(values: &[u32]) -> &[u8] {
     // SAFETY: u32 has no padding and any bit pattern is a valid u8.
     unsafe {
@@ -425,15 +449,34 @@ fn as_bytes(values: &[u32]) -> &[u8] {
 #[derive(Default)]
 struct FxHasher(u64);
 
+const FX_SEED: u64 = 0x51_7c_c1_b7_27_22_0a_95;
+
 impl std::hash::Hasher for FxHasher {
     fn finish(&self) -> u64 {
         self.0
     }
 
+    /// Eight bytes a round. A byte at a time was 23% of the flat decode, most
+    /// of it spent on jids and message ids, which are the long strings.
+    ///
+    /// The tail is zero padded, so a value and the same value with trailing
+    /// NULs collide. Hits are verified against the stored bytes, and a miss
+    /// only costs the entry its dedup, so that is left alone.
     fn write(&mut self, bytes: &[u8]) {
-        for &b in bytes {
-            self.0 = (self.0.rotate_left(5) ^ u64::from(b)).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+        let mut hash = self.0;
+        let mut rest = bytes;
+        while let Some((chunk, tail)) = rest.split_first_chunk::<8>() {
+            hash = (hash.rotate_left(5) ^ u64::from_le_bytes(*chunk)).wrapping_mul(FX_SEED);
+            rest = tail;
         }
+
+        if !rest.is_empty() {
+            let mut last = [0u8; 8];
+            last[..rest.len()].copy_from_slice(rest);
+            hash = (hash.rotate_left(5) ^ u64::from_le_bytes(last)).wrapping_mul(FX_SEED);
+        }
+
+        self.0 = hash;
     }
 }
 
@@ -443,13 +486,18 @@ type FxBuild = std::hash::BuildHasherDefault<FxHasher>;
 struct FlatBuilder {
     strings: Vec<u8>,
     string_offsets: Vec<u32>,
-    /// Content hash to string index. Keyed by hash rather than by an owned
-    /// String: the bytes are already in `strings`, and allocating a String per
-    /// distinct tag on every decode showed up as allocator time.
-    seen: HashMap<u64, u32, FxBuild>,
+    /// Content hash to the decode that wrote it and the string index. Keyed by
+    /// hash rather than by an owned String: the bytes are already in `strings`,
+    /// and allocating a String per distinct tag on every decode showed up as
+    /// allocator time.
+    ///
+    /// Entries are aged out by `round` rather than cleared, because clearing
+    /// costs the whole table: one group stanza grows it, and every small stanza
+    /// after that pays to wipe the buckets it left behind.
+    seen: HashMap<u64, (u32, u32), FxBuild>,
+    round: u32,
     layout: Vec<u32>,
     bytes: Vec<u8>,
-    out: Vec<u8>,
 }
 
 impl FlatBuilder {
@@ -458,22 +506,46 @@ impl FlatBuilder {
             return index;
         }
 
+        let start = self.strings.len();
+        self.strings.extend_from_slice(value.as_bytes());
+        self.intern_written(start)
+    }
+
+    /// Interns an attribute value, writing a jid straight into the pool rather
+    /// than through `ValueRef::as_str`, which builds a `String` for every one
+    /// of them: a device fanout carries a jid per participant.
+    fn intern_value(&mut self, value: &ValueRef<'_>) -> u32 {
+        let jid = match value {
+            ValueRef::String(text) => return self.intern(text),
+            ValueRef::Jid(jid) => jid,
+        };
+
+        let start = self.strings.len();
+        let _ = write!(self.strings, "{jid}");
+        self.intern_written(start)
+    }
+
+    /// Takes bytes already appended to the pool and gives them an index,
+    /// dropping them again if this decode already wrote the same value.
+    fn intern_written(&mut self, start: usize) -> u32 {
         let mut hasher = FxHasher::default();
-        std::hash::Hasher::write(&mut hasher, value.as_bytes());
+        std::hash::Hasher::write(&mut hasher, &self.strings[start..]);
         let key = std::hash::Hasher::finish(&hasher);
 
-        if let Some(&index) = self.seen.get(&key) {
-            let start = self.string_offsets[index as usize] as usize;
-            let end = self.string_offsets[index as usize + 1] as usize;
-            if &self.strings[start..end] == value.as_bytes() {
+        if let Some(&(round, index)) = self.seen.get(&key)
+            && round == self.round
+        {
+            let from = self.string_offsets[index as usize] as usize;
+            let to = self.string_offsets[index as usize + 1] as usize;
+            if self.strings[from..to] == self.strings[start..] {
+                self.strings.truncate(start);
                 return index;
             }
         }
 
         let index = self.string_offsets.len() as u32 - 1;
-        self.strings.extend_from_slice(value.as_bytes());
         self.string_offsets.push(self.strings.len() as u32);
-        self.seen.insert(key, index);
+        self.seen.insert(key, (self.round, index));
         index
     }
 
@@ -485,7 +557,7 @@ impl FlatBuilder {
         self.layout.push(attrs.len() as u32);
         for (k, v) in attrs.iter() {
             let key = self.intern(k);
-            let value = self.intern(&v.as_str());
+            let value = self.intern_value(v);
             self.layout.push(key);
             self.layout.push(value);
         }
@@ -607,8 +679,15 @@ fn bad_index() -> JsValue {
     JsValue::from_str("flat encode: index out of range")
 }
 
-#[wasm_bindgen(js_name = encodeNodeFlat)]
-pub fn encode_node_flat(data: &[u8]) -> Result<Uint8Array, JsValue> {
+thread_local! {
+    static MARSHALLED: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Reads the flat buffer the caller built and writes the frame, published the
+/// same way a decode is. The caller copies it out: the frame outlives the call,
+/// unlike the sections a decode hands back.
+#[wasm_bindgen(js_name = __encodeNodeFlat)]
+pub fn encode_node_flat(data: &[u8]) -> Result<(), JsValue> {
     if data.len() < 16 {
         return Err(JsValue::from_str("flat encode: buffer too small"));
     }
@@ -654,6 +733,11 @@ pub fn encode_node_flat(data: &[u8]) -> Result<Uint8Array, JsValue> {
         cursor: 0,
     };
     let node = reader.read()?;
-    let bytes = marshal_ref(&node).map_err(|e| JsValue::from_str(&e.to_string()))?;
-    Ok(Uint8Array::from(bytes.as_slice()))
+    MARSHALLED.with(|cell| {
+        let mut out = cell.borrow_mut();
+        out.clear();
+        marshal_ref_to_vec(&node, &mut out).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        publish([&out, &[], &[], &[]]);
+        Ok(())
+    })
 }
