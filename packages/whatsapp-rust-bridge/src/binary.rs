@@ -6,6 +6,7 @@ use std::io::Write;
 use std::mem;
 use std::rc::Rc;
 use wacore_binary::{
+    jid::{JidRef, Server},
     marshal::{marshal_ref, marshal_ref_to_vec, unmarshal_ref},
     node::{AttrsRef, NodeContentRef, NodeRef, NodeStr, ValueRef},
     token::{TokenKind, get_double_token, get_single_token, index_of_token},
@@ -168,14 +169,38 @@ impl InternalBinaryNode {
     }
 }
 
-/// An attribute value as the JS side spells it.
+/// How a jid is spelled for the JS side, where the core's `Display` differs.
 ///
-/// A jid with no user renders as bare `s.whatsapp.net` in the core, and
+/// Two cases. A jid with no user renders as a bare `s.whatsapp.net`, and
 /// callers match those against a leading `@`: dropping it routes the server's
-/// own notifications down the wrong branch.
+/// own notifications down the wrong branch. And an interop jid carries an
+/// integrator that `Display` leaves out entirely, which collapses distinct
+/// identities onto one string.
+fn jid_string(jid: &JidRef<'_>) -> Option<String> {
+    if jid.server == Server::Interop {
+        return Some(format!(
+            "{}-{}:{}@{}",
+            jid.integrator,
+            jid.user,
+            jid.device,
+            Server::Interop.as_str()
+        ));
+    }
+
+    if jid.user.is_empty() {
+        return Some(format!("@{jid}"));
+    }
+
+    None
+}
+
+/// An attribute value as the JS side spells it.
 fn value_string<'a>(value: &'a ValueRef<'_>) -> Cow<'a, str> {
     match value {
-        ValueRef::Jid(jid) if jid.user.is_empty() => Cow::Owned(format!("@{jid}")),
+        ValueRef::Jid(jid) => match jid_string(jid) {
+            Some(text) => Cow::Owned(text),
+            None => value.as_str(),
+        },
         _ => value.as_str(),
     }
 }
@@ -608,12 +633,15 @@ impl FlatBuilder {
         };
 
         let start = self.strings.len();
-        // See `value_string`: a jid with no user has to keep its `@`.
-        if jid.user.is_empty() {
-            self.strings.push(b'@');
+        // The two shapes `Display` gets wrong for a JS caller go through the
+        // same helper the handle path uses, so the two cannot drift.
+        match jid_string(jid) {
+            Some(text) => self.strings.extend_from_slice(text.as_bytes()),
+            None => {
+                let _ = write!(self.strings, "{jid}");
+            }
         }
 
-        let _ = write!(self.strings, "{jid}");
         self.intern_written(start)
     }
 

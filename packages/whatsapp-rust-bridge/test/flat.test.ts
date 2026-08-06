@@ -445,3 +445,35 @@ describe("flat codec intern table", () => {
   });
 });
 
+
+describe("jid shapes the core spells differently", () => {
+  /**
+   * The encoder never emits `INTEROP_JID`, so the frame is built by hand:
+   * LIST_8 of 3, tag `a`, attribute `k` whose value is tag 245 carrying user
+   * `abc`, device 42, integrator 7 and the `interop` server.
+   */
+  const interopFrame = Uint8Array.from([
+    248, 3, 252, 1, 97, 252, 1, 107, 245, 252, 3, 97, 98, 99, 0, 42, 0, 7, 252, 7, 105, 110, 116,
+    101, 114, 111, 112,
+  ]);
+
+  it("keeps the integrator on an interop jid", () => {
+    // `Display` leaves it out, which collapses distinct interop identities
+    // onto one string. The decoder this replaced wrote it in front.
+    expect(build(decodeNodeFlat(interopFrame)).attrs.k).toBe("7-abc:42@interop");
+  });
+
+  it("spells an interop jid the same way through the handle", () => {
+    const framed = new Uint8Array(interopFrame.length + 1);
+    framed.set(interopFrame, 1);
+    expect(decodeNode(framed).attrs.k).toBe("7-abc:42@interop");
+  });
+
+  it("keeps the `@` on a server-only jid through both paths", () => {
+    const frame = frameOf({ tag: "iq", attrs: { from: "@s.whatsapp.net" } });
+    expect(build(decodeNodeFlat(frame)).attrs.from).toBe("@s.whatsapp.net");
+    expect(decodeNode(encodeNode({ tag: "iq", attrs: { from: "@s.whatsapp.net" } })).attrs.from).toBe(
+      "@s.whatsapp.net"
+    );
+  });
+});

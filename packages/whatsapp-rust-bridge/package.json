@@ -20,6 +20,7 @@
         "dist/index.js",
         "dist/index.cjs",
         "dist/index.d.ts",
+        "dist/flat.d.ts",
         "dist/wasm/simd.wasm",
         "dist/wasm/nosimd.wasm",
         "pkg/whatsapp_rust_bridge.d.ts"
