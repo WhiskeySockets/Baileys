@@ -41,3 +41,25 @@ describe('WABinary codec', () => {
 		expect(encodeBinaryNode(await decodeBinaryNode(frame))).toEqual(frame)
 	})
 })
+
+describe('WABinary encoder guards', () => {
+	it('refuses a node with no tag', () => {
+		// An empty tag has no valid encoding; interning it put a malformed
+		// stanza on the socket instead of failing here.
+		expect(() => encodeBinaryNode({ tag: '', attrs: {} })).toThrow('tag cannot be undefined')
+		expect(() => encodeBinaryNode({ tag: 'a', attrs: {}, content: [{ tag: '', attrs: {} }] })).toThrow(
+			'tag cannot be undefined'
+		)
+	})
+
+	it('drops a child left out of a conditionally built list', async () => {
+		const node = {
+			tag: 'a',
+			attrs: {},
+			content: [null, { tag: 'b', attrs: {} }, undefined]
+		} as unknown as BinaryNode
+
+		const decoded = await decodeBinaryNode(encodeBinaryNode(node))
+		expect((decoded.content as BinaryNode[]).map(child => child.tag)).toEqual(['b'])
+	})
+})

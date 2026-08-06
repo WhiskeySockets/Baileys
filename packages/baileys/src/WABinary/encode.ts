@@ -40,6 +40,12 @@ const intern = (value: string): number => {
 }
 
 const push = (node: BinaryNode) => {
+	// A node with no tag has no valid encoding, and interning the empty string
+	// would put a malformed stanza on the socket instead of failing here.
+	if (!node.tag) {
+		throw new Error('Invalid node: tag cannot be undefined')
+	}
+
 	layout.push(intern(node.tag))
 
 	// An attribute set to null or undefined is omitted, not written as the
@@ -68,8 +74,19 @@ const push = (node: BinaryNode) => {
 	} else if (typeof content === 'string') {
 		layout.push(2, intern(content))
 	} else if (Array.isArray(content)) {
-		layout.push(3, content.length)
-		for (const child of content) push(child)
+		// A child left out of a conditionally built list arrives as null, and
+		// the previous encoder dropped it rather than reading `tag` off it.
+		const childrenAt = layout.length + 1
+		layout.push(3, 0)
+		let children = 0
+		for (const child of content) {
+			if (!child) continue
+
+			push(child)
+			children++
+		}
+
+		layout[childrenAt] = children
 	} else {
 		const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content)
 		layout.push(1, blobLen, bytes.length)

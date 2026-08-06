@@ -383,6 +383,24 @@ describe("flat codec regressions", () => {
     });
   });
 
+  it("serializes a value written through the object a getter handed out", () => {
+    const handle = decodeNode(
+      encodeNode({ tag: "a", attrs: { x: "1" }, content: [{ tag: "b", attrs: { y: "2" } }] })
+    );
+
+    // Assigning over the getter is not the only way to change a node: the
+    // object it returns is live, and so is a child handle.
+    (handle.attrs as Record<string, string>).x = "in place";
+    const children = handle.content as unknown as { attrs: Record<string, string> }[];
+    children[0]!.attrs.y = "child";
+
+    expect(JSON.parse(JSON.stringify(handle))).toEqual({
+      tag: "a",
+      attrs: { x: "in place" },
+      content: [{ tag: "b", attrs: { y: "child" } }],
+    });
+  });
+
   it("still serializes the parsed node when nobody wrote to it", () => {
     const handle = decodeNode(encodeNode({ tag: "a", attrs: { x: "1" }, content: "hi" }));
     const json = handle.toJSON() as { tag: string; attrs: Record<string, string> };

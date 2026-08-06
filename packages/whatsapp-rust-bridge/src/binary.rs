@@ -1,6 +1,6 @@
 use js_sys::{Array, Object, Uint8Array};
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell, UnsafeCell};
+use std::cell::{RefCell, UnsafeCell};
 use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
@@ -123,11 +123,6 @@ pub struct InternalBinaryNode {
     node_ref: NodeRef<'static>,
     cached_attrs: UnsafeCell<Option<Attrs>>,
     cached_content: UnsafeCell<Option<Content>>,
-    /// Whether a setter, rather than a getter filling its cache, put the
-    /// current value there. `toJSON` serializes the parsed node when it can,
-    /// which is only right for a node nobody has written to.
-    attrs_written: Cell<bool>,
-    content_written: Cell<bool>,
 }
 
 thread_local! {
@@ -201,35 +196,33 @@ impl InternalBinaryNode {
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> JsValue {
         // SAFETY: WASM is single-threaded
-        let written_attrs = self
-            .attrs_written
-            .get()
-            .then(|| unsafe { &*self.cached_attrs.get() }.clone())
-            .flatten();
-        let written_content = self
-            .content_written
-            .get()
-            .then(|| unsafe { &*self.cached_content.get() }.clone())
-            .flatten();
+        let attrs_cache = unsafe { &*self.cached_attrs.get() };
+        let content_cache = unsafe { &*self.cached_content.get() };
 
-        if written_attrs.is_none() && written_content.is_none() {
+        // Nothing has been handed out, so nothing can have been changed and
+        // the parsed node is the whole truth. Every reader takes this path.
+        if attrs_cache.is_none() && content_cache.is_none() {
             return Self::node_to_json(self.node_ref());
         }
 
+        // Past that, a caller may have written through the object a getter
+        // gave it, assigned over it, or written to a child handle, and none of
+        // those reach `node_ref`.
         let obj = Object::new();
         let _ = js_sys::Reflect::set(
             &obj,
             &JsValue::from_str("tag"),
             &intern(&self.node_ref().tag),
         );
-        let attrs = match written_attrs {
-            Some(attrs) => attrs.into(),
+
+        let attrs = match attrs_cache {
+            Some(attrs) => attrs.clone().into(),
             None => Self::convert_attrs(&self.node_ref().attrs).into(),
         };
         let _ = js_sys::Reflect::set(&obj, &JsValue::from_str("attrs"), &attrs);
 
-        let content = match written_content {
-            Some(content) => Some(content.into()),
+        let content = match content_cache {
+            Some(content) => Some(Self::serialize_cached_content(&content.clone().into())),
             None => Self::content_to_json(self.node_ref()),
         };
 
@@ -238,6 +231,29 @@ impl InternalBinaryNode {
         }
 
         obj.into()
+    }
+
+    /// Children come back from the getter as handles, which carry writes of
+    /// their own, so each one serializes itself.
+    fn serialize_cached_content(content: &JsValue) -> JsValue {
+        if !Array::is_array(content) {
+            return content.clone();
+        }
+
+        let items = Array::from(content);
+        let out = Array::new_with_length(items.length());
+        let to_json = JsValue::from_str("toJSON");
+        for i in 0..items.length() {
+            let item = items.get(i);
+            let serialized = js_sys::Reflect::get(&item, &to_json)
+                .ok()
+                .filter(|f| f.is_function())
+                .and_then(|f| f.unchecked_into::<js_sys::Function>().call0(&item).ok())
+                .unwrap_or(item);
+            out.set(i, serialized);
+        }
+
+        out.into()
     }
 
     fn node_to_json(node: &NodeRef<'_>) -> JsValue {
@@ -289,7 +305,6 @@ impl InternalBinaryNode {
     pub fn set_attrs(&self, new_attrs: Attrs) {
         // SAFETY: WASM is single-threaded
         unsafe { *self.cached_attrs.get() = Some(new_attrs) };
-        self.attrs_written.set(true);
     }
 
     #[wasm_bindgen(getter)]
@@ -313,8 +328,6 @@ impl InternalBinaryNode {
                         node_ref: node_ref.clone(),
                         cached_attrs: UnsafeCell::new(None),
                         cached_content: UnsafeCell::new(None),
-                        attrs_written: Cell::new(false),
-                        content_written: Cell::new(false),
                     };
                     arr.set(i as u32, child.into());
                 }
@@ -331,7 +344,6 @@ impl InternalBinaryNode {
     pub fn set_content(&self, new_content: Content) {
         // SAFETY: WASM is single-threaded
         unsafe { *self.cached_content.get() = Some(new_content) };
-        self.content_written.set(true);
     }
 }
 
@@ -363,8 +375,6 @@ pub fn decode_node(data: Vec<u8>) -> Result<InternalBinaryNode, JsValue> {
         node_ref,
         cached_attrs: UnsafeCell::new(None),
         cached_content: UnsafeCell::new(None),
-        attrs_written: Cell::new(false),
-        content_written: Cell::new(false),
     })
 }
 
