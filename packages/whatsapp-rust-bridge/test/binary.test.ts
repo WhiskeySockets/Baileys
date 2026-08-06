@@ -81,6 +81,8 @@ describe("Binary Marshalling", () => {
     expect(attrs).toBeInstanceOf(Object);
     expect(Object.keys(attrs)).toHaveLength(4);
     expect(attrs["xmlns"]).toBe("test-xmlns");
+    // A bare server name is a token, not a JID pair, so it decodes
+    // literally. `@s.whatsapp.net` is the pair, and keeps its `@`.
     expect(attrs["to"]).toBe("s.whatsapp.net");
     expect(attrs["nonexistent"]).toBeUndefined();
 

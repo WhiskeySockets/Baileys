@@ -41,11 +41,26 @@ const intern = (value: string): number => {
 
 const push = (node: BinaryNode) => {
 	layout.push(intern(node.tag))
-	const keys = Object.keys(node.attrs)
-	layout.push(keys.length)
-	for (const key of keys) {
-		layout.push(intern(key), intern(String(node.attrs[key])))
+
+	// An attribute set to null or undefined is omitted, not written as the
+	// text "undefined". Optional attributes reach here unset from call sites
+	// like a phone-only USync user and a media retry with no participant, and a
+	// literal would go out on the wire.
+	//
+	// The count is backfilled rather than derived from a filtered array: that
+	// array is one allocation per node, and it cost 15% of a device fanout.
+	const countAt = layout.length
+	layout.push(0)
+	let kept = 0
+	for (const key of Object.keys(node.attrs)) {
+		const value = node.attrs[key]
+		if (value === undefined || value === null) continue
+
+		layout.push(intern(key), intern(String(value)))
+		kept++
 	}
+
+	layout[countAt] = kept
 
 	const content = node.content
 	if (content === undefined || content === null) {

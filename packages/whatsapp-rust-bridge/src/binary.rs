@@ -1,6 +1,6 @@
 use js_sys::{Array, Object, Uint8Array};
 use std::borrow::Cow;
-use std::cell::{RefCell, UnsafeCell};
+use std::cell::{Cell, RefCell, UnsafeCell};
 use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
@@ -123,6 +123,11 @@ pub struct InternalBinaryNode {
     node_ref: NodeRef<'static>,
     cached_attrs: UnsafeCell<Option<Attrs>>,
     cached_content: UnsafeCell<Option<Content>>,
+    /// Whether a setter, rather than a getter filling its cache, put the
+    /// current value there. `toJSON` serializes the parsed node when it can,
+    /// which is only right for a node nobody has written to.
+    attrs_written: Cell<bool>,
+    content_written: Cell<bool>,
 }
 
 thread_local! {
@@ -162,9 +167,21 @@ impl InternalBinaryNode {
     fn convert_attrs(attrs: &AttrsRef<'_>) -> Attrs {
         let obj = Object::new();
         for (k, v) in attrs.as_slice().iter() {
-            let _ = js_sys::Reflect::set(&obj, &intern(k), &intern(&v.as_str()));
+            let _ = js_sys::Reflect::set(&obj, &intern(k), &intern(&value_string(v)));
         }
         obj.unchecked_into()
+    }
+}
+
+/// An attribute value as the JS side spells it.
+///
+/// A jid with no user renders as bare `s.whatsapp.net` in the core, and
+/// callers match those against a leading `@`: dropping it routes the server's
+/// own notifications down the wrong branch.
+fn value_string<'a>(value: &'a ValueRef<'_>) -> Cow<'a, str> {
+    match value {
+        ValueRef::Jid(jid) if jid.user.is_empty() => Cow::Owned(format!("@{jid}")),
+        _ => value.as_str(),
     }
 }
 
@@ -183,7 +200,44 @@ impl InternalBinaryNode {
     /// the nodes it reads once instead of on each getter.
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> JsValue {
-        Self::node_to_json(self.node_ref())
+        // SAFETY: WASM is single-threaded
+        let written_attrs = self
+            .attrs_written
+            .get()
+            .then(|| unsafe { &*self.cached_attrs.get() }.clone())
+            .flatten();
+        let written_content = self
+            .content_written
+            .get()
+            .then(|| unsafe { &*self.cached_content.get() }.clone())
+            .flatten();
+
+        if written_attrs.is_none() && written_content.is_none() {
+            return Self::node_to_json(self.node_ref());
+        }
+
+        let obj = Object::new();
+        let _ = js_sys::Reflect::set(
+            &obj,
+            &JsValue::from_str("tag"),
+            &intern(&self.node_ref().tag),
+        );
+        let attrs = match written_attrs {
+            Some(attrs) => attrs.into(),
+            None => Self::convert_attrs(&self.node_ref().attrs).into(),
+        };
+        let _ = js_sys::Reflect::set(&obj, &JsValue::from_str("attrs"), &attrs);
+
+        let content = match written_content {
+            Some(content) => Some(content.into()),
+            None => Self::content_to_json(self.node_ref()),
+        };
+
+        if let Some(content) = content {
+            let _ = js_sys::Reflect::set(&obj, &JsValue::from_str("content"), &content);
+        }
+
+        obj.into()
     }
 
     fn node_to_json(node: &NodeRef<'_>) -> JsValue {
@@ -195,7 +249,15 @@ impl InternalBinaryNode {
             &Self::convert_attrs(&node.attrs).into(),
         );
 
-        let content: Option<JsValue> = match node.content.as_deref() {
+        if let Some(content) = Self::content_to_json(node) {
+            let _ = js_sys::Reflect::set(&obj, &JsValue::from_str("content"), &content);
+        }
+
+        obj.into()
+    }
+
+    fn content_to_json(node: &NodeRef<'_>) -> Option<JsValue> {
+        match node.content.as_deref() {
             Some(NodeContentRef::Bytes(bytes)) => Some(Uint8Array::from(bytes.as_ref()).into()),
             Some(NodeContentRef::String(s)) => Some(JsValue::from_str(s)),
             Some(NodeContentRef::Nodes(nodes)) => {
@@ -207,13 +269,7 @@ impl InternalBinaryNode {
                 Some(arr.into())
             }
             None => None,
-        };
-
-        if let Some(content) = content {
-            let _ = js_sys::Reflect::set(&obj, &JsValue::from_str("content"), &content);
         }
-
-        obj.into()
     }
 
     #[wasm_bindgen(getter)]
@@ -233,6 +289,7 @@ impl InternalBinaryNode {
     pub fn set_attrs(&self, new_attrs: Attrs) {
         // SAFETY: WASM is single-threaded
         unsafe { *self.cached_attrs.get() = Some(new_attrs) };
+        self.attrs_written.set(true);
     }
 
     #[wasm_bindgen(getter)]
@@ -256,6 +313,8 @@ impl InternalBinaryNode {
                         node_ref: node_ref.clone(),
                         cached_attrs: UnsafeCell::new(None),
                         cached_content: UnsafeCell::new(None),
+                        attrs_written: Cell::new(false),
+                        content_written: Cell::new(false),
                     };
                     arr.set(i as u32, child.into());
                 }
@@ -272,6 +331,7 @@ impl InternalBinaryNode {
     pub fn set_content(&self, new_content: Content) {
         // SAFETY: WASM is single-threaded
         unsafe { *self.cached_content.get() = Some(new_content) };
+        self.content_written.set(true);
     }
 }
 
@@ -303,6 +363,8 @@ pub fn decode_node(data: Vec<u8>) -> Result<InternalBinaryNode, JsValue> {
         node_ref,
         cached_attrs: UnsafeCell::new(None),
         cached_content: UnsafeCell::new(None),
+        attrs_written: Cell::new(false),
+        content_written: Cell::new(false),
     })
 }
 
@@ -521,6 +583,11 @@ impl FlatBuilder {
         };
 
         let start = self.strings.len();
+        // See `value_string`: a jid with no user has to keep its `@`.
+        if jid.user.is_empty() {
+            self.strings.push(b'@');
+        }
+
         let _ = write!(self.strings, "{jid}");
         self.intern_written(start)
     }
@@ -591,17 +658,26 @@ impl FlatBuilder {
 /// of the encode profile; this crosses the boundary once.
 struct FlatReader<'a> {
     strings: &'a [u8],
-    offsets: &'a [u32],
-    layout: &'a [u32],
+    offsets: &'a [u8],
+    layout: &'a [u8],
     blobs: &'a [u8],
     cursor: usize,
 }
 
+/// Reads a little-endian word out of a section.
+///
+/// The sections stay as bytes rather than being cast to `&[u32]`: the caller's
+/// buffer is allocated as bytes, so nothing guarantees the four byte alignment
+/// that cast needs, and wasm loads unaligned words at no cost anyway.
+fn word_at(section: &[u8], index: usize) -> Option<u32> {
+    let at = index.checked_mul(4)?;
+    let bytes = section.get(at..at.checked_add(4)?)?;
+    Some(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+}
+
 impl<'a> FlatReader<'a> {
     fn next(&mut self) -> Result<u32, JsValue> {
-        let value = *self
-            .layout
-            .get(self.cursor)
+        let value = word_at(self.layout, self.cursor)
             .ok_or_else(|| JsValue::from_str("flat encode: layout ran out"))?;
         self.cursor += 1;
         Ok(value)
@@ -622,8 +698,8 @@ impl<'a> FlatReader<'a> {
                 .ok_or_else(|| JsValue::from_str("flat encode: unknown token index"));
         }
 
-        let start = *self.offsets.get(index as usize).ok_or_else(bad_index)? as usize;
-        let end = *self.offsets.get(index as usize + 1).ok_or_else(bad_index)? as usize;
+        let start = word_at(self.offsets, index as usize).ok_or_else(bad_index)? as usize;
+        let end = word_at(self.offsets, index as usize + 1).ok_or_else(bad_index)? as usize;
         let bytes = self.strings.get(start..end).ok_or_else(bad_index)?;
         std::str::from_utf8(bytes)
             .map(NodeStr::Borrowed)
@@ -679,6 +755,21 @@ fn bad_index() -> JsValue {
     JsValue::from_str("flat encode: index out of range")
 }
 
+/// Splits `len` bytes off at `at` and advances it.
+fn take<'a>(data: &'a [u8], at: &mut usize, len: usize) -> Result<&'a [u8], JsValue> {
+    let end = at.checked_add(len).ok_or_else(bad_index)?;
+    let slice = data.get(*at..end).ok_or_else(bad_index)?;
+    *at = end;
+    Ok(slice)
+}
+
+/// Byte length of `count` words. Checked because the counts come from the
+/// caller's header: one whose byte length wraps would pass the bounds check
+/// and then be read far past the buffer.
+fn checked_bytes(count: usize) -> Result<usize, JsValue> {
+    count.checked_mul(4).ok_or_else(bad_index)
+}
+
 thread_local! {
     static MARSHALLED: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
 }
@@ -699,30 +790,11 @@ pub fn encode_node_flat(data: &[u8]) -> Result<(), JsValue> {
     let layout_count = read_u32(8) as usize;
 
     let mut at = 16;
-    let strings = data.get(at..at + string_bytes).ok_or_else(bad_index)?;
-    at += string_bytes;
-    at += (4 - (at % 4)) % 4;
-
-    // SAFETY: the caller writes these sections 4-aligned, which the decode side
-    // relies on too; the length check above bounds the read.
-    let offsets = unsafe {
-        std::slice::from_raw_parts(
-            data.get(at..at + offset_count * 4)
-                .ok_or_else(bad_index)?
-                .as_ptr() as *const u32,
-            offset_count,
-        )
-    };
-    at += offset_count * 4;
-    let layout = unsafe {
-        std::slice::from_raw_parts(
-            data.get(at..at + layout_count * 4)
-                .ok_or_else(bad_index)?
-                .as_ptr() as *const u32,
-            layout_count,
-        )
-    };
-    at += layout_count * 4;
+    let strings = take(data, &mut at, string_bytes)?;
+    let pad = (4 - (at % 4)) % 4;
+    take(data, &mut at, pad)?;
+    let offsets = take(data, &mut at, checked_bytes(offset_count)?)?;
+    let layout = take(data, &mut at, checked_bytes(layout_count)?)?;
     let blobs = data.get(at..).ok_or_else(bad_index)?;
 
     let mut reader = FlatReader {

@@ -43,7 +43,7 @@ describe("Server Response Decoding Parity", () => {
     const wasmDecoded = decodeNode(new Uint8Array(encoded));
 
     expect(wasmDecoded.tag).toBe(legacyDecoded.tag);
-    expect(`@${wasmDecoded.attrs.from}`).toBe(legacyDecoded.attrs.from);
+    expect(wasmDecoded.attrs.from).toBe(legacyDecoded.attrs.from);
     expect(wasmDecoded.attrs.type).toBe(legacyDecoded.attrs.type);
     expect(wasmDecoded.attrs.id).toBe(legacyDecoded.attrs.id);
     expect(wasmDecoded.attrs.xmlns).toBe(legacyDecoded.attrs.xmlns);
@@ -98,7 +98,7 @@ describe("Server Response Decoding Parity", () => {
     const wasmDecoded = decodeNode(new Uint8Array(encoded));
 
     expect(wasmDecoded.tag).toBe(legacyDecoded.tag);
-    expect(`@${wasmDecoded.attrs.from}`).toBe(legacyDecoded.attrs.from);
+    expect(wasmDecoded.attrs.from).toBe(legacyDecoded.attrs.from);
 
     const legacyContent = legacyDecoded.content as BinaryNode[];
     const wasmContent = wasmDecoded.content as BinaryNode[];
@@ -166,7 +166,7 @@ describe("Server Response Decoding Parity", () => {
     const wasmDecoded = decodeNode(new Uint8Array(encoded));
 
     expect(wasmDecoded.tag).toBe(legacyDecoded.tag);
-    expect(`@${wasmDecoded.attrs.from}`).toBe(legacyDecoded.attrs.from);
+    expect(wasmDecoded.attrs.from).toBe(legacyDecoded.attrs.from);
 
     const legacyContent = legacyDecoded.content as BinaryNode[];
     const wasmContent = wasmDecoded.content as BinaryNode[];
@@ -263,7 +263,7 @@ describe("Server Response Decoding Parity", () => {
     const wasmDecoded = decodeNode(new Uint8Array(encoded));
 
     expect(wasmDecoded.tag).toBe(legacyDecoded.tag);
-    expect(`@${wasmDecoded.attrs.from}`).toBe(legacyDecoded.attrs.from);
+    expect(wasmDecoded.attrs.from).toBe(legacyDecoded.attrs.from);
     expect(wasmDecoded.attrs.type).toBe(legacyDecoded.attrs.type);
 
     const legacyContent = legacyDecoded.content as BinaryNode[];

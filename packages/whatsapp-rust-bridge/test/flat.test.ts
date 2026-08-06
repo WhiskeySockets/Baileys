@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import {
+  decodeNode,
   decodeNodeFlat,
   encodeNode,
   encodeNodeFlat,
@@ -331,3 +332,61 @@ function flatten(root: BinaryNode): Buffer {
 
   return out;
 }
+
+describe("flat codec regressions", () => {
+  it("keeps the `@` on a server-only jid", () => {
+    // The core renders a jid with no user as a bare server name. Callers match
+    // `@s.whatsapp.net`, and the prekey-count notification is routed by that
+    // comparison, so dropping the `@` sends it down the identity-change branch.
+    const frame = frameOf({ tag: "iq", attrs: { from: "@s.whatsapp.net", type: "result" } });
+    expect(build(decodeNodeFlat(frame)).attrs.from).toBe("@s.whatsapp.net");
+    expect(decodeNode(encodeNode({ tag: "iq", attrs: { from: "@s.whatsapp.net" } })).attrs.from).toBe(
+      "@s.whatsapp.net"
+    );
+  });
+
+  it("leaves a bare server name alone, since it is a token and not a pair", () => {
+    const frame = frameOf({ tag: "iq", attrs: { to: "s.whatsapp.net" } });
+    expect(build(decodeNodeFlat(frame)).attrs.to).toBe("s.whatsapp.net");
+  });
+
+  it("rejects a header whose section length overflows", () => {
+    const buf = Buffer.alloc(64);
+    buf.writeUInt32LE(0, 0);
+    // On wasm32 a count this large wraps when multiplied by four, so a bounds
+    // check on the wrapped span would pass and the section would then be read
+    // far past the buffer.
+    buf.writeUInt32LE(0x40000001, 4);
+    buf.writeUInt32LE(1, 8);
+    buf.writeUInt32LE(0, 12);
+    expect(() => encodeNodeFlat(buf)).toThrow();
+
+    const layoutOverflow = Buffer.alloc(64);
+    layoutOverflow.writeUInt32LE(0, 0);
+    layoutOverflow.writeUInt32LE(1, 4);
+    layoutOverflow.writeUInt32LE(0x40000001, 8);
+    layoutOverflow.writeUInt32LE(0, 12);
+    expect(() => encodeNodeFlat(layoutOverflow)).toThrow();
+  });
+
+  it("serializes what a setter wrote, not what was parsed", () => {
+    const handle = decodeNode(encodeNode({ tag: "a", attrs: { x: "1" }, content: "hi" }));
+    handle.attrs = { x: "written" } as never;
+    handle.content = "written" as never;
+
+    // The getters already reported the new values; `toJSON` walked the parsed
+    // node and reported the old ones, so `JSON.stringify` saw a stale tree.
+    expect(JSON.parse(JSON.stringify(handle))).toEqual({
+      tag: "a",
+      attrs: { x: "written" },
+      content: "written",
+    });
+  });
+
+  it("still serializes the parsed node when nobody wrote to it", () => {
+    const handle = decodeNode(encodeNode({ tag: "a", attrs: { x: "1" }, content: "hi" }));
+    const json = handle.toJSON() as { tag: string; attrs: Record<string, string> };
+    expect(json.tag).toBe("a");
+    expect(json.attrs).toEqual({ x: "1" });
+  });
+});
