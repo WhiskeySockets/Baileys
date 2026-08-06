@@ -129,6 +129,20 @@ const cases: [string, BinaryNode][] = [
   ["app state", appState],
 ];
 
+// Both decoders get warmed before anything is timed. Without this the first
+// case measured absorbs the JIT warm-up for the whole file, which is worth
+// around 150ns and lands on whichever stanza happens to be first: it read as
+// the small stanza being slower than it is.
+for (let i = 0; i < 2000; i++) {
+  for (const [, node] of cases) {
+    const warm = encodeOld(node) as Buffer;
+    do_not_optimize(encodeBinaryNode(node));
+    do_not_optimize(await decodeBinaryNode(warm));
+    do_not_optimize(await decodeOld(warm));
+    do_not_optimize(walk((await decodeOld(warm)) as BinaryNode));
+  }
+}
+
 for (const [name, node] of cases) {
   const frame = encodeOld(node) as Buffer;
   const packed = compress(frame);
