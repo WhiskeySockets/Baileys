@@ -126,6 +126,12 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 			}
 
 			break
+		case proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3:
+			for (const msg of item.statusV3Messages || []) {
+				messages.push(msg as WAMessage)
+			}
+
+			break
 	}
 
 	return {

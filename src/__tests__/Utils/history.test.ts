@@ -429,4 +429,74 @@ describe('processHistoryMessage', () => {
 			expect(result.pastParticipants).toEqual(pastParticipants)
 		})
 	})
+
+	describe('INITIAL_STATUS_V3 processing', () => {
+		it('should extract statusV3Messages into messages', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3,
+				statusV3Messages: [
+					{
+						key: { remoteJid: 'status@broadcast', fromMe: true, id: 'AAAAAAAAAAAAAAAA' },
+						message: { imageMessage: { caption: 'my status' } },
+						messageTimestamp: 1700000000
+					},
+					{
+						key: { remoteJid: 'status@broadcast', fromMe: false, id: 'BBBBBBBBBBBBBBBB' },
+						message: { extendedTextMessage: { text: 'someone else' } },
+						messageTimestamp: 1700000001
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.messages).toHaveLength(2)
+			expect(result.messages[0]!.key.id).toBe('AAAAAAAAAAAAAAAA')
+			expect(result.messages[1]!.key.id).toBe('BBBBBBBBBBBBBBBB')
+		})
+
+		it('should preserve userReceipt on status messages', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3,
+				statusV3Messages: [
+					{
+						key: { remoteJid: 'status@broadcast', fromMe: true, id: 'CCCCCCCCCCCCCCCC' },
+						message: { imageMessage: {} },
+						userReceipt: [
+							{ userJid: '1234567890123@s.whatsapp.net', readTimestamp: 1700000005 },
+							{ userJid: '9876543210987@s.whatsapp.net', receiptTimestamp: 1700000006 }
+						]
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.messages[0]!.userReceipt).toHaveLength(2)
+			expect(result.messages[0]!.userReceipt![0]!.readTimestamp).toBe(1700000005)
+		})
+
+		it('should return empty messages when statusV3Messages is absent', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.messages).toEqual([])
+			expect(result.chats).toEqual([])
+			expect(result.contacts).toEqual([])
+		})
+
+		it('should return empty messages when statusV3Messages is empty', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3,
+				statusV3Messages: []
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.messages).toEqual([])
+		})
+	})
 })
