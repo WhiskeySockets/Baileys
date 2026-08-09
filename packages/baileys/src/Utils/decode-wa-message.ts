@@ -271,11 +271,15 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
  * Also fires when unpadding throws, with `unpadded` false. The ratchet has
  * already advanced by then, so the plaintext would otherwise be lost.
  *
- * The callback cannot affect decryption: `plaintext` is a copy it owns, and
- * exceptions from it are logged and swallowed.
+ * `plaintext` is a copy the callback owns, and exceptions from it are logged
+ * and swallowed, so neither can affect decryption.
+ *
+ * `stanza` is the live node rather than a snapshot, so treat it as read-only.
+ * Removing or rewriting a child the loop has not reached yet changes what gets
+ * decrypted.
  */
 export type OnDecryptedPayload = (payload: {
-	/** The `<message>` stanza this `<enc>` belongs to. */
+	/** The `<message>` stanza this `<enc>` belongs to. Read-only, see above. */
 	stanza: BinaryNode
 	/** Index of the `<enc>` among all of the stanza's children, not just the `<enc>` ones. */
 	childIndex: number
@@ -366,10 +370,11 @@ export const decryptMessageNode = (
 						// Only <enc>: a <plaintext> child never went through Signal
 						// and its bytes are already in the frame.
 						//
-						// The callback gets a copy and errors from it are
-						// swallowed, so observing cannot change what a message
-						// decodes to, mark it undecryptable, or mask the unpad
-						// error below. These same bytes go to the parser next.
+						// The callback gets a copy of the plaintext, since these
+						// same bytes go to the parser next, and its errors are
+						// swallowed so it cannot mark a message undecryptable or
+						// mask the unpad error below. The stanza it also gets is
+						// live, and documented read-only for that reason.
 						const observe = (payload: Uint8Array, unpadded: boolean) => {
 							if (tag !== 'enc' || !onDecryptedPayload) {
 								return
