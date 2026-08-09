@@ -1,7 +1,9 @@
 import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
+import type { OnDecryptedPayload } from '../Utils/decode-wa-message'
 import type { ILogger } from '../Utils/logger'
+import type { OnFrame } from '../Utils/noise-handler'
 import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
@@ -126,6 +128,23 @@ export type SocketConfig = {
 		| Promise<PatchedMessageWithRecipientJID[] | PatchedMessageWithRecipientJID>
 		| PatchedMessageWithRecipientJID[]
 		| PatchedMessageWithRecipientJID
+
+	/**
+	 * Called for every inbound frame, with the bytes it was decoded from.
+	 *
+	 * Those bytes are read-only: the node points into them, so writing to them
+	 * corrupts the stanza before the socket handles it. Exceptions are logged
+	 * and swallowed.
+	 */
+	onFrameDecoded?: OnFrame
+
+	/**
+	 * Called for every `<enc>` payload after Signal decrypts it.
+	 *
+	 * Fires later than {@link onFrameDecoded}: the frame is there at decode
+	 * time, the plaintext only after decryption.
+	 */
+	onDecryptedPayload?: OnDecryptedPayload
 
 	/** verify app state MACs */
 	appStateMacVerification: {

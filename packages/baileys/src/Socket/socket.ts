@@ -740,7 +740,17 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const onMessageReceived = async (data: Buffer) => {
-		await noise.decodeFrame(data, frame => {
+		await noise.decodeFrame(data, (frame, decoded) => {
+			if (config.onFrameDecoded) {
+				try {
+					config.onFrameDecoded(frame, decoded)
+				} catch (err) {
+					// Observation must not stop dispatch. Throwing here would
+					// abandon this frame and any others already buffered.
+					logger.error({ err }, 'onFrameDecoded threw')
+				}
+			}
+
 			// reset ping timeout
 			lastDateRecv = new Date()
 

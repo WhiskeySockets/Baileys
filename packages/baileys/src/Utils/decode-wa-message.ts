@@ -261,12 +261,43 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 }
 
+/**
+ * Called for each `<enc>` payload right after Signal decrypts it, before the
+ * protobuf is parsed.
+ *
+ * Only for `<enc>` children. A `<plaintext>` child never went through Signal
+ * and its bytes are already in the frame.
+ *
+ * Also fires when unpadding throws, with `unpadded` false. The ratchet has
+ * already advanced by then, so the plaintext would otherwise be lost.
+ *
+ * `plaintext` is a copy the callback owns, and exceptions from it are logged
+ * and swallowed, so neither can affect decryption.
+ *
+ * `stanza` is the live node rather than a snapshot, so treat it as read-only.
+ * Removing or rewriting a child the loop has not reached yet changes what gets
+ * decrypted.
+ */
+export type OnDecryptedPayload = (payload: {
+	/** The `<message>` stanza this `<enc>` belongs to. Read-only, see above. */
+	stanza: BinaryNode
+	/** Index of the `<enc>` among all of the stanza's children, not just the `<enc>` ones. */
+	childIndex: number
+	/** The `<enc>` node's `type` attribute. */
+	encType: string
+	/** The decrypted bytes, not yet parsed. */
+	plaintext: Uint8Array
+	/** False if unpadding threw. */
+	unpadded: boolean
+}) => void
+
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
 	meLid: string,
 	repository: SignalRepositoryWithLIDStore,
-	logger: ILogger
+	logger: ILogger,
+	onDecryptedPayload?: OnDecryptedPayload
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
 	return {
@@ -276,7 +307,7 @@ export const decryptMessageNode = (
 		async decrypt() {
 			let decryptables = 0
 			if (Array.isArray(stanza.content)) {
-				for (const { tag, attrs, content } of stanza.content) {
+				for (const [childIndex, { tag, attrs, content }] of stanza.content.entries()) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
 						const cert = proto.VerifiedNameCertificate.decode(content)
 						const details = proto.VerifiedNameCertificate.Details.decode(cert.details!)
@@ -336,9 +367,45 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = proto.Message.decode(
-							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
-						)
+						// Only <enc>: a <plaintext> child never went through Signal
+						// and its bytes are already in the frame.
+						//
+						// The callback gets a copy of the plaintext, since these
+						// same bytes go to the parser next, and its errors are
+						// swallowed so it cannot mark a message undecryptable or
+						// mask the unpad error below. The stanza it also gets is
+						// live, and documented read-only for that reason.
+						const observe = (payload: Uint8Array, unpadded: boolean) => {
+							if (tag !== 'enc' || !onDecryptedPayload) {
+								return
+							}
+
+							try {
+								onDecryptedPayload({
+									stanza,
+									childIndex,
+									encType: e2eType,
+									plaintext: new Uint8Array(payload),
+									unpadded
+								})
+							} catch (err) {
+								logger.error({ key: fullMessage.key, err }, 'onDecryptedPayload threw')
+							}
+						}
+
+						let plaintext: Uint8Array
+						try {
+							plaintext = e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
+						} catch (err) {
+							// The ratchet already advanced, so hand the plaintext
+							// over before rethrowing or it is lost for good.
+							observe(msgBuffer, false)
+							throw err
+						}
+
+						observe(plaintext, true)
+
+						let msg: proto.IMessage = proto.Message.decode(plaintext)
 						msg = msg.deviceSentMessage?.message || msg
 						if (msg.senderKeyDistributionMessage) {
 							//eslint-disable-next-line max-depth
