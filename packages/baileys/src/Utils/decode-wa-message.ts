@@ -261,12 +261,35 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 }
 
+/**
+ * Called for each `<enc>` payload right after Signal decrypts it, before the
+ * protobuf is parsed.
+ *
+ * Also fires when unpadding throws, with `unpadded` false. The ratchet has
+ * already advanced by then, so the plaintext would otherwise be lost.
+ *
+ * `plaintext` is only valid during the call. Copy it if you keep it.
+ */
+export type OnDecryptedPayload = (payload: {
+	/** The `<message>` stanza this `<enc>` belongs to. */
+	stanza: BinaryNode
+	/** Index of the `<enc>` among all of the stanza's children, not just the `<enc>` ones. */
+	childIndex: number
+	/** The `<enc>` node's `type` attribute. */
+	encType: string
+	/** The decrypted bytes, not yet parsed. */
+	plaintext: Uint8Array
+	/** False if unpadding threw. */
+	unpadded: boolean
+}) => void
+
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
 	meLid: string,
 	repository: SignalRepositoryWithLIDStore,
-	logger: ILogger
+	logger: ILogger,
+	onDecryptedPayload?: OnDecryptedPayload
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
 	return {
@@ -276,7 +299,7 @@ export const decryptMessageNode = (
 		async decrypt() {
 			let decryptables = 0
 			if (Array.isArray(stanza.content)) {
-				for (const { tag, attrs, content } of stanza.content) {
+				for (const [childIndex, { tag, attrs, content }] of stanza.content.entries()) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
 						const cert = proto.VerifiedNameCertificate.decode(content)
 						const details = proto.VerifiedNameCertificate.Details.decode(cert.details!)
@@ -336,9 +359,19 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = proto.Message.decode(
-							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
-						)
+						let plaintext: Uint8Array
+						try {
+							plaintext = e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
+						} catch (err) {
+							// The ratchet already advanced, so hand the plaintext
+							// over before rethrowing or it is lost for good.
+							onDecryptedPayload?.({ stanza, childIndex, encType: e2eType, plaintext: msgBuffer, unpadded: false })
+							throw err
+						}
+
+						onDecryptedPayload?.({ stanza, childIndex, encType: e2eType, plaintext, unpadded: true })
+
+						let msg: proto.IMessage = proto.Message.decode(plaintext)
 						msg = msg.deviceSentMessage?.message || msg
 						if (msg.senderKeyDistributionMessage) {
 							//eslint-disable-next-line max-depth

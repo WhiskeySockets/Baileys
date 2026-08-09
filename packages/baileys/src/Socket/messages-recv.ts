@@ -1698,7 +1698,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				category,
 				author,
 				decrypt
-			} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
+			} = decryptMessageNode(
+				node,
+				authState.creds.me!.id,
+				authState.creds.me!.lid || '',
+				signalRepository,
+				logger,
+				config.onDecryptedPayload
+			)
 
 			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 			// store new mappings we didn't have before
