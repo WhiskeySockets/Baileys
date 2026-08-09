@@ -95,13 +95,7 @@ export const SERVER_ERROR_CODES = {
 } as const
 
 type MessageType =
-	| 'chat'
-	| 'peer_broadcast'
-	| 'other_broadcast'
-	| 'group'
-	| 'direct_peer_status'
-	| 'other_status'
-	| 'newsletter'
+	'chat' | 'peer_broadcast' | 'other_broadcast' | 'group' | 'direct_peer_status' | 'other_status' | 'newsletter'
 
 export const extractAddressingContext = (stanza: BinaryNode) => {
 	let senderAlt: string | undefined
@@ -322,13 +316,42 @@ export const decryptMessageNode = (
 								})
 								break
 							case 'pkmsg':
-							case 'msg':
-								msgBuffer = await repository.decryptMessage({
-									jid: decryptionJid,
-									type: e2eType,
-									ciphertext: content
-								})
+							case 'msg': {
+								const altUser = isLidUser(decryptionJid)
+									? stanza.attrs.participant_pn || stanza.attrs.sender_pn
+									: stanza.attrs.participant_lid || stanza.attrs.sender_lid
+								try {
+									msgBuffer = await repository.decryptMessage({
+										jid: decryptionJid,
+										type: e2eType,
+										ciphertext: content
+									})
+								} catch (err) {
+									// WhatsApp tags this exact stanza with both identity forms
+									// (sender_pn/sender_lid, or participant_pn/participant_lid for
+									// group messages) whenever it knows the pairing. If the
+									// primary address's session doesn't verify, retry once with
+									// the other form WhatsApp itself paired to this message before
+									// giving up -- fixes persistent Bad MAC when our stored
+									// session and the sender's session were established under
+									// different identity forms. See #2234 and #2321.
+									if (!altUser || altUser === decryptionJid) {
+										throw err
+									}
+
+									logger.debug(
+										{ key: fullMessage.key, primary: decryptionJid, retryWith: altUser },
+										'primary identity failed to decrypt, retrying with stanza-provided PN/LID pairing'
+									)
+									msgBuffer = await repository.decryptMessage({
+										jid: altUser,
+										type: e2eType,
+										ciphertext: content
+									})
+								}
+
 								break
+							}
 							case 'plaintext':
 								msgBuffer = content
 								break
