@@ -74,7 +74,9 @@ class TransportState {
  * format byte stripped. Not set during the handshake, where frames are not
  * nodes yet.
  *
- * It is a view into the decrypted frame, not a copy. Copy it if you keep it.
+ * It is a view into the decrypted frame, not a copy, and the node's own binary
+ * content points into the same bytes. Treat it as read-only and copy it if you
+ * keep it: writing to it corrupts the stanza before the socket handles it.
  */
 export type OnFrame = (frame: Uint8Array | BinaryNode, decoded?: Uint8Array) => void
 

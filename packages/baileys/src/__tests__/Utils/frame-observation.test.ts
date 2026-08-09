@@ -138,6 +138,30 @@ describe('a decrypted payload is reported per <enc>', () => {
 		expect(seen).toHaveLength(0)
 	})
 
+	it('is handed a copy, so it cannot change what the message decodes to', async () => {
+		const { decryptMessageNode } = await import('../../Utils/decode-wa-message')
+
+		const stanza: BinaryNode = {
+			tag: 'message',
+			attrs: { id: 'M5', from: '5511999998888@s.whatsapp.net', t: '1' },
+			content: [{ tag: 'enc', attrs: { type: 'msg', v: '2' }, content: padRandomMax16(decryptedMessage()) }]
+		}
+
+		const { fullMessage, decrypt } = decryptMessageNode(
+			stanza,
+			'5511111111111:1@s.whatsapp.net',
+			'',
+			echoingRepository() as never,
+			createSilentLogger() as never,
+			// These bytes go to the protobuf parser right after this returns.
+			payload => payload.plaintext.fill(0xff)
+		)
+		await decrypt()
+
+		expect(fullMessage.messageStubType).toBeUndefined()
+		expect(fullMessage.message?.conversation).toBe('hello')
+	})
+
 	it('keeps decrypting when the callback throws', async () => {
 		const { decryptMessageNode } = await import('../../Utils/decode-wa-message')
 

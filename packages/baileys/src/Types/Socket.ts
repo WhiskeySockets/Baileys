@@ -132,7 +132,9 @@ export type SocketConfig = {
 	/**
 	 * Called for every inbound frame, with the bytes it was decoded from.
 	 *
-	 * Exceptions are logged and swallowed.
+	 * Those bytes are read-only: the node points into them, so writing to them
+	 * corrupts the stanza before the socket handles it. Exceptions are logged
+	 * and swallowed.
 	 */
 	onFrameDecoded?: OnFrame
 

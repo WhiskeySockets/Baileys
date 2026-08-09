@@ -271,9 +271,8 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
  * Also fires when unpadding throws, with `unpadded` false. The ratchet has
  * already advanced by then, so the plaintext would otherwise be lost.
  *
- * Exceptions from the callback are logged and swallowed.
- *
- * `plaintext` is only valid during the call. Copy it if you keep it.
+ * The callback cannot affect decryption: `plaintext` is a copy it owns, and
+ * exceptions from it are logged and swallowed.
  */
 export type OnDecryptedPayload = (payload: {
 	/** The `<message>` stanza this `<enc>` belongs to. */
@@ -365,16 +364,25 @@ export const decryptMessageNode = (
 						}
 
 						// Only <enc>: a <plaintext> child never went through Signal
-						// and its bytes are already in the frame. Errors are
-						// swallowed so a throwing callback cannot mark a message
-						// undecryptable, or mask the unpad error below.
+						// and its bytes are already in the frame.
+						//
+						// The callback gets a copy and errors from it are
+						// swallowed, so observing cannot change what a message
+						// decodes to, mark it undecryptable, or mask the unpad
+						// error below. These same bytes go to the parser next.
 						const observe = (payload: Uint8Array, unpadded: boolean) => {
 							if (tag !== 'enc' || !onDecryptedPayload) {
 								return
 							}
 
 							try {
-								onDecryptedPayload({ stanza, childIndex, encType: e2eType, plaintext: payload, unpadded })
+								onDecryptedPayload({
+									stanza,
+									childIndex,
+									encType: e2eType,
+									plaintext: new Uint8Array(payload),
+									unpadded
+								})
 							} catch (err) {
 								logger.error({ key: fullMessage.key, err }, 'onDecryptedPayload threw')
 							}
