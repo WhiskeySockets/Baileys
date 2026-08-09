@@ -306,3 +306,15 @@ export const decodeBinaryNode = async (buff: Buffer): Promise<BinaryNode> => {
 	const decompBuff = await decompressingIfRequired(buff)
 	return decodeDecompressedBinaryNode(decompBuff, constants)
 }
+
+/**
+ * Same as {@link decodeBinaryNode}, but also returns the decompressed buffer.
+ *
+ * Useful if you need the stanza's original bytes. Re-encoding the node can
+ * produce different bytes than what was received, since a value often has more
+ * than one valid encoding.
+ */
+export const decodeBinaryNodeWithBuffer = async (buff: Buffer): Promise<{ node: BinaryNode; decompressed: Buffer }> => {
+	const decompressed = await decompressingIfRequired(buff)
+	return { node: decodeDecompressedBinaryNode(decompressed, constants), decompressed }
+}

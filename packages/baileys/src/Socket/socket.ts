@@ -740,7 +740,9 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const onMessageReceived = async (data: Buffer) => {
-		await noise.decodeFrame(data, frame => {
+		await noise.decodeFrame(data, (frame, decoded) => {
+			config.onFrameDecoded?.(frame, decoded)
+
 			// reset ping timeout
 			lastDateRecv = new Date()
 

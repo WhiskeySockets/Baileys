@@ -4,7 +4,7 @@ import { proto } from '../../WAProto/index.js'
 import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import type { KeyPair } from '../Types'
 import type { BinaryNode } from '../WABinary'
-import { decodeBinaryNode } from '../WABinary'
+import { decodeBinaryNodeWithBuffer } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
 import type { ILogger } from './logger'
 
@@ -67,6 +67,17 @@ class TransportState {
 	}
 }
 
+/**
+ * Called for each decoded frame.
+ *
+ * `decoded` is the buffer the node was parsed from, inflated and with the
+ * format byte stripped. Not set during the handshake, where frames are not
+ * nodes yet.
+ *
+ * It is a view into the decrypted frame, not a copy. Copy it if you keep it.
+ */
+export type OnFrame = (frame: Uint8Array | BinaryNode, decoded?: Uint8Array) => void
+
 export const makeNoiseHandler = ({
 	keyPair: { private: privateKey, public: publicKey },
 	NOISE_HEADER,
@@ -102,7 +113,7 @@ export const makeNoiseHandler = ({
 
 	let transport: TransportState | null = null
 	let isWaitingForTransport = false
-	let pendingOnFrame: ((buff: Uint8Array | BinaryNode) => void) | null = null
+	let pendingOnFrame: OnFrame | null = null
 
 	let introHeader: Buffer
 	if (routingInfo) {
@@ -179,7 +190,7 @@ export const makeNoiseHandler = ({
 		}
 	}
 
-	const processData = async (onFrame: (buff: Uint8Array | BinaryNode) => void) => {
+	const processData = async (onFrame: OnFrame) => {
 		let size: number | undefined
 
 		while (true) {
@@ -192,16 +203,19 @@ export const makeNoiseHandler = ({
 			let frame: Uint8Array | BinaryNode = inBytes.subarray(3, size + 3)
 			inBytes = inBytes.subarray(size + 3)
 
+			let decoded: Uint8Array | undefined
+
 			if (transport) {
-				const result = transport.decrypt(frame)
-				frame = await decodeBinaryNode(result)
+				const result = await decodeBinaryNodeWithBuffer(transport.decrypt(frame))
+				decoded = result.decompressed
+				frame = result.node
 			}
 
 			if (logger.level === 'trace') {
 				logger.trace({ msg: (frame as BinaryNode)?.attrs?.id }, 'recv frame')
 			}
 
-			onFrame(frame)
+			onFrame(frame, decoded)
 		}
 	}
 
@@ -284,7 +298,7 @@ export const makeNoiseHandler = ({
 
 			return frame
 		},
-		decodeFrame: (newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
+		decodeFrame: (newData: Buffer | Uint8Array, onFrame: OnFrame) => {
 			// M10: serialize the inBytes mutation + processData drain.
 			return decodeFrameMutex.runExclusive(async () => {
 				if (isWaitingForTransport) {
