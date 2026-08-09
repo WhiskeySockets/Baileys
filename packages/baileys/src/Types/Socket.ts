@@ -129,7 +129,11 @@ export type SocketConfig = {
 		| PatchedMessageWithRecipientJID[]
 		| PatchedMessageWithRecipientJID
 
-	/** Called for every inbound frame, with the bytes it was decoded from. */
+	/**
+	 * Called for every inbound frame, with the bytes it was decoded from.
+	 *
+	 * Exceptions are logged and swallowed.
+	 */
 	onFrameDecoded?: OnFrame
 
 	/**

@@ -265,8 +265,13 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
  * Called for each `<enc>` payload right after Signal decrypts it, before the
  * protobuf is parsed.
  *
+ * Only for `<enc>` children. A `<plaintext>` child never went through Signal
+ * and its bytes are already in the frame.
+ *
  * Also fires when unpadding throws, with `unpadded` false. The ratchet has
  * already advanced by then, so the plaintext would otherwise be lost.
+ *
+ * Exceptions from the callback are logged and swallowed.
  *
  * `plaintext` is only valid during the call. Copy it if you keep it.
  */
@@ -359,17 +364,33 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
+						// Only <enc>: a <plaintext> child never went through Signal
+						// and its bytes are already in the frame. Errors are
+						// swallowed so a throwing callback cannot mark a message
+						// undecryptable, or mask the unpad error below.
+						const observe = (payload: Uint8Array, unpadded: boolean) => {
+							if (tag !== 'enc' || !onDecryptedPayload) {
+								return
+							}
+
+							try {
+								onDecryptedPayload({ stanza, childIndex, encType: e2eType, plaintext: payload, unpadded })
+							} catch (err) {
+								logger.error({ key: fullMessage.key, err }, 'onDecryptedPayload threw')
+							}
+						}
+
 						let plaintext: Uint8Array
 						try {
 							plaintext = e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						} catch (err) {
 							// The ratchet already advanced, so hand the plaintext
 							// over before rethrowing or it is lost for good.
-							onDecryptedPayload?.({ stanza, childIndex, encType: e2eType, plaintext: msgBuffer, unpadded: false })
+							observe(msgBuffer, false)
 							throw err
 						}
 
-						onDecryptedPayload?.({ stanza, childIndex, encType: e2eType, plaintext, unpadded: true })
+						observe(plaintext, true)
 
 						let msg: proto.IMessage = proto.Message.decode(plaintext)
 						msg = msg.deviceSentMessage?.message || msg

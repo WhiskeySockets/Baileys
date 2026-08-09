@@ -114,6 +114,55 @@ describe('a decrypted payload is reported per <enc>', () => {
 		expect(seen[0]!.unpadded).toBe(false)
 		expect(Buffer.from(seen[0]!.bytes)).toEqual(Buffer.from(badlyPadded))
 	})
+
+	it('ignores a <plaintext> child, which never went through Signal', async () => {
+		const { decryptMessageNode } = await import('../../Utils/decode-wa-message')
+
+		const stanza: BinaryNode = {
+			tag: 'message',
+			attrs: { id: 'M3', from: '5511999998888@s.whatsapp.net', t: '1' },
+			content: [{ tag: 'plaintext', attrs: {}, content: decryptedMessage() }]
+		}
+
+		const seen: unknown[] = []
+		const { decrypt } = decryptMessageNode(
+			stanza,
+			'5511111111111:1@s.whatsapp.net',
+			'',
+			echoingRepository() as never,
+			createSilentLogger() as never,
+			payload => seen.push(payload)
+		)
+		await decrypt()
+
+		expect(seen).toHaveLength(0)
+	})
+
+	it('keeps decrypting when the callback throws', async () => {
+		const { decryptMessageNode } = await import('../../Utils/decode-wa-message')
+
+		const stanza: BinaryNode = {
+			tag: 'message',
+			attrs: { id: 'M4', from: '5511999998888@s.whatsapp.net', t: '1' },
+			content: [{ tag: 'enc', attrs: { type: 'msg', v: '2' }, content: padRandomMax16(decryptedMessage()) }]
+		}
+
+		const { fullMessage, decrypt } = decryptMessageNode(
+			stanza,
+			'5511111111111:1@s.whatsapp.net',
+			'',
+			echoingRepository() as never,
+			createSilentLogger() as never,
+			() => {
+				throw new Error('observer blew up')
+			}
+		)
+		await decrypt()
+
+		// Not a CIPHERTEXT stub: the message decrypted, the observer did not.
+		expect(fullMessage.messageStubType).toBeUndefined()
+		expect(fullMessage.message?.conversation).toBe('hello')
+	})
 })
 
 /** Hands the ciphertext straight back, so the test covers the hook and not libsignal. */
