@@ -51,14 +51,15 @@ describe('a decrypted payload is reported per <enc>', () => {
 		const { decryptMessageNode } = await import('../../Utils/decode-wa-message')
 		const plaintext = decryptedMessage()
 
-		// `<enc>` at child index 1, which catches anyone counting `<enc>`
-		// nodes instead of children.
+		// Two `<enc>` at child indices 1 and 2. Counting `<enc>` nodes instead
+		// would report 0 and 1, so the positions have to be the child ones.
 		const stanza: BinaryNode = {
 			tag: 'message',
 			attrs: { id: 'M1', from: '5511999998888@s.whatsapp.net', t: '1' },
 			content: [
 				{ tag: 'participants', attrs: {} },
-				{ tag: 'enc', attrs: { type: 'msg', v: '2' }, content: padRandomMax16(plaintext) }
+				{ tag: 'enc', attrs: { type: 'msg', v: '2' }, content: padRandomMax16(plaintext) },
+				{ tag: 'enc', attrs: { type: 'pkmsg', v: '2' }, content: padRandomMax16(plaintext) }
 			]
 		}
 
@@ -79,10 +80,9 @@ describe('a decrypted payload is reported per <enc>', () => {
 		)
 		await decrypt()
 
-		expect(seen).toHaveLength(1)
-		expect(seen[0]!.childIndex).toBe(1)
-		expect(seen[0]!.encType).toBe('msg')
-		expect(seen[0]!.unpadded).toBe(true)
+		expect(seen.map(entry => entry.childIndex)).toEqual([1, 2])
+		expect(seen.map(entry => entry.encType)).toEqual(['msg', 'pkmsg'])
+		expect(seen.every(entry => entry.unpadded)).toBe(true)
 		expect(Buffer.from(seen[0]!.bytes)).toEqual(Buffer.from(plaintext))
 	})
 
@@ -147,6 +147,7 @@ describe('a decrypted payload is reported per <enc>', () => {
 			content: [{ tag: 'enc', attrs: { type: 'msg', v: '2' }, content: padRandomMax16(decryptedMessage()) }]
 		}
 
+		let calls = 0
 		const { fullMessage, decrypt } = decryptMessageNode(
 			stanza,
 			'5511111111111:1@s.whatsapp.net',
@@ -154,10 +155,15 @@ describe('a decrypted payload is reported per <enc>', () => {
 			echoingRepository() as never,
 			createSilentLogger() as never,
 			() => {
+				calls += 1
 				throw new Error('observer blew up')
 			}
 		)
 		await decrypt()
+
+		// Without this the test would also pass if the callback never ran, which
+		// is the other way to not see an exception.
+		expect(calls).toBe(1)
 
 		// Not a CIPHERTEXT stub: the message decrypted, the observer did not.
 		expect(fullMessage.messageStubType).toBeUndefined()
