@@ -26,6 +26,7 @@ import {
 	addTransactionCapability,
 	aesEncryptCTR,
 	bindWaitForConnectionUpdate,
+	buildCompanionRegNode,
 	buildPairingQRData,
 	bytesToCrockford,
 	configureSuccessfulPairing,
@@ -784,45 +785,13 @@ export const makeSocket = (config: SocketConfig) => {
 				xmlns: 'md'
 			},
 			content: [
-				{
-					tag: 'link_code_companion_reg',
-					attrs: {
-						jid: authState.creds.me.id,
-						stage: 'companion_hello',
-
-						should_show_push_notification: 'true'
-					},
-					content: [
-						{
-							tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
-							attrs: {},
-							content: await generatePairingKey()
-						},
-						{
-							tag: 'companion_server_auth_key_pub',
-							attrs: {},
-							content: authState.creds.noiseKey.public
-						},
-						{
-							tag: 'companion_platform_id',
-							attrs: {},
-							content: getCompanionPlatformId(browser)
-						},
-						{
-							tag: 'companion_platform_display',
-							attrs: {},
-							// See `companionPlatformDisplay` in SocketConfig: WhatsApp
-							// validates this string, so integrators branding `browser[0]`
-							// need a way to send something it recognises.
-							content: config.companionPlatformDisplay ?? `${browser[1]} (${browser[0]})`
-						},
-						{
-							tag: 'link_code_pairing_nonce',
-							attrs: {},
-							content: '0'
-						}
-					]
-				}
+				buildCompanionRegNode({
+					jid: authState.creds.me.id,
+					wrappedEphemeralPub: await generatePairingKey(),
+					serverAuthKeyPub: authState.creds.noiseKey.public,
+					browser,
+					platformDisplay: config.companionPlatformDisplay
+				})
 			]
 		})
 		return authState.creds.pairingCode
