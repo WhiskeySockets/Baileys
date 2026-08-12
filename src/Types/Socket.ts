@@ -51,6 +51,22 @@ export type SocketConfig = {
 	version: WAVersion
 	/** override browser config */
 	browser: WABrowserDescription
+	/**
+	 * Overrides the human-readable client description sent as
+	 * `companion_platform_display` when pairing by code.
+	 *
+	 * WhatsApp validates this field: an unrecognised value makes the server
+	 * answer `400 bad-request` to `companion_hello`. By default it is derived
+	 * from `browser` as `${browser[1]} (${browser[0]})`, which breaks pairing by
+	 * code for any integrator that puts a product name in `browser[0]` -- even
+	 * though that same value is accepted for QR pairing and is precisely what
+	 * the user then sees under "Linked devices".
+	 *
+	 * The failure is silent: `requestPairingCode()` returns a locally generated
+	 * code the server never accepted, so the code simply does not work when
+	 * typed, with nothing in the logs to say why.
+	 */
+	companionPlatformDisplay?: string
 	/** Initial pushName carried in the registration ClientPayload (used by mock servers for deterministic phone assignment). */
 	pushName?: string
 	/** agent used for fetch requests -- uploading/downloading media */

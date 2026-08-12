@@ -811,7 +811,10 @@ export const makeSocket = (config: SocketConfig) => {
 						{
 							tag: 'companion_platform_display',
 							attrs: {},
-							content: `${browser[1]} (${browser[0]})`
+							// See `companionPlatformDisplay` in SocketConfig: WhatsApp
+							// validates this string, so integrators branding `browser[0]`
+							// need a way to send something it recognises.
+							content: config.companionPlatformDisplay ?? `${browser[1]} (${browser[0]})`
 						},
 						{
 							tag: 'link_code_pairing_nonce',
