@@ -785,7 +785,7 @@ export const makeSocket = (config: SocketConfig) => {
 		// The server answers `<iq type='result'><link_code_companion_reg
 		// stage='companion_hello'><link_code_pairing_ref>…` on success, so waiting
 		// for it is safe.
-		await query({
+		const registration = await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -803,6 +803,24 @@ export const makeSocket = (config: SocketConfig) => {
 				})
 			]
 		})
+
+		// ⚠️ A TIMEOUT LOOKS LIKE A SUCCESS HERE, SO IT HAS TO BE CHECKED.
+		//
+		// `waitForMessage` deliberately swallows its `timedOut` Boom and returns
+		// `undefined`, and `query` arms no outer timer when called without an
+		// explicit `timeoutMs` -- as here. So an unanswered registration IQ makes
+		// `query` RESOLVE with `undefined` rather than throw, and `assertNodeErrorFree`
+		// is skipped by its own `if (result && 'tag' in result)` guard.
+		//
+		// Without this check the flow below would persist `creds.me` for a device
+		// the server never acknowledged -- the exact poisoning this change is meant
+		// to prevent, just reached through the network-failure path instead of the
+		// rejection path.
+		if (!registration) {
+			throw new Boom('Companion registration timed out', {
+				statusCode: DisconnectReason.timedOut
+			})
+		}
 
 		// ⚠️ Only now. `creds.me` is what tells the next connection to LOG IN
 		// rather than REGISTER (see the `if (!creds.me)` branch above), so writing

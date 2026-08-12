@@ -3,10 +3,8 @@ import {
 	CompanionWebClientType,
 	getCompanionWebClientType
 } from '../../Utils/companion-reg-client-utils'
-// Imported from the module rather than the `WABinary` barrel: the barrel pulls
-// in WAProto, which the other suites in this folder already trip over.
-import { getBinaryNodeChild } from '../../WABinary/generic-utils'
-import type { BinaryNode } from '../../WABinary/types'
+import { getBinaryNodeChild } from '../../WABinary'
+import type { BinaryNode } from '../../WABinary'
 import type { WABrowserDescription } from '../../Types'
 
 const EPHEMERAL_PUB = new Uint8Array([1, 2, 3])
