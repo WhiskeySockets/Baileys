@@ -224,11 +224,17 @@ export const decryptMessageNode = (
 										{ key: fullMessage.key, primary: user, retryWith: altUser },
 										'primary identity failed to decrypt, retrying with stanza-provided PN/LID pairing'
 									)
-									msgBuffer = await repository.decryptMessage({
-										jid: altUser,
-										type: e2eType,
-										ciphertext: content
-									})
+									try {
+										msgBuffer = await repository.decryptMessage({
+											jid: altUser,
+											type: e2eType,
+											ciphertext: content
+										})
+									} catch {
+										// preserve the original, more informative error
+										// (e.g. "Bad MAC") over the retry's (e.g. "no session")
+										throw err
+									}
 								}
 
 								break
