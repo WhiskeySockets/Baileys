@@ -769,12 +769,9 @@ export const makeSocket = (config: SocketConfig) => {
 			throw new Error('Custom pairing code must be exactly 8 chars')
 		}
 
-		// Needed before `generatePairingKey()`, which derives from it.
-		authState.creds.pairingCode = pairingCode
-
 		const me = { id: jidEncode(phoneNumber, 's.whatsapp.net'), name: '~' }
 
-		// ⚠️ `query`, not `sendNode`. `sendNode` only writes the IQ and returns, so
+		// `query`, not `sendNode`. `sendNode` only writes the IQ and returns, so
 		// a rejected registration -- WhatsApp answers `400 bad-request` when it
 		// does not recognise `companion_platform_display`, or `429 rate-overlimit`
 		// when asked too often -- used to go unnoticed: the caller still got a
@@ -796,7 +793,7 @@ export const makeSocket = (config: SocketConfig) => {
 			content: [
 				buildCompanionRegNode({
 					jid: me.id,
-					wrappedEphemeralPub: await generatePairingKey(),
+					wrappedEphemeralPub: await generatePairingKey(pairingCode),
 					serverAuthKeyPub: authState.creds.noiseKey.public,
 					browser,
 					platformDisplay: config.companionPlatformDisplay
@@ -804,7 +801,7 @@ export const makeSocket = (config: SocketConfig) => {
 			]
 		})
 
-		// ⚠️ A TIMEOUT LOOKS LIKE A SUCCESS HERE, SO IT HAS TO BE CHECKED.
+		// A TIMEOUT LOOKS LIKE A SUCCESS HERE, SO IT HAS TO BE CHECKED.
 		//
 		// `waitForMessage` deliberately swallows its `timedOut` Boom and returns
 		// `undefined`, and `query` arms no outer timer when called without an
@@ -822,22 +819,27 @@ export const makeSocket = (config: SocketConfig) => {
 			})
 		}
 
-		// ⚠️ Only now. `creds.me` is what tells the next connection to LOG IN
+		// Only now. `creds.me` is what tells the next connection to LOG IN
 		// rather than REGISTER (see the `if (!creds.me)` branch above), so writing
 		// it before the server accepted the registration left the session claiming
 		// a device that does not exist: every later socket -- code expiry, restart,
 		// reconnect -- got `401 loggedOut`, and one failed attempt poisoned all the
 		// following ones.
+		authState.creds.pairingCode = pairingCode
 		authState.creds.me = me
 		ev.emit('creds.update', authState.creds)
 
-		return authState.creds.pairingCode
+		return pairingCode
 	}
 
-	async function generatePairingKey() {
+	// Takes the code as an argument rather than reading `authState.creds`: two
+	// overlapping `requestPairingCode` calls would otherwise interleave on that
+	// shared field, and one could derive its payload from the other's code while
+	// returning its own.
+	async function generatePairingKey(pairingCode: string) {
 		const salt = randomBytes(32)
 		const randomIv = randomBytes(16)
-		const key = await derivePairingCodeKey(authState.creds.pairingCode!, salt)
+		const key = await derivePairingCodeKey(pairingCode, salt)
 		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
 		return Buffer.concat([salt, randomIv, ciphered])
 	}
