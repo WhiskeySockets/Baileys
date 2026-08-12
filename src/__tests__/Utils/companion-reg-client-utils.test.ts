@@ -3,7 +3,10 @@ import {
 	CompanionWebClientType,
 	getCompanionWebClientType
 } from '../../Utils/companion-reg-client-utils'
-import type { BinaryNode } from '../../WABinary'
+// Imported from the module rather than the `WABinary` barrel: the barrel pulls
+// in WAProto, which the other suites in this folder already trip over.
+import { getBinaryNodeChild } from '../../WABinary/generic-utils'
+import type { BinaryNode } from '../../WABinary/types'
 import type { WABrowserDescription } from '../../Types'
 
 const EPHEMERAL_PUB = new Uint8Array([1, 2, 3])
@@ -18,7 +21,7 @@ const build = (browser: WABrowserDescription, platformDisplay?: string) =>
 		platformDisplay
 	})
 
-const childContent = (node: BinaryNode, tag: string) => (node.content as BinaryNode[]).find(c => c.tag === tag)?.content
+const childContent = (node: BinaryNode, tag: string) => getBinaryNodeChild(node, tag)?.content
 
 describe('buildCompanionRegNode', () => {
 	it('derives companion_platform_display from the browser when no override is given', () => {

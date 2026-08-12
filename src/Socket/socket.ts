@@ -769,14 +769,23 @@ export const makeSocket = (config: SocketConfig) => {
 			throw new Error('Custom pairing code must be exactly 8 chars')
 		}
 
+		// Needed before `generatePairingKey()`, which derives from it.
 		authState.creds.pairingCode = pairingCode
 
-		authState.creds.me = {
-			id: jidEncode(phoneNumber, 's.whatsapp.net'),
-			name: '~'
-		}
-		ev.emit('creds.update', authState.creds)
-		await sendNode({
+		const me = { id: jidEncode(phoneNumber, 's.whatsapp.net'), name: '~' }
+
+		// ⚠️ `query`, not `sendNode`. `sendNode` only writes the IQ and returns, so
+		// a rejected registration -- WhatsApp answers `400 bad-request` when it
+		// does not recognise `companion_platform_display`, or `429 rate-overlimit`
+		// when asked too often -- used to go unnoticed: the caller still got a
+		// pairing code, generated locally and never acknowledged by the server. The
+		// user would type a code that could not work, with nothing anywhere to say
+		// why. `query` surfaces the error stanza instead (`assertNodeErrorFree`).
+		//
+		// The server answers `<iq type='result'><link_code_companion_reg
+		// stage='companion_hello'><link_code_pairing_ref>…` on success, so waiting
+		// for it is safe.
+		await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -786,7 +795,7 @@ export const makeSocket = (config: SocketConfig) => {
 			},
 			content: [
 				buildCompanionRegNode({
-					jid: authState.creds.me.id,
+					jid: me.id,
 					wrappedEphemeralPub: await generatePairingKey(),
 					serverAuthKeyPub: authState.creds.noiseKey.public,
 					browser,
@@ -794,6 +803,16 @@ export const makeSocket = (config: SocketConfig) => {
 				})
 			]
 		})
+
+		// ⚠️ Only now. `creds.me` is what tells the next connection to LOG IN
+		// rather than REGISTER (see the `if (!creds.me)` branch above), so writing
+		// it before the server accepted the registration left the session claiming
+		// a device that does not exist: every later socket -- code expiry, restart,
+		// reconnect -- got `401 loggedOut`, and one failed attempt poisoned all the
+		// following ones.
+		authState.creds.me = me
+		ev.emit('creds.update', authState.creds)
+
 		return authState.creds.pairingCode
 	}
 
