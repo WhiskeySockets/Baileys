@@ -26,6 +26,7 @@ import {
 	addTransactionCapability,
 	aesEncryptCTR,
 	bindWaitForConnectionUpdate,
+	buildCompanionRegNode,
 	buildPairingQRData,
 	bytesToCrockford,
 	configureSuccessfulPairing,
@@ -768,14 +769,20 @@ export const makeSocket = (config: SocketConfig) => {
 			throw new Error('Custom pairing code must be exactly 8 chars')
 		}
 
-		authState.creds.pairingCode = pairingCode
+		const me = { id: jidEncode(phoneNumber, 's.whatsapp.net'), name: '~' }
 
-		authState.creds.me = {
-			id: jidEncode(phoneNumber, 's.whatsapp.net'),
-			name: '~'
-		}
-		ev.emit('creds.update', authState.creds)
-		await sendNode({
+		// `query`, not `sendNode`. `sendNode` only writes the IQ and returns, so
+		// a rejected registration -- WhatsApp answers `400 bad-request` when it
+		// does not recognise `companion_platform_display`, or `429 rate-overlimit`
+		// when asked too often -- used to go unnoticed: the caller still got a
+		// pairing code, generated locally and never acknowledged by the server. The
+		// user would type a code that could not work, with nothing anywhere to say
+		// why. `query` surfaces the error stanza instead (`assertNodeErrorFree`).
+		//
+		// The server answers `<iq type='result'><link_code_companion_reg
+		// stage='companion_hello'><link_code_pairing_ref>…` on success, so waiting
+		// for it is safe.
+		const registration = await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -784,51 +791,55 @@ export const makeSocket = (config: SocketConfig) => {
 				xmlns: 'md'
 			},
 			content: [
-				{
-					tag: 'link_code_companion_reg',
-					attrs: {
-						jid: authState.creds.me.id,
-						stage: 'companion_hello',
-
-						should_show_push_notification: 'true'
-					},
-					content: [
-						{
-							tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
-							attrs: {},
-							content: await generatePairingKey()
-						},
-						{
-							tag: 'companion_server_auth_key_pub',
-							attrs: {},
-							content: authState.creds.noiseKey.public
-						},
-						{
-							tag: 'companion_platform_id',
-							attrs: {},
-							content: getCompanionPlatformId(browser)
-						},
-						{
-							tag: 'companion_platform_display',
-							attrs: {},
-							content: `${browser[1]} (${browser[0]})`
-						},
-						{
-							tag: 'link_code_pairing_nonce',
-							attrs: {},
-							content: '0'
-						}
-					]
-				}
+				buildCompanionRegNode({
+					jid: me.id,
+					wrappedEphemeralPub: await generatePairingKey(pairingCode),
+					serverAuthKeyPub: authState.creds.noiseKey.public,
+					browser,
+					platformDisplay: config.companionPlatformDisplay
+				})
 			]
 		})
-		return authState.creds.pairingCode
+
+		// A TIMEOUT LOOKS LIKE A SUCCESS HERE, SO IT HAS TO BE CHECKED.
+		//
+		// `waitForMessage` deliberately swallows its `timedOut` Boom and returns
+		// `undefined`, and `query` arms no outer timer when called without an
+		// explicit `timeoutMs` -- as here. So an unanswered registration IQ makes
+		// `query` RESOLVE with `undefined` rather than throw, and `assertNodeErrorFree`
+		// is skipped by its own `if (result && 'tag' in result)` guard.
+		//
+		// Without this check the flow below would persist `creds.me` for a device
+		// the server never acknowledged -- the exact poisoning this change is meant
+		// to prevent, just reached through the network-failure path instead of the
+		// rejection path.
+		if (!registration) {
+			throw new Boom('Companion registration timed out', {
+				statusCode: DisconnectReason.timedOut
+			})
+		}
+
+		// Only now. `creds.me` is what tells the next connection to LOG IN
+		// rather than REGISTER (see the `if (!creds.me)` branch above), so writing
+		// it before the server accepted the registration left the session claiming
+		// a device that does not exist: every later socket -- code expiry, restart,
+		// reconnect -- got `401 loggedOut`, and one failed attempt poisoned all the
+		// following ones.
+		authState.creds.pairingCode = pairingCode
+		authState.creds.me = me
+		ev.emit('creds.update', authState.creds)
+
+		return pairingCode
 	}
 
-	async function generatePairingKey() {
+	// Takes the code as an argument rather than reading `authState.creds`: two
+	// overlapping `requestPairingCode` calls would otherwise interleave on that
+	// shared field, and one could derive its payload from the other's code while
+	// returning its own.
+	async function generatePairingKey(pairingCode: string) {
 		const salt = randomBytes(32)
 		const randomIv = randomBytes(16)
-		const key = await derivePairingCodeKey(authState.creds.pairingCode!, salt)
+		const key = await derivePairingCodeKey(pairingCode, salt)
 		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
 		return Buffer.concat([salt, randomIv, ciphered])
 	}

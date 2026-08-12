@@ -1,3 +1,4 @@
+import type { BinaryNode } from '../WABinary'
 import type { WABrowserDescription } from '../Types'
 
 export enum CompanionWebClientType {
@@ -46,3 +47,61 @@ export const buildPairingQRData = (
 		[ref, noiseKeyB64, identityKeyB64, advB64, getCompanionPlatformId(browser)].join(',')
 	)
 }
+
+/**
+ * Builds the `link_code_companion_reg` stanza sent when pairing by code.
+ *
+ * Extracted from `requestPairingCode` so the payload can be asserted directly:
+ * the only impure parts of that flow are the ephemeral key derivation and the
+ * message tag, both of which are passed in.
+ *
+ * `platformDisplay` overrides `companion_platform_display`. WhatsApp validates
+ * that field -- see `companionPlatformDisplay` in SocketConfig.
+ */
+export const buildCompanionRegNode = ({
+	jid,
+	wrappedEphemeralPub,
+	serverAuthKeyPub,
+	browser,
+	platformDisplay
+}: {
+	jid: string
+	wrappedEphemeralPub: Uint8Array
+	serverAuthKeyPub: Uint8Array
+	browser: WABrowserDescription
+	platformDisplay?: string
+}): BinaryNode => ({
+	tag: 'link_code_companion_reg',
+	attrs: {
+		jid,
+		stage: 'companion_hello',
+		should_show_push_notification: 'true'
+	},
+	content: [
+		{
+			tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
+			attrs: {},
+			content: wrappedEphemeralPub
+		},
+		{
+			tag: 'companion_server_auth_key_pub',
+			attrs: {},
+			content: serverAuthKeyPub
+		},
+		{
+			tag: 'companion_platform_id',
+			attrs: {},
+			content: getCompanionPlatformId(browser)
+		},
+		{
+			tag: 'companion_platform_display',
+			attrs: {},
+			content: platformDisplay ?? `${browser[1]} (${browser[0]})`
+		},
+		{
+			tag: 'link_code_pairing_nonce',
+			attrs: {},
+			content: '0'
+		}
+	]
+})
