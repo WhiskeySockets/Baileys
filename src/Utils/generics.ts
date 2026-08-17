@@ -249,22 +249,28 @@ export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
 		}
 
 		const text = await response.text()
-		// Extract version from line 7 (const version = [...])
-		const lines = text.split('\n')
-		const versionLine = lines[6] // Line 7 (0-indexed)
-		const versionMatch = versionLine!.match(/const version = \[(\d+),\s*(\d+),\s*(\d+)\]/)
-
-		if (versionMatch) {
-			const version = [parseInt(versionMatch[1]!), parseInt(versionMatch[2]!), parseInt(versionMatch[3]!)] as WAVersion
-
-			return {
-				version,
-				isLatest: true
-			}
-		} else {
+		// Extract version from Defaults/index.ts (const version = [...])
+		const versionMatch = text.match(/const version = \[(\d+),\s*(\d+),\s*(\d+)\]/)
+		if (!versionMatch) {
 			throw new Error('Could not parse version from Defaults/index.ts')
 		}
+
+		const version = [parseInt(versionMatch[1]!), parseInt(versionMatch[2]!), parseInt(versionMatch[3]!)] as WAVersion
+
+		return {
+			version,
+			isLatest: true
+		}
 	} catch (error) {
+		try {
+			const waWebVersion = await fetchLatestWaWebVersion(options)
+			if (waWebVersion.isLatest) {
+				return waWebVersion
+			}
+		} catch {
+			// Fallback to hardcoded default if WA Web endpoint is also unavailable
+		}
+
 		return {
 			version: baileysVersion as WAVersion,
 			isLatest: false,
