@@ -242,29 +242,35 @@ export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
 		const response = await fetch(URL, {
 			dispatcher: options.dispatcher,
 			method: 'GET',
-			headers: options.headers
+			headers: options.headers,
+			signal: options.signal
 		})
 		if (!response.ok) {
 			throw new Boom(`Failed to fetch latest Baileys version: ${response.statusText}`, { statusCode: response.status })
 		}
 
 		const text = await response.text()
-		// Extract version from line 7 (const version = [...])
-		const lines = text.split('\n')
-		const versionLine = lines[6] // Line 7 (0-indexed)
-		const versionMatch = versionLine!.match(/const version = \[(\d+),\s*(\d+),\s*(\d+)\]/)
-
-		if (versionMatch) {
-			const version = [parseInt(versionMatch[1]!), parseInt(versionMatch[2]!), parseInt(versionMatch[3]!)] as WAVersion
-
-			return {
-				version,
-				isLatest: true
-			}
-		} else {
+		// Extract version from Defaults/index.ts (const version = [...]) allowing flexible whitespace
+		const versionMatch = text.match(/const\s+version(?:\s*:[^=]+)?\s*=\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]/)
+		if (!versionMatch) {
 			throw new Error('Could not parse version from Defaults/index.ts')
 		}
+
+		const version = [parseInt(versionMatch[1]!), parseInt(versionMatch[2]!), parseInt(versionMatch[3]!)] as WAVersion
+
+		return {
+			version,
+			isLatest: true
+		}
 	} catch (error) {
+		const waWebVersion = await fetchLatestWaWebVersion({
+			dispatcher: options.dispatcher,
+			signal: options.signal
+		})
+		if (waWebVersion.isLatest) {
+			return waWebVersion
+		}
+
 		return {
 			version: baileysVersion as WAVersion,
 			isLatest: false,
