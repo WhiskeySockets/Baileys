@@ -1727,7 +1727,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							}
 
 							acked = true
-							await sendMessageAck(node, NACK_REASONS.UnhandledError)
+							// Undecryptable statuses: ack without a NACK reason. A NACK makes the
+							// server keep the stanza and re-deliver it on every (re)connect, and
+							// while it is pending the rest of the offline queue is withheld —
+							// one undecryptable fresh status stalls delivery of every queued
+							// message. Statuses are best-effort content; dropping one is far
+							// better than freezing the account's message delivery.
+							if (isJidStatusBroadcast(msg.key.remoteJid!)) {
+								await sendMessageAck(node)
+							} else {
+								await sendMessageAck(node, NACK_REASONS.UnhandledError)
+							}
 						})
 					}
 				} else {
