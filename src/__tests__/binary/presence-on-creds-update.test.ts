@@ -24,8 +24,9 @@ jest.unstable_mockModule('../../Socket/Client/websocket', () => ({
 	}))
 }))
 
-const { DEFAULT_CONNECTION_CONFIG } = await import('../../Defaults')
+const { DEFAULT_CONNECTION_CONFIG, NOISE_WA_HEADER } = await import('../../Defaults')
 const makeWASocket = (await import('../../Socket')).default
+const { decodeBinaryNode } = await import('../../WABinary/decode')
 const { makeSession } = await import('../TestUtils/session')
 
 describe('presence announcement on creds.update', () => {
@@ -45,6 +46,16 @@ describe('presence announcement on creds.update', () => {
 	}
 
 	const settle = () => new Promise(resolve => setTimeout(resolve, 50))
+
+	/**
+	 * A frame is `[intro header?][3-byte big-endian length][node]`. No transport is negotiated
+	 * in these tests, so the payload is not encrypted and decodes directly.
+	 */
+	const decodeFrame = (frame: Buffer) => {
+		const intro = Buffer.from(NOISE_WA_HEADER)
+		const body = frame.subarray(0, intro.length).equals(intro) ? frame.subarray(intro.length) : frame
+		return decodeBinaryNode(body.subarray(3))
+	}
 
 	it('does not send presence for a partial update that carries no `me`', async () => {
 		const { sock, clear } = await makeSocket('Test User')
@@ -77,7 +88,12 @@ describe('presence announcement on creds.update', () => {
 		sock.ev.emit('creds.update', { me: { id: ME, name: 'New Name' } })
 		await settle()
 
-		expect(send).toHaveBeenCalled()
+		expect(send).toHaveBeenCalledTimes(1)
+		// assert on the node itself: a nameless or mistagged frame is the exact regression
+		// this PR guards against, and it would satisfy a bare "was called" check
+		const node = await decodeFrame(send.mock.calls[0]![0] as Buffer)
+		expect(node.tag).toBe('presence')
+		expect(node.attrs.name).toBe('New Name')
 
 		await sock.end(new Error('Test completed'))
 		await clear()
