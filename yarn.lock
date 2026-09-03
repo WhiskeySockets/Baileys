@@ -3116,7 +3116,7 @@ __metadata:
     jiti: "npm:^2.4.2"
     json: "npm:^11.0.0"
     libsignal: "npm:^6.0.0"
-    link-preview-js: "npm:^3.0.0"
+    link-preview-js: "npm:^4.0.4"
     lru-cache: "npm:^11.1.0"
     music-metadata: "npm:^11.12.3"
     open: "npm:^8.4.2"
@@ -3138,7 +3138,7 @@ __metadata:
   peerDependencies:
     audio-decode: ^2.1.3
     jimp: ^1.6.1
-    link-preview-js: ^3.0.0
+    link-preview-js: ^4.0.4
     sharp: "*"
   peerDependenciesMeta:
     audio-decode:
@@ -6135,13 +6135,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"link-preview-js@npm:^3.0.0":
-  version: 3.2.0
-  resolution: "link-preview-js@npm:3.2.0"
+"link-preview-js@npm:^4.0.4":
+  version: 4.0.4
+  resolution: "link-preview-js@npm:4.0.4"
   dependencies:
     cheerio: "npm:1.0.0-rc.11"
-    url: "npm:0.11.0"
-  checksum: 10c0/2ee44cd65a741959153dd02ef894de67b816db72ccd29666d62142101945ffd87c10ab9233272733fc0965fa42ba6990591709552289afd8ffc539f4ffd11aff
+  checksum: 10c0/940c0de76ed2dbb1bd25981618ace90078f7086599d1effed3bde4de26738611622d119364068b3d3f79ef8d4992e1a9f7cc646dfbeb57b814bb0cfe1f908809
   languageName: node
   linkType: hard
 
@@ -7458,13 +7457,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"punycode@npm:1.3.2":
-  version: 1.3.2
-  resolution: "punycode@npm:1.3.2"
-  checksum: 10c0/281fd20eaf4704f79d80cb0dc65065bf6452ee67989b3e8941aed6360a5a9a8a01d3e2ed71d0bde3cd74fb5a5dd9db4160bed5a8c20bed4b6764c24ce4c7d2d2
-  languageName: node
-  linkType: hard
-
 "punycode@npm:^2.1.0":
   version: 2.3.1
   resolution: "punycode@npm:2.3.1"
@@ -7476,13 +7468,6 @@ __metadata:
   version: 7.0.1
   resolution: "pure-rand@npm:7.0.1"
   checksum: 10c0/9cade41030f5ec95f5d55a11a71404cd6f46b69becaad892097cd7f58e2c6248cd0a933349ca7d21336ab629f1da42ffe899699b671bc4651600eaf6e57f837e
-  languageName: node
-  linkType: hard
-
-"querystring@npm:0.2.0":
-  version: 0.2.0
-  resolution: "querystring@npm:0.2.0"
-  checksum: 10c0/2036c9424beaacd3978bac9e4ba514331cc73163bea7bf3ad7e2c7355e55501938ec195312c607753f9c6e70b1bf9dfcda38db6241bd299c034e27ac639d64ed
   languageName: node
   linkType: hard
 
@@ -8524,16 +8509,6 @@ __metadata:
   version: 5.0.0
   resolution: "url-join@npm:5.0.0"
   checksum: 10c0/ed2b166b4b5a98adcf6828a48b6bd6df1dac4c8a464a73cf4d8e2457ed410dd8da6be0d24855b86026cd7f5c5a3657c1b7b2c7a7c5b8870af17635a41387b04c
-  languageName: node
-  linkType: hard
-
-"url@npm:0.11.0":
-  version: 0.11.0
-  resolution: "url@npm:0.11.0"
-  dependencies:
-    punycode: "npm:1.3.2"
-    querystring: "npm:0.2.0"
-  checksum: 10c0/bbe05f9f570ec5c06421c50ca63f287e61279092eed0891db69a9619323703ccd3987e6eed234c468794cf25680c599680d5c1f58d26090f1956c8e9ed8346a2
   languageName: node
   linkType: hard
 
