@@ -190,18 +190,21 @@ describe('decryptMessageEdit', () => {
 })
 
 describe('processEncryptedMessageEdit', () => {
-	it('decrypts a direct-message edit and looks up the original from the local perspective', async () => {
+	it.each([
+		{ addressingMode: 'PN', remoteJid: DIRECT_AUTHOR_PN, remoteJidAlt: DIRECT_AUTHOR_LID },
+		{ addressingMode: 'LID', remoteJid: DIRECT_AUTHOR_LID, remoteJidAlt: DIRECT_AUTHOR_PN }
+	])('decrypts a direct-message edit with $addressingMode-first addressing', async ({ remoteJid, remoteJidAlt }) => {
 		const targetKey = { id: ORIGINAL_ID, remoteJid: LOCAL_PN, fromMe: true }
 		const encrypted = sealProtocolMessage({
-			originalSenderJid: DIRECT_AUTHOR_PN,
-			editorJid: DIRECT_AUTHOR_PN,
+			originalSenderJid: remoteJid,
+			editorJid: remoteJid,
 			editedText: 'direct after',
 			targetKey
 		})
 		const message = createEnvelope(
 			{
-				remoteJid: DIRECT_AUTHOR_PN,
-				remoteJidAlt: DIRECT_AUTHOR_LID,
+				remoteJid,
+				remoteJidAlt,
 				fromMe: false,
 				id: ENVELOPE_ID
 			},
@@ -224,14 +227,14 @@ describe('processEncryptedMessageEdit', () => {
 		})
 
 		expect(getMessage).toHaveBeenCalledWith({
-			remoteJid: DIRECT_AUTHOR_PN,
-			remoteJidAlt: DIRECT_AUTHOR_LID,
+			remoteJid,
+			remoteJidAlt,
 			fromMe: false,
 			id: ORIGINAL_ID
 		})
 		expect(update?.key).toEqual({
-			remoteJid: DIRECT_AUTHOR_PN,
-			remoteJidAlt: DIRECT_AUTHOR_LID,
+			remoteJid,
+			remoteJidAlt,
 			fromMe: false,
 			id: ORIGINAL_ID
 		})
