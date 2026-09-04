@@ -31,6 +31,7 @@ import {
 	jidNormalizedUser
 } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
+import { isEncryptedMessageEdit, processEncryptedMessageEdit } from './decrypt-message-edit'
 import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
@@ -42,7 +43,7 @@ type ProcessMessageContext = {
 	creds: AuthenticationCreds
 	keyStore: SignalKeyStoreWithTransaction
 	ev: BaileysEventEmitter
-	logger?: ILogger
+	logger: ILogger
 	options: RequestInit
 	signalRepository: SignalRepositoryWithLIDStore
 	getMessage: SocketConfig['getMessage']
@@ -178,7 +179,8 @@ export const isRealMessage = (message: WAMessage) => {
 		hasSomeContent &&
 		!normalizedContent?.protocolMessage &&
 		!normalizedContent?.reactionMessage &&
-		!normalizedContent?.pollUpdateMessage
+		!normalizedContent?.pollUpdateMessage &&
+		!isEncryptedMessageEdit(normalizedContent)
 	)
 }
 
@@ -623,6 +625,23 @@ const processMessage = async (
 			}
 		} else {
 			logger?.warn({ creationMsgKey }, 'event creation message not found, cannot decrypt response')
+		}
+	} else if (isEncryptedMessageEdit(content)) {
+		try {
+			const update = await processEncryptedMessageEdit({
+				message,
+				secretEncryptedMessage: content.secretEncryptedMessage,
+				getMessage,
+				lidMapping: signalRepository.lidMapping,
+				logger,
+				meId,
+				meLid: creds.me?.lid
+			})
+			if (update) {
+				ev.emit('messages.update', [update])
+			}
+		} catch (err) {
+			logger.warn({ err, msgId: message.key.id }, 'failed to process encrypted message edit')
 		}
 	} else if (message.messageStubType) {
 		const jid = message.key?.remoteJid!
