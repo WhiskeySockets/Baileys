@@ -28,6 +28,7 @@ import type {
 import { ALL_WA_PATCH_NAMES } from '../Types'
 import type { QuickReplyAction } from '../Types/Bussines.js'
 import type { LabelActionBody } from '../Types/Label'
+import { QueryIds, type TextStatusInput, type TextStatusUpdateResponse, XWAPaths } from '../Types/Mex'
 import { SyncState } from '../Types/State'
 import {
 	chatModificationToAppPatch,
@@ -45,6 +46,7 @@ import {
 	newLTHashState,
 	processSyncAction
 } from '../Utils'
+import type { ILogger } from '../Utils/logger'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { buildTcTokenFromJid } from '../Utils/tc-token-utils'
@@ -62,6 +64,7 @@ import {
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
+import { executeWMexQuery } from './mex'
 import { makeSocket } from './socket.js'
 
 export const buildProfilePictureQueryContent = (
@@ -74,6 +77,91 @@ export const buildProfilePictureQueryContent = (
 	}
 
 	return [picture]
+}
+
+export const buildTextStatusUpdateContent = (status: string | TextStatusInput) => {
+	const text = typeof status === 'string' ? status : (status.text ?? null)
+	const emoji = typeof status === 'object' && status.emoji ? status.emoji : undefined
+	const textStatusString = text && text.trim().length > 0 ? text : null
+
+	// Default ephemeral duration for text status is 24 hours (86400 seconds).
+	// Meta's GraphQL server rejects ephemeral_duration_sec: 0 with 400 Bad Request when setting a status.
+	// Only when clearing a status (null text and no emoji) is duration set to 0.
+	const isClearing = !textStatusString && !emoji
+	const ephemeralDuration = isClearing
+		? 0
+		: typeof status === 'object' && typeof status.ephemeralDuration === 'number' && status.ephemeralDuration > 0
+			? status.ephemeralDuration
+			: 86400
+
+	const mexInput: {
+		text: string | null
+		ephemeral_duration_sec: number
+		emoji?: { content: string }
+	} = {
+		text: textStatusString,
+		ephemeral_duration_sec: ephemeralDuration
+	}
+	if (emoji) {
+		mexInput.emoji = { content: emoji }
+	}
+
+	const legacyStatusText = [emoji, textStatusString].filter(Boolean).join(' ')
+
+	return {
+		mexInput,
+		legacyStatusText
+	}
+}
+
+export const executeTextStatusUpdate = async (
+	status: string | TextStatusInput,
+	query: (node: BinaryNode) => Promise<BinaryNode>,
+	generateMessageTag: () => string,
+	logger: ILogger
+) => {
+	const { mexInput, legacyStatusText } = buildTextStatusUpdateContent(status)
+
+	let mexError: unknown
+	try {
+		await executeWMexQuery<TextStatusUpdateResponse>(
+			{ input: mexInput },
+			QueryIds.UPDATE_TEXT_STATUS,
+			XWAPaths.xwa2_update_text_status,
+			query,
+			generateMessageTag
+		)
+	} catch (error) {
+		mexError = error
+		logger.warn({ err: error }, 'failed to update modern text status via MEX, falling back to legacy status')
+	}
+
+	try {
+		const legacyResult = await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				xmlns: 'status'
+			},
+			content: [
+				{
+					tag: 'status',
+					attrs: {},
+					content: Buffer.from(legacyStatusText, 'utf-8')
+				}
+			]
+		})
+
+		if (!legacyResult) {
+			throw new Boom('Legacy status query failed', { statusCode: 500 })
+		}
+	} catch (error) {
+		logger.warn({ err: error }, 'failed to update legacy profile status')
+		if (mexError) {
+			throw mexError
+		}
+	}
 }
 
 export const makeChatsSocket = (config: SocketConfig) => {
@@ -283,7 +371,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const fetchStatus = async (...jids: string[]) => {
-		const usyncQuery = new USyncQuery().withStatusProtocol()
+		const usyncQuery = new USyncQuery().withStatusProtocol().withTextStatusProtocol()
+
+		for (const jid of jids) {
+			usyncQuery.withUser(new USyncUser().withId(jid))
+		}
+
+		const result = await sock.executeUSyncQuery(usyncQuery)
+		if (result) {
+			return result.list
+		}
+	}
+
+	const fetchTextStatus = async (...jids: string[]) => {
+		const usyncQuery = new USyncQuery().withTextStatusProtocol()
 
 		for (const jid of jids) {
 			usyncQuery.withUser(new USyncUser().withId(jid))
@@ -372,23 +473,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 	}
 
-	/** update the profile status for yourself */
-	const updateProfileStatus = async (status: string) => {
-		await query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'set',
-				xmlns: 'status'
-			},
-			content: [
-				{
-					tag: 'status',
-					attrs: {},
-					content: Buffer.from(status, 'utf-8')
-				}
-			]
-		})
+	/** update the profile status / about for yourself */
+	const updateProfileStatus = async (status: string | TextStatusInput) => {
+		return executeTextStatusUpdate(status, query, generateMessageTag, logger)
 	}
 
 	const updateProfileName = async (name: string) => {
@@ -1498,10 +1585,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		profilePictureUrl,
 		fetchBlocklist,
 		fetchStatus,
+		fetchTextStatus,
 		fetchDisappearingDuration,
 		updateProfilePicture,
 		removeProfilePicture,
 		updateProfileStatus,
+		updateProfileAbout: updateProfileStatus,
 		updateProfileName,
 		updateBlockStatus,
 		updateDisableLinkPreviewsPrivacy,

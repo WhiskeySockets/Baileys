@@ -7,6 +7,7 @@ import {
 	USyncDeviceProtocol,
 	USyncDisappearingModeProtocol,
 	USyncStatusProtocol,
+	USyncTextStatusProtocol,
 	USyncUsernameProtocol
 } from './Protocols'
 import { USyncUser } from './USyncUser'
@@ -134,6 +135,11 @@ export class USyncQuery {
 
 	withUsernameProtocol() {
 		this.protocols.push(new USyncUsernameProtocol())
+		return this
+	}
+
+	withTextStatusProtocol() {
+		this.protocols.push(new USyncTextStatusProtocol())
 		return this
 	}
 }
