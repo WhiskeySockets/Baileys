@@ -4,18 +4,21 @@ import { getRawMediaUploadData } from '../Utils'
 import {
 	parseCatalogNode,
 	parseCollectionsNode,
-	parseOrderDetailsNode,
 	parseProductNode,
 	toProductNode,
 	uploadingNecessaryImagesOfProduct
 } from '../Utils/business'
 import { type BinaryNode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { getBinaryNodeChild } from '../WABinary/generic-utils'
+import { fetchMexOrderDetails } from './business-mex'
 import { makeMessagesRecvSocket } from './messages-recv'
+import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
 export const makeBusinessSocket = (config: SocketConfig) => {
 	const sock = makeMessagesRecvSocket(config)
-	const { authState, query, waUploadToServer } = sock
+	const { authState, generateMessageTag, query, waUploadToServer } = sock
+	const executeWMexQuery = (variables: Record<string, unknown>, queryId: string, dataPath: string): Promise<unknown> =>
+		genericExecuteWMexQuery(variables, queryId, dataPath, query, generateMessageTag)
 
 	const updateBussinesProfile = async (args: UpdateBussinesProfileProps) => {
 		const node: BinaryNode[] = []
@@ -251,50 +254,15 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseCollectionsNode(result)
 	}
 
-	const getOrderDetails = async (orderId: string, tokenBase64: string) => {
-		const result = await query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'get',
-				xmlns: 'fb:thrift_iq',
-				smax_id: '5'
-			},
-			content: [
-				{
-					tag: 'order',
-					attrs: {
-						op: 'get',
-						id: orderId
-					},
-					content: [
-						{
-							tag: 'image_dimensions',
-							attrs: {},
-							content: [
-								{
-									tag: 'width',
-									attrs: {},
-									content: Buffer.from('100')
-								},
-								{
-									tag: 'height',
-									attrs: {},
-									content: Buffer.from('100')
-								}
-							]
-						},
-						{
-							tag: 'token',
-							attrs: {},
-							content: Buffer.from(tokenBase64)
-						}
-					]
-				}
-			]
+	const getOrderDetails = async (orderId: string, tokenBase64: string, jid?: string) => {
+		return fetchMexOrderDetails({
+			orderId,
+			token: tokenBase64,
+			requestedJid: jid || authState.creds.me?.id || authState.creds.me?.lid || '',
+			ownJids: [authState.creds.me?.id, authState.creds.me?.lid],
+			executeQuery: executeWMexQuery,
+			logger: config.logger
 		})
-
-		return parseOrderDetailsNode(result)
 	}
 
 	const productUpdate = async (productId: string, update: ProductUpdate) => {
