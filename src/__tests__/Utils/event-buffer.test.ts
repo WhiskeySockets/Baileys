@@ -53,6 +53,44 @@ describe('event-buffer', () => {
 
 			ev.destroy()
 		})
+
+		it('preserves the decoded message timestamp when a receipt follows the upsert', () => {
+			const ev = makeEventBuffer(makeTestLogger())
+			const receivedEvents: BaileysEventMap['messages.upsert'][] = []
+			const key = {
+				remoteJid: '1234567890@s.whatsapp.net',
+				id: 'message-id',
+				fromMe: false
+			}
+
+			ev.on('messages.upsert', (data: BaileysEventMap['messages.upsert']) => {
+				receivedEvents.push(data)
+			})
+
+			ev.buffer()
+			ev.emit('messages.upsert', {
+				messages: [{ key, messageTimestamp: 100 }],
+				type: 'append'
+			})
+			ev.emit('messages.update', [
+				{
+					key,
+					update: {
+						status: WAMessageStatus.DELIVERY_ACK,
+						messageTimestamp: 200
+					}
+				}
+			])
+			ev.flush()
+
+			expect(receivedEvents).toHaveLength(1)
+			expect(receivedEvents[0]!.messages[0]).toMatchObject({
+				messageTimestamp: 100,
+				status: WAMessageStatus.DELIVERY_ACK
+			})
+
+			ev.destroy()
+		})
 	})
 
 	describe('messaging-history.set pastParticipants buffering', () => {

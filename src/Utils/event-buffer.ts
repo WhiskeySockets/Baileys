@@ -529,7 +529,12 @@ function append<E extends BufferableEvent>(
 				const keyStr = stringifyMessageKey(key)
 				const existing = data.historySets.messages[keyStr] || data.messageUpserts[keyStr]?.message
 				if (existing) {
+					const messageTimestamp = existing.messageTimestamp
 					Object.assign(existing, update)
+					if (messageTimestamp !== undefined) {
+						existing.messageTimestamp = messageTimestamp
+					}
+
 					// if the message was received & read by us
 					// the chat counter must have been incremented
 					// so we need to decrement it
