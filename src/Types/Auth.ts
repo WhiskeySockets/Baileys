@@ -98,6 +98,8 @@ export type SignalKeyStore = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	/** releases the internal AsyncLocalStorage; must be called on socket end to avoid a leak */
+	disposeTransactionStorage(): void
 }
 
 export type TransactionCapabilityOptions = {
