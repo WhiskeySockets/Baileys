@@ -1,3 +1,4 @@
+import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import {
 	type GroupMetadata,
@@ -432,7 +433,15 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 }
 
 export const extractCommunityMetadata = (result: BinaryNode) => {
-	const community = getBinaryNodeChild(result, 'community')!
+	const community = getBinaryNodeChild(result, 'community') || getBinaryNodeChild(result, 'group')
+	if (!community) {
+		throw new Boom('Invalid community metadata response: missing <community> or <group> node', { data: result })
+	}
+
+	if (!community.attrs.id) {
+		throw new Boom('Invalid community metadata response: missing community id', { data: community })
+	}
+
 	const descChild = getBinaryNodeChild(community, 'description')
 	let desc: string | undefined
 	let descId: string | undefined
@@ -441,9 +450,7 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 		descId = descChild.attrs.id
 	}
 
-	const communityId = community.attrs.id?.includes('@')
-		? community.attrs.id
-		: jidEncode(community.attrs.id || '', 'g.us')
+	const communityId = community.attrs.id.includes('@') ? community.attrs.id : jidEncode(community.attrs.id, 'g.us')
 	const eph = getBinaryNodeChild(community, 'ephemeral')?.attrs.expiration
 	const memberAddMode = getBinaryNodeChildString(community, 'member_add_mode') === 'all_member_add'
 	const metadata: GroupMetadata = {
