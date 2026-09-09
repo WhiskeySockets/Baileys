@@ -123,7 +123,8 @@ export const addTransactionCapability = (
 	// Queues for concurrency control (keyed by signal data type - bounded set)
 	const keyQueues = new Map<string, PQueue>()
 
-	// Transaction mutexes with reference counting for cleanup
+	// All transactions on this store now share one mutex, keyed by this constant - `key` below is trace-log-only.
+	const TX_MUTEX_KEY = '__tx__'
 	const txMutexes = new Map<string, Mutex>()
 	const txMutexRefCounts = new Map<string, number>()
 
@@ -310,8 +311,8 @@ export const addTransactionCapability = (
 			}
 
 			// New transaction - acquire mutex and create context
-			const mutex = getTxMutex(key)
-			acquireTxMutexRef(key)
+			const mutex = getTxMutex(TX_MUTEX_KEY)
+			acquireTxMutexRef(TX_MUTEX_KEY)
 
 			try {
 				return await mutex.runExclusive(async () => {
@@ -321,7 +322,7 @@ export const addTransactionCapability = (
 						dbQueries: 0
 					}
 
-					logger.trace('entering transaction')
+					logger.trace({ key }, 'entering transaction')
 
 					try {
 						const result = await txStorage.run(ctx, work)
@@ -338,7 +339,7 @@ export const addTransactionCapability = (
 					}
 				})
 			} finally {
-				releaseTxMutexRef(key)
+				releaseTxMutexRef(TX_MUTEX_KEY)
 			}
 		}
 	}
