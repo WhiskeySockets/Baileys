@@ -83,6 +83,9 @@
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
           <span id="activeNumberLabel">Active: +919111110963</span>
         </div>
+        <button onclick="openSyncModal()" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-xs flex items-center">
+          <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Sync from Wassenger
+        </button>
         <a href="/health" target="_blank" class="text-xs text-slate-500 hover:text-slate-800 transition">API Health</a>
       </div>
     </header>
@@ -545,11 +548,91 @@
     </div>
   </div>
 
+  <!-- Sync from Wassenger Modal -->
+  <div id="syncModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-8 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-bolt text-emerald-600 text-lg"></i>
+          <h3 class="font-bold text-slate-900 text-lg">Sync Live Data from Wassenger Chrome Tab</h3>
+        </div>
+        <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-900 space-y-2">
+        <p class="font-bold flex items-center"><i class="fa-solid fa-circle-check mr-1.5 text-emerald-600"></i> Automatic 1-Click Extraction</p>
+        <p>Because you are logged into Wassenger on Google Chrome, this script will extract your account's devices, labels, quick replies, and webhooks and import them straight into this dashboard!</p>
+      </div>
+
+      <div class="space-y-3">
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Instructions (Takes 5 seconds):</label>
+        <ol class="list-decimal list-inside text-xs text-slate-600 space-y-1.5 pl-1 leading-relaxed">
+          <li>Open your <strong>Wassenger tab</strong> in Chrome (<code class="bg-slate-100 px-1 py-0.5 rounded text-[#164e87]">console.wassenger.com</code>).</li>
+          <li>Press <kbd class="bg-slate-200 px-1.5 py-0.5 rounded font-mono text-[11px]">F12</kbd> (or right-click &gt; Inspect) and switch to the <strong>Console</strong> tab.</li>
+          <li>Click the button below to copy the extractor snippet.</li>
+          <li>Paste into the Console and press <kbd class="bg-slate-200 px-1.5 py-0.5 rounded font-mono text-[11px]">Enter</kbd>.</li>
+        </ol>
+
+        <div class="pt-2 flex space-x-3">
+          <button onclick="copyExtractorScript()" id="copyScriptBtn" class="flex-1 bg-[#164e87] hover:bg-[#123e6b] text-white font-bold text-xs py-3 rounded-xl transition shadow flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-copy"></i>
+            <span>Copy 1-Click Chrome Snippet</span>
+          </button>
+        </div>
+
+        <div class="border-t border-slate-100 pt-3">
+          <p class="text-[11px] text-slate-500 mb-1.5">Or upload an exported <code class="bg-slate-100 px-1 py-0.5 rounded">wassenger_export.json</code> file:</p>
+          <input type="file" id="jsonFileInput" accept=".json" onchange="handleJsonFileImport(event)" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- JavaScript Controller -->
   <script>
     let activeDeviceId = '';
     let selectedChatWid = '';
     let qrPollInterval = null;
+
+    function openSyncModal() { document.getElementById('syncModal').classList.remove('hidden'); }
+    function closeSyncModal() { document.getElementById('syncModal').classList.add('hidden'); }
+
+    async function copyExtractorScript() {
+      const scriptCode = `fetch('http://localhost:3000/wassenger-extractor.js').then(r=>r.text()).then(eval);`;
+      await navigator.clipboard.writeText(scriptCode);
+      const btn = document.getElementById('copyScriptBtn');
+      btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Copied to Clipboard!';
+      btn.classList.remove('bg-[#164e87]');
+      btn.classList.add('bg-emerald-600');
+      setTimeout(() => {
+        btn.innerHTML = '<i class="fa-solid fa-copy mr-2"></i> Copy 1-Click Chrome Snippet';
+        btn.classList.remove('bg-emerald-600');
+        btn.classList.add('bg-[#164e87]');
+      }, 3000);
+    }
+
+    async function handleJsonFileImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const json = JSON.parse(evt.target.result);
+          const res = await fetch('/api/v1/sync/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(json)
+          });
+          const resJson = await res.json();
+          alert(resJson.message || 'Import successful!');
+          closeSyncModal();
+          fetchDevices();
+        } catch (err) {
+          alert('Error parsing JSON file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));

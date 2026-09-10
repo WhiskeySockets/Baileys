@@ -18,6 +18,7 @@ import { groupRoutes } from './routes/groups.js'
 import { labelRoutes } from './routes/labels.js'
 import { quickReplyRoutes } from './routes/quick-replies.js'
 import { autoReplyRoutes } from './routes/autoreplies.js'
+import { syncRoutes } from './routes/sync.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -52,6 +53,7 @@ async function bootstrap() {
 	app.register(labelRoutes, { prefix: '/api/v1/devices' })
 	app.register(quickReplyRoutes, { prefix: '/api/v1/devices' })
 	app.register(autoReplyRoutes, { prefix: '/api/v1/devices' })
+	app.register(syncRoutes, { prefix: '/api/v1/sync' })
 
 	// Health check endpoint
 	app.get('/health', async () => ({
