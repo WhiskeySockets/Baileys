@@ -56,6 +56,12 @@ const deferred = <T = void>() => {
 	return { promise, resolve }
 }
 
+const flushMicrotasks = async (times = 50) => {
+	for (let i = 0; i < times; i++) {
+		await Promise.resolve()
+	}
+}
+
 describe('assertMeId', () => {
 	it('returns me.id when authenticated', () => {
 		const creds = credsWithMe({ id: '5511999999999@s.whatsapp.net' })
@@ -92,12 +98,9 @@ describe('addTransactionCapability', () => {
 
 		const state = addTransactionCapability(raw, makeTestLogger(), { maxCommitRetries: 1, delayBetweenTriesMs: 5 })
 
-		// mirrors the real collision: an outgoing relayMessage() transaction (keyed by meId) racing
-		// the own-identity PN->LID migration socket.ts fires on every connection open (keyed by
-		// migrate-N-sessions-<lidUser>) - two different keys, same underlying sender-key-memory record.
 		const aHasRead = deferred()
 		const aMayWrite = deferred()
-		const bDone = deferred<void>()
+		let bSettled = false
 
 		const txA = state.transaction(async () => {
 			const existing = await state.get('sender-key-memory', ['group1'])
@@ -113,11 +116,53 @@ describe('addTransactionCapability', () => {
 				const existing = await state.get('sender-key-memory', ['group1'])
 				await state.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceC: true } } })
 			}, 'migrate-1-sessions-lidUser')
-			.then(() => bDone.resolve())
+			.then(() => {
+				bSettled = true
+			})
 
-		// give txB a real chance to run to completion here - it only can if it's NOT
-		// blocked behind txA's still-open transaction, which is exactly the bug.
-		await Promise.race([bDone.promise, new Promise(r => setTimeout(r, 30))])
+		await flushMicrotasks()
+		expect(bSettled).toBe(false)
+
+		aMayWrite.resolve()
+		await Promise.all([txA, txB])
+
+		const final = await raw.get('sender-key-memory', ['group1'])
+		expect(final.group1).toEqual({ deviceA: true, deviceB: true, deviceC: true })
+	})
+
+	it('serializes transactions from two separate wrappers over the same store', async () => {
+		const raw = makeInMemoryStore()
+		await raw.set({ 'sender-key-memory': { group1: { deviceA: true } } })
+
+		const logger = makeTestLogger()
+		const opts = { maxCommitRetries: 1, delayBetweenTriesMs: 5 }
+		const stateA = addTransactionCapability(raw, logger, opts)
+		const stateB = addTransactionCapability(raw, logger, opts)
+
+		const aHasRead = deferred()
+		const aMayWrite = deferred()
+		let bSettled = false
+
+		const txA = stateA.transaction(async () => {
+			const existing = await stateA.get('sender-key-memory', ['group1'])
+			aHasRead.resolve()
+			await aMayWrite.promise
+			await stateA.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceB: true } } })
+		}, 'relayMessage-meId')
+
+		await aHasRead.promise
+
+		const txB = stateB
+			.transaction(async () => {
+				const existing = await stateB.get('sender-key-memory', ['group1'])
+				await stateB.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceC: true } } })
+			}, 'migrate-1-sessions-lidUser')
+			.then(() => {
+				bSettled = true
+			})
+
+		await flushMicrotasks()
+		expect(bSettled).toBe(false)
 
 		aMayWrite.resolve()
 		await Promise.all([txA, txB])
