@@ -1,5 +1,12 @@
 import { Boom } from '@hapi/boom'
-import type { AuthenticationCreds, Contact, SignalDataSet, SignalKeyStore } from '../../Types'
+// wrapped - single line exceeds prettier's 120-char printWidth
+import type {
+	AuthenticationCreds,
+	Contact,
+	SignalDataSet,
+	SignalKeyStore,
+	SignalKeyStoreWithTransaction
+} from '../../Types'
 import { addTransactionCapability, assertMeId, initAuthCreds } from '../../Utils/auth-utils'
 import type { ILogger } from '../../Utils/logger'
 
@@ -91,6 +98,42 @@ describe('assertMeId', () => {
 	})
 })
 
+const runInterleavingScenario = async (
+	raw: SignalKeyStore,
+	stateA: SignalKeyStoreWithTransaction,
+	stateB: SignalKeyStoreWithTransaction
+) => {
+	const aHasRead = deferred()
+	const aMayWrite = deferred()
+	let bSettled = false
+
+	const txA = stateA.transaction(async () => {
+		const existing = await stateA.get('sender-key-memory', ['group1'])
+		aHasRead.resolve()
+		await aMayWrite.promise
+		await stateA.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceB: true } } })
+	}, 'relayMessage-meId')
+
+	await aHasRead.promise
+
+	const txB = stateB
+		.transaction(async () => {
+			const existing = await stateB.get('sender-key-memory', ['group1'])
+			await stateB.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceC: true } } })
+		}, 'migrate-1-sessions-lidUser')
+		.then(() => {
+			bSettled = true
+		})
+
+	await flushMicrotasks()
+	expect(bSettled).toBe(false)
+
+	aMayWrite.resolve()
+	await Promise.all([txA, txB])
+
+	return raw.get('sender-key-memory', ['group1'])
+}
+
 describe('addTransactionCapability', () => {
 	it('serializes transactions that use different keys against the same store', async () => {
 		const raw = makeInMemoryStore()
@@ -98,35 +141,7 @@ describe('addTransactionCapability', () => {
 
 		const state = addTransactionCapability(raw, makeTestLogger(), { maxCommitRetries: 1, delayBetweenTriesMs: 5 })
 
-		const aHasRead = deferred()
-		const aMayWrite = deferred()
-		let bSettled = false
-
-		const txA = state.transaction(async () => {
-			const existing = await state.get('sender-key-memory', ['group1'])
-			aHasRead.resolve()
-			await aMayWrite.promise
-			await state.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceB: true } } })
-		}, 'relayMessage-meId')
-
-		await aHasRead.promise
-
-		const txB = state
-			.transaction(async () => {
-				const existing = await state.get('sender-key-memory', ['group1'])
-				await state.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceC: true } } })
-			}, 'migrate-1-sessions-lidUser')
-			.then(() => {
-				bSettled = true
-			})
-
-		await flushMicrotasks()
-		expect(bSettled).toBe(false)
-
-		aMayWrite.resolve()
-		await Promise.all([txA, txB])
-
-		const final = await raw.get('sender-key-memory', ['group1'])
+		const final = await runInterleavingScenario(raw, state, state)
 		expect(final.group1).toEqual({ deviceA: true, deviceB: true, deviceC: true })
 	})
 
@@ -139,35 +154,7 @@ describe('addTransactionCapability', () => {
 		const stateA = addTransactionCapability(raw, logger, opts)
 		const stateB = addTransactionCapability(raw, logger, opts)
 
-		const aHasRead = deferred()
-		const aMayWrite = deferred()
-		let bSettled = false
-
-		const txA = stateA.transaction(async () => {
-			const existing = await stateA.get('sender-key-memory', ['group1'])
-			aHasRead.resolve()
-			await aMayWrite.promise
-			await stateA.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceB: true } } })
-		}, 'relayMessage-meId')
-
-		await aHasRead.promise
-
-		const txB = stateB
-			.transaction(async () => {
-				const existing = await stateB.get('sender-key-memory', ['group1'])
-				await stateB.set({ 'sender-key-memory': { group1: { ...existing.group1, deviceC: true } } })
-			}, 'migrate-1-sessions-lidUser')
-			.then(() => {
-				bSettled = true
-			})
-
-		await flushMicrotasks()
-		expect(bSettled).toBe(false)
-
-		aMayWrite.resolve()
-		await Promise.all([txA, txB])
-
-		const final = await raw.get('sender-key-memory', ['group1'])
+		const final = await runInterleavingScenario(raw, stateA, stateB)
 		expect(final.group1).toEqual({ deviceA: true, deviceB: true, deviceC: true })
 	})
 })
