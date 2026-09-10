@@ -8,20 +8,23 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    .side-icon {
-      transition: all 0.2s ease;
-    }
+    .side-icon { transition: all 0.2s ease; }
     .side-icon.active, .side-icon:hover {
       background-color: rgba(255, 255, 255, 0.15);
       color: #ffffff;
     }
-    .badge-connected { background-color: #d1fae5; color: #065f46; }
-    .badge-scan_qr { background-color: #fef3c7; color: #92400e; }
-    .badge-connecting { background-color: #e0e7ff; color: #3730a3; }
-    .badge-disconnected { background-color: #fee2e2; color: #991b1b; }
+    .step-node.active { color: #164e87; font-weight: 700; }
+    .step-node.active .step-num { background-color: #164e87; color: white; }
+    .step-node.done .step-num { background-color: #10b981; color: white; }
+    .step-node.done { color: #10b981; font-weight: 600; }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 9999px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; background-color: #f1f5f9; color: #64748b;
+    }
   </style>
 </head>
-<body class="bg-[#f0f4f8] text-slate-800 min-h-screen flex antialiased">
+<body class="bg-[#f0f4f8] text-slate-800 min-h-screen flex antialiased select-none">
 
   <!-- ================= WASSENGER LEFT ICON SIDEBAR ================= -->
   <aside class="w-16 bg-[#164e87] text-white flex flex-col items-center py-4 space-y-4 flex-shrink-0 z-40 shadow-md">
@@ -32,7 +35,7 @@
 
     <!-- Navigation Icons -->
     <nav class="flex-1 flex flex-col space-y-2 w-full px-2 text-slate-300">
-      <button onclick="switchTab('create')" id="nav-create" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg active" title="Add Number / Connection Wizard">
+      <button onclick="switchTab('wizard')" id="nav-wizard" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg active" title="Add Number Wizard">
         <i class="fa-solid fa-house"></i>
       </button>
       <button onclick="switchTab('inbox')" id="nav-inbox" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Team Inbox">
@@ -44,7 +47,7 @@
       <button onclick="switchTab('groups')" id="nav-groups" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="WhatsApp Groups">
         <i class="fa-solid fa-users"></i>
       </button>
-      <button onclick="switchTab('devices')" id="nav-devices" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Connected Numbers">
+      <button onclick="switchTab('devices')" id="nav-devices" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Device Details & Logs">
         <i class="fa-solid fa-mobile-screen"></i>
       </button>
       <button onclick="switchTab('autoreplies')" id="nav-autoreplies" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Auto-Replies & AI Bot">
@@ -63,13 +66,13 @@
 
     <!-- Bottom Add Number Button -->
     <div class="pt-2 border-t border-white/10 w-full px-2 flex flex-col items-center space-y-3">
-      <button onclick="switchTab('create')" class="w-10 h-10 rounded-full bg-white text-[#164e87] flex items-center justify-center font-bold shadow hover:bg-slate-100 transition" title="Link New Number">
+      <button onclick="goToWizardStep(1)" class="w-10 h-10 rounded-full bg-white text-[#164e87] flex items-center justify-center font-bold shadow hover:bg-slate-100 transition" title="Link New Number">
         <i class="fa-solid fa-plus text-base"></i>
       </button>
     </div>
   </aside>
 
-  <!-- ================= MAIN CONTENT WRAPPER ================= -->
+  <!-- ================= MAIN VIEWPORT WRAPPER ================= -->
   <div class="flex-1 flex flex-col h-screen overflow-y-auto">
 
     <!-- Top Global Header -->
@@ -79,71 +82,71 @@
         <span class="text-xs bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg">Default Account</span>
       </div>
       <div class="flex items-center space-x-4">
-        <div id="deviceBadgeStatus" class="flex items-center text-xs font-medium text-slate-600">
+        <div class="flex items-center text-xs font-medium text-slate-600">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
           <span id="activeNumberLabel">Active: +919111110963</span>
         </div>
-        <button onclick="openSyncModal()" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-xs flex items-center">
-          <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Sync from Wassenger
-        </button>
         <a href="/health" target="_blank" class="text-xs text-slate-500 hover:text-slate-800 transition">API Health</a>
       </div>
     </header>
 
-    <!-- Content Sections -->
+    <!-- Main Content Body -->
     <main class="flex-1 p-6 md:p-10 flex justify-center">
 
-      <!-- ================= VIEW 1: CHOOSE CONNECTION METHOD WIZARD (Screenshot match) ================= -->
-      <div id="view-create" class="tab-view max-w-5xl w-full space-y-6">
+      <!-- ================= MULTI-STEP ONBOARDING WIZARD ================= -->
+      <div id="view-wizard" class="tab-view max-w-5xl w-full space-y-6">
         
-        <!-- Step Indicator -->
+        <!-- Step Indicator Bar -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 px-6 py-4 flex items-center justify-between">
-          <div class="flex items-center space-x-4 text-xs font-medium text-slate-500 flex-wrap gap-y-2">
-            <div class="flex items-center space-x-2 text-[#164e87] font-bold">
-              <span class="w-6 h-6 rounded-full bg-[#164e87] text-white flex items-center justify-center text-[11px]">1</span>
+          <div class="flex items-center space-x-3 text-xs font-medium text-slate-500 flex-wrap gap-y-2">
+            
+            <div id="step-node-1" class="step-node active flex items-center space-x-2">
+              <span class="step-num">1</span>
               <span>Select plan</span>
             </div>
             <span class="text-slate-300">───</span>
-            <div class="flex items-center space-x-2 text-slate-400">
-              <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px]">2</span>
+
+            <div id="step-node-2" class="step-node flex items-center space-x-2">
+              <span class="step-num">2</span>
               <span>Name it</span>
             </div>
             <span class="text-slate-300">───</span>
-            <div class="flex items-center space-x-2 text-slate-400">
-              <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px]">3</span>
-              <span>Invite team <span class="text-[10px] text-slate-400">optional</span></span>
+
+            <div id="step-node-3" class="step-node flex items-center space-x-2">
+              <span class="step-num">3</span>
+              <span>Invite team <span class="text-[10px] text-slate-400 font-normal">optional</span></span>
             </div>
             <span class="text-slate-300">───</span>
-            <div class="flex items-center space-x-2 text-slate-400">
-              <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px]">4</span>
+
+            <div id="step-node-4" class="step-node flex items-center space-x-2">
+              <span class="step-num">4</span>
               <span>Link WhatsApp</span>
             </div>
             <span class="text-slate-300">───</span>
-            <div class="flex items-center space-x-2 text-slate-400">
-              <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px]">5</span>
+
+            <div id="step-node-5" class="step-node flex items-center space-x-2">
+              <span class="step-num">5</span>
               <span>Ready</span>
             </div>
+
           </div>
           <button onclick="switchTab('devices')" class="text-xs text-slate-500 hover:text-slate-700 font-medium">Cancel</button>
         </div>
 
-        <!-- Main Card: Choose your connection method -->
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 text-center space-y-8">
+        <!-- ================= STEP 1: CHOOSE CONNECTION METHOD ================= -->
+        <div id="wizard-step-1" class="wizard-panel bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 text-center space-y-8">
           <div>
             <h2 class="text-2xl md:text-3xl font-bold text-slate-800">Choose your connection method</h2>
             <p class="text-sm text-slate-500 mt-2">Select how you want to connect your WhatsApp number to our platform.</p>
           </div>
 
-          <!-- Dual Cards Grid -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left max-w-4xl mx-auto">
             
-            <!-- Card 1: Official WhatsApp API -->
+            <!-- Official WhatsApp API Card -->
             <div class="relative rounded-2xl border-2 border-[#164e87] bg-white p-7 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-              <!-- Recommended Badge -->
-              <div class="absolute -top-3.5 left-6 bg-[#164e87] text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-md tracking-wider flex items-center shadow-xs">
+              <div class="absolute -top-3.5 left-6 bg-[#164e87] text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-md tracking-wider shadow-xs">
                 ★ RECOMMENDED
               </div>
-
               <div class="space-y-4">
                 <div class="w-12 h-12 rounded-xl bg-blue-50 text-[#164e87] flex items-center justify-center text-2xl">
                   <i class="fa-solid fa-cloud"></i>
@@ -152,8 +155,6 @@
                   <h3 class="text-lg font-bold text-slate-900">Official WhatsApp API</h3>
                   <p class="text-xs text-slate-500 mt-1">Enterprise grade solution powered by Meta for best business communication</p>
                 </div>
-
-                <!-- Features list -->
                 <ul class="space-y-2.5 text-xs text-slate-700 pt-2 border-t border-slate-100">
                   <li class="flex items-center"><i class="fa-solid fa-shield-halved text-emerald-600 mr-2.5 w-4 text-center"></i> Official WhatsApp integration</li>
                   <li class="flex items-center"><i class="fa-solid fa-bolt text-emerald-600 mr-2.5 w-4 text-center"></i> Fast messaging</li>
@@ -166,16 +167,15 @@
                   <li class="flex items-center"><i class="fa-solid fa-circle-check text-emerald-600 mr-2.5 w-4 text-center"></i> Verified business profile</li>
                 </ul>
               </div>
-
               <div class="pt-6">
-                <button onclick="openWabaConnectModal()" class="w-full bg-[#164e87] hover:bg-[#123e6b] text-white font-bold text-xs py-3.5 px-4 rounded-xl transition shadow flex items-center justify-center space-x-2">
+                <button onclick="selectConnectionMethod('waba')" class="w-full bg-[#164e87] hover:bg-[#123e6b] text-white font-bold text-xs py-3.5 px-4 rounded-xl transition shadow flex items-center justify-center space-x-2">
                   <i class="fa-solid fa-rocket"></i>
                   <span>Connect with Official API</span>
                 </button>
               </div>
             </div>
 
-            <!-- Card 2: QR Code Connection -->
+            <!-- QR Code Connection Card -->
             <div class="rounded-2xl border border-slate-200 bg-white p-7 shadow-xs flex flex-col justify-between hover:border-slate-300 hover:shadow-sm transition">
               <div class="space-y-4">
                 <div class="w-12 h-12 rounded-xl bg-slate-100 text-[#164e87] flex items-center justify-center text-2xl">
@@ -185,8 +185,6 @@
                   <h3 class="text-lg font-bold text-slate-900">QR Code Connection</h3>
                   <p class="text-xs text-slate-500 mt-1">Connect your existing WhatsApp app by scanning a QR code</p>
                 </div>
-
-                <!-- Features list -->
                 <ul class="space-y-2.5 text-xs text-slate-700 pt-2 border-t border-slate-100">
                   <li class="flex items-center text-emerald-700"><i class="fa-solid fa-comment-dots mr-2.5 w-4 text-center text-emerald-600"></i> Open messaging - No templates needed</li>
                   <li class="flex items-center text-emerald-700"><i class="fa-solid fa-users mr-2.5 w-4 text-center text-emerald-600"></i> Access to Groups & Channels</li>
@@ -199,9 +197,8 @@
                   <li class="flex items-center text-slate-500"><i class="fa-solid fa-mobile mr-2.5 w-4 text-center text-slate-400"></i> Requires physical phone</li>
                 </ul>
               </div>
-
               <div class="pt-6">
-                <button onclick="startQrWizard()" class="w-full bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs py-3.5 px-4 rounded-xl transition shadow-xs flex items-center justify-center space-x-2">
+                <button onclick="selectConnectionMethod('qr')" class="w-full bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs py-3.5 px-4 rounded-xl transition shadow-xs flex items-center justify-center space-x-2">
                   <i class="fa-solid fa-qrcode text-[#164e87]"></i>
                   <span>Connect with QR Code</span>
                 </button>
@@ -210,8 +207,7 @@
 
           </div>
 
-          <!-- Bottom Footer Links -->
-          <div class="pt-4 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-100 max-w-4xl mx-auto">
+          <div class="pt-4 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 max-w-4xl mx-auto">
             <button onclick="switchTab('devices')" class="text-slate-500 hover:text-slate-800 flex items-center py-2">
               <i class="fa-solid fa-arrow-left mr-2"></i> Back
             </button>
@@ -221,41 +217,304 @@
           </div>
         </div>
 
-      </div>
-
-      <!-- ================= VIEW 2: DEVICES ================= -->
-      <div id="view-devices" class="tab-view max-w-5xl w-full hidden space-y-6">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <!-- ================= STEP 2: NAME YOUR NUMBER (Screenshot 1 Match) ================= -->
+        <div id="wizard-step-2" class="wizard-panel bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 space-y-8 hidden">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Connected WhatsApp Numbers</h2>
-            <p class="text-xs text-slate-500">Manage all your linked phone numbers, QR codes, and API connections</p>
+            <h2 class="text-2xl font-bold text-slate-900">Name your number</h2>
+            <p class="text-xs text-slate-500 mt-1">An alias that helps you identify this number. Customers never see it.</p>
           </div>
-          <button onclick="switchTab('create')" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
-            <i class="fa-solid fa-plus mr-1.5"></i> Link New Number
-          </button>
+
+          <div class="max-w-xl space-y-2">
+            <label class="block text-xs font-semibold text-slate-700">Alias</label>
+            <input type="text" id="wizardAliasInput" value="Sales" oninput="updateAliasPreview(this.value)" maxlength="25" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#164e87]">
+            <div class="flex justify-between items-center text-[11px] text-slate-400">
+              <span>You can change it at any time.</span>
+              <span id="aliasCharCount">5/25</span>
+            </div>
+          </div>
+
+          <!-- Where your team will see it preview box -->
+          <div class="space-y-2 pt-2">
+            <p class="text-[11px] font-bold text-slate-400 tracking-wider uppercase">WHERE YOUR TEAM WILL SEE IT</p>
+            <div class="rounded-2xl border border-slate-200 overflow-hidden bg-slate-50 max-w-3xl flex h-36">
+              <!-- Left Mini Sidebar -->
+              <div class="w-10 bg-[#164e87] flex flex-col items-center py-2.5 space-y-2">
+                <span class="w-4 h-4 rounded-full bg-blue-300"></span>
+                <span class="w-3 h-3 rounded-full bg-white/40"></span>
+                <span class="w-3 h-3 rounded-full bg-white/40"></span>
+                <span class="w-3 h-3 rounded-full bg-white/40"></span>
+              </div>
+              <!-- Mini Chat Left List -->
+              <div class="w-48 bg-white border-r border-slate-200 p-3 space-y-2.5">
+                <div class="bg-blue-50/70 p-2 rounded-lg flex items-center justify-between border border-blue-100">
+                  <div class="truncate">
+                    <p id="previewAliasText" class="font-bold text-xs text-[#164e87] truncate">Sales</p>
+                    <p class="text-[10px] text-slate-400 truncate">+91 91111 10963</p>
+                  </div>
+                  <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                </div>
+                <div class="space-y-1.5 opacity-40">
+                  <div class="h-2 bg-slate-200 rounded w-24"></div>
+                  <div class="h-2 bg-slate-100 rounded w-32"></div>
+                </div>
+                <div class="space-y-1.5 opacity-40 pt-1">
+                  <div class="h-2 bg-slate-200 rounded w-20"></div>
+                  <div class="h-2 bg-slate-100 rounded w-28"></div>
+                </div>
+              </div>
+              <!-- Mini Chat Main Thread -->
+              <div class="flex-1 bg-slate-50 p-4 flex flex-col justify-between">
+                <div class="h-2.5 bg-slate-200 rounded w-40"></div>
+                <div class="space-y-2">
+                  <div class="h-4 bg-slate-200 rounded-lg w-32"></div>
+                  <div class="h-4 bg-blue-200 rounded-lg w-48 ml-auto"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2 pt-4">
+            <input type="checkbox" id="termsCheck" checked class="w-4 h-4 text-[#164e87] rounded border-slate-300 focus:ring-[#164e87]">
+            <label for="termsCheck" class="text-xs text-slate-600">
+              I agree to comply with the <a href="https://www.whatsapp.com/legal/business-policy/" target="_blank" class="text-[#164e87] underline">WhatsApp terms</a> regarding spam or unsolicited messaging.
+            </label>
+          </div>
+
+          <div class="flex justify-between items-center pt-6 border-t border-slate-100">
+            <button onclick="goToWizardStep(1)" class="text-xs text-slate-500 hover:text-slate-800 flex items-center">
+              <i class="fa-solid fa-arrow-left mr-2"></i> Back
+            </button>
+            <button onclick="goToWizardStep(3)" class="bg-[#164e87] hover:bg-[#123e6b] text-white font-bold text-xs py-3 px-8 rounded-xl transition shadow">
+              Next
+            </button>
+          </div>
         </div>
 
-        <div id="devicesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Loaded dynamically -->
+        <!-- ================= STEP 3: INVITE TEAM (Screenshot 2 Match) ================= -->
+        <div id="wizard-step-3" class="wizard-panel bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 space-y-8 hidden">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">Invite your team</h2>
+            <p class="text-xs text-slate-500 mt-1">Teammates you invite share this number conversations. You can skip this and do it later.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+            
+            <!-- Left: Team Seats Counter -->
+            <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-4">
+              <div class="flex justify-between items-center text-xs font-bold text-slate-600">
+                <span class="uppercase tracking-wider">TEAM SEATS</span>
+                <span id="seatsCount">0/9</span>
+              </div>
+              <div class="flex space-x-2 flex-wrap gap-y-2">
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">1</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">2</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">3</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">4</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">5</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">6</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">7</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">8</div>
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">9</div>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                No one added yet. Pick from the list, or skip and do it later.
+              </p>
+            </div>
+
+            <!-- Right: Invite Form -->
+            <div class="space-y-4">
+              <h3 class="font-bold text-sm text-slate-800">Invite new team member</h3>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Name</label>
+                <input type="text" id="teamMemberName" placeholder="Enter agent name" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Email</label>
+                <input type="email" id="teamMemberEmail" placeholder="Enter agent login email" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Password</label>
+                <input type="password" id="teamMemberPass" placeholder="Enter a temporary password" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+                <p class="text-[10px] text-slate-400 mt-0.5">The agent will be asked to set a new password.</p>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-600 mb-1">Permissions</label>
+                  <select class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                    <option>👤 Agent</option>
+                    <option>🛡️ Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-600 mb-1">Color</label>
+                  <select class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                    <option>🟣 Purple</option>
+                    <option>🔵 Blue</option>
+                    <option>🟢 Emerald</option>
+                  </select>
+                </div>
+              </div>
+              <div class="pt-2 text-right">
+                <button onclick="addTeamMemberAction()" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-bold py-2.5 px-6 rounded-xl transition shadow">
+                  Create user
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="flex justify-between items-center pt-6 border-t border-slate-100">
+            <button onclick="goToWizardStep(2)" class="text-xs text-slate-500 hover:text-slate-800 flex items-center">
+              <i class="fa-solid fa-arrow-left mr-2"></i> Back
+            </button>
+            <button onclick="goToWizardStep(4)" class="bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 text-xs font-bold py-2.5 px-6 rounded-xl transition">
+              Skip step
+            </button>
+          </div>
         </div>
+
+        <!-- ================= STEP 4: LINK WHATSAPP (Screenshot 3 Match) ================= -->
+        <div id="wizard-step-4" class="wizard-panel bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 text-center space-y-8 hidden">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Connect your WhatsApp number</h2>
+            <p class="text-xs text-slate-500 mt-1">Scan the QR image with the WhatsApp mobile app to connect your number.</p>
+          </div>
+
+          <!-- Smartphone Illustration Graphic -->
+          <div class="max-w-md mx-auto py-6 flex justify-center">
+            <div class="w-64 bg-slate-900 rounded-[36px] p-3 shadow-2xl border-4 border-slate-800">
+              <div class="bg-[#075e54] text-white p-3 rounded-t-[28px] text-left text-xs font-bold flex justify-between items-center">
+                <span>WhatsApp</span>
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </div>
+              <div class="bg-white p-4 text-left space-y-2 text-[11px] shadow-sm">
+                <p class="text-slate-400">New group</p>
+                <p class="text-slate-400">New broadcast</p>
+                <div class="bg-blue-50 text-[#164e87] font-bold p-1.5 rounded-lg border border-blue-200 flex items-center">
+                  <i class="fa-solid fa-arrow-right mr-1.5 text-[9px]"></i> Linked devices
+                </div>
+                <p class="text-slate-400">Starred messages</p>
+                <p class="text-slate-400">Settings</p>
+              </div>
+              <div class="h-20 bg-slate-50 rounded-b-[28px]"></div>
+            </div>
+          </div>
+
+          <!-- Primary CTA Button -->
+          <div class="max-w-sm mx-auto">
+            <button onclick="triggerConnectModal()" class="w-full bg-[#164e87] hover:bg-[#123e6b] text-white font-bold text-sm py-4 px-6 rounded-2xl transition shadow-md">
+              I'm ready, let's do it
+            </button>
+          </div>
+
+          <div class="pt-6 border-t border-slate-100 flex justify-start">
+            <button onclick="goToWizardStep(3)" class="text-xs text-slate-500 hover:text-slate-800 flex items-center">
+              <i class="fa-solid fa-arrow-left mr-2"></i> Back
+            </button>
+          </div>
+        </div>
+
       </div>
 
-      <!-- ================= VIEW 3: TEAM INBOX ================= -->
+      <!-- ================= VIEW: DEVICE DETAILS & SESSION LOGS (Screenshot 4 Match) ================= -->
+      <div id="view-devices" class="tab-view max-w-5xl w-full hidden space-y-6">
+        
+        <!-- Top Status Alert -->
+        <div class="bg-rose-50/80 border border-rose-200 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h4 class="text-sm font-bold text-rose-800 flex items-center">
+              <i class="fa-solid fa-triangle-exclamation mr-2"></i> Active WhatsApp Session
+            </h4>
+            <p class="text-xs text-rose-600 mt-0.5">The WhatsApp number is connected and receiving/delivering messages.</p>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="goToWizardStep(1)" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow">Link Another Number</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <!-- Left Sub-Tabs -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-3 space-y-1 h-fit">
+            <button class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold text-[#164e87] bg-blue-50 flex items-center">
+              <i class="fa-solid fa-mobile-screen mr-2.5"></i> Number
+            </button>
+            <button onclick="switchTab('inbox')" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 flex items-center">
+              <i class="fa-solid fa-comments mr-2.5"></i> Live Chats
+            </button>
+            <button onclick="switchTab('campaigns')" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 flex items-center">
+              <i class="fa-solid fa-bullhorn mr-2.5"></i> Campaigns
+            </button>
+            <button onclick="switchTab('groups')" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 flex items-center">
+              <i class="fa-solid fa-users mr-2.5"></i> Groups
+            </button>
+          </div>
+
+          <!-- Main Info & Session Logs Card -->
+          <div class="md:col-span-3 space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-sm text-slate-900">Sales Number</h3>
+                    <p class="text-xs text-slate-500">+91 91111 10963 • Connected via Baileys WebSockets</p>
+                  </div>
+                </div>
+                <span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full uppercase">ONLINE</span>
+              </div>
+              <div class="grid grid-cols-3 gap-4 text-xs">
+                <div class="bg-slate-50 p-3 rounded-xl">
+                  <span class="text-slate-400 block text-[10px] uppercase">Device ID</span>
+                  <span class="font-mono font-bold text-slate-700">dev_1789034070419</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl">
+                  <span class="text-slate-400 block text-[10px] uppercase">Engine</span>
+                  <span class="font-bold text-slate-700">Baileys Noise/Protobuf</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl">
+                  <span class="text-slate-400 block text-[10px] uppercase">Status</span>
+                  <span class="font-bold text-emerald-600">Active / Synced</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Session Logs (Screenshot 4 Match) -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3">
+              <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wider">Session Logs</h4>
+              <div id="sessionLogsContainer" class="space-y-2 text-xs font-mono">
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-slate-700">Session status changed to "connected"</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400">Just now</span>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span class="text-slate-700">Multi-device Noise handshake established</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400">2 mins ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= TEAM INBOX TAB ================= -->
       <div id="view-inbox" class="tab-view max-w-6xl w-full hidden">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-[750px] flex">
-          
-          <!-- Chats list -->
           <div class="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50/50">
             <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
               <h3 class="font-bold text-sm text-slate-800">Conversations</h3>
               <span id="inboxCount" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">0</span>
             </div>
-            <div id="chatList" class="flex-1 overflow-y-auto divide-y divide-slate-100">
-              <!-- Inbound chats -->
-            </div>
+            <div id="chatList" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
           </div>
-
-          <!-- Chat thread -->
           <div class="flex-1 flex flex-col bg-white">
             <div class="p-4 border-b border-slate-200 flex justify-between items-center">
               <div class="flex items-center space-x-3">
@@ -267,109 +526,82 @@
                   <p id="activeChatSubtitle" class="text-[10px] text-slate-400">No chat selected</p>
                 </div>
               </div>
-              <div id="chatActions" class="flex space-x-2 hidden">
-                <button onclick="assignChatPrompt()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg text-slate-700">Assign</button>
-                <button onclick="addNotePrompt()" class="text-xs bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg text-amber-700">Internal Note</button>
-              </div>
             </div>
-
             <div id="messageStream" class="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/60">
-              <div class="h-full flex items-center justify-center text-slate-400 text-xs">
-                Select a chat to start messaging
-              </div>
+              <div class="h-full flex items-center justify-center text-slate-400 text-xs">Select a chat to view messages</div>
             </div>
-
             <div id="replyArea" class="p-4 border-t border-slate-200 bg-white hidden">
               <form onsubmit="handleSendReply(event)" class="flex items-center space-x-3">
-                <input type="text" id="replyInput" placeholder="Type a message or use quick reply (/hello)..." class="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#164e87]">
-                <button type="submit" class="bg-[#164e87] hover:bg-[#123e6b] text-white px-5 py-3 rounded-xl text-xs font-semibold shadow">
-                  <i class="fa-solid fa-paper-plane mr-1.5"></i> Send
-                </button>
+                <input type="text" id="replyInput" placeholder="Type a reply or use canned response (/hello)..." class="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-[#164e87]">
+                <button type="submit" class="bg-[#164e87] text-white px-5 py-3 rounded-xl text-xs font-semibold shadow">Send</button>
               </form>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ================= VIEW 4: CAMPAIGNS ================= -->
+      <!-- ================= CAMPAIGNS TAB ================= -->
       <div id="view-campaigns" class="tab-view max-w-5xl w-full hidden space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Bulk Campaigns & Broadcasts</h2>
-            <p class="text-xs text-slate-500">Send mass messages safely with automated anti-ban pacing delays</p>
+            <h2 class="text-xl font-bold text-slate-800">Bulk Campaigns</h2>
+            <p class="text-xs text-slate-500">Automated messaging with anti-ban delay pacing</p>
           </div>
-          <button onclick="openCampaignModal()" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
-            <i class="fa-solid fa-paper-plane mr-1.5"></i> Launch Campaign
-          </button>
+          <button onclick="openCampaignModal()" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow">+ New Campaign</button>
         </div>
         <div id="campaignsList" class="space-y-4"></div>
       </div>
 
-      <!-- ================= VIEW 5: GROUPS ================= -->
+      <!-- ================= GROUPS TAB ================= -->
       <div id="view-groups" class="tab-view max-w-5xl w-full hidden space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">WhatsApp Groups Management</h2>
-            <p class="text-xs text-slate-500">Browse groups, participants, and grab invite links</p>
+            <h2 class="text-xl font-bold text-slate-800">WhatsApp Groups</h2>
+            <p class="text-xs text-slate-500">Manage participants and group invite links</p>
           </div>
-          <button onclick="openCreateGroupModal()" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
-            <i class="fa-solid fa-plus mr-1.5"></i> Create Group
-          </button>
         </div>
         <div id="groupsList" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
       </div>
 
-      <!-- ================= VIEW 6: AUTO-REPLIES ================= -->
+      <!-- ================= AUTO-REPLIES TAB ================= -->
       <div id="view-autoreplies" class="tab-view max-w-5xl w-full hidden space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
           <div>
             <h2 class="text-xl font-bold text-slate-800">Auto-Replies & AI Bot</h2>
-            <p class="text-xs text-slate-500">Configure instant keywords and 24/7 automated replies</p>
+            <p class="text-xs text-slate-500">Instant keyword triggers and auto-responder rules</p>
           </div>
-          <button onclick="openAddAutoReplyModal()" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
-            <i class="fa-solid fa-plus mr-1.5"></i> Add Rule
-          </button>
+          <button onclick="openAddAutoReplyModal()" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow">+ Add Rule</button>
         </div>
         <div id="autoRepliesList" class="bg-white rounded-2xl shadow-sm border border-slate-200 divide-y divide-slate-100"></div>
       </div>
 
-      <!-- ================= VIEW 7: CONTACTS & VALIDATOR ================= -->
+      <!-- ================= CONTACTS TAB ================= -->
       <div id="view-contacts" class="tab-view max-w-3xl w-full hidden space-y-6">
         <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <h2 class="text-xl font-bold text-slate-800">Verify WhatsApp Phone Numbers</h2>
-          <p class="text-xs text-slate-500">Check if a number is registered on WhatsApp and retrieve its normalized JID and profile photo</p>
           <div class="flex space-x-3 pt-2">
-            <input type="text" id="verifyPhoneInput" placeholder="Phone with country code (e.g. 919876543210)" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#164e87]">
-            <button onclick="runPhoneVerification()" class="bg-[#164e87] hover:bg-[#123e6b] text-white text-xs font-bold px-6 py-3 rounded-xl shadow">Verify</button>
+            <input type="text" id="verifyPhoneInput" placeholder="Phone with country code (e.g. 919876543210)" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#164e87]">
+            <button onclick="runPhoneVerification()" class="bg-[#164e87] text-white text-xs font-bold px-6 py-3 rounded-xl shadow">Verify</button>
           </div>
           <div id="verifyPhoneResult" class="text-sm pt-2"></div>
         </div>
       </div>
 
-      <!-- ================= VIEW 8: API & WEBHOOKS ================= -->
+      <!-- ================= API & WEBHOOKS TAB ================= -->
       <div id="view-api" class="tab-view max-w-4xl w-full hidden space-y-6">
         <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <div class="flex justify-between items-center border-b border-slate-100 pb-4">
             <div>
-              <h2 class="text-xl font-bold text-slate-800">Developer REST API & Webhooks</h2>
-              <p class="text-xs text-slate-500">Integrate with n8n, Zapier, Make, or custom backend services</p>
+              <h2 class="text-xl font-bold text-slate-800">REST API & Webhooks</h2>
+              <p class="text-xs text-slate-500">Base URL: <code class="bg-slate-100 px-1 py-0.5 rounded text-[#164e87]">http://localhost:3000/api/v1</code></p>
             </div>
             <button onclick="addWebhookPrompt()" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2 rounded-xl">+ Add Webhook</button>
           </div>
-
-          <div class="space-y-2">
-            <p class="text-xs font-bold text-slate-700 uppercase tracking-wider">Base URL:</p>
-            <code class="block bg-slate-100 p-3 rounded-xl font-mono text-xs text-slate-800">http://localhost:3000/api/v1</code>
-          </div>
-
-          <div class="space-y-2 pt-2">
-            <p class="text-xs font-bold text-slate-700 uppercase tracking-wider">Registered Webhooks:</p>
-            <div id="webhooksList" class="space-y-2 text-xs"></div>
-          </div>
+          <div id="webhooksList" class="space-y-2 text-xs"></div>
         </div>
       </div>
 
-      <!-- ================= VIEW 9: SETTINGS ================= -->
+      <!-- ================= SETTINGS TAB ================= -->
       <div id="view-settings" class="tab-view max-w-5xl w-full hidden grid grid-cols-1 md:grid-cols-2 gap-8">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <div class="flex justify-between items-center border-b border-slate-100 pb-3">
@@ -390,128 +622,64 @@
     </main>
   </div>
 
-  <!-- ================= MODALS ================= -->
-
-  <!-- QR Scanner Modal -->
-  <div id="qrModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-        <h3 class="font-bold text-slate-900 text-lg">Scan QR to Link WhatsApp</h3>
-        <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+  <!-- ================= MODAL: CONNECTING NUMBER... (Screenshot 4 Match) ================= -->
+  <div id="connectingModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 text-center space-y-5 border border-slate-100">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3 text-left">
+        <span class="text-xs font-bold text-slate-600">Connect number</span>
+        <button onclick="closeConnectingModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="py-4 flex flex-col items-center">
-        <div class="w-64 h-64 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-slate-200 overflow-hidden shadow-inner">
-          <img id="qrImage" src="" alt="QR Code" class="w-full h-full object-contain hidden">
-          <div id="qrLoading" class="text-slate-400 text-sm flex flex-col items-center">
-            <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-[#164e87]"></i>
-            <span>Generating QR code...</span>
-          </div>
-        </div>
-        <p class="text-xs text-slate-500 mt-4 leading-relaxed">
-          Open WhatsApp &gt; <strong>Linked Devices</strong> &gt; <strong>Link a Device</strong> &gt; Scan this QR code.
-        </p>
+      <div class="py-4 space-y-4 flex flex-col items-center">
+        <!-- Spinner -->
+        <div id="connectingSpinner" class="w-12 h-12 border-4 border-blue-200 border-t-[#164e87] rounded-full animate-spin"></div>
 
-        <!-- Pairing Code Option -->
-        <div class="w-full border-t border-slate-100 mt-4 pt-4">
-          <p class="text-xs font-semibold text-slate-700 mb-2">Or connect via 8-digit Pairing Code:</p>
-          <div class="flex space-x-2">
-            <input type="text" id="pairPhoneInput" placeholder="Phone with country code" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
-            <button onclick="requestPairingCodeAction()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-medium">Get Code</button>
-          </div>
-          <div id="pairingCodeDisplay" class="mt-2 text-sm font-mono font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg hidden"></div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Connecting number... this will take a moment.</h3>
+          <p class="text-xs text-slate-500 mt-1">Please close all existing WhatsApp linked devices open sessions to prevent conflict.</p>
         </div>
+
+        <!-- Live QR Display (When available) -->
+        <div id="modalQrArea" class="hidden flex flex-col items-center pt-2">
+          <div class="w-56 h-56 bg-slate-50 rounded-2xl border-2 border-slate-200 flex items-center justify-center overflow-hidden p-2 shadow-inner">
+            <img id="modalQrImage" src="" alt="Scan QR" class="w-full h-full object-contain">
+          </div>
+          <p class="text-xs text-slate-500 mt-3">Scan this code with WhatsApp &gt; Linked Devices</p>
+        </div>
+      </div>
+
+      <div class="flex justify-start pt-2 border-t border-slate-100">
+        <button onclick="closeConnectingModal()" class="text-xs text-slate-600 hover:bg-slate-100 px-4 py-2 rounded-xl transition">
+          Cancel
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Connect with Official WABA API Modal -->
-  <div id="wabaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2">
-          <i class="fa-solid fa-cloud text-[#164e87]"></i>
-          <h3 class="font-bold text-slate-900 text-lg">Connect Official WhatsApp API (WABA)</h3>
-        </div>
-        <button onclick="closeWabaModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-      </div>
-
-      <p class="text-xs text-slate-500">Enter your Meta Cloud API credentials from Meta for Developers:</p>
-
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Account / Number Name</label>
-          <input type="text" id="wabaName" placeholder="e.g. Official WhatsApp Support" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Phone Number ID</label>
-          <input type="text" id="wabaPhoneId" placeholder="e.g. 104829104928102" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">WhatsApp Business Account ID (WABA ID)</label>
-          <input type="text" id="wabaAccountId" placeholder="e.g. 984029104928102" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Permanent Meta Access Token</label>
-          <input type="password" id="wabaToken" placeholder="EAAB..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
-        </div>
-      </div>
-
-      <div class="flex justify-end space-x-3 pt-3 border-t border-slate-100">
-        <button onclick="closeWabaModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs hover:bg-slate-100">Cancel</button>
-        <button onclick="submitWabaConnect()" class="bg-[#164e87] hover:bg-[#123e6b] text-white font-bold px-5 py-2.5 rounded-xl text-xs transition shadow">Connect WABA</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Campaign Modal -->
+  <!-- Create Campaign Modal -->
   <div id="campaignModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 space-y-4">
       <div class="flex justify-between items-center border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-900 text-lg">Create Broadcast Campaign</h3>
-        <button onclick="closeCampaignModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeCampaignModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Campaign Title</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Campaign Title</label>
           <input type="text" id="campTitle" placeholder="e.g. VIP Newsletter" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Recipients (comma or new-line separated)</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Recipients (comma separated)</label>
           <textarea id="campRecipients" rows="3" placeholder="919876543210, 919876543211" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#164e87]"></textarea>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Message Body</label>
-          <textarea id="campMessage" rows="3" placeholder="Hi! We have a special announcement today..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#164e87]"></textarea>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Message Body</label>
+          <textarea id="campMessage" rows="3" placeholder="Hi! We have a special announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#164e87]"></textarea>
         </div>
       </div>
       <div class="flex justify-end space-x-3 pt-2">
-        <button onclick="closeCampaignModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs hover:bg-slate-100">Cancel</button>
-        <button onclick="submitCampaign()" class="bg-[#164e87] hover:bg-[#123e6b] text-white font-bold px-5 py-2.5 rounded-xl text-xs transition shadow">Launch Campaign</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Create Group Modal -->
-  <div id="createGroupModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-        <h3 class="font-bold text-slate-900 text-lg">Create WhatsApp Group</h3>
-        <button onclick="closeCreateGroupModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-      </div>
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Group Subject</label>
-          <input type="text" id="grpSubject" placeholder="e.g. VIP Clients" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Initial Participants (comma separated)</label>
-          <input type="text" id="grpParticipants" placeholder="919876543210, 919876543211" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
-        </div>
-      </div>
-      <div class="flex justify-end space-x-3 pt-2">
-        <button onclick="closeCreateGroupModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs hover:bg-slate-100">Cancel</button>
-        <button onclick="submitCreateGroup()" class="bg-[#164e87] hover:bg-[#123e6b] text-white font-bold px-5 py-2.5 rounded-xl text-xs transition shadow">Create Group</button>
+        <button onclick="closeCampaignModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs">Cancel</button>
+        <button onclick="submitCampaign()" class="bg-[#164e87] text-white font-bold px-5 py-2.5 rounded-xl text-xs">Launch</button>
       </div>
     </div>
   </div>
@@ -521,118 +689,39 @@
     <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 space-y-4">
       <div class="flex justify-between items-center border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-900 text-lg">Add Auto-Reply Rule</h3>
-        <button onclick="closeAddAutoReplyModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeAddAutoReplyModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Trigger Keyword</label>
-          <input type="text" id="arKeyword" placeholder="e.g. pricing, hours, support" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Keyword</label>
+          <input type="text" id="arKeyword" placeholder="e.g. price, hours" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Match Type</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Match Type</label>
           <select id="arMatchType" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
             <option value="contains">Contains Keyword</option>
             <option value="exact">Exact Match</option>
-            <option value="default">Fallback / Default</option>
+            <option value="default">Default / Fallback</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Automatic Reply Text</label>
-          <textarea id="arReply" rows="3" placeholder="Hello! Our pricing starts at $49/mo..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#164e87]"></textarea>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Reply Text</label>
+          <textarea id="arReply" rows="3" placeholder="Hello! Our pricing starts at $49..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#164e87]"></textarea>
         </div>
       </div>
       <div class="flex justify-end space-x-3 pt-2">
-        <button onclick="closeAddAutoReplyModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs hover:bg-slate-100">Cancel</button>
-        <button onclick="submitAutoReply()" class="bg-[#164e87] hover:bg-[#123e6b] text-white font-bold px-5 py-2.5 rounded-xl text-xs transition shadow">Save Rule</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Sync from Wassenger Modal -->
-  <div id="syncModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-8 space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2">
-          <i class="fa-solid fa-bolt text-emerald-600 text-lg"></i>
-          <h3 class="font-bold text-slate-900 text-lg">Sync Live Data from Wassenger Chrome Tab</h3>
-        </div>
-        <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-      </div>
-
-      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-900 space-y-2">
-        <p class="font-bold flex items-center"><i class="fa-solid fa-circle-check mr-1.5 text-emerald-600"></i> Automatic 1-Click Extraction</p>
-        <p>Because you are logged into Wassenger on Google Chrome, this script will extract your account's devices, labels, quick replies, and webhooks and import them straight into this dashboard!</p>
-      </div>
-
-      <div class="space-y-3">
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Instructions (Takes 5 seconds):</label>
-        <ol class="list-decimal list-inside text-xs text-slate-600 space-y-1.5 pl-1 leading-relaxed">
-          <li>Open your <strong>Wassenger tab</strong> in Chrome (<code class="bg-slate-100 px-1 py-0.5 rounded text-[#164e87]">console.wassenger.com</code>).</li>
-          <li>Press <kbd class="bg-slate-200 px-1.5 py-0.5 rounded font-mono text-[11px]">F12</kbd> (or right-click &gt; Inspect) and switch to the <strong>Console</strong> tab.</li>
-          <li>Click the button below to copy the extractor snippet.</li>
-          <li>Paste into the Console and press <kbd class="bg-slate-200 px-1.5 py-0.5 rounded font-mono text-[11px]">Enter</kbd>.</li>
-        </ol>
-
-        <div class="pt-2 flex space-x-3">
-          <button onclick="copyExtractorScript()" id="copyScriptBtn" class="flex-1 bg-[#164e87] hover:bg-[#123e6b] text-white font-bold text-xs py-3 rounded-xl transition shadow flex items-center justify-center space-x-2">
-            <i class="fa-solid fa-copy"></i>
-            <span>Copy 1-Click Chrome Snippet</span>
-          </button>
-        </div>
-
-        <div class="border-t border-slate-100 pt-3">
-          <p class="text-[11px] text-slate-500 mb-1.5">Or upload an exported <code class="bg-slate-100 px-1 py-0.5 rounded">wassenger_export.json</code> file:</p>
-          <input type="file" id="jsonFileInput" accept=".json" onchange="handleJsonFileImport(event)" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
-        </div>
+        <button onclick="closeAddAutoReplyModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs">Cancel</button>
+        <button onclick="submitAutoReply()" class="bg-[#164e87] text-white font-bold px-5 py-2.5 rounded-xl text-xs">Save Rule</button>
       </div>
     </div>
   </div>
 
   <!-- JavaScript Controller -->
   <script>
-    let activeDeviceId = '';
+    let activeDeviceId = 'dev_1789034070419_95egj';
     let selectedChatWid = '';
-    let qrPollInterval = null;
-
-    function openSyncModal() { document.getElementById('syncModal').classList.remove('hidden'); }
-    function closeSyncModal() { document.getElementById('syncModal').classList.add('hidden'); }
-
-    async function copyExtractorScript() {
-      const scriptCode = `fetch('http://localhost:3000/wassenger-extractor.js').then(r=>r.text()).then(eval);`;
-      await navigator.clipboard.writeText(scriptCode);
-      const btn = document.getElementById('copyScriptBtn');
-      btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Copied to Clipboard!';
-      btn.classList.remove('bg-[#164e87]');
-      btn.classList.add('bg-emerald-600');
-      setTimeout(() => {
-        btn.innerHTML = '<i class="fa-solid fa-copy mr-2"></i> Copy 1-Click Chrome Snippet';
-        btn.classList.remove('bg-emerald-600');
-        btn.classList.add('bg-[#164e87]');
-      }, 3000);
-    }
-
-    async function handleJsonFileImport(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const json = JSON.parse(evt.target.result);
-          const res = await fetch('/api/v1/sync/import', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(json)
-          });
-          const resJson = await res.json();
-          alert(resJson.message || 'Import successful!');
-          closeSyncModal();
-          fetchDevices();
-        } catch (err) {
-          alert('Error parsing JSON file: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-    }
+    let chosenMethod = 'qr';
+    let modalPollTimer = null;
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
@@ -643,7 +732,6 @@
       if (targetView) targetView.classList.remove('hidden');
       if (targetNav) targetNav.classList.add('active');
 
-      if (tabId === 'devices') fetchDevices();
       if (tabId === 'inbox') fetchInbox();
       if (tabId === 'campaigns') fetchCampaigns();
       if (tabId === 'groups') fetchGroups();
@@ -652,159 +740,94 @@
       if (tabId === 'settings') { fetchQuickReplies(); fetchLabels(); }
     }
 
-    async function fetchDevices() {
-      try {
-        const res = await fetch('/api/v1/devices');
-        const json = await res.json();
-        const container = document.getElementById('devicesContainer');
+    // Wizard Navigation Steps
+    function goToWizardStep(stepNumber) {
+      switchTab('wizard');
+      document.querySelectorAll('.wizard-panel').forEach(p => p.classList.add('hidden'));
+      const targetPanel = document.getElementById(`wizard-step-${stepNumber}`);
+      if (targetPanel) targetPanel.classList.remove('hidden');
 
-        if (!json.success || json.data.length === 0) {
-          container.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs col-span-full">No connected devices yet. Click "Link New Number" above.</div>`;
-          return;
-        }
-
-        container.innerHTML = '';
-        json.data.forEach(dev => {
-          if (!activeDeviceId && dev.status === 'connected') {
-            activeDeviceId = dev.id;
-            document.getElementById('activeNumberLabel').innerText = `Active: +${dev.phone || dev.name}`;
-          }
-
-          const isConnected = dev.status === 'connected';
-          const badgeClass = `badge-${dev.status}`;
-
-          container.innerHTML += `
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
-              <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 rounded-xl ${isConnected ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'} flex items-center justify-center text-xl">
-                  <i class="fa-solid ${dev.type === 'waba' ? 'fa-cloud' : isConnected ? 'fa-mobile-screen' : 'fa-qrcode'}"></i>
-                </div>
-                <div>
-                  <div class="flex items-center space-x-2">
-                    <h4 class="font-bold text-slate-800 text-sm">${dev.name}</h4>
-                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${badgeClass}">${dev.status.replace('_', ' ')}</span>
-                  </div>
-                  <p class="text-xs text-slate-500 mt-0.5">${dev.phone ? `+${dev.phone}` : dev.type === 'waba' ? 'Meta Cloud API' : 'QR Scan needed'}</p>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between border-t border-slate-100 pt-3 text-xs">
-                <span class="text-[10px] text-slate-400">ID: ${dev.id}</span>
-                <div class="flex space-x-2">
-                  ${!isConnected ? `
-                    <button onclick="openQrModal('${dev.id}')" class="bg-[#164e87] text-white px-3 py-1.5 rounded-xl font-medium">Scan QR</button>
-                  ` : ''}
-                  <button onclick="deleteDevice('${dev.id}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1.5 rounded-xl"><i class="fa-solid fa-trash-can"></i></button>
-                </div>
-              </div>
-            </div>
-          `;
-        });
-
-        if (!activeDeviceId && json.data.length > 0) activeDeviceId = json.data[0].id;
-      } catch (e) {}
-    }
-
-    // QR Wizard
-    async function startQrWizard() {
-      const name = prompt('Enter a label/name for this device (e.g. Sales WhatsApp):', 'My WhatsApp');
-      if (!name) return;
-
-      const res = await fetch('/api/v1/devices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type: 'baileys' })
-      });
-      const json = await res.json();
-      if (json.data?.id) {
-        openQrModal(json.data.id);
+      // Update Step indicators
+      for (let i = 1; i <= 5; i++) {
+        const node = document.getElementById(`step-node-${i}`);
+        if (!node) continue;
+        node.classList.remove('active', 'done');
+        if (i < stepNumber) node.classList.add('done');
+        else if (i === stepNumber) node.classList.add('active');
       }
     }
 
-    function openQrModal(devId) {
-      document.getElementById('qrModal').classList.remove('hidden');
-      document.getElementById('qrImage').classList.add('hidden');
-      document.getElementById('qrLoading').classList.remove('hidden');
-      document.getElementById('pairingCodeDisplay').classList.add('hidden');
-      pollQr(devId);
-      if (qrPollInterval) clearInterval(qrPollInterval);
-      qrPollInterval = setInterval(() => pollQr(devId), 3000);
+    function selectConnectionMethod(method) {
+      chosenMethod = method;
+      goToWizardStep(2);
     }
-    function closeQrModal() {
-      document.getElementById('qrModal').classList.add('hidden');
-      if (qrPollInterval) clearInterval(qrPollInterval);
-      fetchDevices();
+
+    function updateAliasPreview(val) {
+      const txt = val.trim() || 'Sales';
+      document.getElementById('previewAliasText').innerText = txt;
+      document.getElementById('aliasCharCount').innerText = `${val.length}/25`;
+    }
+
+    function addTeamMemberAction() {
+      const name = document.getElementById('teamMemberName').value;
+      if (!name) return alert('Please enter agent name');
+      document.getElementById('seatsCount').innerText = '1/9';
+      alert(`Team member ${name} added!`);
+      document.getElementById('teamMemberName').value = '';
+      document.getElementById('teamMemberEmail').value = '';
+    }
+
+    // Trigger Connection & Modal (Screenshot 4)
+    async function triggerConnectModal() {
+      const modal = document.getElementById('connectingModal');
+      modal.classList.remove('hidden');
+      document.getElementById('connectingSpinner').classList.remove('hidden');
+      document.getElementById('modalQrArea').classList.add('hidden');
+
+      const alias = document.getElementById('wizardAliasInput').value || 'Sales';
+
+      // Create/Get session
+      const res = await fetch('/api/v1/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: alias, type: chosenMethod })
+      });
+      const json = await res.json();
+      const devId = json.data?.id || activeDeviceId;
+
+      // Poll for QR code
+      pollModalQr(devId);
+      if (modalPollTimer) clearInterval(modalPollTimer);
+      modalPollTimer = setInterval(() => pollModalQr(devId), 2500);
+    }
+
+    function closeConnectingModal() {
+      document.getElementById('connectingModal').classList.add('hidden');
+      if (modalPollTimer) clearInterval(modalPollTimer);
       switchTab('devices');
     }
-    async function pollQr(devId) {
+
+    async function pollModalQr(devId) {
       try {
         const res = await fetch(`/api/v1/devices/${devId}/qr`);
         const json = await res.json();
-        if (json.status === 'connected') { closeQrModal(); return; }
+        if (json.status === 'connected') {
+          closeConnectingModal();
+          switchTab('devices');
+          return;
+        }
         if (json.qrCode) {
-          const img = document.getElementById('qrImage');
-          img.src = json.qrCode;
-          img.classList.remove('hidden');
-          document.getElementById('qrLoading').classList.add('hidden');
+          document.getElementById('connectingSpinner').classList.add('hidden');
+          const qrArea = document.getElementById('modalQrArea');
+          const qrImg = document.getElementById('modalQrImage');
+          qrImg.src = json.qrCode;
+          qrArea.classList.remove('hidden');
         }
       } catch (e) {}
-    }
-
-    async function requestPairingCodeAction() {
-      const phone = document.getElementById('pairPhoneInput').value;
-      if (!phone) { alert('Enter phone number'); return; }
-      const res = await fetch(`/api/v1/devices/${activeDeviceId}/pair`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: phone })
-      });
-      const json = await res.json();
-      if (json.pairingCode) {
-        const d = document.getElementById('pairingCodeDisplay');
-        d.innerHTML = `Pairing Code: <span class="tracking-widest">${json.pairingCode}</span>`;
-        d.classList.remove('hidden');
-      }
-    }
-
-    // Official WABA Connect Modal
-    function openWabaConnectModal() { document.getElementById('wabaModal').classList.remove('hidden'); }
-    function closeWabaModal() { document.getElementById('wabaModal').classList.add('hidden'); }
-    async function submitWabaConnect() {
-      const name = document.getElementById('wabaName').value;
-      const phoneNumberId = document.getElementById('wabaPhoneId').value;
-      const wabaId = document.getElementById('wabaAccountId').value;
-      const accessToken = document.getElementById('wabaToken').value;
-
-      if (!phoneNumberId || !accessToken) {
-        alert('Please fill out Phone Number ID and Access Token');
-        return;
-      }
-
-      const res = await fetch('/api/v1/devices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name || 'Official WhatsApp WABA',
-          type: 'waba',
-          metaConfig: { phoneNumberId, wabaId, accessToken }
-        })
-      });
-      const json = await res.json();
-      closeWabaModal();
-      alert(json.message || 'WABA Connected!');
-      fetchDevices();
-      switchTab('devices');
-    }
-
-    async function deleteDevice(id) {
-      if (!confirm('Remove this device?')) return;
-      await fetch(`/api/v1/devices/${id}`, { method: 'DELETE' });
-      fetchDevices();
     }
 
     // ================= INBOX =================
     async function fetchInbox() {
-      if (!activeDeviceId) return;
       try {
         const res = await fetch(`/api/v1/chat/${activeDeviceId}/chats`);
         const json = await res.json();
@@ -812,7 +835,7 @@
         document.getElementById('inboxCount').innerText = json.count || 0;
 
         if (!json.data || json.data.length === 0) {
-          list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No conversations yet</div>`;
+          list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No active conversations</div>`;
           return;
         }
 
@@ -835,9 +858,7 @@
       selectedChatWid = jid;
       document.getElementById('activeChatTitle').innerText = title;
       document.getElementById('activeChatSubtitle').innerText = jid;
-      document.getElementById('chatActions').classList.remove('hidden');
       document.getElementById('replyArea').classList.remove('hidden');
-
       fetchInbox();
       loadMessagesForChat(jid);
     }
@@ -849,7 +870,7 @@
         const res = await fetch(`/api/v1/chat/${activeDeviceId}/chats/${encodeURIComponent(jid)}/messages?limit=50`);
         const json = await res.json();
         if (!json.data || json.data.length === 0) {
-          stream.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">No messages in this conversation</div>';
+          stream.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">No messages in this chat</div>';
           return;
         }
 
@@ -861,7 +882,6 @@
                 <p class="leading-relaxed">${m.body || `[${m.type}]`}</p>
                 <div class="text-[9px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-slate-400'}">
                   ${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                  ${isMe ? ` • ${m.status}` : ''}
                 </div>
               </div>
             </div>
@@ -881,35 +901,9 @@
       await fetch('/api/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          deviceId: activeDeviceId,
-          phone: selectedChatWid,
-          message: text
-        })
+        body: JSON.stringify({ deviceId: activeDeviceId, phone: selectedChatWid, message: text })
       });
       loadMessagesForChat(selectedChatWid);
-    }
-
-    async function assignChatPrompt() {
-      const agent = prompt('Agent name:');
-      if (!agent) return;
-      await fetch(`/api/v1/chat/${activeDeviceId}/chats/${encodeURIComponent(selectedChatWid)}/owner`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ owner: agent })
-      });
-      alert(`Assigned to ${agent}`);
-    }
-
-    async function addNotePrompt() {
-      const text = prompt('Private internal note:');
-      if (!text) return;
-      await fetch(`/api/v1/chat/${activeDeviceId}/chats/${encodeURIComponent(selectedChatWid)}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-      alert('Note saved!');
     }
 
     // ================= CAMPAIGNS =================
@@ -918,36 +912,26 @@
       const json = await res.json();
       const list = document.getElementById('campaignsList');
       if (!json.data || json.data.length === 0) {
-        list.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-400 text-xs border border-slate-200">No campaigns created yet. Click "Launch Campaign" above.</div>`;
+        list.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-400 text-xs border border-slate-200">No campaigns launched yet</div>`;
         return;
       }
       list.innerHTML = json.data.map(c => `
         <div class="bg-white p-5 rounded-2xl shadow-xs border border-slate-200 flex justify-between items-center">
           <div>
-            <div class="flex items-center space-x-2">
-              <h4 class="font-bold text-xs text-slate-800">${c.name}</h4>
-              <span class="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${c.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${c.status}</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-0.5 truncate max-w-md">${c.message}</p>
+            <h4 class="font-bold text-xs text-slate-800">${c.name} <span class="text-[9px] px-2 py-0.5 rounded-full uppercase bg-emerald-100 text-emerald-700 ml-2">${c.status}</span></h4>
+            <p class="text-xs text-slate-500 mt-1">${c.message}</p>
             <p class="text-[10px] text-slate-400 mt-1">${c.progress.sent}/${c.progress.total} sent</p>
           </div>
-          <button onclick="deleteCampaign('${c.id}')" class="text-xs text-rose-500 hover:bg-rose-50 p-2 rounded-xl"><i class="fa-solid fa-trash"></i></button>
         </div>
       `).join('');
     }
-
     function openCampaignModal() { document.getElementById('campaignModal').classList.remove('hidden'); }
     function closeCampaignModal() { document.getElementById('campaignModal').classList.add('hidden'); }
     async function submitCampaign() {
       const name = document.getElementById('campTitle').value;
-      const rawRecipients = document.getElementById('campRecipients').value;
+      const raw = document.getElementById('campRecipients').value;
       const message = document.getElementById('campMessage').value;
-      const recipients = rawRecipients.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-
-      if (!name || !message || recipients.length === 0) {
-        alert('Please fill in title, recipients, and message');
-        return;
-      }
+      const recipients = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
 
       await fetch('/api/v1/campaigns', {
         method: 'POST',
@@ -957,14 +941,9 @@
       closeCampaignModal();
       fetchCampaigns();
     }
-    async function deleteCampaign(id) {
-      await fetch(`/api/v1/campaigns/${id}`, { method: 'DELETE' });
-      fetchCampaigns();
-    }
 
     // ================= GROUPS =================
     async function fetchGroups() {
-      if (!activeDeviceId) return;
       const res = await fetch(`/api/v1/devices/${activeDeviceId}/groups`);
       const json = await res.json();
       const list = document.getElementById('groupsList');
@@ -983,36 +962,12 @@
               <p class="text-[10px] text-slate-400">${g.participantsCount} members</p>
             </div>
           </div>
-          <button onclick="getGroupInvite('${g.id}')" class="text-xs text-purple-600 hover:underline font-semibold text-left">Get Invite Link ↗</button>
         </div>
       `).join('');
     }
 
-    function openCreateGroupModal() { document.getElementById('createGroupModal').classList.remove('hidden'); }
-    function closeCreateGroupModal() { document.getElementById('createGroupModal').classList.add('hidden'); }
-    async function submitCreateGroup() {
-      const subject = document.getElementById('grpSubject').value;
-      const raw = document.getElementById('grpParticipants').value;
-      const participants = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-
-      if (!subject || participants.length === 0) return alert('Enter subject and participants');
-      await fetch(`/api/v1/devices/${activeDeviceId}/groups`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, participants })
-      });
-      closeCreateGroupModal();
-      fetchGroups();
-    }
-    async function getGroupInvite(groupId) {
-      const res = await fetch(`/api/v1/devices/${activeDeviceId}/groups/${groupId}/invite`);
-      const json = await res.json();
-      if (json.inviteUrl) prompt('Group Invite Link:', json.inviteUrl);
-    }
-
     // ================= AUTO REPLIES =================
     async function fetchAutoReplies() {
-      if (!activeDeviceId) return;
       const res = await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies`);
       const json = await res.json();
       const list = document.getElementById('autoRepliesList');
@@ -1021,27 +976,20 @@
         return;
       }
       list.innerHTML = json.data.map(r => `
-        <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+        <div class="p-4 flex items-center justify-between">
           <div>
-            <div class="flex items-center space-x-2">
-              <span class="font-bold text-xs text-slate-800">Trigger: "${r.keyword}"</span>
-              <span class="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase font-mono">${r.matchType}</span>
-            </div>
+            <span class="font-bold text-xs text-slate-800">Trigger: "${r.keyword}"</span>
             <p class="text-xs text-slate-500 mt-1">${r.reply}</p>
           </div>
-          <button onclick="deleteAutoReply('${r.id}')" class="text-rose-500 hover:text-rose-700 p-2"><i class="fa-solid fa-trash"></i></button>
         </div>
       `).join('');
     }
-
     function openAddAutoReplyModal() { document.getElementById('autoReplyModal').classList.remove('hidden'); }
     function closeAddAutoReplyModal() { document.getElementById('autoReplyModal').classList.add('hidden'); }
     async function submitAutoReply() {
       const keyword = document.getElementById('arKeyword').value;
       const matchType = document.getElementById('arMatchType').value;
       const reply = document.getElementById('arReply').value;
-      if (!keyword || !reply) return alert('Fill out keyword and reply');
-
       await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1050,28 +998,19 @@
       closeAddAutoReplyModal();
       fetchAutoReplies();
     }
-    async function deleteAutoReply(id) {
-      await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies/${id}`, { method: 'DELETE' });
-      fetchAutoReplies();
-    }
 
     // ================= CONTACTS =================
     async function runPhoneVerification() {
       const phone = document.getElementById('verifyPhoneInput').value;
       const result = document.getElementById('verifyPhoneResult');
       if (!phone) return;
-
-      result.innerHTML = '<span class="text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Checking WhatsApp status...</span>';
-      try {
-        const res = await fetch(`/api/v1/contacts/${phone}/exists`);
-        const json = await res.json();
-        if (json.exists) {
-          result.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> +${json.phone} is registered on WhatsApp! (JID: ${json.jid})</span>`;
-        } else {
-          result.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> Not registered on WhatsApp</span>`;
-        }
-      } catch (e) {
-        result.innerHTML = `<span class="text-rose-600">${e.message}</span>`;
+      result.innerHTML = '<span class="text-slate-400">Verifying...</span>';
+      const res = await fetch(`/api/v1/contacts/${phone}/exists`);
+      const json = await res.json();
+      if (json.exists) {
+        result.innerHTML = `<span class="text-emerald-600 font-bold">✓ Registered on WhatsApp! (JID: ${json.jid})</span>`;
+      } else {
+        result.innerHTML = `<span class="text-rose-600 font-bold">✗ Not on WhatsApp</span>`;
       }
     }
 
@@ -1080,99 +1019,39 @@
       const res = await fetch('/api/v1/webhooks');
       const json = await res.json();
       const list = document.getElementById('webhooksList');
-      if (!json.data || json.data.length === 0) {
-        list.innerHTML = '<p class="text-slate-400">No webhooks registered</p>';
-        return;
-      }
-      list.innerHTML = json.data.map(w => `
+      list.innerHTML = (json.data || []).map(w => `
         <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
-          <div>
-            <p class="font-mono text-slate-800">${w.url}</p>
-            <p class="text-[10px] text-slate-400">Events: ${w.events.join(', ')}</p>
-          </div>
-          <button onclick="deleteWebhook('${w.id}')" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-xmark"></i></button>
+          <span class="font-mono text-xs text-slate-800">${w.url}</span>
         </div>
-      `).join('');
-    }
-    async function addWebhookPrompt() {
-      const url = prompt('Webhook URL:');
-      if (!url) return;
-      await fetch('/api/v1/webhooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, events: ['*'] })
-      });
-      fetchWebhooks();
-    }
-    async function deleteWebhook(id) {
-      await fetch(`/api/v1/webhooks/${id}`, { method: 'DELETE' });
-      fetchWebhooks();
+      `).join('') || '<p class="text-slate-400">No webhooks</p>';
     }
 
     // ================= QUICK REPLIES & LABELS =================
     async function fetchQuickReplies() {
-      if (!activeDeviceId) return;
       const res = await fetch(`/api/v1/devices/${activeDeviceId}/quickReplies`);
       const json = await res.json();
       const list = document.getElementById('quickRepliesList');
       list.innerHTML = (json.data || []).map(q => `
-        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
-          <div>
-            <span class="font-mono font-bold text-[#164e87]">${q.shortcut}</span>
-            <p class="text-slate-500">${q.message}</p>
-          </div>
-          <button onclick="deleteQuickReply('${q.id}')" class="text-rose-400 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl">
+          <b class="text-emerald-600 font-mono">${q.shortcut}</b>
+          <p class="text-slate-500 text-xs">${q.message}</p>
         </div>
       `).join('') || '<p class="text-slate-400">No shortcuts</p>';
     }
-    async function addQuickReplyPrompt() {
-      const shortcut = prompt('Shortcut command (e.g. /pricing):');
-      const message = prompt('Reply message:');
-      if (!shortcut || !message) return;
-      await fetch(`/api/v1/devices/${activeDeviceId}/quickReplies`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shortcut, message })
-      });
-      fetchQuickReplies();
-    }
-    async function deleteQuickReply(id) {
-      await fetch(`/api/v1/devices/${activeDeviceId}/quickReplies/${id}`, { method: 'DELETE' });
-      fetchQuickReplies();
-    }
 
     async function fetchLabels() {
-      if (!activeDeviceId) return;
       const res = await fetch(`/api/v1/devices/${activeDeviceId}/labels`);
       const json = await res.json();
       const list = document.getElementById('labelsList');
       list.innerHTML = (json.data || []).map(l => `
-        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
-          <div class="flex items-center space-x-2">
-            <span class="w-3 h-3 rounded-full" style="background-color: ${l.color}"></span>
-            <span class="font-semibold text-slate-700">${l.name}</span>
-          </div>
-          <button onclick="deleteLabel('${l.id}')" class="text-rose-400 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl">
+          <span class="font-bold text-slate-700">${l.name}</span>
         </div>
       `).join('') || '<p class="text-slate-400">No labels</p>';
     }
-    async function addLabelPrompt() {
-      const name = prompt('Label name (e.g. VIP, Urgent):');
-      if (!name) return;
-      await fetch(`/api/v1/devices/${activeDeviceId}/labels`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color: '#164e87' })
-      });
-      fetchLabels();
-    }
-    async function deleteLabel(id) {
-      await fetch(`/api/v1/devices/${activeDeviceId}/labels/${id}`, { method: 'DELETE' });
-      fetchLabels();
-    }
 
     // Initial load
-    fetchDevices();
+    goToWizardStep(1);
   </script>
 </body>
 </html>
