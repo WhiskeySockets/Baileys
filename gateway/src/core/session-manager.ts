@@ -19,6 +19,7 @@ import makeWASocket, {
 import { CONFIG } from '../config.js'
 import { store, DeviceRecord, MessageRecord } from '../db/store.js'
 import { webhookDispatcher } from './webhook-dispatcher.js'
+import { autoResponder } from './auto-responder.js'
 
 export class SessionManager {
 	private sockets = new Map<string, ReturnType<typeof makeWASocket>>()
@@ -263,6 +264,12 @@ export class SessionManager {
 							message: record,
 							raw: msg,
 						})
+
+						if (body) {
+							autoResponder.handleInbound(id, jid, body).catch(err => {
+								console.error('[AutoResponder Error]', err)
+							})
+						}
 					}
 				}
 			}

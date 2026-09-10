@@ -6,10 +6,18 @@ import { fileURLToPath } from 'url'
 
 import { CONFIG } from './config.js'
 import { sessionManager } from './core/session-manager.js'
+import { campaignWorker } from './core/campaign-worker.js'
+
 import { deviceRoutes } from './routes/devices.js'
 import { messageRoutes } from './routes/messages.js'
 import { contactRoutes } from './routes/contacts.js'
 import { webhookRoutes } from './routes/webhooks.js'
+import { chatRoutes } from './routes/chats.js'
+import { campaignRoutes } from './routes/campaigns.js'
+import { groupRoutes } from './routes/groups.js'
+import { labelRoutes } from './routes/labels.js'
+import { quickReplyRoutes } from './routes/quick-replies.js'
+import { autoReplyRoutes } from './routes/autoreplies.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -17,7 +25,7 @@ const __dirname = path.dirname(__filename)
 async function bootstrap() {
 	const app = fastify({
 		logger: {
-			level: 'info',
+			level: 'warn',
 		},
 	})
 
@@ -38,16 +46,34 @@ async function bootstrap() {
 	app.register(messageRoutes, { prefix: '/api/v1/messages' })
 	app.register(contactRoutes, { prefix: '/api/v1/contacts' })
 	app.register(webhookRoutes, { prefix: '/api/v1/webhooks' })
+	app.register(chatRoutes, { prefix: '/api/v1/chat' })
+	app.register(campaignRoutes, { prefix: '/api/v1/campaigns' })
+	app.register(groupRoutes, { prefix: '/api/v1/devices' })
+	app.register(labelRoutes, { prefix: '/api/v1/devices' })
+	app.register(quickReplyRoutes, { prefix: '/api/v1/devices' })
+	app.register(autoReplyRoutes, { prefix: '/api/v1/devices' })
 
 	// Health check endpoint
 	app.get('/health', async () => ({
 		status: 'ok',
 		platform: 'Wassenger-Baileys Gateway',
+		modules: [
+			'devices',
+			'messages',
+			'chats_team_inbox',
+			'campaigns_broadcasts',
+			'groups',
+			'labels',
+			'quick_replies',
+			'autoreplies',
+			'webhooks',
+		],
 		time: new Date().toISOString(),
 	}))
 
-	// Initialize active device sessions
+	// Initialize active device sessions & campaign worker
 	await sessionManager.init()
+	campaignWorker.start()
 
 	// Start server
 	try {

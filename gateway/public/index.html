@@ -3,260 +3,408 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WhatsApp Gateway & Dashboard (Wassenger Alternative)</title>
+  <title>WhatsApp Cloud Platform | Wassenger Alternative</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .nav-tab.active {
+      background-color: #10b981;
+      color: white;
+    }
     .badge-connected { background-color: #d1fae5; color: #065f46; }
     .badge-scan_qr { background-color: #fef3c7; color: #92400e; }
     .badge-connecting { background-color: #e0e7ff; color: #3730a3; }
     .badge-disconnected { background-color: #fee2e2; color: #991b1b; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-  <!-- Top Navbar -->
-  <header class="bg-emerald-600 text-white shadow-md sticky top-0 z-50">
+  <!-- Main Top Bar -->
+  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <div class="bg-white text-emerald-600 p-2 rounded-xl shadow">
+        <div class="bg-emerald-500 text-white p-2 rounded-xl shadow-md">
           <i class="fa-brands fa-whatsapp text-2xl"></i>
         </div>
         <div>
-          <h1 class="font-bold text-lg leading-tight">WhatsApp Cloud Gateway</h1>
-          <p class="text-xs text-emerald-100">Multi-Device REST API & Team Dashboard</p>
+          <h1 class="font-bold text-lg leading-tight tracking-wide">WASSENGER <span class="text-xs bg-emerald-500/20 text-emerald-400 font-semibold px-2 py-0.5 rounded-full uppercase ml-1">Cloud Gateway</span></h1>
+          <p class="text-xs text-slate-400">Team Inbox • Bulk Campaigns • Groups • AI Auto-Replies</p>
         </div>
       </div>
-      <div class="flex items-center space-x-4">
-        <a href="/health" target="_blank" class="text-xs bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 rounded-lg transition flex items-center">
-          <span class="w-2 h-2 bg-green-400 rounded-full inline-block mr-2 animate-pulse"></span>
-          API Health
-        </a>
-        <button onclick="fetchDevices()" class="text-xs bg-white text-emerald-700 font-semibold px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition shadow">
-          <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+
+      <!-- Navigation Tabs -->
+      <nav class="hidden md:flex space-x-1 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700/50">
+        <button onclick="switchTab('devices')" id="tab-devices" class="nav-tab active px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center">
+          <i class="fa-solid fa-mobile-screen mr-1.5"></i> Devices
+        </button>
+        <button onclick="switchTab('inbox')" id="tab-inbox" class="nav-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center">
+          <i class="fa-solid fa-comments mr-1.5"></i> Team Inbox
+        </button>
+        <button onclick="switchTab('campaigns')" id="tab-campaigns" class="nav-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center">
+          <i class="fa-solid fa-bullhorn mr-1.5"></i> Campaigns
+        </button>
+        <button onclick="switchTab('groups')" id="tab-groups" class="nav-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center">
+          <i class="fa-solid fa-users mr-1.5"></i> Groups
+        </button>
+        <button onclick="switchTab('autoreplies')" id="tab-autoreplies" class="nav-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center">
+          <i class="fa-solid fa-robot mr-1.5"></i> Auto-Replies
+        </button>
+        <button onclick="switchTab('settings')" id="tab-settings" class="nav-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center">
+          <i class="fa-solid fa-bolt mr-1.5"></i> Quick Replies
+        </button>
+      </nav>
+
+      <!-- Active Device Selector -->
+      <div class="flex items-center space-x-3">
+        <select id="globalDeviceSelect" onchange="onGlobalDeviceChange()" class="bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="">Select Device...</option>
+        </select>
+        <button onclick="refreshAll()" class="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-xl text-xs transition border border-slate-700">
+          <i class="fa-solid fa-rotate-right"></i>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    
-    <!-- Grid Layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      
-      <!-- Column 1 & 2: Devices & Actions -->
-      <div class="lg:col-span-2 space-y-6">
-        
-        <!-- Device Management Card -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <div>
-              <h2 class="text-lg font-bold text-slate-800">Connected WhatsApp Devices</h2>
-              <p class="text-xs text-slate-500">Manage multiple WhatsApp phone numbers and connections</p>
-            </div>
-            <button onclick="openAddDeviceModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition shadow flex items-center">
-              <i class="fa-solid fa-plus mr-2"></i> Add Device
-            </button>
-          </div>
+  <!-- Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
 
-          <div id="devicesContainer" class="p-6 space-y-4">
-            <div class="text-center py-12 text-slate-400">
-              <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-emerald-600"></i>
-              <p>Loading devices...</p>
-            </div>
-          </div>
+    <!-- ================= TAB 1: DEVICES ================= -->
+    <div id="view-devices" class="tab-view space-y-6">
+      <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800">WhatsApp Device Manager</h2>
+          <p class="text-xs text-slate-500">Link multiple WhatsApp phone numbers via QR Code or 8-digit Pairing Code</p>
         </div>
-
-        <!-- Quick Message Sender Card -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 class="text-lg font-bold text-slate-800 mb-1">Send WhatsApp Message</h2>
-          <p class="text-xs text-slate-500 mb-6">Test sending messages via the REST API</p>
-
-          <form id="sendMessageForm" onsubmit="handleSendMessage(event)" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Sender Device</label>
-                <select id="sendDeviceId" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                  <option value="">Auto (First Connected Device)</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Recipient Phone Number</label>
-                <input type="text" id="sendPhone" placeholder="e.g. 919876543210 (with country code)" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Message Text</label>
-              <textarea id="sendMessageText" rows="3" placeholder="Type your message here..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Media URL (Optional)</label>
-              <input type="url" id="sendMediaUrl" placeholder="https://example.com/image.png or document" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-            </div>
-
-            <div class="flex items-center justify-between pt-2">
-              <div id="sendFeedback" class="text-xs font-medium"></div>
-              <button type="submit" id="sendBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition shadow flex items-center">
-                <i class="fa-solid fa-paper-plane mr-2"></i> Send Message
-              </button>
-            </div>
-          </form>
-        </div>
-
+        <button onclick="openAddDeviceModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
+          <i class="fa-solid fa-plus mr-2"></i> Add New Device
+        </button>
       </div>
 
-      <!-- Column 3: Utilities & Live Feed -->
-      <div class="space-y-6">
+      <div id="devicesList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="text-center py-12 text-slate-400 col-span-full">
+          <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-emerald-600"></i>
+          <p>Loading devices...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 2: TEAM INBOX ================= -->
+    <div id="view-inbox" class="tab-view hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-[750px] flex">
         
-        <!-- Number Checker Card -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-base font-bold text-slate-800 mb-1">Verify WhatsApp Number</h3>
-          <p class="text-xs text-slate-500 mb-4">Check if a phone number is registered on WhatsApp</p>
-          
-          <div class="flex space-x-2">
-            <input type="text" id="checkPhoneInput" placeholder="Phone with country code" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-            <button onclick="checkWhatsAppNumber()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium transition">
-              Verify
-            </button>
+        <!-- Left: Conversations List -->
+        <div class="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50/50">
+          <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+            <h3 class="font-bold text-slate-800">Chats</h3>
+            <span id="inboxCount" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">0</span>
           </div>
-          <div id="checkPhoneResult" class="mt-3 text-xs"></div>
-        </div>
 
-        <!-- Webhook Manager Card -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="text-base font-bold text-slate-800">Webhooks</h3>
-            <button onclick="addWebhookPrompt()" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold">
-              + Register Hook
-            </button>
-          </div>
-          <p class="text-xs text-slate-500 mb-3">Dispatches real-time events to your HTTP endpoint</p>
-          <div id="webhooksList" class="space-y-2 text-xs">
-            <p class="text-slate-400">Loading webhooks...</p>
+          <div id="chatList" class="flex-1 overflow-y-auto divide-y divide-slate-100">
+            <div class="p-6 text-center text-slate-400 text-xs">Select a device with active chats</div>
           </div>
         </div>
 
-        <!-- Live Message Log -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="text-base font-bold text-slate-800">Recent Messages</h3>
-            <button onclick="fetchMessages()" class="text-xs text-slate-400 hover:text-slate-600">
-              <i class="fa-solid fa-rotate-right"></i>
-            </button>
+        <!-- Right: Message Thread & Reply Box -->
+        <div id="chatPanel" class="flex-1 flex flex-col bg-white">
+          <div id="chatHeader" class="p-4 border-b border-slate-200 flex justify-between items-center bg-white">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                <i class="fa-solid fa-user"></i>
+              </div>
+              <div>
+                <h4 id="activeChatTitle" class="font-bold text-sm text-slate-800">Select a conversation</h4>
+                <p id="activeChatSubtitle" class="text-[11px] text-slate-400">No chat selected</p>
+              </div>
+            </div>
+            <div id="chatActions" class="flex space-x-2 hidden">
+              <button onclick="assignChatPrompt()" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-slate-700 font-medium transition">
+                <i class="fa-solid fa-user-tag mr-1"></i> Assign Agent
+              </button>
+              <button onclick="addNotePrompt()" class="text-xs bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg text-amber-700 font-medium transition">
+                <i class="fa-solid fa-note-sticky mr-1"></i> Internal Note
+              </button>
+            </div>
           </div>
-          <div id="recentMessages" class="space-y-3 max-h-80 overflow-y-auto pr-1 text-xs">
-            <p class="text-slate-400 text-center py-6">No messages recorded yet</p>
+
+          <!-- Messages Stream -->
+          <div id="messageStream" class="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/70">
+            <div class="h-full flex items-center justify-center text-slate-400 text-xs">
+              Select a conversation from the left to view messages
+            </div>
+          </div>
+
+          <!-- Reply Box -->
+          <div id="replyArea" class="p-4 border-t border-slate-200 bg-white hidden">
+            <form onsubmit="handleSendReply(event)" class="flex items-center space-x-3">
+              <input type="text" id="replyInput" placeholder="Type a message or use canned reply (/hello)..." class="flex-1 bg-slate-100 border-none rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-sm font-semibold transition shadow flex items-center">
+                <i class="fa-solid fa-paper-plane mr-2"></i> Send
+              </button>
+            </form>
           </div>
         </div>
 
       </div>
     </div>
-  </main>
 
-  <!-- Add Device Modal -->
-  <div id="deviceModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-        <h3 class="font-bold text-slate-800 text-lg">Add New WhatsApp Device</h3>
-        <button onclick="closeAddDeviceModal()" class="text-slate-400 hover:text-slate-600 text-lg">
-          <i class="fa-solid fa-xmark"></i>
+    <!-- ================= TAB 3: CAMPAIGNS ================= -->
+    <div id="view-campaigns" class="tab-view hidden space-y-6">
+      <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800">Bulk Campaigns & Broadcasts</h2>
+          <p class="text-xs text-slate-500">Send personalized messages to recipient lists with anti-ban delay pacing</p>
+        </div>
+        <button onclick="openCampaignModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
+          <i class="fa-solid fa-paper-plane mr-2"></i> New Campaign
         </button>
       </div>
 
-      <div class="space-y-3">
+      <div id="campaignsList" class="space-y-4">
+        <p class="text-slate-400 text-center py-10">Loading campaigns...</p>
+      </div>
+    </div>
+
+    <!-- ================= TAB 4: GROUPS ================= -->
+    <div id="view-groups" class="tab-view hidden space-y-6">
+      <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Device Label / Name</label>
-          <input type="text" id="newDeviceName" placeholder="e.g. Support Line, Marketing Bot" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <h2 class="text-lg font-bold text-slate-800">WhatsApp Groups Management</h2>
+          <p class="text-xs text-slate-500">View joined groups, manage participants, and grab invite links</p>
+        </div>
+        <button onclick="openCreateGroupModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
+          <i class="fa-solid fa-plus mr-2"></i> Create Group
+        </button>
+      </div>
+
+      <div id="groupsList" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <p class="text-slate-400 text-center py-10 col-span-full">Select an active device to load groups</p>
+      </div>
+    </div>
+
+    <!-- ================= TAB 5: AUTO-REPLIES ================= -->
+    <div id="view-autoreplies" class="tab-view hidden space-y-6">
+      <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800">Auto-Replies & AI Bot Rules</h2>
+          <p class="text-xs text-slate-500">Configure instant keyword responders and welcome messages</p>
+        </div>
+        <button onclick="openAddAutoReplyModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow flex items-center">
+          <i class="fa-solid fa-plus mr-2"></i> Add Rule
+        </button>
+      </div>
+
+      <div id="autoRepliesList" class="bg-white rounded-2xl shadow-sm border border-slate-200 divide-y divide-slate-100">
+        <p class="text-slate-400 text-center py-10">Loading rules...</p>
+      </div>
+    </div>
+
+    <!-- ================= TAB 6: QUICK REPLIES & LABELS ================= -->
+    <div id="view-settings" class="tab-view hidden grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- Quick Replies -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-800">Quick Replies (Shortcuts)</h3>
+            <p class="text-xs text-slate-500">Canned message templates for agents</p>
+          </div>
+          <button onclick="addQuickReplyPrompt()" class="text-xs text-emerald-600 font-semibold hover:text-emerald-700">+ Add</button>
+        </div>
+        <div id="quickRepliesList" class="space-y-2 text-xs">
+          <p class="text-slate-400">Loading shortcuts...</p>
         </div>
       </div>
 
+      <!-- Labels -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-bold text-slate-800">Color Labels</h3>
+            <p class="text-xs text-slate-500">Categorize leads and conversations</p>
+          </div>
+          <button onclick="addLabelPrompt()" class="text-xs text-emerald-600 font-semibold hover:text-emerald-700">+ Add</button>
+        </div>
+        <div id="labelsList" class="space-y-2 text-xs">
+          <p class="text-slate-400">Loading labels...</p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modals -->
+  <!-- Create Device Modal -->
+  <div id="deviceModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-lg">Add WhatsApp Number</h3>
+        <button onclick="closeAddDeviceModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Device Label / Name</label>
+        <input type="text" id="newDeviceName" placeholder="e.g. Sales Desk, Support #1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
       <div class="flex justify-end space-x-3 pt-2">
-        <button onclick="closeAddDeviceModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm hover:bg-slate-100 transition">Cancel</button>
-        <button onclick="createDeviceSubmit()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2 rounded-xl text-sm transition shadow">
-          Create & Link
-        </button>
+        <button onclick="closeAddDeviceModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm hover:bg-slate-100">Cancel</button>
+        <button onclick="createDeviceSubmit()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2 rounded-xl text-sm transition">Create & Link</button>
       </div>
     </div>
   </div>
 
-  <!-- QR Code Modal -->
+  <!-- QR Modal -->
   <div id="qrModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-4">
       <div class="flex justify-between items-center border-b border-slate-100 pb-3">
         <h3 class="font-bold text-slate-800 text-lg">Link WhatsApp Device</h3>
-        <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-600 text-lg">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
-
-      <div id="qrContent" class="py-4 flex flex-col items-center">
-        <div class="w-64 h-64 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 overflow-hidden shadow-inner">
+      <div class="py-2 flex flex-col items-center">
+        <div class="w-64 h-64 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 overflow-hidden shadow-inner">
           <img id="qrImage" src="" alt="QR Code" class="w-full h-full object-contain hidden">
           <div id="qrLoading" class="text-slate-400 text-sm flex flex-col items-center">
             <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-emerald-600"></i>
             <span>Generating QR code...</span>
           </div>
         </div>
-
-        <p class="text-xs text-slate-500 mt-4 leading-relaxed">
-          Open WhatsApp on your phone &gt; <strong>Linked Devices</strong> &gt; <strong>Link a Device</strong> &gt; Scan this QR code.
-        </p>
-
-        <!-- Or Pairing Code -->
-        <div class="w-full border-t border-slate-100 mt-4 pt-4">
-          <p class="text-xs font-semibold text-slate-600 mb-2">Or connect with an 8-digit Pairing Code:</p>
-          <div class="flex space-x-2">
-            <input type="text" id="pairPhoneInput" placeholder="Phone number (e.g. 919876543210)" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
-            <button onclick="requestPairingCodeAction()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-3 py-1.5 rounded-xl font-medium transition">
-              Get Code
-            </button>
-          </div>
-          <div id="pairingCodeDisplay" class="mt-2 text-sm font-mono font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg hidden"></div>
-        </div>
+        <p class="text-xs text-slate-500 mt-3">WhatsApp &gt; Linked Devices &gt; Link a Device</p>
       </div>
     </div>
   </div>
 
+  <!-- Create Campaign Modal -->
+  <div id="campaignModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-lg">Create Broadcast Campaign</h3>
+        <button onclick="closeCampaignModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Campaign Title</label>
+          <input type="text" id="campTitle" placeholder="e.g. Summer Promo 2026" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Recipients (one per line or comma-separated)</label>
+          <textarea id="campRecipients" rows="3" placeholder="919876543210, 919876543211" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Broadcast Message</label>
+          <textarea id="campMessage" rows="3" placeholder="Hello! We are offering a 20% discount today..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeCampaignModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm hover:bg-slate-100">Cancel</button>
+        <button onclick="submitCampaign()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2 rounded-xl text-sm transition">Launch Campaign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Group Modal -->
+  <div id="createGroupModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-lg">Create WhatsApp Group</h3>
+        <button onclick="closeCreateGroupModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Group Subject</label>
+          <input type="text" id="grpSubject" placeholder="e.g. VIP Clients 2026" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Participants (comma separated)</label>
+          <input type="text" id="grpParticipants" placeholder="919876543210, 919876543211" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeCreateGroupModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm hover:bg-slate-100">Cancel</button>
+        <button onclick="submitCreateGroup()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2 rounded-xl text-sm transition">Create Group</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Auto-Reply Modal -->
+  <div id="autoReplyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-lg">Add Auto-Reply Rule</h3>
+        <button onclick="closeAddAutoReplyModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Trigger Keyword</label>
+          <input type="text" id="arKeyword" placeholder="e.g. price, hours, hi" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Match Type</label>
+          <select id="arMatchType" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            <option value="contains">Contains Keyword</option>
+            <option value="exact">Exact Match</option>
+            <option value="default">Fallback / Default Reply</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Auto Reply Text</label>
+          <textarea id="arReply" rows="3" placeholder="Hello! Our pricing starts at $49/mo..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeAddAutoReplyModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm hover:bg-slate-100">Cancel</button>
+        <button onclick="submitAutoReply()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2 rounded-xl text-sm transition">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core JavaScript Application Logic -->
   <script>
-    let currentDeviceId = null;
+    let activeDeviceId = '';
+    let selectedChatWid = '';
     let qrPollInterval = null;
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active', 'bg-emerald-600', 'text-white'));
+      
+      const targetView = document.getElementById(`view-${tabId}`);
+      const targetTab = document.getElementById(`tab-${tabId}`);
+      if (targetView) targetView.classList.remove('hidden');
+      if (targetTab) targetTab.classList.add('active');
+
+      if (tabId === 'inbox') fetchInbox();
+      if (tabId === 'campaigns') fetchCampaigns();
+      if (tabId === 'groups') fetchGroups();
+      if (tabId === 'autoreplies') fetchAutoReplies();
+      if (tabId === 'settings') { fetchQuickReplies(); fetchLabels(); }
+    }
 
     async function fetchDevices() {
       try {
         const res = await fetch('/api/v1/devices');
         const json = await res.json();
-        const container = document.getElementById('devicesContainer');
-        const select = document.getElementById('sendDeviceId');
+        const container = document.getElementById('devicesList');
+        const select = document.getElementById('globalDeviceSelect');
 
         if (!json.success || json.data.length === 0) {
-          container.innerHTML = `
-            <div class="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl">
-              <i class="fa-solid fa-mobile-screen text-4xl text-slate-300 mb-3"></i>
-              <p class="text-slate-600 font-medium">No WhatsApp devices added yet</p>
-              <p class="text-xs text-slate-400 mt-1">Click "Add Device" above to link your first WhatsApp number.</p>
-            </div>
-          `;
-          select.innerHTML = '<option value="">No devices available</option>';
+          container.innerHTML = `<p class="text-slate-400 text-center py-12 col-span-full">No devices added yet. Click "Add New Device" to connect WhatsApp.</p>`;
+          select.innerHTML = '<option value="">No devices</option>';
           return;
         }
 
         container.innerHTML = '';
-        select.innerHTML = '<option value="">Auto (First Connected Device)</option>';
+        select.innerHTML = '';
 
-        json.data.forEach(dev => {
-          const badgeClass = `badge-${dev.status}`;
+        json.data.forEach((dev, idx) => {
+          if (!activeDeviceId && dev.status === 'connected') activeDeviceId = dev.id;
+          select.innerHTML += `<option value="${dev.id}" ${activeDeviceId === dev.id ? 'selected' : ''}>${dev.name} (${dev.phone || dev.status})</option>`;
+
           const isConnected = dev.status === 'connected';
-
-          if (isConnected) {
-            select.innerHTML += `<option value="${dev.id}">${dev.name} (${dev.phone || dev.id})</option>`;
-          }
+          const badgeClass = `badge-${dev.status}`;
 
           container.innerHTML += `
-            <div class="border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:shadow-sm transition bg-white">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
               <div class="flex items-center space-x-4">
                 <div class="w-12 h-12 rounded-2xl ${isConnected ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'} flex items-center justify-center text-xl">
                   <i class="fa-solid ${isConnected ? 'fa-mobile-screen-button' : 'fa-qrcode'}"></i>
@@ -264,289 +412,466 @@
                 <div>
                   <div class="flex items-center space-x-2">
                     <h4 class="font-bold text-slate-800">${dev.name}</h4>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${badgeClass}">
-                      ${dev.status.replace('_', ' ')}
-                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${badgeClass}">${dev.status.replace('_', ' ')}</span>
                   </div>
-                  <p class="text-xs text-slate-500 mt-0.5">
-                    ${dev.phone ? `<span class="font-semibold text-slate-700">+${dev.phone}</span> • ` : ''}ID: ${dev.id}
-                  </p>
+                  <p class="text-xs text-slate-500 mt-0.5">${dev.phone ? `+${dev.phone}` : 'Scan required'}</p>
                 </div>
               </div>
 
-              <div class="flex items-center space-x-2 w-full md:w-auto justify-end">
-                ${!isConnected ? `
-                  <button onclick="openQrModal('${dev.id}')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3.5 py-2 rounded-xl transition flex items-center shadow-sm">
-                    <i class="fa-solid fa-qrcode mr-1.5"></i> Scan QR / Pair
+              <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                <span class="text-[11px] text-slate-400">ID: ${dev.id}</span>
+                <div class="flex space-x-2">
+                  ${!isConnected ? `
+                    <button onclick="openQrModal('${dev.id}')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3.5 py-1.5 rounded-xl transition">
+                      <i class="fa-solid fa-qrcode mr-1"></i> Scan QR
+                    </button>
+                  ` : ''}
+                  <button onclick="deleteDevice('${dev.id}')" class="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1.5 rounded-xl transition">
+                    <i class="fa-solid fa-trash-can"></i>
                   </button>
-                ` : ''}
-                <button onclick="deleteDevice('${dev.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium px-3 py-2 rounded-xl transition">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
+                </div>
               </div>
             </div>
           `;
         });
 
+        if (!activeDeviceId && json.data.length > 0) activeDeviceId = json.data[0].id;
       } catch (err) {
         console.error(err);
       }
     }
 
-    function openAddDeviceModal() {
-      document.getElementById('deviceModal').classList.remove('hidden');
+    function onGlobalDeviceChange() {
+      activeDeviceId = document.getElementById('globalDeviceSelect').value;
+      refreshAll();
     }
 
-    function closeAddDeviceModal() {
-      document.getElementById('deviceModal').classList.add('hidden');
-      document.getElementById('newDeviceName').value = '';
+    function refreshAll() {
+      fetchDevices();
+      fetchInbox();
+      fetchCampaigns();
+      fetchGroups();
+      fetchAutoReplies();
     }
 
+    // Modal controls
+    function openAddDeviceModal() { document.getElementById('deviceModal').classList.remove('hidden'); }
+    function closeAddDeviceModal() { document.getElementById('deviceModal').classList.add('hidden'); }
     async function createDeviceSubmit() {
-      const name = document.getElementById('newDeviceName').value || 'WhatsApp Business';
-      try {
-        const res = await fetch('/api/v1/devices', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name })
-        });
-        const json = await res.json();
-        closeAddDeviceModal();
-        fetchDevices();
-        if (json.data?.id) {
-          openQrModal(json.data.id);
-        }
-      } catch (e) {
-        alert('Failed to create device: ' + e.message);
-      }
+      const name = document.getElementById('newDeviceName').value || 'Support Desk';
+      const res = await fetch('/api/v1/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const json = await res.json();
+      closeAddDeviceModal();
+      fetchDevices();
+      if (json.data?.id) openQrModal(json.data.id);
     }
 
-    function openQrModal(deviceId) {
-      currentDeviceId = deviceId;
+    function openQrModal(devId) {
       document.getElementById('qrModal').classList.remove('hidden');
       document.getElementById('qrImage').classList.add('hidden');
       document.getElementById('qrLoading').classList.remove('hidden');
-      document.getElementById('pairingCodeDisplay').classList.add('hidden');
-
-      pollQrCode();
+      pollQr(devId);
       if (qrPollInterval) clearInterval(qrPollInterval);
-      qrPollInterval = setInterval(pollQrCode, 3000);
+      qrPollInterval = setInterval(() => pollQr(devId), 3000);
     }
-
     function closeQrModal() {
       document.getElementById('qrModal').classList.add('hidden');
-      if (qrPollInterval) {
-        clearInterval(qrPollInterval);
-        qrPollInterval = null;
-      }
-      currentDeviceId = null;
+      if (qrPollInterval) clearInterval(qrPollInterval);
       fetchDevices();
     }
-
-    async function pollQrCode() {
-      if (!currentDeviceId) return;
+    async function pollQr(devId) {
       try {
-        const res = await fetch(`/api/v1/devices/${currentDeviceId}/qr`);
+        const res = await fetch(`/api/v1/devices/${devId}/qr`);
         const json = await res.json();
-
-        if (json.status === 'connected') {
-          closeQrModal();
-          fetchDevices();
-          return;
-        }
-
+        if (json.status === 'connected') { closeQrModal(); return; }
         if (json.qrCode) {
           const img = document.getElementById('qrImage');
           img.src = json.qrCode;
           img.classList.remove('hidden');
           document.getElementById('qrLoading').classList.add('hidden');
         }
-      } catch (e) {
-        console.error('Error polling QR:', e);
-      }
-    }
-
-    async function requestPairingCodeAction() {
-      const phone = document.getElementById('pairPhoneInput').value;
-      if (!phone || !currentDeviceId) {
-        alert('Please enter a phone number');
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/v1/devices/${currentDeviceId}/pair`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneNumber: phone })
-        });
-        const json = await res.json();
-        const display = document.getElementById('pairingCodeDisplay');
-        if (json.pairingCode) {
-          display.innerHTML = `Pairing Code: <span class="tracking-widest">${json.pairingCode}</span>`;
-          display.classList.remove('hidden');
-        } else {
-          alert(json.error || 'Failed to get pairing code');
-        }
-      } catch (e) {
-        alert(e.message);
-      }
+      } catch (e) {}
     }
 
     async function deleteDevice(id) {
-      if (!confirm('Are you sure you want to log out and remove this device?')) return;
-      try {
-        await fetch(`/api/v1/devices/${id}`, { method: 'DELETE' });
-        fetchDevices();
-      } catch (e) {
-        alert(e.message);
-      }
+      if (!confirm('Logout and remove this device?')) return;
+      await fetch(`/api/v1/devices/${id}`, { method: 'DELETE' });
+      fetchDevices();
     }
 
-    async function handleSendMessage(e) {
-      e.preventDefault();
-      const sendBtn = document.getElementById('sendBtn');
-      const feedback = document.getElementById('sendFeedback');
-
-      const deviceId = document.getElementById('sendDeviceId').value;
-      const phone = document.getElementById('sendPhone').value;
-      const message = document.getElementById('sendMessageText').value;
-      const mediaUrl = document.getElementById('sendMediaUrl').value;
-
-      sendBtn.disabled = true;
-      sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Sending...';
-      feedback.innerHTML = '';
-
+    // ================= INBOX =================
+    async function fetchInbox() {
+      if (!activeDeviceId) return;
       try {
-        const res = await fetch('/api/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            deviceId: deviceId || undefined,
-            phone,
-            message: message || undefined,
-            mediaUrl: mediaUrl || undefined,
-            mediaType: mediaUrl ? 'image' : undefined
-          })
-        });
+        const res = await fetch(`/api/v1/chat/${activeDeviceId}/chats`);
         const json = await res.json();
+        const list = document.getElementById('chatList');
+        document.getElementById('inboxCount').innerText = json.count || 0;
 
-        if (json.success) {
-          feedback.className = 'text-xs font-medium text-emerald-600';
-          feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Sent successfully (ID: ${json.messageId.substring(0, 10)}...)`;
-          document.getElementById('sendMessageText').value = '';
-          fetchMessages();
-        } else {
-          feedback.className = 'text-xs font-medium text-rose-600';
-          feedback.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ${json.error}`;
-        }
-      } catch (err) {
-        feedback.className = 'text-xs font-medium text-rose-600';
-        feedback.innerHTML = err.message;
-      } finally {
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Send Message';
-      }
-    }
-
-    async function checkWhatsAppNumber() {
-      const phone = document.getElementById('checkPhoneInput').value;
-      const result = document.getElementById('checkPhoneResult');
-      if (!phone) return;
-
-      result.innerHTML = '<span class="text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Checking...</span>';
-      try {
-        const res = await fetch(`/api/v1/contacts/${phone}/exists`);
-        const json = await res.json();
-        if (json.success && json.exists) {
-          result.innerHTML = `<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Valid WhatsApp number: +${json.phone}</span>`;
-        } else if (json.success) {
-          result.innerHTML = `<span class="text-rose-600 font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i> Not registered on WhatsApp</span>`;
-        } else {
-          result.innerHTML = `<span class="text-amber-600">${json.error}</span>`;
-        }
-      } catch (e) {
-        result.innerHTML = `<span class="text-rose-600">${e.message}</span>`;
-      }
-    }
-
-    async function fetchWebhooks() {
-      try {
-        const res = await fetch('/api/v1/webhooks');
-        const json = await res.json();
-        const list = document.getElementById('webhooksList');
         if (!json.data || json.data.length === 0) {
-          list.innerHTML = '<p class="text-slate-400">No webhooks registered</p>';
+          list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No conversations yet on this device</div>`;
           return;
         }
 
-        list.innerHTML = json.data.map(w => `
-          <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+        list.innerHTML = json.data.map(c => `
+          <div onclick="selectChat('${c.jid}', '${c.phone || c.jid}')" class="p-3.5 hover:bg-slate-100 cursor-pointer transition flex items-center justify-between ${selectedChatWid === c.jid ? 'bg-emerald-50/70 border-l-4 border-emerald-500' : ''}">
             <div class="truncate mr-2">
-              <p class="font-mono text-slate-700 truncate">${w.url}</p>
-              <p class="text-[10px] text-slate-400 mt-0.5">Events: ${w.events.join(', ')}</p>
+              <p class="font-bold text-xs text-slate-800 truncate">${c.phone || c.jid}</p>
+              <p class="text-[11px] text-slate-500 truncate mt-0.5">${c.lastMessage?.body || `[${c.lastMessage?.type || 'Message'}]`}</p>
             </div>
-            <button onclick="deleteWebhook('${w.id}')" class="text-rose-500 hover:text-rose-700">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+            <div class="text-right flex flex-col items-end">
+              <span class="text-[10px] text-slate-400">${new Date(c.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+              ${c.unreadCount > 0 ? `<span class="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full mt-1">${c.unreadCount}</span>` : ''}
+            </div>
           </div>
         `).join('');
       } catch (e) {}
     }
 
-    async function addWebhookPrompt() {
-      const url = prompt('Enter your webhook destination URL:');
-      if (!url) return;
-      try {
-        await fetch('/api/v1/webhooks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, events: ['*'] })
-        });
-        fetchWebhooks();
-      } catch (e) {
-        alert(e.message);
-      }
+    async function selectChat(jid, title) {
+      selectedChatWid = jid;
+      document.getElementById('activeChatTitle').innerText = title;
+      document.getElementById('activeChatSubtitle').innerText = jid;
+      document.getElementById('chatActions').classList.remove('hidden');
+      document.getElementById('replyArea').classList.remove('hidden');
+
+      fetchInbox();
+      loadMessagesForChat(jid);
     }
 
-    async function deleteWebhook(id) {
-      await fetch(`/api/v1/webhooks/${id}`, { method: 'DELETE' });
-      fetchWebhooks();
-    }
-
-    async function fetchMessages() {
+    async function loadMessagesForChat(jid) {
+      const stream = document.getElementById('messageStream');
+      stream.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
       try {
-        const res = await fetch('/api/v1/messages?limit=20');
+        const res = await fetch(`/api/v1/chat/${activeDeviceId}/chats/${encodeURIComponent(jid)}/messages?limit=50`);
         const json = await res.json();
-        const container = document.getElementById('recentMessages');
-
         if (!json.data || json.data.length === 0) {
-          container.innerHTML = '<p class="text-slate-400 text-center py-6">No messages recorded yet</p>';
+          stream.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">No messages in this chat</div>';
           return;
         }
 
-        container.innerHTML = json.data.map(m => {
-          const isOut = m.direction === 'outbound';
+        stream.innerHTML = json.data.reverse().map(m => {
+          const isMe = m.direction === 'outbound';
           return `
-            <div class="p-2.5 rounded-xl border ${isOut ? 'border-emerald-100 bg-emerald-50/50' : 'border-slate-100 bg-slate-50'}">
-              <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
-                <span class="font-bold ${isOut ? 'text-emerald-700' : 'text-slate-700'}">${isOut ? 'OUTBOUND →' : 'INBOUND ←'} ${m.to || m.from}</span>
-                <span>${new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+              <div class="max-w-[70%] p-3 rounded-2xl text-xs ${isMe ? 'bg-emerald-600 text-white rounded-br-xs' : 'bg-white text-slate-800 border border-slate-200 rounded-bl-xs shadow-sm'}">
+                <p class="leading-relaxed">${m.body || `[${m.type}]`}</p>
+                <div class="text-[9px] mt-1 text-right ${isMe ? 'text-emerald-200' : 'text-slate-400'}">
+                  ${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                  ${isMe ? ` • ${m.status}` : ''}
+                </div>
               </div>
-              <p class="text-slate-700 break-words">${m.body || `[${m.type}]`}</p>
             </div>
           `;
         }).join('');
+        stream.scrollTop = stream.scrollHeight;
       } catch (e) {}
     }
 
-    // Initial load & periodic refresh
+    async function handleSendReply(e) {
+      e.preventDefault();
+      const input = document.getElementById('replyInput');
+      const text = input.value.trim();
+      if (!text || !selectedChatWid) return;
+
+      input.value = '';
+      await fetch('/api/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: activeDeviceId,
+          phone: selectedChatWid,
+          message: text
+        })
+      });
+      loadMessagesForChat(selectedChatWid);
+    }
+
+    async function assignChatPrompt() {
+      const agent = prompt('Enter Agent name to assign this chat:');
+      if (!agent) return;
+      await fetch(`/api/v1/chat/${activeDeviceId}/chats/${encodeURIComponent(selectedChatWid)}/owner`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner: agent })
+      });
+      alert(`Chat assigned to ${agent}`);
+    }
+
+    async function addNotePrompt() {
+      const text = prompt('Enter internal private note for team:');
+      if (!text) return;
+      await fetch(`/api/v1/chat/${activeDeviceId}/chats/${encodeURIComponent(selectedChatWid)}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      alert('Internal note added!');
+    }
+
+    // ================= CAMPAIGNS =================
+    async function fetchCampaigns() {
+      try {
+        const res = await fetch('/api/v1/campaigns');
+        const json = await res.json();
+        const list = document.getElementById('campaignsList');
+        if (!json.data || json.data.length === 0) {
+          list.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-400 text-xs border border-slate-200">No campaigns launched yet. Click "New Campaign" to create one.</div>`;
+          return;
+        }
+
+        list.innerHTML = json.data.map(c => `
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <div class="flex items-center space-x-2">
+                <h4 class="font-bold text-sm text-slate-800">${c.name}</h4>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${c.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${c.status}</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-1 max-w-md truncate">${c.message}</p>
+              <div class="flex items-center space-x-3 mt-2 text-xs text-slate-400">
+                <span>Progress: ${c.progress.sent}/${c.progress.total} sent</span>
+                ${c.progress.failed > 0 ? `<span class="text-rose-500">${c.progress.failed} failed</span>` : ''}
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              ${c.status === 'running' ? `
+                <button onclick="updateCampaignStatus('${c.id}', 'paused')" class="text-xs bg-amber-50 text-amber-700 font-medium px-3 py-1.5 rounded-xl hover:bg-amber-100">Pause</button>
+              ` : c.status === 'paused' ? `
+                <button onclick="updateCampaignStatus('${c.id}', 'running')" class="text-xs bg-emerald-50 text-emerald-700 font-medium px-3 py-1.5 rounded-xl hover:bg-emerald-100">Resume</button>
+              ` : ''}
+              <button onclick="deleteCampaign('${c.id}')" class="text-xs text-rose-500 hover:bg-rose-50 p-2 rounded-xl"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    function openCampaignModal() { document.getElementById('campaignModal').classList.remove('hidden'); }
+    function closeCampaignModal() { document.getElementById('campaignModal').classList.add('hidden'); }
+    async function submitCampaign() {
+      const name = document.getElementById('campTitle').value;
+      const rawRecipients = document.getElementById('campRecipients').value;
+      const message = document.getElementById('campMessage').value;
+      const recipients = rawRecipients.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+
+      if (!name || !message || recipients.length === 0) {
+        alert('Please fill out campaign title, recipients, and message');
+        return;
+      }
+
+      await fetch('/api/v1/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: activeDeviceId,
+          name,
+          recipients,
+          message
+        })
+      });
+      closeCampaignModal();
+      fetchCampaigns();
+    }
+
+    async function updateCampaignStatus(id, status) {
+      await fetch(`/api/v1/campaigns/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      fetchCampaigns();
+    }
+    async function deleteCampaign(id) {
+      if (!confirm('Delete campaign?')) return;
+      await fetch(`/api/v1/campaigns/${id}`, { method: 'DELETE' });
+      fetchCampaigns();
+    }
+
+    // ================= GROUPS =================
+    async function fetchGroups() {
+      if (!activeDeviceId) return;
+      try {
+        const res = await fetch(`/api/v1/devices/${activeDeviceId}/groups`);
+        const json = await res.json();
+        const list = document.getElementById('groupsList');
+        if (!json.data || json.data.length === 0) {
+          list.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs col-span-full">No groups found on this WhatsApp number</div>`;
+          return;
+        }
+
+        list.innerHTML = json.data.map(g => `
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-3">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div class="truncate">
+                <h4 class="font-bold text-xs text-slate-800 truncate">${g.subject}</h4>
+                <p class="text-[11px] text-slate-400">${g.participantsCount} participants</p>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+              <button onclick="getGroupInvite('${g.id}')" class="text-purple-600 hover:text-purple-700 font-medium">Get Invite Link</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    function openCreateGroupModal() { document.getElementById('createGroupModal').classList.remove('hidden'); }
+    function closeCreateGroupModal() { document.getElementById('createGroupModal').classList.add('hidden'); }
+    async function submitCreateGroup() {
+      const subject = document.getElementById('grpSubject').value;
+      const raw = document.getElementById('grpParticipants').value;
+      const participants = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+
+      if (!subject || participants.length === 0) {
+        alert('Enter group subject and at least one initial participant phone');
+        return;
+      }
+
+      await fetch(`/api/v1/devices/${activeDeviceId}/groups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, participants })
+      });
+      closeCreateGroupModal();
+      fetchGroups();
+    }
+
+    async function getGroupInvite(groupId) {
+      const res = await fetch(`/api/v1/devices/${activeDeviceId}/groups/${groupId}/invite`);
+      const json = await res.json();
+      if (json.inviteUrl) prompt('WhatsApp Group Invite URL:', json.inviteUrl);
+      else alert('Failed to generate invite link');
+    }
+
+    // ================= AUTO-REPLIES =================
+    async function fetchAutoReplies() {
+      if (!activeDeviceId) return;
+      try {
+        const res = await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies`);
+        const json = await res.json();
+        const list = document.getElementById('autoRepliesList');
+        if (!json.data || json.data.length === 0) {
+          list.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs">No auto-reply rules configured for this device</div>`;
+          return;
+        }
+
+        list.innerHTML = json.data.map(r => `
+          <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-xs text-slate-800">Trigger: "${r.keyword}"</span>
+                <span class="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono uppercase">${r.matchType}</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-1 max-w-lg">Reply: ${r.reply}</p>
+            </div>
+            <button onclick="deleteAutoReply('${r.id}')" class="text-rose-500 hover:text-rose-700 p-2"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    function openAddAutoReplyModal() { document.getElementById('autoReplyModal').classList.remove('hidden'); }
+    function closeAddAutoReplyModal() { document.getElementById('autoReplyModal').classList.add('hidden'); }
+    async function submitAutoReply() {
+      const keyword = document.getElementById('arKeyword').value;
+      const matchType = document.getElementById('arMatchType').value;
+      const reply = document.getElementById('arReply').value;
+
+      if (!keyword || !reply) {
+        alert('Please fill out trigger keyword and reply text');
+        return;
+      }
+
+      await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword, matchType, reply })
+      });
+      closeAddAutoReplyModal();
+      fetchAutoReplies();
+    }
+    async function deleteAutoReply(id) {
+      await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies/${id}`, { method: 'DELETE' });
+      fetchAutoReplies();
+    }
+
+    // ================= QUICK REPLIES & LABELS =================
+    async function fetchQuickReplies() {
+      if (!activeDeviceId) return;
+      const res = await fetch(`/api/v1/devices/${activeDeviceId}/quickReplies`);
+      const json = await res.json();
+      const list = document.getElementById('quickRepliesList');
+      if (!json.data || json.data.length === 0) { list.innerHTML = '<p class="text-slate-400">No canned shortcuts</p>'; return; }
+      list.innerHTML = json.data.map(q => `
+        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
+          <div>
+            <span class="font-mono font-bold text-emerald-600">${q.shortcut}</span>
+            <p class="text-slate-500 truncate">${q.message}</p>
+          </div>
+          <button onclick="deleteQuickReply('${q.id}')" class="text-rose-400 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      `).join('');
+    }
+
+    async function addQuickReplyPrompt() {
+      const shortcut = prompt('Shortcut command (e.g. /pricing, /hello):');
+      const message = prompt('Full canned message text:');
+      if (!shortcut || !message) return;
+      await fetch(`/api/v1/devices/${activeDeviceId}/quickReplies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortcut, message })
+      });
+      fetchQuickReplies();
+    }
+    async function deleteQuickReply(id) {
+      await fetch(`/api/v1/devices/${activeDeviceId}/quickReplies/${id}`, { method: 'DELETE' });
+      fetchQuickReplies();
+    }
+
+    async function fetchLabels() {
+      if (!activeDeviceId) return;
+      const res = await fetch(`/api/v1/devices/${activeDeviceId}/labels`);
+      const json = await res.json();
+      const list = document.getElementById('labelsList');
+      if (!json.data || json.data.length === 0) { list.innerHTML = '<p class="text-slate-400">No labels created</p>'; return; }
+      list.innerHTML = json.data.map(l => `
+        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
+          <div class="flex items-center space-x-2">
+            <span class="w-3 h-3 rounded-full" style="background-color: ${l.color}"></span>
+            <span class="font-semibold text-slate-700">${l.name}</span>
+          </div>
+          <button onclick="deleteLabel('${l.id}')" class="text-rose-400 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      `).join('');
+    }
+
+    async function addLabelPrompt() {
+      const name = prompt('Label name (e.g. VIP, Urgent, Paid):');
+      if (!name) return;
+      await fetch(`/api/v1/devices/${activeDeviceId}/labels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, color: '#10b981' })
+      });
+      fetchLabels();
+    }
+    async function deleteLabel(id) {
+      await fetch(`/api/v1/devices/${activeDeviceId}/labels/${id}`, { method: 'DELETE' });
+      fetchLabels();
+    }
+
+    // Initial boot
     fetchDevices();
-    fetchWebhooks();
-    fetchMessages();
-    setInterval(() => {
-      fetchDevices();
-      fetchMessages();
-    }, 10000);
+    setInterval(fetchDevices, 10000);
   </script>
 </body>
 </html>
