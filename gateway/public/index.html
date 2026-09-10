@@ -1715,7 +1715,7 @@
 
           <!-- 5. Mobile app -->
           <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-            <div onclick="toggleSettingAccordion('mobile')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+            <div onclick="toggleSettingAccordion('mobile')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition">
               <div class="flex items-center space-x-4">
                 <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
                   <i class="fa-solid fa-play"></i>
@@ -1727,16 +1727,38 @@
               </div>
               <i id="chevron-mobile" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div id="section-mobile" class="hidden border-t border-slate-100 p-6 space-y-3 bg-white">
-              <p class="text-slate-600">Access your Wassenger Inbox on your phone directly via mobile browser:</p>
-              <div class="p-3 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs inline-block">http://localhost:3000</div>
-              <p class="text-slate-400">Add to Home Screen on iOS or Android for a full native app experience.</p>
+            <div id="section-mobile" class="hidden border-t border-slate-100 p-8 bg-white">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <!-- Mobile browser column -->
+                <div class="space-y-2">
+                  <h5 class="text-xs font-bold text-slate-800">Mobile browser</h5>
+                  <p class="text-xs text-slate-500">Scan the QR to use Wassenger on any mobile web browser</p>
+                  <div class="pt-6 flex justify-center">
+                    <div class="p-3 bg-white border border-slate-200 rounded-xl shadow-xs inline-block">
+                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fapp.wassenger.com" alt="Mobile Web QR" class="w-40 h-40 object-contain">
+                    </div>
+                  </div>
+                </div>
+                <!-- Android column -->
+                <div class="space-y-2">
+                  <h5 class="text-xs font-bold text-slate-800">Android</h5>
+                  <p class="text-xs text-slate-500">Click on the image below to install the Android app</p>
+                  <div class="pt-8 flex flex-col items-center justify-center cursor-pointer hover:opacity-90 transition group" onclick="window.open('https://play.google.com/store/apps', '_blank')">
+                    <svg class="w-24 h-24 transition group-hover:scale-105" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M26 38L18 24C17.4 23 18.2 21.6 19.4 21.6C19.9 21.6 20.3 21.9 20.6 22.3L28.9 36.6C34.9 33.9 42.1 32.4 50 32.4C57.9 32.4 65.1 33.9 71.1 36.6L79.4 22.3C79.7 21.9 80.1 21.6 80.6 21.6C81.8 21.6 82.6 23 82 24L74 38C84 44.5 90.9 55.4 92 68H8C9.1 55.4 16 44.5 26 38Z" fill="#3DDC84"/>
+                      <circle cx="34" cy="52" r="3.5" fill="white"/>
+                      <circle cx="66" cy="52" r="3.5" fill="white"/>
+                    </svg>
+                    <span class="text-base font-bold text-slate-900 tracking-wider mt-2 lowercase font-sans">android</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- 6. Signatures -->
           <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-            <div onclick="toggleSettingAccordion('signatures')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+            <div onclick="toggleSettingAccordion('signatures')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition">
               <div class="flex items-center space-x-4">
                 <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
                   <i class="fa-solid fa-signature"></i>
@@ -1748,19 +1770,39 @@
               </div>
               <i id="chevron-signatures" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div id="section-signatures" class="hidden border-t border-slate-100 p-6 space-y-3 bg-white">
-              <p class="text-slate-600">Append an automatic signature to manual messages sent by your agents:</p>
-              <textarea rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs" placeholder="--&#10;Satyam Singh | Sales Team">--
-Satyam Singh | Sales Team</textarea>
-              <div class="flex justify-end">
-                <button onclick="alert('Signature saved!')" class="bg-[#1976d2] text-white font-semibold px-4 py-2 rounded-xl text-xs">Save signature</button>
+            <div id="section-signatures" class="hidden border-t border-slate-100 p-12 bg-white text-center">
+              <div class="max-w-md mx-auto flex flex-col items-center justify-center">
+                <!-- Astronaut sitting on crate illustration -->
+                <div class="relative w-28 h-28 flex items-center justify-center mb-3">
+                  <span class="absolute top-2 left-3 text-slate-400 text-sm">✦</span>
+                  <span class="absolute top-1 right-4 text-slate-400 text-sm">✦</span>
+                  <span class="absolute bottom-4 left-3 text-slate-400 text-sm">✦</span>
+                  <span class="absolute bottom-6 right-3 text-slate-400 text-sm">✦</span>
+                  <svg class="w-24 h-24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="25" y="60" width="50" height="30" rx="3" fill="#1e1b4b" stroke="#312e81" stroke-width="2"/>
+                    <rect x="25" y="68" width="50" height="6" fill="#f59e0b"/>
+                    <rect x="36" y="44" width="28" height="24" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+                    <rect x="28" y="46" width="10" height="18" rx="5" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+                    <rect x="62" y="46" width="10" height="18" rx="5" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+                    <rect x="36" y="64" width="10" height="8" rx="3" fill="#e2e8f0"/>
+                    <rect x="54" y="64" width="10" height="8" rx="3" fill="#e2e8f0"/>
+                    <circle cx="50" cy="28" r="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                    <rect x="38" y="20" width="24" height="16" rx="8" fill="#0f172a"/>
+                    <path d="M42 24C44 22 48 22 52 23" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="31" cy="28" r="2.5" fill="#94a3b8"/>
+                    <circle cx="69" cy="28" r="2.5" fill="#94a3b8"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-bold text-[#1976d2] mb-1">No signatures have been created</h4>
+                <p class="text-xs text-slate-500 mb-6">Click the button below to create your first signature</p>
+                <button onclick="alert('Create signature')" class="bg-[#1976d2] hover:bg-[#1565c0] text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-2xs">Create signature</button>
               </div>
             </div>
           </div>
 
           <!-- 7. Payment cards & billing -->
           <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-            <div onclick="toggleSettingAccordion('billing')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+            <div onclick="toggleSettingAccordion('billing')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition">
               <div class="flex items-center space-x-4">
                 <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
                   <i class="fa-solid fa-receipt"></i>
@@ -1770,29 +1812,24 @@ Satyam Singh | Sales Team</textarea>
                   <p class="text-xs text-slate-400 mt-0.5">Manage your payment cards and check your invoices.</p>
                 </div>
               </div>
-              <i id="chevron-billing" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
-            </div>
-            <div id="section-billing" class="hidden border-t border-slate-100 p-6 space-y-4 bg-white">
-              <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                  <i class="fa-brands fa-cc-visa text-2xl text-blue-600"></i>
-                  <div>
-                    <p class="font-bold text-slate-800 text-xs">Visa ending in 4242</p>
-                    <p class="text-[10px] text-slate-400">Expires 12/28</p>
-                  </div>
-                </div>
-                <span class="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">Default</span>
+              <div class="flex items-center space-x-2">
+                <button onclick="event.stopPropagation(); alert('No invoices generated yet.');" class="px-3.5 py-1.5 border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 rounded-lg transition shadow-2xs">Invoices</button>
+                <button onclick="event.stopPropagation(); alert('Add payment card modal');" class="px-3.5 py-1.5 bg-[#1976d2] text-xs font-semibold text-white hover:bg-[#1565c0] rounded-lg transition shadow-2xs">Add new card</button>
+                <i id="chevron-billing" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 ml-2"></i>
               </div>
-              <div>
-                <b class="text-xs font-bold text-slate-800">Billing History</b>
-                <p class="text-xs text-slate-400 mt-1">Invoice #INV-2026-09 - Paid ($49.00)</p>
+            </div>
+            <div id="section-billing" class="hidden border-t border-slate-100 p-8 bg-white">
+              <div class="border border-slate-200/90 rounded-2xl p-14 text-center flex flex-col items-center justify-center bg-white">
+                <h3 class="text-base font-semibold text-[#1976d2] mb-1.5">Add payment card</h3>
+                <p class="text-xs text-slate-500 mb-6">You have no payments cards yet. Click on the button below to add the first one.</p>
+                <button onclick="alert('Add payment card modal')" class="bg-[#1976d2] hover:bg-[#1565c0] text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-2xs">Add new card</button>
               </div>
             </div>
           </div>
 
           <!-- 8. Subscriptions -->
           <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-            <div onclick="toggleSettingAccordion('subscriptions')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+            <div onclick="toggleSettingAccordion('subscriptions')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition">
               <div class="flex items-center space-x-4">
                 <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
                   <i class="fa-solid fa-mobile-screen-button"></i>
@@ -1802,23 +1839,67 @@ Satyam Singh | Sales Team</textarea>
                   <p class="text-xs text-slate-400 mt-0.5">Manage monthly plan subscriptions for your WhatsApp numbers</p>
                 </div>
               </div>
-              <i id="chevron-subscriptions" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
-            </div>
-            <div id="section-subscriptions" class="hidden border-t border-slate-100 p-6 space-y-3 bg-white">
-              <div class="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
-                <div class="flex justify-between items-center">
-                  <b class="text-sm font-bold text-[#164e87]">Professional Plan</b>
-                  <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Active</span>
-                </div>
-                <p class="text-xs text-slate-600">Includes 1 WhatsApp number (+919111110963), unlimited messaging, team inbox, and API access.</p>
-                <p class="text-[11px] text-slate-400">Renews on October 10, 2026</p>
+              <div class="flex items-center space-x-2">
+                <button onclick="event.stopPropagation(); alert('Create subscription modal');" class="px-3.5 py-1.5 bg-[#1976d2] text-xs font-semibold text-white hover:bg-[#1565c0] rounded-lg transition shadow-2xs">Create subscription</button>
+                <i id="chevron-subscriptions" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 ml-2"></i>
               </div>
+            </div>
+            <div id="section-subscriptions" class="hidden border-t border-slate-100 p-6 bg-white overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-100 text-[10px] font-semibold text-slate-400 tracking-wider">
+                    <th class="pb-3 uppercase">Number</th>
+                    <th class="pb-3 uppercase">Plan</th>
+                    <th class="pb-3 uppercase">Status</th>
+                    <th class="pb-3 uppercase">Billing Period</th>
+                    <th class="pb-3 uppercase text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr class="text-xs">
+                    <td class="py-4">
+                      <div class="flex items-center space-x-3">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" class="w-10 h-10 rounded-full object-cover border border-slate-200" alt="Sales Number">
+                        <div>
+                          <p class="font-bold text-slate-800 text-xs">Sales</p>
+                          <p class="text-xs text-slate-400">+919111110963</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="py-4">
+                      <p class="font-semibold text-slate-800 text-xs">Enterprise</p>
+                      <p class="text-[11px] text-slate-400">$99.9 / month</p>
+                    </td>
+                    <td class="py-4">
+                      <span class="bg-[#4caf50] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block">Free trial</span>
+                      <p class="text-[11px] text-slate-400 mt-1">Started 2 hours ago</p>
+                    </td>
+                    <td class="py-4">
+                      <p class="text-xs font-bold text-slate-700">1%</p>
+                      <div class="w-56 max-w-full bg-slate-200 h-1 rounded-full mt-1.5 overflow-hidden">
+                        <div class="bg-[#4caf50] h-full w-[1%]"></div>
+                      </div>
+                      <p class="text-[11px] text-slate-400 mt-1">September 10, 2026 - September 17, 2026</p>
+                    </td>
+                    <td class="py-4 text-right">
+                      <div class="flex items-center justify-end space-x-2">
+                        <button title="Tags" class="w-8 h-8 rounded-lg bg-[#1976d2] text-white hover:bg-[#1565c0] flex items-center justify-center text-xs transition shadow-2xs">
+                          <i class="fa-solid fa-tag"></i>
+                        </button>
+                        <button title="Settings" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 flex items-center justify-center text-xs transition shadow-2xs">
+                          <i class="fa-solid fa-gear"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
           <!-- 9. Referral Program -->
           <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-            <div onclick="toggleSettingAccordion('referral')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+            <div onclick="toggleSettingAccordion('referral')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition">
               <div class="flex items-center space-x-4">
                 <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
                   <i class="fa-solid fa-hand-holding-dollar"></i>
@@ -1830,16 +1911,99 @@ Satyam Singh | Sales Team</textarea>
               </div>
               <i id="chevron-referral" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div id="section-referral" class="hidden border-t border-slate-100 p-6 space-y-3 text-center bg-white">
-              <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl font-bold">
-                $
+            <div id="section-referral" class="hidden border-t border-slate-100 p-6 bg-white space-y-5">
+              <!-- Blue alert banner -->
+              <div class="bg-[#e8f0fe] border border-[#d2e3fc] rounded-xl px-4 py-3 flex items-center space-x-3 text-xs text-[#174ea6]">
+                <i class="fa-solid fa-circle-info text-[#1976d2] text-sm"></i>
+                <span>Invite other users and earn 30% commission for the purchase they make up to consecutive 3 months. <a href="https://wassenger.com/referral" target="_blank" class="underline font-semibold text-[#1976d2]">Learn more about the Referral Program here</a></span>
               </div>
-              <h4 class="font-bold text-slate-900 text-sm">Earn 20% recurring commission</h4>
-              <p class="text-xs text-slate-500">Share your referral link with colleagues and clients:</p>
-              <div class="p-2.5 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs flex justify-between items-center max-w-md mx-auto">
-                <span>https://wassenger.com/ref/satyam</span>
-                <button onclick="navigator.clipboard.writeText('https://wassenger.com/ref/satyam'); alert('Copied!');" class="text-xs text-[#1976d2] font-semibold hover:underline">Copy</button>
+
+              <!-- Referral link box -->
+              <div>
+                <h5 class="text-xs font-bold text-slate-800 mb-1">My referral link</h5>
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs text-slate-700 font-mono py-1 select-all cursor-pointer">https://wassenger.com/?ref=95egj8</span>
+                  <button onclick="navigator.clipboard.writeText('https://wassenger.com/?ref=95egj8'); alert('Copied referral link!');" class="text-xs text-[#1976d2] hover:underline font-semibold ml-2">Copy</button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Copy and share this link with anyone you would like to refer to Wassenger</p>
               </div>
+
+              <!-- 6 Stats cards -->
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
+                <div class="bg-white border border-slate-200/90 rounded-xl p-4 text-center">
+                  <div class="text-xl font-semibold text-slate-800">$0</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Total profit</div>
+                </div>
+                <div class="bg-white border border-slate-200/90 rounded-xl p-4 text-center">
+                  <div class="text-xl font-semibold text-slate-800">$0</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Available balance</div>
+                </div>
+                <div class="bg-white border border-slate-200/90 rounded-xl p-4 text-center">
+                  <div class="text-xl font-semibold text-slate-800">$0</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Credit balance</div>
+                </div>
+                <div class="bg-white border border-slate-200/90 rounded-xl p-4 text-center">
+                  <div class="text-xl font-semibold text-slate-800">0%</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Conversion ratio</div>
+                </div>
+                <div class="bg-white border border-slate-200/90 rounded-xl p-4 text-center">
+                  <div class="text-xl font-semibold text-slate-800">0</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Active subscriptions</div>
+                </div>
+                <div class="bg-white border border-slate-200/90 rounded-xl p-4 text-center">
+                  <div class="text-xl font-semibold text-slate-800">0</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Trial subscriptions</div>
+                </div>
+              </div>
+
+              <!-- Sub-tabs and date range -->
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200 pt-2 pb-2 text-xs">
+                <div class="flex space-x-6">
+                  <button class="font-bold text-[#1976d2] border-b-2 border-[#1976d2] pb-2 -mb-2">Subscriptions</button>
+                  <button class="text-slate-500 hover:text-slate-700 pb-2">Payments</button>
+                  <button class="text-slate-500 hover:text-slate-700 pb-2">Settings</button>
+                </div>
+                <div class="flex items-center space-x-2 mt-3 sm:mt-0">
+                  <select class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-600">
+                    <option>All time</option>
+                    <option>This month</option>
+                    <option>Last month</option>
+                  </select>
+                  <div class="flex items-center space-x-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
+                    <i class="fa-regular fa-calendar text-slate-400"></i>
+                    <span>10 September 2026 - 11 September 2026</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Empty state: Astronaut on rocket -->
+              <div class="border border-slate-200/80 rounded-2xl p-12 text-center bg-white flex flex-col items-center justify-center">
+                <div class="relative w-28 h-28 flex items-center justify-center mb-3">
+                  <span class="absolute top-2 left-2 text-slate-400 text-sm">✦</span>
+                  <span class="absolute top-1 right-3 text-slate-400 text-sm">✦</span>
+                  <span class="absolute bottom-4 left-3 text-slate-400 text-sm">✦</span>
+                  <span class="absolute bottom-6 right-2 text-slate-400 text-sm">✦</span>
+                  <svg class="w-24 h-24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="rotate(-30 50 50)">
+                      <polygon points="45,75 50,92 55,75" fill="#f59e0b"/>
+                      <polygon points="47,75 50,86 53,75" fill="#ef4444"/>
+                      <polygon points="35,68 42,50 42,70" fill="#dc2626"/>
+                      <polygon points="65,68 58,50 58,70" fill="#dc2626"/>
+                      <ellipse cx="50" cy="45" rx="14" ry="26" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+                      <path d="M38 32 C38 18, 50 14, 50 14 C50 14, 62 18, 62 32 Z" fill="#dc2626"/>
+                      <circle cx="50" cy="38" r="6" fill="#0f172a" stroke="#cbd5e1" stroke-width="1.5"/>
+                      <circle cx="48" cy="36" r="2" fill="#38bdf8"/>
+                    </g>
+                    <circle cx="58" cy="34" r="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                    <rect x="52" y="29" width="13" height="9" rx="4.5" fill="#0f172a"/>
+                    <path d="M54 31C56 30 59 30 61 31" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-bold text-[#1976d2] mb-1">You have no referred subscriptions yet</h4>
+                <p class="text-xs text-slate-500 mb-5">Share your referral link to start making 30% commision on every paid user.</p>
+                <button onclick="navigator.clipboard.writeText('https://wassenger.com/?ref=95egj8'); alert('Copied referral link!');" class="bg-[#1976d2] hover:bg-[#1565c0] text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-2xs">Get your referral link</button>
+              </div>
+
             </div>
           </div>
 
