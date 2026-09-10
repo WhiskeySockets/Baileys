@@ -416,93 +416,241 @@
 
       </div>
 
-      <!-- ================= VIEW: DEVICE DETAILS & SESSION LOGS (Screenshot 4 Match) ================= -->
-      <div id="view-devices" class="tab-view max-w-5xl w-full hidden space-y-6">
+      <!-- ================= VIEW: DEVICE DETAILS & SETTINGS (Screenshot 2 Match) ================= -->
+      <div id="view-devices" class="tab-view max-w-6xl w-full hidden space-y-6">
         
-        <!-- Top Status Alert -->
-        <div class="bg-rose-50/80 border border-rose-200 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h4 class="text-sm font-bold text-rose-800 flex items-center">
-              <i class="fa-solid fa-triangle-exclamation mr-2"></i> Active WhatsApp Session
-            </h4>
-            <p class="text-xs text-rose-600 mt-0.5">The WhatsApp number is connected and receiving/delivering messages.</p>
-          </div>
-          <div class="flex space-x-2">
-            <button onclick="goToWizardStep(1)" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow">Link Another Number</button>
-          </div>
-        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+          
+          <!-- Left Settings Submenu -->
+          <div class="bg-white rounded-3xl border border-slate-200 p-4 space-y-3 shadow-xs">
+            <!-- Account Header Card -->
+            <div class="p-3 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-100">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Avatar" class="w-full h-full object-cover">
+                </div>
+                <div>
+                  <h4 class="font-bold text-xs text-slate-800">Sales</h4>
+                  <p class="text-[10px] text-slate-400">+919111110963</p>
+                </div>
+              </div>
+              <button class="text-slate-400 hover:text-slate-600 text-xs"><i class="fa-solid fa-gear"></i></button>
+            </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <!-- Left Sub-Tabs -->
-          <div class="bg-white rounded-2xl border border-slate-200 p-3 space-y-1 h-fit">
-            <button class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold text-[#164e87] bg-blue-50 flex items-center">
-              <i class="fa-solid fa-mobile-screen mr-2.5"></i> Number
-            </button>
-            <button onclick="switchTab('inbox')" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 flex items-center">
-              <i class="fa-solid fa-comments mr-2.5"></i> Live Chats
-            </button>
-            <button onclick="switchTab('campaigns')" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 flex items-center">
-              <i class="fa-solid fa-bullhorn mr-2.5"></i> Campaigns
-            </button>
-            <button onclick="switchTab('groups')" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 flex items-center">
-              <i class="fa-solid fa-users mr-2.5"></i> Groups
-            </button>
+            <!-- Submenu list -->
+            <nav class="space-y-1 text-xs font-medium text-slate-600">
+              <button class="w-full text-left px-3.5 py-2.5 rounded-xl bg-[#e8f0fe] text-[#1a73e8] font-bold flex items-center">
+                <i class="fa-regular fa-comment-dots mr-2.5 w-4 text-center"></i> Number
+              </button>
+              <button onclick="switchTab('inbox')" class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-regular fa-user mr-2.5 w-4 text-center"></i> Team
+              </button>
+              <button class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-regular fa-building mr-2.5 w-4 text-center"></i> Departments
+              </button>
+              <button class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-regular fa-credit-card mr-2.5 w-4 text-center"></i> Subscription
+              </button>
+              <button onclick="switchTab('inbox')" class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-regular fa-envelope mr-2.5 w-4 text-center"></i> Messages
+              </button>
+              <button onclick="switchTab('groups')" class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-solid fa-users mr-2.5 w-4 text-center"></i> Groups
+              </button>
+              <button class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-regular fa-shield mr-2.5 w-4 text-center"></i> Permissions
+              </button>
+              <button onclick="switchTab('autoreplies')" class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-solid fa-robot mr-2.5 w-4 text-center"></i> Automatic replies
+              </button>
+              <button class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-solid fa-shuffle mr-2.5 w-4 text-center"></i> Automatic assignment
+              </button>
+              <button onclick="switchTab('settings')" class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-solid fa-bolt mr-2.5 w-4 text-center"></i> Quick replies
+              </button>
+              <button onclick="switchTab('settings')" class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-regular fa-bookmark mr-2.5 w-4 text-center"></i> Labels
+              </button>
+              <button onclick="switchTab('api')" class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center">
+                <i class="fa-solid fa-arrow-right-arrow-left mr-2.5 w-4 text-center"></i> Webhooks
+              </button>
+              <button class="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 flex items-center text-blue-600">
+                <i class="fa-solid fa-puzzle-piece mr-2.5 w-4 text-center"></i> Integrations <i class="fa-solid fa-star text-[10px] ml-1 text-amber-400"></i>
+              </button>
+            </nav>
           </div>
 
-          <!-- Main Info & Session Logs Card -->
+          <!-- Main Content Dashboard -->
           <div class="md:col-span-3 space-y-6">
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <div class="flex items-center space-x-3">
-                  <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-                    <i class="fa-solid fa-mobile-screen"></i>
-                  </div>
-                  <div>
-                    <h3 class="font-bold text-sm text-slate-900">Sales Number</h3>
-                    <p class="text-xs text-slate-500">+91 91111 10963 • Connected via Baileys WebSockets</p>
-                  </div>
-                </div>
-                <span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full uppercase">ONLINE</span>
+            
+            <!-- Top Alert Banner (Screenshot 2 Match) -->
+            <div class="bg-[#e8f2fc] border border-blue-200/60 rounded-3xl p-6 text-slate-800 relative space-y-3 shadow-xs">
+              <button class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+              <div class="flex items-center space-x-2 text-[#164e87] font-bold text-sm">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>Introducing WhatsApp Business API compatibility</span>
               </div>
-              <div class="grid grid-cols-3 gap-4 text-xs">
-                <div class="bg-slate-50 p-3 rounded-xl">
-                  <span class="text-slate-400 block text-[10px] uppercase">Device ID</span>
-                  <span class="font-mono font-bold text-slate-700">dev_1789034070419</span>
+              <p class="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                Get access to official WhatsApp Business API features with coexistence with the WhatsApp Business mobile app. Benefit from higher messaging limits, no disconnections, no bans, verified business profile, template messages, and faster message delivery. Migration takes few minutes and your all your existing chats and contacts are preserved.
+              </p>
+              <div class="flex items-center space-x-3 pt-1">
+                <button onclick="openWabaConnectModal()" class="bg-[#52a447] hover:bg-[#46913c] text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center shadow-xs">
+                  <i class="fa-solid fa-arrow-right mr-1.5"></i> Migrate number
+                </button>
+                <a href="https://wassenger.com/help/comparison" target="_blank" class="text-xs text-[#164e87] hover:underline font-semibold">Learn more</a>
+              </div>
+            </div>
+
+            <!-- Profile & Details Grid (Screenshot 2 Match) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <!-- Left Profile Card -->
+              <div class="bg-white rounded-3xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
+                <div class="relative">
+                  <div class="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-100 shadow-md">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" alt="Connected Profile" class="w-full h-full object-cover">
+                  </div>
+                  <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white"></span>
                 </div>
-                <div class="bg-slate-50 p-3 rounded-xl">
-                  <span class="text-slate-400 block text-[10px] uppercase">Engine</span>
-                  <span class="font-bold text-slate-700">Baileys Noise/Protobuf</span>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">+919111110963</h3>
+                  <div class="text-xs text-slate-400 flex items-center justify-center space-x-1 mt-0.5">
+                    <span>☘️</span>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-2">No status defined</p>
                 </div>
-                <div class="bg-slate-50 p-3 rounded-xl">
-                  <span class="text-slate-400 block text-[10px] uppercase">Status</span>
-                  <span class="font-bold text-emerald-600">Active / Synced</span>
+              </div>
+
+              <!-- Right Sales Details Card -->
+              <div class="bg-white rounded-3xl border border-slate-200 p-7 shadow-xs flex flex-col justify-between space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                  <h3 class="font-bold text-slate-900 text-sm">Sales</h3>
+                  <button class="text-slate-400 hover:text-slate-600 text-xs"><i class="fa-solid fa-gear"></i></button>
+                </div>
+                <div class="space-y-3 text-xs">
+                  <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Status</span>
+                    <span class="text-emerald-700 font-bold flex items-center"><span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></span> Online</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Plan</span>
+                    <span class="text-emerald-700 font-bold flex items-center"><span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></span> Enterprise</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-slate-400">WhatsApp account</span>
+                    <span class="text-slate-700 font-semibold flex items-center"><i class="fa-brands fa-whatsapp text-emerald-600 mr-1.5"></i> Personal US</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Number ID</span>
+                    <span class="font-mono text-slate-600 text-[11px]">dev_1789034070419_95egj</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Settings Card (Screenshot 2 Match) -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-7 shadow-xs space-y-4">
+              <h3 class="font-bold text-slate-900 text-sm">Settings</h3>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1 text-xs">
+                <div>
+                  <span class="text-slate-400 block text-[11px] mb-1">Message delivery speed</span>
+                  <p class="font-semibold text-slate-700 flex items-center">
+                    <i class="fa-solid fa-gauge mr-1.5 text-slate-500"></i> Up to 150 messages per minute
+                  </p>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-[11px] mb-1">Automatic chats deletion</span>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 h-4 bg-slate-200 rounded-full inline-block relative cursor-pointer"><span class="w-3 h-3 bg-white rounded-full absolute top-0.5 left-0.5"></span></span>
+                    <span class="font-semibold text-slate-700">Up to 600 open chats</span>
+                  </div>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-[11px] mb-1">Operating hours</span>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 h-4 bg-slate-200 rounded-full inline-block relative cursor-pointer"><span class="w-3 h-3 bg-white rounded-full absolute top-0.5 left-0.5"></span></span>
+                    <span class="font-semibold text-slate-700">Defaults to 24/7</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Session Logs (Screenshot 4 Match) -->
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3">
-              <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wider">Session Logs</h4>
-              <div id="sessionLogsContainer" class="space-y-2 text-xs font-mono">
-                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
-                  <div class="flex items-center space-x-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span class="text-slate-700">Session status changed to "connected"</span>
-                  </div>
-                  <span class="text-[10px] text-slate-400">Just now</span>
+            <!-- Stats Card (Screenshot 2 Match) -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-7 shadow-xs space-y-4">
+              <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 text-sm">Stats</h3>
+                <i class="fa-solid fa-chevron-down text-slate-400 text-xs"></i>
+              </div>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center pt-2">
+                <div class="bg-slate-50/70 p-4 rounded-2xl border border-slate-100">
+                  <span class="text-slate-400 text-[11px] block">Open chats</span>
+                  <span class="text-xl font-bold text-slate-800 mt-1 block">126</span>
                 </div>
-                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
-                  <div class="flex items-center space-x-2">
-                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                    <span class="text-slate-700">Multi-device Noise handshake established</span>
-                  </div>
-                  <span class="text-[10px] text-slate-400">2 mins ago</span>
+                <div class="bg-slate-50/70 p-4 rounded-2xl border border-slate-100">
+                  <span class="text-slate-400 text-[11px] block">Group chats</span>
+                  <span class="text-xl font-bold text-slate-800 mt-1 block">3</span>
+                </div>
+                <div class="bg-slate-50/70 p-4 rounded-2xl border border-slate-100">
+                  <span class="text-slate-400 text-[11px] block">Health score</span>
+                  <span class="text-xl font-bold text-emerald-600 mt-1 flex items-center justify-center">
+                    <i class="fa-solid fa-shield text-base mr-1.5 text-emerald-500"></i> 100
+                  </span>
+                </div>
+                <div class="bg-slate-50/70 p-4 rounded-2xl border border-slate-100">
+                  <span class="text-slate-400 text-[11px] block">Queued messages</span>
+                  <span class="text-xl font-bold text-slate-800 mt-1 block">0 <span class="text-xs text-slate-400 font-normal">/ 500</span></span>
                 </div>
               </div>
             </div>
+
           </div>
+
         </div>
 
+      </div>
+
+      <!-- ================= MODAL: NUMBER IS CONNECTED (Screenshot 1 Match) ================= -->
+      <div id="numberConnectedModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center space-y-6 border border-slate-100 relative">
+          <button onclick="closeNumberConnectedModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+          
+          <div class="text-left text-xs font-bold text-slate-500 border-b border-slate-100 pb-3">
+            Connect number
+          </div>
+
+          <!-- Astronaut Victory / Dab Illustration -->
+          <div class="py-2 flex justify-center">
+            <div class="w-36 h-36 flex items-center justify-center">
+              <svg viewBox="0 0 200 200" class="w-full h-full text-slate-800" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Helmet -->
+                <circle cx="100" cy="70" r="32" stroke="#164e87" stroke-width="4" fill="#f8fafc" />
+                <ellipse cx="100" cy="70" rx="22" ry="16" fill="#164e87" />
+                <!-- Torso -->
+                <rect x="75" y="105" width="50" height="45" rx="10" stroke="#164e87" stroke-width="4" fill="#f8fafc" />
+                <rect x="90" y="115" width="20" height="15" rx="3" fill="#38bdf8" />
+                <!-- Dab Arms -->
+                <path d="M75 115 L45 80 L30 85" stroke="#164e87" stroke-width="6" />
+                <path d="M125 115 L165 75 L180 65" stroke="#164e87" stroke-width="6" />
+                <!-- Legs -->
+                <path d="M85 150 L80 185" stroke="#164e87" stroke-width="6" />
+                <path d="M115 150 L125 185" stroke="#164e87" stroke-width="6" />
+              </svg>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-bold text-slate-900">Number is connected</h3>
+            <p class="text-xs text-slate-500 mt-1">The WhatsApp number is now synced and connected.</p>
+          </div>
+
+          <div class="flex justify-end pt-3 border-t border-slate-100">
+            <button onclick="closeNumberConnectedModal(); switchTab('inbox');" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 px-6 rounded-xl transition">
+              Back to chat
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- ================= TEAM INBOX TAB ================= -->
