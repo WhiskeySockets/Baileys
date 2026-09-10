@@ -1215,21 +1215,149 @@
         </div>
       </div>
 
-      <!-- ================= SETTINGS TAB ================= -->
-      <div id="view-settings" class="tab-view max-w-5xl w-full hidden grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-            <h3 class="font-bold text-slate-800 text-sm">Quick Replies (/shortcuts)</h3>
-            <button onclick="addQuickReplyPrompt()" class="text-xs text-[#164e87] font-semibold">+ Add</button>
+      <!-- ================= SETTINGS TAB (Exact Screenshot Match) ================= -->
+      <div id="view-settings" class="tab-view max-w-4xl w-full hidden space-y-6">
+        <h2 class="text-2xl font-bold text-slate-900">Settings</h2>
+
+        <div class="space-y-3">
+          <!-- 1. Account -->
+          <div onclick="openSettingModal('account')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-gear"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Account</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Manage your account settings and information.</p>
+            </div>
           </div>
-          <div id="quickRepliesList" class="space-y-2 text-xs"></div>
+
+          <!-- 2. Password -->
+          <div onclick="openSettingModal('password')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Password</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Change your access password.</p>
+            </div>
+          </div>
+
+          <!-- 3. Security -->
+          <div onclick="openSettingModal('security')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Security</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Two-factor authentication and account protection.</p>
+            </div>
+          </div>
+
+          <!-- 4. Notifications -->
+          <div onclick="openSettingModal('notifications')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-bell"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Notifications</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Manage how you wish to be notified when using the chat.</p>
+            </div>
+          </div>
+
+          <!-- 5. Mobile app -->
+          <div onclick="openSettingModal('mobile')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-play"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Mobile app</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Install the mobile app or use the web compatible mobile version</p>
+            </div>
+          </div>
+
+          <!-- 6. Signatures -->
+          <div onclick="openSettingModal('signatures')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-signature"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Signatures</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Create new signatures for all your messages</p>
+            </div>
+          </div>
+
+          <!-- 7. Payment cards & billing -->
+          <div onclick="openSettingModal('billing')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-receipt"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Payment cards & billing</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Manage your payment cards and check your invoices.</p>
+            </div>
+          </div>
+
+          <!-- 8. Subscriptions -->
+          <div onclick="openSettingModal('subscriptions')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Subscriptions</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Manage monthly plan subscriptions for your WhatsApp numbers</p>
+            </div>
+          </div>
+
+          <!-- 9. Referral Program -->
+          <div onclick="openSettingModal('referral')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
+            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
+              <i class="fa-solid fa-hand-holding-dollar"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-800 leading-tight">Referral Program</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Invite others to use Wassenger and make money or get discounts by simply sharing your link</p>
+            </div>
+          </div>
         </div>
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+
+        <!-- Quick Replies & Labels Drawer Card -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-7 shadow-xs space-y-4">
           <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-            <h3 class="font-bold text-slate-800 text-sm">Color Labels</h3>
-            <button onclick="addLabelPrompt()" class="text-xs text-[#164e87] font-semibold">+ Add</button>
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm">Quick Replies & Labels Management</h3>
+              <p class="text-xs text-slate-400">Shortcuts (/hello) and colored customer tags</p>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="addQuickReplyPrompt()" class="bg-[#1976d2] text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-xs">+ Add Shortcut</button>
+              <button onclick="addLabelPrompt()" class="bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-xs">+ Add Label</button>
+            </div>
           </div>
-          <div id="labelsList" class="space-y-2 text-xs"></div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div>
+              <h4 class="text-xs font-bold text-slate-600 mb-2">Shortcuts</h4>
+              <div id="quickRepliesList" class="space-y-1.5 text-xs"></div>
+            </div>
+            <div>
+              <h4 class="text-xs font-bold text-slate-600 mb-2">Labels</h4>
+              <div id="labelsList" class="space-y-1.5 text-xs"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Generic Detail Modal -->
+      <div id="settingsDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 space-y-5 border border-slate-100">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 id="settingsModalTitle" class="font-bold text-slate-900 text-base">Account Settings</h3>
+            <button onclick="closeSettingModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div id="settingsModalBody" class="text-xs text-slate-600 space-y-3"></div>
+          <div class="flex justify-end pt-3 border-t border-slate-100">
+            <button onclick="closeSettingModal()" class="bg-[#1976d2] text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-xs">
+              Close
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2020,6 +2148,158 @@
           </tr>
         `).join('');
       } catch (e) {}
+    }
+
+    // ================= SETTINGS CONTROLLER =================
+    function openSettingModal(type) {
+      const modal = document.getElementById('settingsDetailModal');
+      const title = document.getElementById('settingsModalTitle');
+      const body = document.getElementById('settingsModalBody');
+      modal.classList.remove('hidden');
+
+      if (type === 'account') {
+        title.innerText = 'Account Settings';
+        body.innerHTML = `
+          <div class="space-y-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Full Name</label>
+              <input type="text" value="Satyam Singh" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Email Address</label>
+              <input type="email" value="satyam.singh194@gmail.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Timezone</label>
+              <input type="text" value="Asia/Kolkata (UTC+05:30)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs" readonly>
+            </div>
+          </div>
+        `;
+      } else if (type === 'password') {
+        title.innerText = 'Change Password';
+        body.innerHTML = `
+          <div class="space-y-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Current Password</label>
+              <input type="password" placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">New Password</label>
+              <input type="password" placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Confirm New Password</label>
+              <input type="password" placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+            </div>
+          </div>
+        `;
+      } else if (type === 'security') {
+        title.innerText = 'Security & 2FA';
+        body.innerHTML = `
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div>
+                <b class="font-bold text-slate-800">Two-Factor Authentication</b>
+                <p class="text-slate-400 text-[11px]">Require a code from an authenticator app upon login.</p>
+              </div>
+              <span class="w-9 h-5 bg-emerald-500 rounded-full inline-block relative cursor-pointer"><span class="w-4 h-4 bg-white rounded-full absolute top-0.5 right-0.5"></span></span>
+            </div>
+            <div>
+              <b class="font-bold text-slate-800">Active Sessions</b>
+              <p class="text-slate-500 text-xs mt-1">Google Chrome on Windows 11 (Current session)</p>
+            </div>
+          </div>
+        `;
+      } else if (type === 'notifications') {
+        title.innerText = 'Notification Preferences';
+        body.innerHTML = `
+          <div class="space-y-3">
+            <label class="flex items-center space-x-2">
+              <input type="checkbox" checked class="rounded text-[#164e87]">
+              <span>Desktop sound notification on incoming customer message</span>
+            </label>
+            <label class="flex items-center space-x-2">
+              <input type="checkbox" checked class="rounded text-[#164e87]">
+              <span>Email daily summary of conversations and campaigns</span>
+            </label>
+            <label class="flex items-center space-x-2">
+              <input type="checkbox" checked class="rounded text-[#164e87]">
+              <span>Notify when a WhatsApp number disconnects</span>
+            </label>
+          </div>
+        `;
+      } else if (type === 'mobile') {
+        title.innerText = 'Mobile Web App';
+        body.innerHTML = `
+          <div class="text-center space-y-3 py-2">
+            <p>Access your Wassenger Inbox on your phone directly via mobile browser:</p>
+            <div class="p-3 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs inline-block">
+              http://localhost:3000
+            </div>
+            <p class="text-[11px] text-slate-400">Add to Home Screen on iOS or Android for a native app experience.</p>
+          </div>
+        `;
+      } else if (type === 'signatures') {
+        title.innerText = 'Message Signatures';
+        body.innerHTML = `
+          <div class="space-y-3">
+            <p class="text-slate-500 text-xs">Append an automatic signature to manual messages sent by your agents.</p>
+            <textarea rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs" placeholder="Best regards,&#10;Satyam Singh | Sales Team">--
+Satyam Singh | Sales Team</textarea>
+          </div>
+        `;
+      } else if (type === 'billing') {
+        title.innerText = 'Payment Cards & Billing';
+        body.innerHTML = `
+          <div class="space-y-3">
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
+              <div class="flex items-center space-x-3">
+                <i class="fa-brands fa-cc-visa text-2xl text-blue-600"></i>
+                <div>
+                  <p class="font-bold text-slate-800 text-xs">Visa ending in 4242</p>
+                  <p class="text-[10px] text-slate-400">Expires 12/28</p>
+                </div>
+              </div>
+              <span class="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">Default</span>
+            </div>
+            <div>
+              <b class="text-xs font-bold text-slate-800">Billing History</b>
+              <p class="text-xs text-slate-400 mt-1">Invoice #INV-2026-09 - Paid ($49.00)</p>
+            </div>
+          </div>
+        `;
+      } else if (type === 'subscriptions') {
+        title.innerText = 'Plan Subscriptions';
+        body.innerHTML = `
+          <div class="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
+            <div class="flex justify-between items-center">
+              <b class="text-sm font-bold text-[#164e87]">Professional Plan</b>
+              <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Active</span>
+            </div>
+            <p class="text-xs text-slate-600">Includes 1 WhatsApp number (+919111110963), unlimited messaging, team inbox, and API access.</p>
+            <p class="text-[11px] text-slate-400">Renews on October 10, 2026</p>
+          </div>
+        `;
+      } else if (type === 'referral') {
+        title.innerText = 'Referral Program';
+        body.innerHTML = `
+          <div class="space-y-3 text-center py-2">
+            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl font-bold">
+              $
+            </div>
+            <h4 class="font-bold text-slate-900 text-sm">Earn 20% recurring commission</h4>
+            <p class="text-xs text-slate-500">Share your referral link with colleagues and clients:</p>
+            <div class="p-2.5 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs flex justify-between items-center">
+              <span>https://wassenger.com/ref/satyam</span>
+              <button onclick="navigator.clipboard.writeText('https://wassenger.com/ref/satyam'); alert('Copied!');" class="text-xs text-[#164e87] font-semibold hover:underline">Copy</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function closeSettingModal() {
+      document.getElementById('settingsDetailModal').classList.add('hidden');
     }
 
     // Initial load
