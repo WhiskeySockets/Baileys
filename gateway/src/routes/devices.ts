@@ -10,9 +10,44 @@ export const deviceRoutes: FastifyPluginAsync = async fastify => {
 	})
 
 	// Create device
-	fastify.post<{ Body: { id?: string; name: string } }>('/', async (req, reply) => {
+	fastify.post<{
+		Body: {
+			id?: string
+			name: string
+			type?: 'baileys' | 'waba'
+			metaConfig?: {
+				phoneNumberId: string
+				wabaId: string
+				accessToken: string
+			}
+		}
+	}>('/', async (req, reply) => {
 		const name = req.body?.name || 'WhatsApp Device'
+		const type = req.body?.type || 'baileys'
 		const id = req.body?.id || `dev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+
+		if (type === 'waba') {
+			const { phoneNumberId, wabaId, accessToken } = req.body?.metaConfig || {}
+			if (!phoneNumberId || !accessToken) {
+				return reply.status(400).send({ success: false, error: 'phoneNumberId and accessToken are required for Official WhatsApp API' })
+			}
+
+			const device = {
+				id,
+				name,
+				type: 'waba' as const,
+				status: 'connected' as const,
+				metaConfig: { phoneNumberId, wabaId: wabaId || '', accessToken },
+				createdAt: new Date().toISOString(),
+			}
+
+			store.saveDevice(device as any)
+			return reply.status(201).send({
+				success: true,
+				message: 'Official WhatsApp Cloud API connected successfully',
+				data: device,
+			})
+		}
 
 		const device = await sessionManager.createDevice(id, name)
 		return reply.status(201).send({

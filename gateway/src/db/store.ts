@@ -10,6 +10,12 @@ export interface DeviceRecord {
 	pushName?: string
 	qrCode?: string
 	pairingCode?: string
+	type?: 'baileys' | 'waba'
+	metaConfig?: {
+		phoneNumberId: string
+		wabaId: string
+		accessToken: string
+	}
 	createdAt: string
 	lastSeen?: string
 }
