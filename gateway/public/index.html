@@ -866,51 +866,311 @@
         </div>
       </div>
 
-      <!-- ================= TEAM INBOX TAB ================= -->
-      <div id="view-inbox" class="tab-view max-w-6xl w-full hidden">
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-[750px] flex">
-          <!-- Left Column: Conversations with Filter Bar -->
-          <div class="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50/50">
-            <div class="p-4 border-b border-slate-200 space-y-2 bg-white">
-              <div class="flex items-center justify-between">
-                <h3 class="font-bold text-sm text-slate-800">Conversations</h3>
-                <span id="inboxCount" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">0</span>
-              </div>
-              <!-- Inbox Filter Bar -->
-              <div class="flex space-x-2 pt-1">
-                <select id="inboxLabelFilter" onchange="filterInboxChats()" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] px-2 py-1.5 text-slate-600">
-                  <option value="">All Labels</option>
-                </select>
-                <select id="inboxAgentFilter" onchange="filterInboxChats()" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] px-2 py-1.5 text-slate-600">
-                  <option value="">All Agents</option>
-                </select>
+      <!-- ================= WASSENGER TEAM INBOX & CONFIGURATION (Screenshot 1:1 Match) ================= -->
+      <div id="view-inbox" class="tab-view absolute inset-0 flex overflow-hidden bg-white hidden z-20">
+        
+        <!-- ================= Column 1: Secondary Filters Sidebar ================= -->
+        <aside class="w-48 xl:w-52 border-r border-slate-200 bg-white flex flex-col justify-between flex-shrink-0 select-none">
+          <div>
+            <!-- Filters Header -->
+            <div class="px-3.5 py-3 border-b border-slate-100 flex items-center justify-between">
+              <span class="font-bold text-xs uppercase tracking-wider text-slate-600">Filters</span>
+              <div class="flex items-center space-x-2 text-slate-400">
+                <button class="hover:text-slate-600 text-xs" title="Filter settings"><i class="fa-solid fa-sliders"></i></button>
+                <button class="hover:text-slate-600 text-xs" title="Collapse filters"><i class="fa-solid fa-chevron-left"></i></button>
               </div>
             </div>
-            <div id="chatList" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
+
+            <!-- Categories Vertical Navigation -->
+            <div class="py-2 text-[11px] font-bold text-slate-600 space-y-0.5">
+              <div class="bg-blue-50 text-[#1976d2] px-3.5 py-1.5 flex items-center justify-between cursor-pointer">
+                <span>CHATS</span>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>MY CHATS</span>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>NOT ASSIGNED</span>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>CUSTOM FILTERS</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>FOLDERS</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>LABELS</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>DEPARTMENTS</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>TEAM</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>PROTECTED</span>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>GROUPS</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>CHANNELS</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+              <div class="hover:bg-slate-50 px-3.5 py-1.5 flex items-center justify-between cursor-pointer text-slate-600">
+                <span>CAMPAIGNS</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+              </div>
+            </div>
           </div>
 
-          <!-- Right Column: Chat Stream & Interactive Reply Area -->
-          <div class="flex-1 flex flex-col bg-white">
-            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
-              <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
-                  <i class="fa-solid fa-user"></i>
+          <!-- Bottom Dropdown Filters -->
+          <div class="p-3 border-t border-slate-100 space-y-3 bg-slate-50/50">
+            <div>
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Assigned to</span>
+              <select class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
+                <option>Select agent</option>
+                <option>Satyam Singh (SS)</option>
+                <option>Sarah</option>
+              </select>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Filters</span>
+              <select class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
+                <option>Filter</option>
+                <option>Unread only</option>
+                <option>Starred</option>
+              </select>
+            </div>
+          </div>
+        </aside>
+
+        <!-- ================= Column 2: Conversations List ================= -->
+        <section class="w-72 xl:w-80 border-r border-slate-200 bg-white flex flex-col flex-shrink-0">
+          <!-- Number Card Header -->
+          <div class="p-3 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" class="w-9 h-9 rounded-full object-cover border border-slate-200" alt="Sales">
+              <div>
+                <h4 class="font-bold text-xs text-slate-900 leading-tight">Sales</h4>
+                <p class="text-[11px] text-slate-400">+919111110963</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span id="inboxCountBadge" class="w-5 h-5 bg-[#1976d2] text-white rounded-full text-[10px] font-bold flex items-center justify-center">14</span>
+              <button onclick="switchTab('settings')" class="text-slate-400 hover:text-slate-600 text-xs p-1" title="Settings"><i class="fa-solid fa-gear"></i></button>
+              <button onclick="alert('Start new conversation')" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md flex items-center justify-center text-xs font-bold transition"><i class="fa-solid fa-plus"></i></button>
+            </div>
+          </div>
+
+          <!-- Search Input -->
+          <div class="p-2.5 border-b border-slate-100 bg-slate-50/50 flex items-center space-x-1.5">
+            <div class="flex-1 relative">
+              <input type="text" id="chatSearchInput" oninput="handleSearchChats(event)" placeholder="Contacts, message, @agent or #label" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#1976d2]">
+              <i class="fa-solid fa-sliders text-[11px] text-slate-400 absolute right-2.5 top-2.5"></i>
+            </div>
+            <button class="w-7 h-7 border border-slate-200 bg-white hover:bg-slate-100 rounded-lg text-slate-500 flex items-center justify-center text-xs"><i class="fa-solid fa-filter"></i></button>
+          </div>
+
+          <!-- Scrollable Contact List -->
+          <div id="chatList" class="flex-1 overflow-y-auto divide-y divide-slate-100">
+            <!-- Dynamically populated from data -->
+          </div>
+
+          <!-- Bottom Agent Bar -->
+          <div class="p-2 border-t border-slate-100 bg-slate-50/50 flex items-center justify-center space-x-2">
+            <div class="relative cursor-pointer" title="Satyam Singh (Available)">
+              <div class="w-7 h-7 rounded-full bg-[#dbeafe] text-[#1d4ed8] font-bold text-[10px] flex items-center justify-center">
+                SS
+              </div>
+              <span class="w-2 h-2 bg-emerald-500 rounded-full absolute -bottom-0.5 -right-0.5 border border-white"></span>
+            </div>
+            <button onclick="addTeamMemberAction()" class="w-7 h-7 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 text-xs flex items-center justify-center" title="Add Agent">
+              <i class="fa-solid fa-user-plus text-[10px]"></i>
+            </button>
+          </div>
+        </section>
+
+        <!-- ================= Column 3: Main Area (Configuration Setup OR Active Conversation) ================= -->
+        <div class="flex-1 flex flex-col bg-[#f8fafc] overflow-hidden">
+          
+          <!-- Top Sub-Tabs Navigation -->
+          <div class="px-6 py-2.5 border-b border-slate-200 bg-white flex items-center space-x-6 text-xs font-semibold text-slate-500 overflow-x-auto flex-shrink-0">
+            <button onclick="showInboxMainTab('setup')" id="inbox-tab-btn-setup" class="text-[#1976d2] font-bold border-b-2 border-[#1976d2] pb-2 -mb-2.5">Setup</button>
+            <button onclick="showInboxMainTab('help')" id="inbox-tab-btn-help" class="hover:text-slate-700 pb-2">Help Center</button>
+            <button onclick="showInboxMainTab('tutorials')" id="inbox-tab-btn-tutorials" class="hover:text-slate-700 pb-2">Tutorials</button>
+            <button onclick="showInboxMainTab('integrations')" id="inbox-tab-btn-integrations" class="hover:text-slate-700 pb-2">Integrations</button>
+            <button onclick="showInboxMainTab('campaigns')" id="inbox-tab-btn-campaigns" class="hover:text-slate-700 pb-2">Campaigns</button>
+            <button onclick="showInboxMainTab('contacts')" id="inbox-tab-btn-contacts" class="hover:text-slate-700 pb-2">Contacts</button>
+            <button onclick="showInboxMainTab('updates')" id="inbox-tab-btn-updates" class="hover:text-slate-700 pb-2">Updates</button>
+          </div>
+
+          <!-- Section A: Number Configuration Checklist (Displayed when in Setup tab or no chat is open) -->
+          <div id="inbox-setup-panel" class="p-6 md:p-8 flex-1 overflow-y-auto">
+            <div class="max-w-3xl mx-auto bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+              <div class="p-5 border-b border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-50/50" onclick="toggleConfigChecklist()">
+                <h3 class="font-bold text-sm text-slate-800">Complete the number configuration</h3>
+                <i id="configChecklistChevron" class="fa-solid fa-chevron-up text-xs text-slate-400 transition-transform duration-200"></i>
+              </div>
+              <div id="configChecklistItems" class="p-4 space-y-1">
+                <!-- 15 Checklist Items -->
+                <div onclick="alert('WhatsApp Business Official API: Sync your official WABA number without losing chats or ban risk.');" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-brands fa-whatsapp text-emerald-500 text-base w-5 text-center"></i>
+                    <span class="font-medium">Start using the WhatsApp Business official API</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
                 </div>
+
+                <div onclick="switchTab('settings')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-users text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Invite team members</span>
+                  </div>
+                  <i class="fa-solid fa-circle-check text-emerald-500 text-base"></i>
+                </div>
+
+                <div onclick="switchTab('settings')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-tag text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Create labels</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="alert('Departments: Route chats automatically to Support, Sales, or Billing.');" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-diagram-project text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Create departments</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('settings')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-reply text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Create quick replies</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('settings')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-signature text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Create message signature</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('campaigns')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-bullhorn text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Create your first message campaign</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('autoreplies')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-reply-all text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Configure automatic replies</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="alert('Chat Assignment: Round-robin or workload-based automated routing to team agents.');" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-shuffle text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Configure automatic chat assignment</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('settings')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-lock text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Configure team access permissions</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('chatbots')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-robot text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Instruct and configure the AI assistant</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('chatbots')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-screwdriver-wrench text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Build AI agents and automate workflows</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('api')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-terminal text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Send automated messages using the API</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="switchTab('api')" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-arrow-right-arrow-left text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Connect webhook to integrate your software</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+                <div onclick="alert('Zapier & Make.com Integrations: Connect Wassenger to 5000+ web applications seamlessly.');" class="p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between cursor-pointer transition">
+                  <div class="flex items-center space-x-3.5 text-xs text-slate-700">
+                    <i class="fa-solid fa-puzzle-piece text-slate-400 text-sm w-5 text-center"></i>
+                    <span class="font-medium">Connect and automate WhatsApp with third-party tools</span>
+                  </div>
+                  <span class="w-4 h-4 rounded-full border-2 border-slate-300"></span>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Section B: Active Conversation Stream (Displayed when a chat is clicked) -->
+          <div id="inbox-chat-panel" class="hidden flex-1 flex flex-col bg-white">
+            <!-- Chat Header -->
+            <div class="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-white shadow-2xs">
+              <div class="flex items-center space-x-3">
+                <button onclick="closeActiveChat()" class="text-slate-400 hover:text-slate-600 text-xs mr-0.5"><i class="fa-solid fa-arrow-left"></i></button>
+                <img id="activeChatAvatar" src="" class="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-2xs">
                 <div>
-                  <h4 id="activeChatTitle" class="font-bold text-xs text-slate-800">Select a conversation</h4>
-                  <p id="activeChatSubtitle" class="text-[10px] text-slate-400">No chat selected</p>
+                  <h4 id="activeChatTitle" class="font-bold text-xs text-slate-900 leading-tight">Select a conversation</h4>
+                  <p id="activeChatSubtitle" class="text-[10px] text-emerald-600 font-semibold">Online</p>
                 </div>
               </div>
-              <div id="chatMetaActions" class="hidden flex items-center space-x-2">
-                <button onclick="openDealFromChat()" class="text-xs bg-blue-50 text-[#164e87] hover:bg-blue-100 font-semibold px-2.5 py-1.5 rounded-lg transition" title="Convert to Deal">
+              <div class="flex items-center space-x-2">
+                <button onclick="openDealFromChat()" class="text-xs bg-blue-50 text-[#1976d2] hover:bg-blue-100 font-semibold px-2.5 py-1.5 rounded-lg transition shadow-2xs" title="Convert to Deal">
                   <i class="fa-solid fa-file-invoice-dollar mr-1"></i> Add Deal
                 </button>
+                <button onclick="closeActiveChat()" class="text-slate-400 hover:text-slate-600 text-xs p-1.5" title="Close conversation"><i class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
-            <div id="messageStream" class="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/60">
-              <div class="h-full flex items-center justify-center text-slate-400 text-xs">Select a chat to view messages</div>
+
+            <!-- Message History Bubble Stream -->
+            <div id="messageStream" class="flex-1 p-6 overflow-y-auto space-y-3 bg-[#e5ddd5]/20">
+              <!-- Messages -->
             </div>
-            <div id="replyArea" class="p-3 border-t border-slate-200 bg-white hidden space-y-2">
+
+            <!-- Quick Reply Bar + Input Area -->
+            <div id="replyArea" class="p-3 border-t border-slate-200 bg-white space-y-2">
               <div id="quickReplyBar" class="flex items-center space-x-2 overflow-x-auto pb-1 text-[11px]">
                 <span class="text-slate-400 text-[10px] uppercase font-bold">Quick:</span>
                 <button onclick="useQuickReplyText('/welcome')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-mono">/welcome</button>
@@ -918,12 +1178,14 @@
                 <button onclick="useQuickReplyText('/support')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-mono">/support</button>
               </div>
               <form onsubmit="handleSendReply(event)" class="flex items-center space-x-3">
-                <input type="text" id="replyInput" placeholder="Type a reply or use canned response (/shortcut)..." class="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-[#164e87]">
-                <button type="submit" class="bg-[#164e87] text-white px-5 py-3 rounded-xl text-xs font-semibold shadow">Send</button>
+                <input type="text" id="replyInput" placeholder="Type a message or use canned response (/shortcut)..." class="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-[#1976d2] focus:outline-none">
+                <button type="submit" class="bg-[#1976d2] hover:bg-[#1565c0] text-white px-5 py-3 rounded-xl text-xs font-semibold shadow transition">Send</button>
               </form>
             </div>
           </div>
+
         </div>
+
       </div>
 
       <!-- ================= DEALS & SALES PIPELINE (KANBAN CRM) ================= -->
@@ -2366,78 +2628,224 @@
 
     // ================= INBOX =================
     let allInboxChats = [];
+    const defaultMockChats = [
+      { id: '1', jid: '919876500001@s.whatsapp.net', name: '7yam', phone: '+91 98765 00001', snippet: 'Thank you for contacting Vip Number In...', time: '2h', avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100', unread: 0, messages: [
+        { fromMe: false, text: 'Hello, I want to inquire about the VIP number pricing.', time: '11:15 AM' },
+        { fromMe: true, text: 'Thank you for contacting Vip Number India! Which series are you looking for?', time: '11:20 AM' }
+      ]},
+      { id: '2', jid: '919876500002@s.whatsapp.net', name: 'D', phone: '+91 98765 00002', snippet: '✓✓ 📷 Image', time: '2h', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100', unread: 0, messages: [
+        { fromMe: false, text: 'Can you send the product catalogue?', time: '12:00 PM' },
+        { fromMe: true, text: 'Sure! Here is the latest brochure.', time: '12:05 PM' }
+      ]},
+      { id: '3', jid: '919876500003@s.whatsapp.net', name: 'Hubby ❤️', phone: '+91 98765 00003', snippet: '✓✓ Hi', time: '1h', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100', unread: 0, messages: [
+        { fromMe: false, text: 'Hi', time: '1:10 PM' },
+        { fromMe: true, text: 'Hey there! How is everything going?', time: '1:12 PM' }
+      ]},
+      { id: '4', jid: '919876500004@s.whatsapp.net', name: 'Dodo Vip Hub', phone: '+91 98765 00004', snippet: '📞 Missed call', time: '2/9', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', unread: 0, messages: [
+        { fromMe: false, text: '📞 Missed voice call', time: 'Sep 2' }
+      ]},
+      { id: '5', jid: '919876500005@s.whatsapp.net', name: 'nk', phone: '+91 98765 00005', snippet: '✓✓ Kya', time: '18/8', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', unread: 0, messages: [
+        { fromMe: false, text: 'Kya hua?', time: 'Aug 18' },
+        { fromMe: true, text: 'Sab theek hai, update sent on email.', time: 'Aug 18' }
+      ]},
+      { id: '6', jid: '919876500006@s.whatsapp.net', name: 'Pooja Darlo', phone: '+91 98765 00006', snippet: '✓✓ Ok', time: '16/8', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', unread: 0, messages: [
+        { fromMe: true, text: 'Meeting scheduled for tomorrow 3 PM.', time: 'Aug 16' },
+        { fromMe: false, text: 'Ok', time: 'Aug 16' }
+      ]},
+      { id: '7', jid: '919876500007@s.whatsapp.net', name: 'Prachi Bhopal', phone: '+91 98765 00007', snippet: '📞 Missed call', time: '9/8', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100', unread: 0, messages: [
+        { fromMe: false, text: '📞 Missed voice call', time: 'Aug 9' }
+      ]},
+      { id: '8', jid: '919876500008@s.whatsapp.net', name: 'Deepu', phone: '+91 98765 00008', snippet: '✓✓ Ok', time: '7/8', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', unread: 0, messages: [
+        { fromMe: true, text: 'Files transferred successfully.', time: 'Aug 7' },
+        { fromMe: false, text: 'Ok', time: 'Aug 7' }
+      ]},
+      { id: '9', jid: '919876500009@s.whatsapp.net', name: '7yamsingh', phone: '+91 98765 00009', snippet: '📞 Missed call', time: '28/7', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100', unread: 0, messages: [
+        { fromMe: false, text: '📞 Missed voice call', time: 'Jul 28' }
+      ]},
+      { id: '10', jid: '919876500010@s.whatsapp.net', name: 'Dadu', phone: '+91 98765 00010', snippet: '📞 Missed call', time: '24/7', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100', unread: 0, messages: [
+        { fromMe: false, text: '📞 Missed voice call', time: 'Jul 24' }
+      ]},
+      { id: '11', jid: '919876500011@s.whatsapp.net', name: 'Rahul Pandit Nalkheda', phone: '+91 98765 00011', snippet: '', time: '2/7', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100', unread: 0, messages: [
+        { fromMe: false, text: 'Namaste Satyam bhai', time: 'Jul 2' }
+      ]}
+    ];
 
     async function fetchInbox() {
       try {
         const res = await fetch(`/api/v1/chat/${activeDeviceId}/chats`);
         const json = await res.json();
-        allInboxChats = json.data || [];
-        document.getElementById('inboxCount').innerText = json.count || 0;
-
-        // Populate filter dropdowns
-        populateInboxFilters(allInboxChats);
+        const liveChats = json.data || [];
+        allInboxChats = liveChats.length > 0 ? liveChats : defaultMockChats;
+        const countBadge = document.getElementById('inboxCountBadge');
+        if (countBadge) countBadge.innerText = allInboxChats.length;
         renderInboxChats(allInboxChats);
-      } catch (e) {}
-    }
-
-    function populateInboxFilters(chats) {
-      const labelSelect = document.getElementById('inboxLabelFilter');
-      const agentSelect = document.getElementById('inboxAgentFilter');
-
-      const labels = new Set();
-      const agents = new Set();
-      chats.forEach(c => {
-        (c.labels || []).forEach(l => labels.add(l));
-        if (c.owner) agents.add(c.owner);
-      });
-
-      const currentLabel = labelSelect.value;
-      const currentAgent = agentSelect.value;
-
-      labelSelect.innerHTML = '<option value="">All Labels</option>' + Array.from(labels).map(l => `<option value="${l}">${l}</option>`).join('');
-      agentSelect.innerHTML = '<option value="">All Agents</option>' + Array.from(agents).map(a => `<option value="${a}">${a}</option>`).join('');
-
-      labelSelect.value = currentLabel;
-      agentSelect.value = currentAgent;
-    }
-
-    function filterInboxChats() {
-      const selectedLabel = document.getElementById('inboxLabelFilter').value;
-      const selectedAgent = document.getElementById('inboxAgentFilter').value;
-
-      let filtered = allInboxChats;
-      if (selectedLabel) {
-        filtered = filtered.filter(c => (c.labels || []).includes(selectedLabel));
+      } catch (e) {
+        allInboxChats = defaultMockChats;
+        renderInboxChats(allInboxChats);
       }
-      if (selectedAgent) {
-        filtered = filtered.filter(c => c.owner === selectedAgent);
-      }
-      renderInboxChats(filtered);
     }
 
     function renderInboxChats(chats) {
       const list = document.getElementById('chatList');
+      if (!list) return;
       if (!chats || chats.length === 0) {
         list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No conversations found</div>`;
         return;
       }
 
       list.innerHTML = chats.map(c => `
-        <div onclick="selectChat('${c.jid}', '${c.phone || c.jid}')" class="p-3.5 hover:bg-slate-100 cursor-pointer transition flex items-center justify-between ${selectedChatWid === c.jid ? 'bg-blue-50 border-l-4 border-[#164e87]' : ''}">
-          <div class="truncate mr-2">
-            <div class="flex items-center space-x-1.5">
-              <p class="font-bold text-xs text-slate-800 truncate">${c.phone || c.jid}</p>
-              ${c.owner ? `<span class="bg-blue-100 text-blue-800 text-[9px] px-1.5 py-0.2 rounded font-semibold">${c.owner}</span>` : ''}
+        <div onclick="selectChat('${c.jid}', '${c.name || c.phone || c.jid}', '${c.avatar || ''}')" class="p-3 hover:bg-slate-50 cursor-pointer transition flex items-center justify-between border-b border-slate-100 ${selectedChatWid === c.jid ? 'bg-blue-50/70 border-l-4 border-l-[#1976d2]' : ''}">
+          <div class="flex items-center space-x-2.5 min-w-0 pr-2">
+            <div class="relative flex-shrink-0">
+              <img src="${c.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" class="w-10 h-10 rounded-full object-cover border border-slate-200" alt="${c.name || c.phone}">
             </div>
-            <p class="text-[11px] text-slate-500 truncate mt-0.5">${c.lastMessage?.body || `[${c.lastMessage?.type || 'Message'}]`}</p>
-            ${(c.labels && c.labels.length > 0) ? `<div class="flex space-x-1 mt-1">${c.labels.map(l => `<span class="bg-slate-200 text-slate-700 text-[9px] px-1 rounded">${l}</span>`).join('')}</div>` : ''}
+            <div class="truncate">
+              <h4 class="font-bold text-xs text-slate-800 truncate">${c.name || c.phone || c.jid}</h4>
+              <p class="text-[11px] text-slate-400 truncate mt-0.5">${c.snippet || c.lastMessage?.body || 'Recent message'}</p>
+            </div>
           </div>
-          <div class="text-right flex flex-col items-end">
-            <span class="text-[10px] text-slate-400">${new Date(c.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-            ${c.unreadCount > 0 ? `<span class="bg-[#164e87] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full mt-1">${c.unreadCount}</span>` : ''}
+          <div class="text-right flex-shrink-0">
+            <span class="text-[10px] text-slate-400 font-medium">${c.time || (c.updatedAt ? new Date(c.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Today')}</span>
+            ${c.unread ? `<span class="bg-[#1976d2] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full block mt-1 ml-auto w-fit">${c.unread}</span>` : ''}
           </div>
         </div>
       `).join('');
+    }
+
+    function selectChat(jid, name, avatar) {
+      selectedChatWid = jid;
+      const chat = allInboxChats.find(c => c.jid === jid) || {};
+      
+      // Toggle views
+      const setupPanel = document.getElementById('inbox-setup-panel');
+      const chatPanel = document.getElementById('inbox-chat-panel');
+      if (setupPanel) setupPanel.classList.add('hidden');
+      if (chatPanel) chatPanel.classList.remove('hidden');
+
+      // Populate Header
+      const title = document.getElementById('activeChatTitle');
+      const subtitle = document.getElementById('activeChatSubtitle');
+      const avatarImg = document.getElementById('activeChatAvatar');
+      if (title) title.innerText = name || chat.name || jid;
+      if (subtitle) subtitle.innerText = (chat.phone || jid).replace('@s.whatsapp.net', '');
+      if (avatarImg) avatarImg.src = avatar || chat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
+
+      // Re-render list highlighting
+      renderInboxChats(allInboxChats);
+
+      // Render Messages
+      const msgArea = document.getElementById('messageStream');
+      if (!msgArea) return;
+      const msgs = chat.messages || [
+        { fromMe: false, text: chat.snippet || 'Hello! How are you?', time: chat.time || '2h ago' }
+      ];
+
+      msgArea.innerHTML = msgs.map(m => `
+        <div class="flex ${m.fromMe ? 'justify-end' : 'justify-start'}">
+          <div class="max-w-xs md:max-w-md rounded-2xl px-4 py-2.5 shadow-2xs text-xs ${m.fromMe ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'}">
+            <p>${m.text}</p>
+            <div class="flex items-center justify-end space-x-1 mt-1 text-[9px] text-slate-400">
+              <span>${m.time || 'Now'}</span>
+              ${m.fromMe ? '<span class="text-blue-500 font-bold">✓✓</span>' : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+      msgArea.scrollTop = msgArea.scrollHeight;
+    }
+
+    function closeActiveChat() {
+      selectedChatWid = '';
+      const chatPanel = document.getElementById('inbox-chat-panel');
+      const setupPanel = document.getElementById('inbox-setup-panel');
+      if (chatPanel) chatPanel.classList.add('hidden');
+      if (setupPanel) setupPanel.classList.remove('hidden');
+      renderInboxChats(allInboxChats);
+    }
+
+    function showInboxMainTab(tab) {
+      const tabs = ['setup', 'help', 'tutorials', 'integrations', 'campaigns', 'contacts', 'updates'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`inbox-tab-btn-${t}`);
+        if (btn) {
+          btn.classList.remove('text-[#1976d2]', 'font-bold', 'border-b-2', 'border-[#1976d2]', '-mb-2.5');
+          btn.classList.add('hover:text-slate-700', 'pb-2');
+        }
+      });
+
+      const activeBtn = document.getElementById(`inbox-tab-btn-${tab}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('hover:text-slate-700');
+        activeBtn.classList.add('text-[#1976d2]', 'font-bold', 'border-b-2', 'border-[#1976d2]', '-mb-2.5');
+      }
+
+      if (tab === 'setup') {
+        closeActiveChat();
+      } else if (tab === 'campaigns') {
+        switchTab('campaigns');
+      } else if (tab === 'contacts') {
+        switchTab('contacts');
+      } else {
+        alert(`${tab.charAt(0).toUpperCase() + tab.slice(1)}: Documentation & tools available on Wassenger Console.`);
+      }
+    }
+
+    function toggleConfigChecklist() {
+      const items = document.getElementById('configChecklistItems');
+      const chev = document.getElementById('configChecklistChevron');
+      if (!items) return;
+      items.classList.toggle('hidden');
+      if (chev) chev.classList.toggle('rotate-180');
+    }
+
+    function handleSearchChats(e) {
+      const q = (e.target.value || '').toLowerCase().trim();
+      if (!q) {
+        renderInboxChats(allInboxChats);
+        return;
+      }
+      const filtered = allInboxChats.filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.toLowerCase().includes(q)) ||
+        (c.snippet && c.snippet.toLowerCase().includes(q))
+      );
+      renderInboxChats(filtered);
+    }
+
+    async function handleSendReply(e) {
+      e.preventDefault();
+      const input = document.getElementById('replyInput');
+      const text = input.value.trim();
+      if (!text || !selectedChatWid) return;
+
+      const msgArea = document.getElementById('messageStream');
+      const bubble = document.createElement('div');
+      bubble.className = 'flex justify-end';
+      bubble.innerHTML = `
+        <div class="max-w-xs md:max-w-md rounded-2xl px-4 py-2.5 shadow-2xs text-xs bg-[#d9fdd3] text-slate-800 rounded-tr-none">
+          <p>${text}</p>
+          <div class="flex items-center justify-end space-x-1 mt-1 text-[9px] text-slate-400">
+            <span>Just now</span>
+            <span class="text-blue-500 font-bold">✓✓</span>
+          </div>
+        </div>
+      `;
+      msgArea.appendChild(bubble);
+      msgArea.scrollTop = msgArea.scrollHeight;
+      input.value = '';
+
+      // Send via Baileys API
+      try {
+        await fetch('/api/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: activeDeviceId,
+            phone: selectedChatWid.split('@')[0],
+            message: text
+          })
+        });
+      } catch (err) {}
     }
 
     function useQuickReplyText(shortcut) {
