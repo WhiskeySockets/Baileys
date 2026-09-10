@@ -106,6 +106,9 @@ export function makeCacheableSignalKeyStore(
 	}
 }
 
+// Shared across wrapper instances, keyed by the raw store itself
+const txMutexesByStore = new WeakMap<SignalKeyStore, Mutex>()
+
 /**
  * Adds DB-like transaction capability to the SignalKeyStore
  * Uses AsyncLocalStorage for automatic context management
@@ -123,9 +126,15 @@ export const addTransactionCapability = (
 	// Queues for concurrency control (keyed by signal data type - bounded set)
 	const keyQueues = new Map<string, PQueue>()
 
-	// Transaction mutexes with reference counting for cleanup
-	const txMutexes = new Map<string, Mutex>()
-	const txMutexRefCounts = new Map<string, number>()
+	// Dedupes concurrent cache-miss reads of the same type within one transaction's body
+	const readMutexes = new Map<string, Mutex>()
+
+	// One mutex per raw store, shared across wrappers, guarding transaction() itself
+	let txMutex = txMutexesByStore.get(state)
+	if (!txMutex) {
+		txMutex = new Mutex()
+		txMutexesByStore.set(state, txMutex)
+	}
 
 	// Pre-key manager for specialized operations
 	const preKeyManager = new PreKeyManager(state, logger)
@@ -142,40 +151,14 @@ export const addTransactionCapability = (
 	}
 
 	/**
-	 * Get or create a transaction mutex
+	 * Get or create a read-dedup mutex for a specific key type
 	 */
-	function getTxMutex(key: string): Mutex {
-		if (!txMutexes.has(key)) {
-			txMutexes.set(key, new Mutex())
-			txMutexRefCounts.set(key, 0)
+	function getReadMutex(key: string): Mutex {
+		if (!readMutexes.has(key)) {
+			readMutexes.set(key, new Mutex())
 		}
 
-		return txMutexes.get(key)!
-	}
-
-	/**
-	 * Acquire a reference to a transaction mutex
-	 */
-	function acquireTxMutexRef(key: string): void {
-		const count = txMutexRefCounts.get(key) ?? 0
-		txMutexRefCounts.set(key, count + 1)
-	}
-
-	/**
-	 * Release a reference to a transaction mutex and cleanup if no longer needed
-	 */
-	function releaseTxMutexRef(key: string): void {
-		const count = (txMutexRefCounts.get(key) ?? 1) - 1
-		txMutexRefCounts.set(key, count)
-
-		// Cleanup if no more references and mutex is not locked
-		if (count <= 0) {
-			const mutex = txMutexes.get(key)
-			if (mutex && !mutex.isLocked()) {
-				txMutexes.delete(key)
-				txMutexRefCounts.delete(key)
-			}
-		}
+		return readMutexes.get(key)!
 	}
 
 	/**
@@ -231,7 +214,7 @@ export const addTransactionCapability = (
 				ctx.dbQueries++
 				logger.trace({ type, count: missing.length }, 'fetching missing keys in transaction')
 
-				const fetched = await getTxMutex(type).runExclusive(() => state.get(type, missing))
+				const fetched = await getReadMutex(type).runExclusive(() => state.get(type, missing))
 
 				// Update cache
 				ctx.cache[type] = ctx.cache[type] || ({} as any)
@@ -301,6 +284,8 @@ export const addTransactionCapability = (
 		isInTransaction,
 
 		transaction: async (work, key) => {
+			void key // trace-log-unsafe (callers embed JIDs in it) - kept for type compat only
+
 			const existing = txStorage.getStore()
 
 			// Nested transaction - reuse existing context
@@ -310,36 +295,29 @@ export const addTransactionCapability = (
 			}
 
 			// New transaction - acquire mutex and create context
-			const mutex = getTxMutex(key)
-			acquireTxMutexRef(key)
+			return await txMutex.runExclusive(async () => {
+				const ctx: TransactionContext = {
+					cache: {},
+					mutations: {},
+					dbQueries: 0
+				}
 
-			try {
-				return await mutex.runExclusive(async () => {
-					const ctx: TransactionContext = {
-						cache: {},
-						mutations: {},
-						dbQueries: 0
-					}
+				logger.trace('entering transaction')
 
-					logger.trace('entering transaction')
+				try {
+					const result = await txStorage.run(ctx, work)
 
-					try {
-						const result = await txStorage.run(ctx, work)
+					// Commit mutations
+					await commitWithRetry(ctx.mutations)
 
-						// Commit mutations
-						await commitWithRetry(ctx.mutations)
+					logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
 
-						logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
-
-						return result
-					} catch (error) {
-						logger.error({ error }, 'transaction failed, rolling back')
-						throw error
-					}
-				})
-			} finally {
-				releaseTxMutexRef(key)
-			}
+					return result
+				} catch (error) {
+					logger.error({ error }, 'transaction failed, rolling back')
+					throw error
+				}
+			})
 		}
 	}
 }
