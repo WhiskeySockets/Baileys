@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Gateway & Dashboard (Wassenger Alternative)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .badge-connected { background-color: #d1fae5; color: #065f46; }
+    .badge-scan_qr { background-color: #fef3c7; color: #92400e; }
+    .badge-connecting { background-color: #e0e7ff; color: #3730a3; }
+    .badge-disconnected { background-color: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- Top Navbar -->
+  <header class="bg-emerald-600 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white text-emerald-600 p-2 rounded-xl shadow">
+          <i class="fa-brands fa-whatsapp text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">WhatsApp Cloud Gateway</h1>
+          <p class="text-xs text-emerald-100">Multi-Device REST API & Team Dashboard</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <a href="/health" target="_blank" class="text-xs bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 rounded-lg transition flex items-center">
+          <span class="w-2 h-2 bg-green-400 rounded-full inline-block mr-2 animate-pulse"></span>
+          API Health
+        </a>
+        <button onclick="fetchDevices()" class="text-xs bg-white text-emerald-700 font-semibold px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition shadow">
+          <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Column 1 & 2: Devices & Actions -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- Device Management Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+              <h2 class="text-lg font-bold text-slate-800">Connected WhatsApp Devices</h2>
+              <p class="text-xs text-slate-500">Manage multiple WhatsApp phone numbers and connections</p>
+            </div>
+            <button onclick="openAddDeviceModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition shadow flex items-center">
+              <i class="fa-solid fa-plus mr-2"></i> Add Device
+            </button>
+          </div>
+
+          <div id="devicesContainer" class="p-6 space-y-4">
+            <div class="text-center py-12 text-slate-400">
+              <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-emerald-600"></i>
+              <p>Loading devices...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Message Sender Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h2 class="text-lg font-bold text-slate-800 mb-1">Send WhatsApp Message</h2>
+          <p class="text-xs text-slate-500 mb-6">Test sending messages via the REST API</p>
+
+          <form id="sendMessageForm" onsubmit="handleSendMessage(event)" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Sender Device</label>
+                <select id="sendDeviceId" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="">Auto (First Connected Device)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Recipient Phone Number</label>
+                <input type="text" id="sendPhone" placeholder="e.g. 919876543210 (with country code)" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Message Text</label>
+              <textarea id="sendMessageText" rows="3" placeholder="Type your message here..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Media URL (Optional)</label>
+              <input type="url" id="sendMediaUrl" placeholder="https://example.com/image.png or document" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+              <div id="sendFeedback" class="text-xs font-medium"></div>
+              <button type="submit" id="sendBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition shadow flex items-center">
+                <i class="fa-solid fa-paper-plane mr-2"></i> Send Message
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- Column 3: Utilities & Live Feed -->
+      <div class="space-y-6">
+        
+        <!-- Number Checker Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-base font-bold text-slate-800 mb-1">Verify WhatsApp Number</h3>
+          <p class="text-xs text-slate-500 mb-4">Check if a phone number is registered on WhatsApp</p>
+          
+          <div class="flex space-x-2">
+            <input type="text" id="checkPhoneInput" placeholder="Phone with country code" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <button onclick="checkWhatsAppNumber()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium transition">
+              Verify
+            </button>
+          </div>
+          <div id="checkPhoneResult" class="mt-3 text-xs"></div>
+        </div>
+
+        <!-- Webhook Manager Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-base font-bold text-slate-800">Webhooks</h3>
+            <button onclick="addWebhookPrompt()" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold">
+              + Register Hook
+            </button>
+          </div>
+          <p class="text-xs text-slate-500 mb-3">Dispatches real-time events to your HTTP endpoint</p>
+          <div id="webhooksList" class="space-y-2 text-xs">
+            <p class="text-slate-400">Loading webhooks...</p>
+          </div>
+        </div>
+
+        <!-- Live Message Log -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-base font-bold text-slate-800">Recent Messages</h3>
+            <button onclick="fetchMessages()" class="text-xs text-slate-400 hover:text-slate-600">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+          <div id="recentMessages" class="space-y-3 max-h-80 overflow-y-auto pr-1 text-xs">
+            <p class="text-slate-400 text-center py-6">No messages recorded yet</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Add Device Modal -->
+  <div id="deviceModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-lg">Add New WhatsApp Device</h3>
+        <button onclick="closeAddDeviceModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Device Label / Name</label>
+          <input type="text" id="newDeviceName" placeholder="e.g. Support Line, Marketing Bot" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeAddDeviceModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm hover:bg-slate-100 transition">Cancel</button>
+        <button onclick="createDeviceSubmit()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2 rounded-xl text-sm transition shadow">
+          Create & Link
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Code Modal -->
+  <div id="qrModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-lg">Link WhatsApp Device</h3>
+        <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="qrContent" class="py-4 flex flex-col items-center">
+        <div class="w-64 h-64 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 overflow-hidden shadow-inner">
+          <img id="qrImage" src="" alt="QR Code" class="w-full h-full object-contain hidden">
+          <div id="qrLoading" class="text-slate-400 text-sm flex flex-col items-center">
+            <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-emerald-600"></i>
+            <span>Generating QR code...</span>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-500 mt-4 leading-relaxed">
+          Open WhatsApp on your phone &gt; <strong>Linked Devices</strong> &gt; <strong>Link a Device</strong> &gt; Scan this QR code.
+        </p>
+
+        <!-- Or Pairing Code -->
+        <div class="w-full border-t border-slate-100 mt-4 pt-4">
+          <p class="text-xs font-semibold text-slate-600 mb-2">Or connect with an 8-digit Pairing Code:</p>
+          <div class="flex space-x-2">
+            <input type="text" id="pairPhoneInput" placeholder="Phone number (e.g. 919876543210)" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <button onclick="requestPairingCodeAction()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-3 py-1.5 rounded-xl font-medium transition">
+              Get Code
+            </button>
+          </div>
+          <div id="pairingCodeDisplay" class="mt-2 text-sm font-mono font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentDeviceId = null;
+    let qrPollInterval = null;
+
+    async function fetchDevices() {
+      try {
+        const res = await fetch('/api/v1/devices');
+        const json = await res.json();
+        const container = document.getElementById('devicesContainer');
+        const select = document.getElementById('sendDeviceId');
+
+        if (!json.success || json.data.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl">
+              <i class="fa-solid fa-mobile-screen text-4xl text-slate-300 mb-3"></i>
+              <p class="text-slate-600 font-medium">No WhatsApp devices added yet</p>
+              <p class="text-xs text-slate-400 mt-1">Click "Add Device" above to link your first WhatsApp number.</p>
+            </div>
+          `;
+          select.innerHTML = '<option value="">No devices available</option>';
+          return;
+        }
+
+        container.innerHTML = '';
+        select.innerHTML = '<option value="">Auto (First Connected Device)</option>';
+
+        json.data.forEach(dev => {
+          const badgeClass = `badge-${dev.status}`;
+          const isConnected = dev.status === 'connected';
+
+          if (isConnected) {
+            select.innerHTML += `<option value="${dev.id}">${dev.name} (${dev.phone || dev.id})</option>`;
+          }
+
+          container.innerHTML += `
+            <div class="border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:shadow-sm transition bg-white">
+              <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-2xl ${isConnected ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'} flex items-center justify-center text-xl">
+                  <i class="fa-solid ${isConnected ? 'fa-mobile-screen-button' : 'fa-qrcode'}"></i>
+                </div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <h4 class="font-bold text-slate-800">${dev.name}</h4>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${badgeClass}">
+                      ${dev.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    ${dev.phone ? `<span class="font-semibold text-slate-700">+${dev.phone}</span> • ` : ''}ID: ${dev.id}
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-center space-x-2 w-full md:w-auto justify-end">
+                ${!isConnected ? `
+                  <button onclick="openQrModal('${dev.id}')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3.5 py-2 rounded-xl transition flex items-center shadow-sm">
+                    <i class="fa-solid fa-qrcode mr-1.5"></i> Scan QR / Pair
+                  </button>
+                ` : ''}
+                <button onclick="deleteDevice('${dev.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium px-3 py-2 rounded-xl transition">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        });
+
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function openAddDeviceModal() {
+      document.getElementById('deviceModal').classList.remove('hidden');
+    }
+
+    function closeAddDeviceModal() {
+      document.getElementById('deviceModal').classList.add('hidden');
+      document.getElementById('newDeviceName').value = '';
+    }
+
+    async function createDeviceSubmit() {
+      const name = document.getElementById('newDeviceName').value || 'WhatsApp Business';
+      try {
+        const res = await fetch('/api/v1/devices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const json = await res.json();
+        closeAddDeviceModal();
+        fetchDevices();
+        if (json.data?.id) {
+          openQrModal(json.data.id);
+        }
+      } catch (e) {
+        alert('Failed to create device: ' + e.message);
+      }
+    }
+
+    function openQrModal(deviceId) {
+      currentDeviceId = deviceId;
+      document.getElementById('qrModal').classList.remove('hidden');
+      document.getElementById('qrImage').classList.add('hidden');
+      document.getElementById('qrLoading').classList.remove('hidden');
+      document.getElementById('pairingCodeDisplay').classList.add('hidden');
+
+      pollQrCode();
+      if (qrPollInterval) clearInterval(qrPollInterval);
+      qrPollInterval = setInterval(pollQrCode, 3000);
+    }
+
+    function closeQrModal() {
+      document.getElementById('qrModal').classList.add('hidden');
+      if (qrPollInterval) {
+        clearInterval(qrPollInterval);
+        qrPollInterval = null;
+      }
+      currentDeviceId = null;
+      fetchDevices();
+    }
+
+    async function pollQrCode() {
+      if (!currentDeviceId) return;
+      try {
+        const res = await fetch(`/api/v1/devices/${currentDeviceId}/qr`);
+        const json = await res.json();
+
+        if (json.status === 'connected') {
+          closeQrModal();
+          fetchDevices();
+          return;
+        }
+
+        if (json.qrCode) {
+          const img = document.getElementById('qrImage');
+          img.src = json.qrCode;
+          img.classList.remove('hidden');
+          document.getElementById('qrLoading').classList.add('hidden');
+        }
+      } catch (e) {
+        console.error('Error polling QR:', e);
+      }
+    }
+
+    async function requestPairingCodeAction() {
+      const phone = document.getElementById('pairPhoneInput').value;
+      if (!phone || !currentDeviceId) {
+        alert('Please enter a phone number');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/v1/devices/${currentDeviceId}/pair`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: phone })
+        });
+        const json = await res.json();
+        const display = document.getElementById('pairingCodeDisplay');
+        if (json.pairingCode) {
+          display.innerHTML = `Pairing Code: <span class="tracking-widest">${json.pairingCode}</span>`;
+          display.classList.remove('hidden');
+        } else {
+          alert(json.error || 'Failed to get pairing code');
+        }
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function deleteDevice(id) {
+      if (!confirm('Are you sure you want to log out and remove this device?')) return;
+      try {
+        await fetch(`/api/v1/devices/${id}`, { method: 'DELETE' });
+        fetchDevices();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function handleSendMessage(e) {
+      e.preventDefault();
+      const sendBtn = document.getElementById('sendBtn');
+      const feedback = document.getElementById('sendFeedback');
+
+      const deviceId = document.getElementById('sendDeviceId').value;
+      const phone = document.getElementById('sendPhone').value;
+      const message = document.getElementById('sendMessageText').value;
+      const mediaUrl = document.getElementById('sendMediaUrl').value;
+
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Sending...';
+      feedback.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: deviceId || undefined,
+            phone,
+            message: message || undefined,
+            mediaUrl: mediaUrl || undefined,
+            mediaType: mediaUrl ? 'image' : undefined
+          })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          feedback.className = 'text-xs font-medium text-emerald-600';
+          feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Sent successfully (ID: ${json.messageId.substring(0, 10)}...)`;
+          document.getElementById('sendMessageText').value = '';
+          fetchMessages();
+        } else {
+          feedback.className = 'text-xs font-medium text-rose-600';
+          feedback.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ${json.error}`;
+        }
+      } catch (err) {
+        feedback.className = 'text-xs font-medium text-rose-600';
+        feedback.innerHTML = err.message;
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Send Message';
+      }
+    }
+
+    async function checkWhatsAppNumber() {
+      const phone = document.getElementById('checkPhoneInput').value;
+      const result = document.getElementById('checkPhoneResult');
+      if (!phone) return;
+
+      result.innerHTML = '<span class="text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Checking...</span>';
+      try {
+        const res = await fetch(`/api/v1/contacts/${phone}/exists`);
+        const json = await res.json();
+        if (json.success && json.exists) {
+          result.innerHTML = `<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Valid WhatsApp number: +${json.phone}</span>`;
+        } else if (json.success) {
+          result.innerHTML = `<span class="text-rose-600 font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i> Not registered on WhatsApp</span>`;
+        } else {
+          result.innerHTML = `<span class="text-amber-600">${json.error}</span>`;
+        }
+      } catch (e) {
+        result.innerHTML = `<span class="text-rose-600">${e.message}</span>`;
+      }
+    }
+
+    async function fetchWebhooks() {
+      try {
+        const res = await fetch('/api/v1/webhooks');
+        const json = await res.json();
+        const list = document.getElementById('webhooksList');
+        if (!json.data || json.data.length === 0) {
+          list.innerHTML = '<p class="text-slate-400">No webhooks registered</p>';
+          return;
+        }
+
+        list.innerHTML = json.data.map(w => `
+          <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+            <div class="truncate mr-2">
+              <p class="font-mono text-slate-700 truncate">${w.url}</p>
+              <p class="text-[10px] text-slate-400 mt-0.5">Events: ${w.events.join(', ')}</p>
+            </div>
+            <button onclick="deleteWebhook('${w.id}')" class="text-rose-500 hover:text-rose-700">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    async function addWebhookPrompt() {
+      const url = prompt('Enter your webhook destination URL:');
+      if (!url) return;
+      try {
+        await fetch('/api/v1/webhooks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, events: ['*'] })
+        });
+        fetchWebhooks();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function deleteWebhook(id) {
+      await fetch(`/api/v1/webhooks/${id}`, { method: 'DELETE' });
+      fetchWebhooks();
+    }
+
+    async function fetchMessages() {
+      try {
+        const res = await fetch('/api/v1/messages?limit=20');
+        const json = await res.json();
+        const container = document.getElementById('recentMessages');
+
+        if (!json.data || json.data.length === 0) {
+          container.innerHTML = '<p class="text-slate-400 text-center py-6">No messages recorded yet</p>';
+          return;
+        }
+
+        container.innerHTML = json.data.map(m => {
+          const isOut = m.direction === 'outbound';
+          return `
+            <div class="p-2.5 rounded-xl border ${isOut ? 'border-emerald-100 bg-emerald-50/50' : 'border-slate-100 bg-slate-50'}">
+              <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                <span class="font-bold ${isOut ? 'text-emerald-700' : 'text-slate-700'}">${isOut ? 'OUTBOUND →' : 'INBOUND ←'} ${m.to || m.from}</span>
+                <span>${new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <p class="text-slate-700 break-words">${m.body || `[${m.type}]`}</p>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    // Initial load & periodic refresh
+    fetchDevices();
+    fetchWebhooks();
+    fetchMessages();
+    setInterval(() => {
+      fetchDevices();
+      fetchMessages();
+    }, 10000);
+  </script>
+</body>
+</html>
