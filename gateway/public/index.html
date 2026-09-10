@@ -28,42 +28,40 @@
 
   <!-- ================= WASSENGER LEFT ICON SIDEBAR ================= -->
   <aside class="w-16 bg-[#164e87] text-white flex flex-col items-center py-4 space-y-4 flex-shrink-0 z-40 shadow-md">
-    <!-- User Avatar -->
-    <div class="w-10 h-10 rounded-full bg-[#38bdf8] text-[#0c4a6e] font-bold text-sm flex items-center justify-center shadow-inner cursor-pointer" title="Workspace: SS">
-      SS
+    <!-- User Avatar with Green Dot -->
+    <div class="relative cursor-pointer" onclick="switchTab('home')" title="Workspace: Satyam Singh (SS)">
+      <div class="w-10 h-10 rounded-full bg-[#38bdf8] text-[#0c4a6e] font-bold text-sm flex items-center justify-center shadow-inner">
+        SS
+      </div>
+      <span class="w-3 h-3 bg-emerald-500 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-[#164e87]"></span>
     </div>
 
     <!-- Navigation Icons -->
-    <nav class="flex-1 flex flex-col space-y-2 w-full px-2 text-slate-300">
-      <button onclick="switchTab('wizard')" id="nav-wizard" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg active" title="Add Number Wizard">
+    <nav class="flex-1 flex flex-col space-y-1.5 w-full px-2 text-slate-300">
+      <button onclick="switchTab('home')" id="nav-home" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg active" title="Dashboard Home">
         <i class="fa-solid fa-house"></i>
       </button>
-      <button onclick="switchTab('inbox')" id="nav-inbox" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Team Inbox">
+      <button onclick="switchTab('inbox')" id="nav-inbox" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg relative" title="Team Inbox">
         <i class="fa-solid fa-comment-dots"></i>
-      </button>
-      <button onclick="switchTab('deals')" id="nav-deals" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Deals & Sales Pipeline">
-        <i class="fa-solid fa-table-columns"></i>
-      </button>
-      <button onclick="switchTab('templates')" id="nav-templates" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="WhatsApp Templates">
-        <i class="fa-solid fa-file-invoice"></i>
-      </button>
-      <button onclick="switchTab('chatbots')" id="nav-chatbots" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Chatbot Flows">
-        <i class="fa-solid fa-network-wired"></i>
+        <span class="w-2 h-2 rounded-full bg-[#38bdf8] absolute top-2 right-2.5"></span>
       </button>
       <button onclick="switchTab('campaigns')" id="nav-campaigns" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Campaigns & Broadcasts">
         <i class="fa-solid fa-bullhorn"></i>
       </button>
-      <button onclick="switchTab('groups')" id="nav-groups" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="WhatsApp Groups">
-        <i class="fa-solid fa-users"></i>
-      </button>
-      <button onclick="switchTab('devices')" id="nav-devices" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Device Details & Logs">
-        <i class="fa-solid fa-mobile-screen"></i>
-      </button>
-      <button onclick="switchTab('autoreplies')" id="nav-autoreplies" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Auto-Replies & AI Bot">
-        <i class="fa-solid fa-robot"></i>
+      <button onclick="switchTab('deals')" id="nav-deals" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Sales Funnel & Deals">
+        <i class="fa-solid fa-filter"></i>
       </button>
       <button onclick="switchTab('contacts')" id="nav-contacts" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Verify Numbers">
         <i class="fa-solid fa-address-book"></i>
+      </button>
+      <button onclick="switchTab('devices')" id="nav-devices" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Your Devices & Numbers">
+        <i class="fa-solid fa-mobile-screen"></i>
+      </button>
+      <button onclick="switchTab('chatbots')" id="nav-chatbots" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Chatbot Flows">
+        <i class="fa-solid fa-chart-simple"></i>
+      </button>
+      <button onclick="switchTab('templates')" id="nav-templates" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="WhatsApp Templates">
+        <i class="fa-solid fa-file-lines"></i>
       </button>
       <button onclick="switchTab('api')" id="nav-api" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="API & Webhooks">
         <i class="fa-solid fa-code"></i>
@@ -73,8 +71,12 @@
       </button>
     </nav>
 
-    <!-- Bottom Add Number Button -->
+    <!-- Bottom Actions: Notification Bell + Add Number -->
     <div class="pt-2 border-t border-white/10 w-full px-2 flex flex-col items-center space-y-3">
+      <button class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition relative" title="Notifications">
+        <i class="fa-solid fa-bell"></i>
+        <span class="w-2 h-2 rounded-full bg-rose-500 absolute top-2.5 right-2.5"></span>
+      </button>
       <button onclick="goToWizardStep(1)" class="w-10 h-10 rounded-full bg-white text-[#164e87] flex items-center justify-center font-bold shadow hover:bg-slate-100 transition" title="Link New Number">
         <i class="fa-solid fa-plus text-base"></i>
       </button>
@@ -100,10 +102,212 @@
     </header>
 
     <!-- Main Content Body -->
-    <main class="flex-1 p-6 md:p-10 flex justify-center">
+    <main class="flex-1 p-6 md:p-10 flex justify-center relative">
+
+      <!-- ================= WASSENGER HOME DASHBOARD (Screenshot 1:1 Match) ================= -->
+      <div id="view-home" class="tab-view max-w-5xl w-full space-y-6">
+        
+        <!-- Top Announcement Banner -->
+        <div class="bg-[#eff6ff] border border-[#bfdbfe] text-[#1e40af] text-xs py-3 px-5 rounded-2xl flex items-center shadow-xs">
+          <span class="mr-2 text-base">🚀</span>
+          <p class="font-normal text-slate-700">
+            <strong class="font-semibold text-slate-900">Introducing WhatsApp Business API:</strong> Start using the official API in minutes using the same WhatsApp number without losing chats history, faster messaging and no ban risk.
+          </p>
+        </div>
+
+        <!-- ================= CARD 1: YOUR NUMBERS ================= -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-7 shadow-xs space-y-5">
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Your numbers</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Every WhatsApp number connected to this account</p>
+            </div>
+            <button onclick="goToWizardStep(1)" class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-xs transition">
+              Add number
+            </button>
+          </div>
+
+          <!-- Connected Device Card -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-xs hover:border-slate-300 transition">
+            
+            <!-- Identity block -->
+            <div class="flex items-center space-x-3.5 min-w-[200px]">
+              <div class="relative">
+                <div class="w-12 h-12 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold overflow-hidden shadow-xs">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" class="w-full h-full object-cover" alt="Profile">
+                </div>
+                <span class="w-3 h-3 bg-emerald-500 border-2 border-white rounded-full absolute -bottom-1 -right-1"></span>
+              </div>
+              <div>
+                <h4 class="font-bold text-sm text-slate-900 leading-tight">Sales</h4>
+                <p class="text-xs text-slate-400 font-mono mt-0.5">+919111110963</p>
+                <span class="inline-flex items-center text-[10px] font-bold text-white bg-[#10b981] px-2 py-0.5 rounded-md mt-1 shadow-2xs">
+                  Connected
+                </span>
+              </div>
+            </div>
+
+            <!-- 5 Stats Columns -->
+            <div class="grid grid-cols-5 gap-4 text-center divide-x divide-slate-100 flex-1 max-w-xl px-2">
+              <div>
+                <span class="text-lg font-bold text-slate-800 block leading-tight">26</span>
+                <span class="text-[11px] text-slate-400">Unread</span>
+              </div>
+              <div class="pl-2">
+                <span class="text-lg font-bold text-slate-800 block leading-tight">129</span>
+                <span class="text-[11px] text-slate-400">Ongoing</span>
+              </div>
+              <div class="pl-2">
+                <span class="text-lg font-bold text-slate-800 block leading-tight">0</span>
+                <span class="text-[11px] text-slate-400">Queued</span>
+              </div>
+              <div class="pl-2">
+                <span class="text-lg font-bold text-slate-800 block leading-tight">1</span>
+                <span class="text-[11px] text-slate-400">Team</span>
+              </div>
+              <div class="pl-2">
+                <span class="text-lg font-bold text-slate-800 block leading-tight">3</span>
+                <span class="text-[11px] text-slate-400">Groups</span>
+              </div>
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center space-x-2">
+              <button onclick="switchTab('inbox')" class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold text-xs py-2 px-3.5 rounded-xl shadow-xs transition flex items-center space-x-2">
+                <i class="fa-solid fa-comment-dots text-xs"></i>
+                <span>Open chat</span>
+                <span class="bg-[#1565c0] text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white">26</span>
+              </button>
+              <button onclick="switchTab('devices')" class="w-9 h-9 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center transition shadow-xs" title="Device Details">
+                <i class="fa-solid fa-gear text-xs"></i>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ================= CARD 2: YOUR TEAM ================= -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-7 shadow-xs space-y-5">
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Your team</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Who is answering, and the numbers they can reach</p>
+            </div>
+            <button onclick="addTeamMemberAction()" class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-xs transition">
+              Add member
+            </button>
+          </div>
+
+          <!-- Team Member Item (Satyam Singh) -->
+          <div class="bg-white rounded-2xl border border-slate-200/70 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
+            <!-- Avatar & Name -->
+            <div class="flex items-center space-x-3.5">
+              <div class="w-10 h-10 rounded-full bg-[#dbeafe] text-[#1d4ed8] font-bold text-xs flex items-center justify-center relative shadow-inner">
+                SS
+                <span class="w-3.5 h-3.5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center absolute -bottom-0.5 -right-0.5 text-[8px] border-2 border-white">
+                  ✓
+                </span>
+              </div>
+              <div>
+                <div class="flex items-center space-x-1.5">
+                  <h4 class="font-bold text-xs text-slate-900">Satyam Singh</h4>
+                  <i class="fa-solid fa-circle-check text-blue-500 text-[11px]"></i>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-0.5 font-mono">satyam.singh194@gmail.com</p>
+              </div>
+            </div>
+
+            <!-- Role & Activity & Presence -->
+            <div class="flex items-center space-x-6 text-xs text-slate-500">
+              <div class="flex items-center space-x-1.5 font-medium text-slate-700">
+                <i class="fa-solid fa-star text-amber-500 text-[11px]"></i>
+                <span>Administrator</span>
+              </div>
+              <div class="text-[11px] text-slate-400">
+                <span class="block text-[10px] text-slate-300 uppercase leading-tight">Last activity</span>
+                <span>a few seconds ago</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop" class="w-6 h-6 rounded-full object-cover border border-slate-200" alt="Avatar">
+                <span class="text-emerald-600 font-semibold text-[11px] flex items-center">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></span> Available
+                </span>
+              </div>
+              <button class="text-slate-400 hover:text-slate-600 p-1">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= CARD 3: RECENT MESSAGES ================= -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-7 shadow-xs space-y-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <div class="flex items-center space-x-1.5">
+                <h3 class="text-base font-bold text-slate-900">Recent messages</h3>
+                <i class="fa-solid fa-circle-info text-slate-300 text-xs cursor-pointer" title="Outbound message log"></i>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">The latest outbound messages, refreshed every 30 seconds</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
+              <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center space-x-1">
+                <i class="fa-solid fa-sliders text-[11px]"></i>
+                <span>Filter</span>
+              </button>
+              <button onclick="switchTab('inbox')" class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold text-xs py-1.5 px-3.5 rounded-xl shadow-xs transition">
+                Send message
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty State: Astronaut on Crate -->
+          <div class="py-12 flex flex-col items-center justify-center text-center space-y-3">
+            <div class="w-36 h-36 relative flex items-center justify-center">
+              <svg viewBox="0 0 200 200" class="w-full h-full text-slate-700" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Night Stars -->
+                <circle cx="40" cy="40" r="1.5" fill="#94a3b8" />
+                <circle cx="160" cy="35" r="1.5" fill="#94a3b8" />
+                <circle cx="170" cy="80" r="2" fill="#94a3b8" />
+                <circle cx="30" cy="90" r="1.5" fill="#94a3b8" />
+                <path d="M50 60 L52 64 L56 64 L53 67 L54 71 L50 68 L46 71 L47 67 L44 64 L48 64 Z" fill="#cbd5e1" stroke="none" />
+                <!-- Box / Crate -->
+                <rect x="65" y="115" width="70" height="50" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="3" />
+                <rect x="65" y="110" width="70" height="10" rx="3" fill="#cbd5e1" stroke="#475569" stroke-width="3" />
+                <path d="M75 135 L125 135" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4" />
+                <path d="M100 120 L100 165" stroke="#94a3b8" stroke-width="2" />
+                <!-- Astronaut Body -->
+                <rect x="80" y="70" width="40" height="42" rx="8" fill="#f8fafc" stroke="#334155" stroke-width="3" />
+                <rect x="90" y="78" width="20" height="15" rx="3" fill="#38bdf8" />
+                <!-- Astronaut Helmet -->
+                <circle cx="100" cy="50" r="24" fill="#f8fafc" stroke="#334155" stroke-width="3.5" />
+                <ellipse cx="100" cy="50" rx="16" ry="12" fill="#1e293b" />
+                <path d="M92 46 Q100 42 108 46" stroke="#38bdf8" stroke-width="2" />
+                <!-- Arms resting on box -->
+                <path d="M80 82 Q70 95 78 112" stroke="#334155" stroke-width="4" fill="none" />
+                <path d="M120 82 Q130 95 122 112" stroke="#334155" stroke-width="4" fill="none" />
+                <!-- Legs hanging over box -->
+                <path d="M88 112 L88 140 Q88 145 83 145" stroke="#334155" stroke-width="5" fill="none" />
+                <path d="M112 112 L112 140 Q112 145 117 145" stroke="#334155" stroke-width="5" fill="none" />
+              </svg>
+            </div>
+            <h4 class="text-sm font-bold text-slate-700">No messages available</h4>
+            <p class="text-xs text-slate-400">Outbound broadcast and API messages will appear here</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Floating Intercom / Help Widget -->
+      <button class="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-[#1976d2] hover:bg-[#1565c0] text-white flex items-center justify-center shadow-xl transition transform hover:scale-105 z-50">
+        <i class="fa-solid fa-comment-dots text-lg"></i>
+      </button>
 
       <!-- ================= MULTI-STEP ONBOARDING WIZARD ================= -->
-      <div id="view-wizard" class="tab-view max-w-5xl w-full space-y-6">
+      <div id="view-wizard" class="tab-view max-w-5xl w-full space-y-6 hidden">
         
         <!-- Step Indicator Bar -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 px-6 py-4 flex items-center justify-between">
@@ -1819,7 +2023,7 @@
     }
 
     // Initial load
-    goToWizardStep(1);
+    switchTab('home');
   </script>
 </body>
 </html>
