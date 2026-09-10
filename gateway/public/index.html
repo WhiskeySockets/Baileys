@@ -1215,109 +1215,634 @@
         </div>
       </div>
 
-      <!-- ================= SETTINGS TAB (Exact Screenshot Match) ================= -->
+      <!-- ================= SETTINGS TAB (Exact Screenshot Match with Expandable Accordions) ================= -->
       <div id="view-settings" class="tab-view max-w-4xl w-full hidden space-y-6">
         <h2 class="text-2xl font-bold text-slate-900">Settings</h2>
 
-        <div class="space-y-3">
-          <!-- 1. Account -->
-          <div onclick="openSettingModal('account')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-gear"></i>
+        <div class="space-y-4 text-xs">
+
+          <!-- 1. ACCOUNT (Screenshot 2 Match) -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition">
+            <div onclick="toggleSettingAccordion('account')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-gear"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Account</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Manage your account settings and information.</p>
+                </div>
+              </div>
+              <i id="chevron-account" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Account</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Manage your account settings and information.</p>
+
+            <!-- Expanded Account Content -->
+            <div id="section-account" class="border-t border-slate-100 p-6 space-y-6 bg-white">
+              <!-- Profile Picture -->
+              <div class="space-y-2">
+                <label class="block font-semibold text-slate-700">Profile picture</label>
+                <div class="flex items-center space-x-4">
+                  <div class="w-12 h-12 rounded-full bg-[#dbeafe] text-[#1d4ed8] font-bold text-sm flex items-center justify-center shadow-inner">
+                    SS
+                  </div>
+                  <div>
+                    <button class="bg-white hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs text-xs">
+                      Upload image
+                    </button>
+                    <p class="text-[10px] text-slate-400 mt-1">JPEG or PNG, up to 1MB.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Name & Email -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Name <span class="text-rose-500">*</span></label>
+                  <input type="text" value="Satyam Singh" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#1976d2]">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Email <span class="text-rose-500">*</span></label>
+                  <input type="email" value="satyam.singh194@gmail.com" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#1976d2]">
+                </div>
+              </div>
+
+              <!-- Language & Timezone -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Language <span class="text-rose-500">*</span></label>
+                  <select class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                    <option selected>English</option>
+                    <option>Spanish</option>
+                    <option>Portuguese</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Timezone <span class="text-rose-500">*</span></label>
+                  <select class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                    <option selected>Asia/Calcutta</option>
+                    <option>UTC</option>
+                    <option>America/New_York</option>
+                  </select>
+                </div>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- Account Type & Business Name -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1.5">Account type</label>
+                  <div class="flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs">
+                    <button type="button" class="flex-1 py-1.5 rounded-lg text-slate-600 font-semibold hover:text-slate-900">Personal</button>
+                    <button type="button" class="flex-1 py-1.5 rounded-lg bg-white text-[#1976d2] font-bold shadow-xs">Business</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Business name <span class="text-rose-500">*</span></label>
+                  <input type="text" value="Numbers ATM" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                </div>
+              </div>
+
+              <!-- Address & City -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Address</label>
+                  <input type="text" placeholder="Enter address" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">City</label>
+                  <input type="text" placeholder="City or locality name" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                </div>
+              </div>
+
+              <!-- Postal code & Country -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Postal code</label>
+                  <input type="text" placeholder="Enter postal code" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Country <span class="text-rose-500">*</span></label>
+                  <select class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                    <option selected>India IN (IN)</option>
+                    <option>United States (US)</option>
+                    <option>United Kingdom (GB)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Footer Actions -->
+              <div class="flex justify-between items-center pt-3 border-t border-slate-100">
+                <button type="button" class="border border-rose-300 hover:bg-rose-50 text-rose-600 font-semibold px-4 py-2 rounded-xl text-xs transition">
+                  Delete account
+                </button>
+                <button type="button" onclick="alert('Account changes saved successfully!')" class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold px-5 py-2 rounded-xl text-xs shadow-xs transition">
+                  Save changes
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- 2. Password -->
-          <div onclick="openSettingModal('password')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-lock"></i>
+          <!-- 2. PASSWORD (Screenshot 1 Match) -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition">
+            <div onclick="toggleSettingAccordion('password')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Password</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Change your access password.</p>
+                </div>
+              </div>
+              <i id="chevron-password" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Password</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Change your access password.</p>
+
+            <!-- Expanded Password Content -->
+            <div id="section-password" class="border-t border-slate-100 p-6 space-y-4 bg-white">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Current password <span class="text-rose-500">*</span></label>
+                <input type="password" placeholder="Enter current password" class="w-full md:w-1/2 bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">New password <span class="text-rose-500">*</span></label>
+                  <input type="password" placeholder="Enter new password" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Confirm password <span class="text-rose-500">*</span></label>
+                  <input type="password" placeholder="Confirm new password" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800">
+                </div>
+              </div>
+              <div class="flex justify-end pt-3">
+                <button type="button" onclick="alert('Password updated successfully!')" class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold px-5 py-2.5 rounded-xl text-xs shadow-xs transition">
+                  Update password
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- 3. Security -->
-          <div onclick="openSettingModal('security')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-shield-halved"></i>
+          <!-- 3. SECURITY (Screenshot 4 Match) -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition">
+            <div onclick="toggleSettingAccordion('security')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Security</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Two-factor authentication and account protection.</p>
+                </div>
+              </div>
+              <i id="chevron-security" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Security</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Two-factor authentication and account protection.</p>
+
+            <!-- Expanded Security Content -->
+            <div id="section-security" class="border-t border-slate-100 p-6 space-y-6 bg-white">
+              
+              <!-- 2FA Block -->
+              <div class="space-y-3">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4 class="font-bold text-slate-900 text-sm">Two-factor authentication</h4>
+                    <p class="text-xs text-slate-500 mt-0.5">Add an extra step at login to keep your account safe.</p>
+                    <p class="text-xs text-slate-400 mt-1">Two-factor authentication is currently off.</p>
+                  </div>
+                  <span class="bg-slate-800 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">Off</span>
+                </div>
+                <div class="flex flex-wrap gap-3 pt-1">
+                  <button class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-xs transition">
+                    Set up authenticator app
+                  </button>
+                  <button class="bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs py-2 px-4 rounded-xl border border-slate-200 transition shadow-xs">
+                    Use email codes instead
+                  </button>
+                </div>
+                <p class="text-[11px] text-slate-400">An authenticator app is more secure than email codes.</p>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- Active Sessions Block -->
+              <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-bold text-slate-900 text-sm">Active sessions</h4>
+                    <p class="text-xs text-slate-500 mt-0.5">Devices currently signed in to your account. Approximate location is based on IP address.</p>
+                  </div>
+                  <button class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg border border-slate-200"><i class="fa-solid fa-arrows-rotate text-xs"></i></button>
+                </div>
+
+                <!-- Session 1: Current Device -->
+                <div class="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/70">
+                  <div class="flex items-center space-x-3.5">
+                    <div class="w-9 h-9 rounded-xl bg-blue-100 text-[#1976d2] flex items-center justify-center text-sm">
+                      <i class="fa-solid fa-globe"></i>
+                    </div>
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="font-bold text-slate-800 text-xs">Unknown device</span>
+                        <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.2 rounded-full">This device</span>
+                      </div>
+                      <p class="text-[11px] text-slate-500 font-mono mt-0.5">IN · India · 106.222.213.129</p>
+                      <div class="flex items-center space-x-3 text-[10px] text-slate-400 mt-1">
+                        <span><i class="fa-regular fa-clock mr-1"></i> Last active a few seconds ago</span>
+                        <span><i class="fa-regular fa-calendar mr-1"></i> Signed in 4 hours ago</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Session 2: Chrome Windows -->
+                <div class="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/70">
+                  <div class="flex items-center space-x-3.5">
+                    <div class="w-9 h-9 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-sm">
+                      <i class="fa-brands fa-chrome"></i>
+                    </div>
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="font-bold text-slate-800 text-xs">Chrome - Windows</span>
+                        <span class="bg-slate-200 text-slate-600 text-[10px] font-semibold px-2 py-0.2 rounded-full"><i class="fa-solid fa-desktop text-[9px] mr-1"></i> Desktop</span>
+                      </div>
+                      <p class="text-[11px] text-slate-500 font-mono mt-0.5">IN · India · 106.222.213.129</p>
+                      <div class="flex items-center space-x-3 text-[10px] text-slate-400 mt-1">
+                        <span><i class="fa-regular fa-clock mr-1"></i> Last active an hour ago</span>
+                        <span><i class="fa-regular fa-calendar mr-1"></i> Signed in an hour ago</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button class="border border-rose-300 hover:bg-rose-50 text-rose-600 font-semibold px-3 py-1.5 rounded-xl text-xs transition">
+                    Sign out
+                  </button>
+                </div>
+
+                <div>
+                  <button class="border border-rose-300 hover:bg-rose-50 text-rose-600 font-semibold px-4 py-2 rounded-xl text-xs transition">
+                    Sign out all other devices
+                  </button>
+                </div>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- Session Behavior Block -->
+              <div class="space-y-4">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-sm">Session behavior</h4>
+                  <p class="text-xs text-slate-500 mt-0.5">Control how long you and your team stay signed in. Changes apply to new sign ins.</p>
+                </div>
+
+                <div class="space-y-3">
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Automatic sign out</label>
+                    <select class="w-full md:w-1/2 bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800">
+                      <option selected>60 days</option>
+                      <option>30 days</option>
+                      <option>7 days</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">You will be asked to sign in again after this much time, even if you stay active.</p>
+                  </div>
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Sign out when inactive</label>
+                    <select class="w-full md:w-1/2 bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800">
+                      <option selected>Off</option>
+                      <option>1 hour</option>
+                      <option>4 hours</option>
+                      <option>24 hours</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">If you are inactive for this long, you will be signed out automatically. Choose "Off" to disable.</p>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <!-- 4. Notifications -->
-          <div onclick="openSettingModal('notifications')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-bell"></i>
+          <!-- 4. NOTIFICATIONS (Screenshot 3 Match) -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition">
+            <div onclick="toggleSettingAccordion('notifications')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-bell"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Notifications</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Manage how you wish to be notified when using the chat.</p>
+                </div>
+              </div>
+              <i id="chevron-notifications" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Notifications</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Manage how you wish to be notified when using the chat.</p>
+
+            <!-- Expanded Notifications Content -->
+            <div id="section-notifications" class="border-t border-slate-100 p-6 space-y-6 bg-white">
+              
+              <!-- 1. Pending or unassigned chats -->
+              <div class="space-y-3">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-xs">Pending or unassigned chats</h4>
+                  <p class="text-[11px] text-slate-400">When there are unread messages</p>
+                </div>
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable sound notifications</span>
+                    <div class="flex items-center space-x-2">
+                      <button class="text-[10px] border border-slate-200 bg-slate-50 text-slate-600 px-2 py-0.5 rounded-md font-semibold"><i class="fa-solid fa-bell mr-1"></i> WhatsApp</button>
+                      <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable desktop notifications</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable mobile notifications</span>
+                    <div class="flex items-center space-x-2">
+                      <span class="text-[10px] text-[#1976d2] hover:underline cursor-pointer font-medium">Install app ↗</span>
+                      <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Mute mobile notifications outside business hours</span>
+                    <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Mute mobile notifications when my status is unavailable</span>
+                    <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                </div>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- 2. Chats assigned to me -->
+              <div class="space-y-3">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-xs">Chats assigned to me</h4>
+                  <p class="text-[11px] text-slate-400">When there are unread messages</p>
+                </div>
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable sound notifications</span>
+                    <div class="flex items-center space-x-2">
+                      <button class="text-[10px] border border-slate-200 bg-slate-50 text-slate-600 px-2 py-0.5 rounded-md font-semibold"><i class="fa-solid fa-bell mr-1"></i> WhatsApp</button>
+                      <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable desktop notifications</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable mobile notifications</span>
+                    <div class="flex items-center space-x-2">
+                      <span class="text-[10px] text-[#1976d2] hover:underline cursor-pointer font-medium">Install app ↗</span>
+                      <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Mute mobile notifications outside business hours</span>
+                    <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Mute mobile notifications when my status is unavailable</span>
+                    <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                </div>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- 3. Group chats -->
+              <div class="space-y-3">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-xs">Group chats</h4>
+                  <p class="text-[11px] text-slate-400">When there are unread messages</p>
+                </div>
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable sound notifications</span>
+                    <div class="flex items-center space-x-2">
+                      <button class="text-[10px] border border-slate-200 bg-slate-50 text-slate-600 px-2 py-0.5 rounded-md font-semibold"><i class="fa-solid fa-bell mr-1"></i> WhatsApp</button>
+                      <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable desktop notifications</span>
+                    <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable mobile notifications</span>
+                    <div class="flex items-center space-x-2">
+                      <span class="text-[10px] text-[#1976d2] hover:underline cursor-pointer font-medium">Install app ↗</span>
+                      <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- 4. Activity timeline -->
+              <div class="space-y-3">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-xs">Activity timeline</h4>
+                  <p class="text-[11px] text-slate-400">Get notified about activity events</p>
+                </div>
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Mentions in notes</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Chat updates (assignments, labels, resolutions)</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Number and session events</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable sound notifications</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Enable desktop notifications</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                </div>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- 5. Email summaries -->
+              <div class="space-y-3">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-xs">Email summaries</h4>
+                  <p class="text-[11px] text-slate-400">Receive a few emails per day summarizing unread conversations and mentions. Never sent at night in your time zone, and only for messages unread for more than 15 minutes.</p>
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                  <span class="text-slate-700">Enable unread email summaries</span>
+                  <input type="checkbox" class="w-4 h-4 text-[#1976d2] rounded">
+                </div>
+              </div>
+
+              <hr class="border-slate-100">
+
+              <!-- 6. Email notifications -->
+              <div class="space-y-3">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-xs">Email notifications</h4>
+                  <p class="text-[11px] text-slate-400">Get email notifications about relevant information</p>
+                </div>
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">WhatsApp session alerts in case of operational issues (not authorized or offline session).</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Receive news about offers, discounts and new products.</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-700">Relevant product announcements, new features and technical updates.</span>
+                    <input type="checkbox" checked class="w-4 h-4 text-[#1976d2] rounded">
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
           <!-- 5. Mobile app -->
-          <div onclick="openSettingModal('mobile')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-play"></i>
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div onclick="toggleSettingAccordion('mobile')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-play"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Mobile app</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Install the mobile app or use the web compatible mobile version</p>
+                </div>
+              </div>
+              <i id="chevron-mobile" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Mobile app</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Install the mobile app or use the web compatible mobile version</p>
+            <div id="section-mobile" class="hidden border-t border-slate-100 p-6 space-y-3 bg-white">
+              <p class="text-slate-600">Access your Wassenger Inbox on your phone directly via mobile browser:</p>
+              <div class="p-3 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs inline-block">http://localhost:3000</div>
+              <p class="text-slate-400">Add to Home Screen on iOS or Android for a full native app experience.</p>
             </div>
           </div>
 
           <!-- 6. Signatures -->
-          <div onclick="openSettingModal('signatures')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-signature"></i>
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div onclick="toggleSettingAccordion('signatures')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-signature"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Signatures</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Create new signatures for all your messages</p>
+                </div>
+              </div>
+              <i id="chevron-signatures" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Signatures</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Create new signatures for all your messages</p>
+            <div id="section-signatures" class="hidden border-t border-slate-100 p-6 space-y-3 bg-white">
+              <p class="text-slate-600">Append an automatic signature to manual messages sent by your agents:</p>
+              <textarea rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs" placeholder="--&#10;Satyam Singh | Sales Team">--
+Satyam Singh | Sales Team</textarea>
+              <div class="flex justify-end">
+                <button onclick="alert('Signature saved!')" class="bg-[#1976d2] text-white font-semibold px-4 py-2 rounded-xl text-xs">Save signature</button>
+              </div>
             </div>
           </div>
 
           <!-- 7. Payment cards & billing -->
-          <div onclick="openSettingModal('billing')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-receipt"></i>
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div onclick="toggleSettingAccordion('billing')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-receipt"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Payment cards & billing</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Manage your payment cards and check your invoices.</p>
+                </div>
+              </div>
+              <i id="chevron-billing" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Payment cards & billing</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Manage your payment cards and check your invoices.</p>
+            <div id="section-billing" class="hidden border-t border-slate-100 p-6 space-y-4 bg-white">
+              <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                  <i class="fa-brands fa-cc-visa text-2xl text-blue-600"></i>
+                  <div>
+                    <p class="font-bold text-slate-800 text-xs">Visa ending in 4242</p>
+                    <p class="text-[10px] text-slate-400">Expires 12/28</p>
+                  </div>
+                </div>
+                <span class="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">Default</span>
+              </div>
+              <div>
+                <b class="text-xs font-bold text-slate-800">Billing History</b>
+                <p class="text-xs text-slate-400 mt-1">Invoice #INV-2026-09 - Paid ($49.00)</p>
+              </div>
             </div>
           </div>
 
           <!-- 8. Subscriptions -->
-          <div onclick="openSettingModal('subscriptions')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-mobile-screen-button"></i>
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div onclick="toggleSettingAccordion('subscriptions')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Subscriptions</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Manage monthly plan subscriptions for your WhatsApp numbers</p>
+                </div>
+              </div>
+              <i id="chevron-subscriptions" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Subscriptions</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Manage monthly plan subscriptions for your WhatsApp numbers</p>
+            <div id="section-subscriptions" class="hidden border-t border-slate-100 p-6 space-y-3 bg-white">
+              <div class="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
+                <div class="flex justify-between items-center">
+                  <b class="text-sm font-bold text-[#164e87]">Professional Plan</b>
+                  <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Active</span>
+                </div>
+                <p class="text-xs text-slate-600">Includes 1 WhatsApp number (+919111110963), unlimited messaging, team inbox, and API access.</p>
+                <p class="text-[11px] text-slate-400">Renews on October 10, 2026</p>
+              </div>
             </div>
           </div>
 
           <!-- 9. Referral Program -->
-          <div onclick="openSettingModal('referral')" class="bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 flex items-center space-x-5 cursor-pointer shadow-xs transition hover:border-slate-300">
-            <div class="w-10 h-10 flex items-center justify-center text-slate-700 text-lg flex-shrink-0">
-              <i class="fa-solid fa-hand-holding-dollar"></i>
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div onclick="toggleSettingAccordion('referral')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/70">
+              <div class="flex items-center space-x-4">
+                <div class="w-8 h-8 flex items-center justify-center text-slate-700 text-base flex-shrink-0">
+                  <i class="fa-solid fa-hand-holding-dollar"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-800 leading-tight">Referral Program</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">Invite others to use Wassenger and make money or get discounts by simply sharing your link</p>
+                </div>
+              </div>
+              <i id="chevron-referral" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
             </div>
-            <div>
-              <h4 class="font-bold text-sm text-slate-800 leading-tight">Referral Program</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Invite others to use Wassenger and make money or get discounts by simply sharing your link</p>
+            <div id="section-referral" class="hidden border-t border-slate-100 p-6 space-y-3 text-center bg-white">
+              <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl font-bold">
+                $
+              </div>
+              <h4 class="font-bold text-slate-900 text-sm">Earn 20% recurring commission</h4>
+              <p class="text-xs text-slate-500">Share your referral link with colleagues and clients:</p>
+              <div class="p-2.5 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs flex justify-between items-center max-w-md mx-auto">
+                <span>https://wassenger.com/ref/satyam</span>
+                <button onclick="navigator.clipboard.writeText('https://wassenger.com/ref/satyam'); alert('Copied!');" class="text-xs text-[#1976d2] font-semibold hover:underline">Copy</button>
+              </div>
             </div>
           </div>
+
         </div>
 
         <!-- Quick Replies & Labels Drawer Card -->
@@ -1341,22 +1866,6 @@
               <h4 class="text-xs font-bold text-slate-600 mb-2">Labels</h4>
               <div id="labelsList" class="space-y-1.5 text-xs"></div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Settings Generic Detail Modal -->
-      <div id="settingsDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 space-y-5 border border-slate-100">
-          <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-            <h3 id="settingsModalTitle" class="font-bold text-slate-900 text-base">Account Settings</h3>
-            <button onclick="closeSettingModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <div id="settingsModalBody" class="text-xs text-slate-600 space-y-3"></div>
-          <div class="flex justify-end pt-3 border-t border-slate-100">
-            <button onclick="closeSettingModal()" class="bg-[#1976d2] text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-xs">
-              Close
-            </button>
           </div>
         </div>
       </div>
@@ -2150,156 +2659,19 @@
       } catch (e) {}
     }
 
-    // ================= SETTINGS CONTROLLER =================
-    function openSettingModal(type) {
-      const modal = document.getElementById('settingsDetailModal');
-      const title = document.getElementById('settingsModalTitle');
-      const body = document.getElementById('settingsModalBody');
-      modal.classList.remove('hidden');
-
-      if (type === 'account') {
-        title.innerText = 'Account Settings';
-        body.innerHTML = `
-          <div class="space-y-3">
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1">Full Name</label>
-              <input type="text" value="Satyam Singh" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1">Email Address</label>
-              <input type="email" value="satyam.singh194@gmail.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1">Timezone</label>
-              <input type="text" value="Asia/Kolkata (UTC+05:30)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs" readonly>
-            </div>
-          </div>
-        `;
-      } else if (type === 'password') {
-        title.innerText = 'Change Password';
-        body.innerHTML = `
-          <div class="space-y-3">
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1">Current Password</label>
-              <input type="password" placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1">New Password</label>
-              <input type="password" placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1">Confirm New Password</label>
-              <input type="password" placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-            </div>
-          </div>
-        `;
-      } else if (type === 'security') {
-        title.innerText = 'Security & 2FA';
-        body.innerHTML = `
-          <div class="space-y-4">
-            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
-              <div>
-                <b class="font-bold text-slate-800">Two-Factor Authentication</b>
-                <p class="text-slate-400 text-[11px]">Require a code from an authenticator app upon login.</p>
-              </div>
-              <span class="w-9 h-5 bg-emerald-500 rounded-full inline-block relative cursor-pointer"><span class="w-4 h-4 bg-white rounded-full absolute top-0.5 right-0.5"></span></span>
-            </div>
-            <div>
-              <b class="font-bold text-slate-800">Active Sessions</b>
-              <p class="text-slate-500 text-xs mt-1">Google Chrome on Windows 11 (Current session)</p>
-            </div>
-          </div>
-        `;
-      } else if (type === 'notifications') {
-        title.innerText = 'Notification Preferences';
-        body.innerHTML = `
-          <div class="space-y-3">
-            <label class="flex items-center space-x-2">
-              <input type="checkbox" checked class="rounded text-[#164e87]">
-              <span>Desktop sound notification on incoming customer message</span>
-            </label>
-            <label class="flex items-center space-x-2">
-              <input type="checkbox" checked class="rounded text-[#164e87]">
-              <span>Email daily summary of conversations and campaigns</span>
-            </label>
-            <label class="flex items-center space-x-2">
-              <input type="checkbox" checked class="rounded text-[#164e87]">
-              <span>Notify when a WhatsApp number disconnects</span>
-            </label>
-          </div>
-        `;
-      } else if (type === 'mobile') {
-        title.innerText = 'Mobile Web App';
-        body.innerHTML = `
-          <div class="text-center space-y-3 py-2">
-            <p>Access your Wassenger Inbox on your phone directly via mobile browser:</p>
-            <div class="p-3 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs inline-block">
-              http://localhost:3000
-            </div>
-            <p class="text-[11px] text-slate-400">Add to Home Screen on iOS or Android for a native app experience.</p>
-          </div>
-        `;
-      } else if (type === 'signatures') {
-        title.innerText = 'Message Signatures';
-        body.innerHTML = `
-          <div class="space-y-3">
-            <p class="text-slate-500 text-xs">Append an automatic signature to manual messages sent by your agents.</p>
-            <textarea rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs" placeholder="Best regards,&#10;Satyam Singh | Sales Team">--
-Satyam Singh | Sales Team</textarea>
-          </div>
-        `;
-      } else if (type === 'billing') {
-        title.innerText = 'Payment Cards & Billing';
-        body.innerHTML = `
-          <div class="space-y-3">
-            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
-              <div class="flex items-center space-x-3">
-                <i class="fa-brands fa-cc-visa text-2xl text-blue-600"></i>
-                <div>
-                  <p class="font-bold text-slate-800 text-xs">Visa ending in 4242</p>
-                  <p class="text-[10px] text-slate-400">Expires 12/28</p>
-                </div>
-              </div>
-              <span class="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">Default</span>
-            </div>
-            <div>
-              <b class="text-xs font-bold text-slate-800">Billing History</b>
-              <p class="text-xs text-slate-400 mt-1">Invoice #INV-2026-09 - Paid ($49.00)</p>
-            </div>
-          </div>
-        `;
-      } else if (type === 'subscriptions') {
-        title.innerText = 'Plan Subscriptions';
-        body.innerHTML = `
-          <div class="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
-            <div class="flex justify-between items-center">
-              <b class="text-sm font-bold text-[#164e87]">Professional Plan</b>
-              <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Active</span>
-            </div>
-            <p class="text-xs text-slate-600">Includes 1 WhatsApp number (+919111110963), unlimited messaging, team inbox, and API access.</p>
-            <p class="text-[11px] text-slate-400">Renews on October 10, 2026</p>
-          </div>
-        `;
-      } else if (type === 'referral') {
-        title.innerText = 'Referral Program';
-        body.innerHTML = `
-          <div class="space-y-3 text-center py-2">
-            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl font-bold">
-              $
-            </div>
-            <h4 class="font-bold text-slate-900 text-sm">Earn 20% recurring commission</h4>
-            <p class="text-xs text-slate-500">Share your referral link with colleagues and clients:</p>
-            <div class="p-2.5 bg-slate-100 rounded-xl font-mono text-slate-700 text-xs flex justify-between items-center">
-              <span>https://wassenger.com/ref/satyam</span>
-              <button onclick="navigator.clipboard.writeText('https://wassenger.com/ref/satyam'); alert('Copied!');" class="text-xs text-[#164e87] font-semibold hover:underline">Copy</button>
-            </div>
-          </div>
-        `;
+    // ================= SETTINGS ACCORDION CONTROLLER =================
+    function toggleSettingAccordion(id) {
+      const section = document.getElementById(`section-${id}`);
+      const chevron = document.getElementById(`chevron-${id}`);
+      if (!section) return;
+      const isHidden = section.classList.contains('hidden');
+      if (isHidden) {
+        section.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+      } else {
+        section.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
       }
-    }
-
-    function closeSettingModal() {
-      document.getElementById('settingsDetailModal').classList.add('hidden');
     }
 
     // Initial load
