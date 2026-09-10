@@ -39,6 +39,7 @@ export class WebhookDispatcher {
 			headers['X-Webhook-Signature'] = signature
 		}
 
+		const startTime = Date.now()
 		try {
 			const controller = new AbortController()
 			const timeout = setTimeout(() => controller.abort(), CONFIG.WEBHOOK_TIMEOUT)
@@ -51,12 +52,38 @@ export class WebhookDispatcher {
 			})
 
 			clearTimeout(timeout)
+			const durationMs = Date.now() - startTime
+
+			store.saveWebhookDelivery({
+				id: `del_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+				webhookId: webhook.id,
+				event: payload.event,
+				url: webhook.url,
+				statusCode: response.status,
+				durationMs,
+				payload,
+				timestamp: new Date().toISOString(),
+				success: response.ok,
+			})
 
 			if (!response.ok && attempt < CONFIG.MAX_RETRIES) {
 				const delay = Math.pow(2, attempt) * 1000
 				setTimeout(() => this.sendWithRetry(webhook, payload, attempt + 1), delay)
 			}
-		} catch (err) {
+		} catch (err: any) {
+			const durationMs = Date.now() - startTime
+			store.saveWebhookDelivery({
+				id: `del_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+				webhookId: webhook.id,
+				event: payload.event,
+				url: webhook.url,
+				statusCode: 0,
+				durationMs,
+				payload: { ...payload, error: err.message },
+				timestamp: new Date().toISOString(),
+				success: false,
+			})
+
 			if (attempt < CONFIG.MAX_RETRIES) {
 				const delay = Math.pow(2, attempt) * 1000
 				setTimeout(() => this.sendWithRetry(webhook, payload, attempt + 1), delay)

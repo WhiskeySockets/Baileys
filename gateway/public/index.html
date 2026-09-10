@@ -41,6 +41,15 @@
       <button onclick="switchTab('inbox')" id="nav-inbox" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Team Inbox">
         <i class="fa-solid fa-comment-dots"></i>
       </button>
+      <button onclick="switchTab('deals')" id="nav-deals" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Deals & Sales Pipeline">
+        <i class="fa-solid fa-table-columns"></i>
+      </button>
+      <button onclick="switchTab('templates')" id="nav-templates" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="WhatsApp Templates">
+        <i class="fa-solid fa-file-invoice"></i>
+      </button>
+      <button onclick="switchTab('chatbots')" id="nav-chatbots" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Chatbot Flows">
+        <i class="fa-solid fa-network-wired"></i>
+      </button>
       <button onclick="switchTab('campaigns')" id="nav-campaigns" class="side-icon w-full h-10 rounded-xl flex items-center justify-center text-lg" title="Campaigns & Broadcasts">
         <i class="fa-solid fa-bullhorn"></i>
       </button>
@@ -656,13 +665,27 @@
       <!-- ================= TEAM INBOX TAB ================= -->
       <div id="view-inbox" class="tab-view max-w-6xl w-full hidden">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-[750px] flex">
+          <!-- Left Column: Conversations with Filter Bar -->
           <div class="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50/50">
-            <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
-              <h3 class="font-bold text-sm text-slate-800">Conversations</h3>
-              <span id="inboxCount" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">0</span>
+            <div class="p-4 border-b border-slate-200 space-y-2 bg-white">
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-sm text-slate-800">Conversations</h3>
+                <span id="inboxCount" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">0</span>
+              </div>
+              <!-- Inbox Filter Bar -->
+              <div class="flex space-x-2 pt-1">
+                <select id="inboxLabelFilter" onchange="filterInboxChats()" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] px-2 py-1.5 text-slate-600">
+                  <option value="">All Labels</option>
+                </select>
+                <select id="inboxAgentFilter" onchange="filterInboxChats()" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] px-2 py-1.5 text-slate-600">
+                  <option value="">All Agents</option>
+                </select>
+              </div>
             </div>
             <div id="chatList" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
           </div>
+
+          <!-- Right Column: Chat Stream & Interactive Reply Area -->
           <div class="flex-1 flex flex-col bg-white">
             <div class="p-4 border-b border-slate-200 flex justify-between items-center">
               <div class="flex items-center space-x-3">
@@ -674,18 +697,231 @@
                   <p id="activeChatSubtitle" class="text-[10px] text-slate-400">No chat selected</p>
                 </div>
               </div>
+              <div id="chatMetaActions" class="hidden flex items-center space-x-2">
+                <button onclick="openDealFromChat()" class="text-xs bg-blue-50 text-[#164e87] hover:bg-blue-100 font-semibold px-2.5 py-1.5 rounded-lg transition" title="Convert to Deal">
+                  <i class="fa-solid fa-file-invoice-dollar mr-1"></i> Add Deal
+                </button>
+              </div>
             </div>
             <div id="messageStream" class="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/60">
               <div class="h-full flex items-center justify-center text-slate-400 text-xs">Select a chat to view messages</div>
             </div>
-            <div id="replyArea" class="p-4 border-t border-slate-200 bg-white hidden">
+            <div id="replyArea" class="p-3 border-t border-slate-200 bg-white hidden space-y-2">
+              <div id="quickReplyBar" class="flex items-center space-x-2 overflow-x-auto pb-1 text-[11px]">
+                <span class="text-slate-400 text-[10px] uppercase font-bold">Quick:</span>
+                <button onclick="useQuickReplyText('/welcome')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-mono">/welcome</button>
+                <button onclick="useQuickReplyText('/pricing')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-mono">/pricing</button>
+                <button onclick="useQuickReplyText('/support')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-mono">/support</button>
+              </div>
               <form onsubmit="handleSendReply(event)" class="flex items-center space-x-3">
-                <input type="text" id="replyInput" placeholder="Type a reply or use canned response (/hello)..." class="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-[#164e87]">
+                <input type="text" id="replyInput" placeholder="Type a reply or use canned response (/shortcut)..." class="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-[#164e87]">
                 <button type="submit" class="bg-[#164e87] text-white px-5 py-3 rounded-xl text-xs font-semibold shadow">Send</button>
               </form>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ================= DEALS & SALES PIPELINE (KANBAN CRM) ================= -->
+      <div id="view-deals" class="tab-view max-w-7xl w-full hidden space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-800 flex items-center">
+              <i class="fa-solid fa-table-columns text-[#164e87] mr-2"></i> Sales Pipeline & Deals
+            </h2>
+            <p class="text-xs text-slate-500">Track WhatsApp sales leads through stages</p>
+          </div>
+          <div class="flex items-center space-x-4">
+            <div class="text-right">
+              <span class="text-[10px] uppercase text-slate-400 block font-semibold">Total Pipeline</span>
+              <span id="pipelineTotalValue" class="text-lg font-bold text-emerald-600">$0</span>
+            </div>
+            <button onclick="openNewDealModal()" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow hover:bg-[#123e6d] transition">
+              + New Deal
+            </button>
+          </div>
+        </div>
+
+        <!-- Kanban Columns Board -->
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 overflow-x-auto pb-4">
+          <!-- Column: Lead -->
+          <div class="bg-slate-100/70 p-3 rounded-2xl border border-slate-200 flex flex-col min-h-[500px]">
+            <div class="flex justify-between items-center mb-3 px-1">
+              <span class="text-xs font-bold text-cyan-800 flex items-center"><span class="w-2 h-2 rounded-full bg-cyan-500 mr-1.5"></span> New Lead</span>
+              <span id="count-lead" class="text-[10px] bg-cyan-100 text-cyan-800 font-bold px-1.5 py-0.5 rounded-md">0</span>
+            </div>
+            <div id="col-lead" class="space-y-3 flex-1"></div>
+          </div>
+          <!-- Column: Qualified -->
+          <div class="bg-slate-100/70 p-3 rounded-2xl border border-slate-200 flex flex-col min-h-[500px]">
+            <div class="flex justify-between items-center mb-3 px-1">
+              <span class="text-xs font-bold text-blue-800 flex items-center"><span class="w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span> Qualified</span>
+              <span id="count-qualified" class="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md">0</span>
+            </div>
+            <div id="col-qualified" class="space-y-3 flex-1"></div>
+          </div>
+          <!-- Column: Proposal -->
+          <div class="bg-slate-100/70 p-3 rounded-2xl border border-slate-200 flex flex-col min-h-[500px]">
+            <div class="flex justify-between items-center mb-3 px-1">
+              <span class="text-xs font-bold text-amber-800 flex items-center"><span class="w-2 h-2 rounded-full bg-amber-500 mr-1.5"></span> Proposal Sent</span>
+              <span id="count-proposal" class="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md">0</span>
+            </div>
+            <div id="col-proposal" class="space-y-3 flex-1"></div>
+          </div>
+          <!-- Column: Negotiation -->
+          <div class="bg-slate-100/70 p-3 rounded-2xl border border-slate-200 flex flex-col min-h-[500px]">
+            <div class="flex justify-between items-center mb-3 px-1">
+              <span class="text-xs font-bold text-purple-800 flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-1.5"></span> Negotiation</span>
+              <span id="count-negotiation" class="text-[10px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded-md">0</span>
+            </div>
+            <div id="col-negotiation" class="space-y-3 flex-1"></div>
+          </div>
+          <!-- Column: Won -->
+          <div class="bg-slate-100/70 p-3 rounded-2xl border border-slate-200 flex flex-col min-h-[500px]">
+            <div class="flex justify-between items-center mb-3 px-1">
+              <span class="text-xs font-bold text-emerald-800 flex items-center"><span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></span> Closed Won</span>
+              <span id="count-won" class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-md">0</span>
+            </div>
+            <div id="col-won" class="space-y-3 flex-1"></div>
+          </div>
+          <!-- Column: Lost -->
+          <div class="bg-slate-100/70 p-3 rounded-2xl border border-slate-200 flex flex-col min-h-[500px]">
+            <div class="flex justify-between items-center mb-3 px-1">
+              <span class="text-xs font-bold text-rose-800 flex items-center"><span class="w-2 h-2 rounded-full bg-rose-500 mr-1.5"></span> Closed Lost</span>
+              <span id="count-lost" class="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded-md">0</span>
+            </div>
+            <div id="col-lost" class="space-y-3 flex-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= INTERACTIVE TEMPLATES BUILDER ================= -->
+      <div id="view-templates" class="tab-view max-w-6xl w-full hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          <!-- Left: Template Editor Form -->
+          <div class="lg:col-span-7 bg-white p-7 rounded-3xl shadow-sm border border-slate-200 space-y-5">
+            <div class="border-b border-slate-100 pb-3">
+              <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-file-invoice text-[#164e87] mr-2"></i> WhatsApp Template Builder
+              </h2>
+              <p class="text-xs text-slate-500">Design message templates with dynamic variables and interactive buttons</p>
+            </div>
+
+            <div class="space-y-4 text-xs">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Template Name</label>
+                  <input type="text" id="tplNameInput" placeholder="e.g. order_alert" oninput="updateTemplatePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Category</label>
+                  <select id="tplCategorySelect" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                    <option value="MARKETING">Marketing</option>
+                    <option value="UTILITY">Utility / Transactional</option>
+                    <option value="AUTHENTICATION">Authentication / OTP</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Header (Optional)</label>
+                <input type="text" id="tplHeaderInput" placeholder="e.g. Special Announcement" oninput="updateTemplatePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label class="block font-semibold text-slate-700">Body Text</label>
+                  <button type="button" onclick="insertVariableToken()" class="text-[#164e87] hover:underline font-bold text-[11px]">+ Insert {{variable}}</button>
+                </div>
+                <textarea id="tplBodyInput" rows="4" placeholder="Hello {{1}}, your order #{{2}} is confirmed! Tap below to track." oninput="updateTemplatePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#164e87]"></textarea>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Footer (Optional)</label>
+                <input type="text" id="tplFooterInput" placeholder="e.g. Reply STOP to opt out" oninput="updateTemplatePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+              </div>
+
+              <div class="space-y-2">
+                <label class="block font-semibold text-slate-700">Call-to-Action Button</label>
+                <div class="grid grid-cols-2 gap-3">
+                  <input type="text" id="tplBtnText" placeholder="Button Text (e.g. Track Order)" oninput="updateTemplatePreview()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                  <input type="text" id="tplBtnUrl" placeholder="URL or Action (e.g. https://...)" oninput="updateTemplatePreview()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                </div>
+              </div>
+
+              <div class="pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="submitSaveTemplate()" class="bg-[#164e87] text-white font-bold px-6 py-2.5 rounded-xl shadow hover:bg-[#123e6d] transition">
+                  Save Template
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Live Smartphone WhatsApp Mockup -->
+          <div class="lg:col-span-5 flex flex-col items-center">
+            <span class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Live Smartphone Simulator</span>
+            
+            <div class="w-[310px] h-[580px] bg-slate-900 rounded-[45px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden">
+              <!-- Notch -->
+              <div class="w-32 h-4 bg-slate-800 rounded-b-xl mx-auto mb-2 flex-shrink-0"></div>
+              
+              <!-- WhatsApp Chat Container -->
+              <div class="flex-1 bg-[#efeae2] rounded-[30px] flex flex-col overflow-hidden text-xs">
+                <!-- WA Header -->
+                <div class="bg-[#128c7e] text-white p-3 flex items-center space-x-2.5 flex-shrink-0 shadow-xs">
+                  <div class="w-7 h-7 rounded-full bg-white text-[#128c7e] flex items-center justify-center font-bold text-xs">W</div>
+                  <div class="flex-1">
+                    <p class="font-bold text-xs leading-none">Your WhatsApp Brand</p>
+                    <span class="text-[9px] text-emerald-100">online</span>
+                  </div>
+                </div>
+
+                <!-- Chat Bubble -->
+                <div class="flex-1 p-3 overflow-y-auto flex flex-col justify-end space-y-2">
+                  <div class="bg-white rounded-2xl rounded-tl-xs p-3.5 shadow-sm space-y-2 border border-slate-100 max-w-[95%]">
+                    <p id="previewHeader" class="font-bold text-slate-900 text-xs hidden"></p>
+                    <p id="previewBody" class="text-slate-800 leading-relaxed text-xs">Type your template on the left to see live preview here...</p>
+                    <p id="previewFooter" class="text-[10px] text-slate-400 italic hidden"></p>
+                    <div class="text-[9px] text-slate-400 text-right">09:41 AM ✓✓</div>
+                  </div>
+
+                  <!-- Button on Mockup -->
+                  <div id="previewButtonWrap" class="hidden">
+                    <div class="bg-white text-[#128c7e] font-bold text-xs text-center py-2.5 rounded-xl shadow-xs border border-slate-200 flex items-center justify-center space-x-1.5 cursor-pointer">
+                      <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                      <span id="previewButtonText">Button Action</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Saved Templates Table -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+          <h3 class="font-bold text-slate-800 text-sm">Saved Message Templates</h3>
+          <div id="templatesList" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs"></div>
+        </div>
+      </div>
+
+      <!-- ================= VISUAL CHATBOT FLOWS ================= -->
+      <div id="view-chatbots" class="tab-view max-w-5xl w-full hidden space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+          <div>
+            <h2 class="text-xl font-bold text-slate-800 flex items-center">
+              <i class="fa-solid fa-network-wired text-[#164e87] mr-2"></i> Visual Chatbot Flows
+            </h2>
+            <p class="text-xs text-slate-500">Multi-step trigger automation (Auto-Reply, Tagging, Lead Assignment, CRM Stage)</p>
+          </div>
+          <button onclick="openNewBotModal()" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow hover:bg-[#123e6d] transition">
+            + Create Bot Flow
+          </button>
+        </div>
+
+        <!-- Active Bots List -->
+        <div id="chatbotsList" class="space-y-4"></div>
       </div>
 
       <!-- ================= CAMPAIGNS TAB ================= -->
@@ -715,7 +951,7 @@
       <div id="view-autoreplies" class="tab-view max-w-5xl w-full hidden space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Auto-Replies & AI Bot</h2>
+            <h2 class="text-xl font-bold text-slate-800">Auto-Replies & Simple Rules</h2>
             <p class="text-xs text-slate-500">Instant keyword triggers and auto-responder rules</p>
           </div>
           <button onclick="openAddAutoReplyModal()" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow">+ Add Rule</button>
@@ -736,8 +972,8 @@
       </div>
 
       <!-- ================= API & WEBHOOKS TAB ================= -->
-      <div id="view-api" class="tab-view max-w-4xl w-full hidden space-y-6">
-        <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <div id="view-api" class="tab-view max-w-5xl w-full hidden space-y-6">
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
           <div class="flex justify-between items-center border-b border-slate-100 pb-4">
             <div>
               <h2 class="text-xl font-bold text-slate-800">REST API & Webhooks</h2>
@@ -746,6 +982,32 @@
             <button onclick="addWebhookPrompt()" class="bg-[#164e87] text-white text-xs font-semibold px-4 py-2 rounded-xl">+ Add Webhook</button>
           </div>
           <div id="webhooksList" class="space-y-2 text-xs"></div>
+
+          <!-- Webhook Live Deliveries Audit Log -->
+          <div class="pt-4 border-t border-slate-100 space-y-3">
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-slate-800 text-sm">Live Webhook Deliveries Audit Log</h3>
+              <button onclick="fetchWebhookDeliveries()" class="text-xs text-[#164e87] hover:underline font-semibold">
+                <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Event</th>
+                    <th class="p-3">Target URL</th>
+                    <th class="p-3">Duration</th>
+                    <th class="p-3">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody id="webhookDeliveriesTableBody" class="divide-y divide-slate-100 font-mono">
+                  <tr><td colspan="5" class="p-4 text-center text-slate-400 font-sans">No recent deliveries</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -864,6 +1126,126 @@
     </div>
   </div>
 
+  <!-- ================= MODAL: NEW DEAL (CRM) ================= -->
+  <div id="newDealModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-7 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-base flex items-center">
+          <i class="fa-solid fa-file-invoice-dollar text-[#164e87] mr-2"></i> Create Sales Deal
+        </h3>
+        <button onclick="closeNewDealModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Deal Title</label>
+          <input type="text" id="dealTitleInput" placeholder="e.g. Annual Enterprise Plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#164e87]">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Contact Phone</label>
+            <input type="text" id="dealPhoneInput" placeholder="e.g. 919876543210" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Contact Name</label>
+            <input type="text" id="dealNameInput" placeholder="e.g. Alex Morgan" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Deal Value ($)</label>
+            <input type="number" id="dealValueInput" placeholder="1000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Initial Stage</label>
+            <select id="dealStageSelect" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+              <option value="lead">New Lead</option>
+              <option value="qualified">Qualified</option>
+              <option value="proposal">Proposal Sent</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="won">Closed Won</option>
+              <option value="lost">Closed Lost</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Assigned Agent</label>
+          <input type="text" id="dealAgentInput" placeholder="e.g. Sarah" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-2 border-t border-slate-100">
+        <button onclick="closeNewDealModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs">Cancel</button>
+        <button onclick="submitNewDeal()" class="bg-[#164e87] text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow hover:bg-[#123e6d]">Save Deal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: TEST SEND TEMPLATE ================= -->
+  <div id="sendTemplateModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-7 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-base">Send WhatsApp Template</h3>
+        <button onclick="closeSendTemplateModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <input type="hidden" id="sendTemplateId">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Recipient Phone Number</label>
+          <input type="text" id="sendTemplatePhone" placeholder="e.g. 919111110963" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+        </div>
+        <div id="templateVariablesInputArea" class="space-y-2"></div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-2 border-t border-slate-100">
+        <button onclick="closeSendTemplateModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs">Cancel</button>
+        <button onclick="submitSendTemplate()" class="bg-[#164e87] text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow">Send Message</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: NEW CHATBOT FLOW ================= -->
+  <div id="chatbotModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-7 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-base flex items-center">
+          <i class="fa-solid fa-network-wired text-[#164e87] mr-2"></i> Create Chatbot Flow
+        </h3>
+        <button onclick="closeNewBotModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Bot Flow Name</label>
+          <input type="text" id="botNameInput" placeholder="e.g. Pricing & Quote Bot" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Trigger Keywords (comma separated)</label>
+          <input type="text" id="botKeywordsInput" placeholder="e.g. pricing, quote, cost, buy" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Auto-Reply Text</label>
+          <textarea id="botReplyInput" rows="2" placeholder="Hello! Thanks for your interest. Here is our pricing breakdown..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Auto-Attach Label</label>
+            <input type="text" id="botTagInput" placeholder="e.g. high-intent" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Move Deal Stage</label>
+            <select id="botStageInput" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+              <option value="">(None)</option>
+              <option value="lead">New Lead</option>
+              <option value="qualified">Qualified</option>
+              <option value="proposal">Proposal Sent</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-2 border-t border-slate-100">
+        <button onclick="closeNewBotModal()" class="px-4 py-2 rounded-xl text-slate-600 text-xs">Cancel</button>
+        <button onclick="submitNewBot()" class="bg-[#164e87] text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow hover:bg-[#123e6d]">Save Flow</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JavaScript Controller -->
   <script>
     let activeDeviceId = 'dev_1789034070419_95egj';
@@ -881,10 +1263,13 @@
       if (targetNav) targetNav.classList.add('active');
 
       if (tabId === 'inbox') fetchInbox();
+      if (tabId === 'deals') fetchDeals();
+      if (tabId === 'templates') fetchTemplates();
+      if (tabId === 'chatbots') fetchChatbots();
       if (tabId === 'campaigns') fetchCampaigns();
       if (tabId === 'groups') fetchGroups();
       if (tabId === 'autoreplies') fetchAutoReplies();
-      if (tabId === 'api') fetchWebhooks();
+      if (tabId === 'api') { fetchWebhooks(); fetchWebhookDeliveries(); }
       if (tabId === 'settings') { fetchQuickReplies(); fetchLabels(); }
     }
 
@@ -975,227 +1360,462 @@
     }
 
     // ================= INBOX =================
+    let allInboxChats = [];
+
     async function fetchInbox() {
       try {
         const res = await fetch(`/api/v1/chat/${activeDeviceId}/chats`);
         const json = await res.json();
-        const list = document.getElementById('chatList');
+        allInboxChats = json.data || [];
         document.getElementById('inboxCount').innerText = json.count || 0;
 
-        if (!json.data || json.data.length === 0) {
-          list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No active conversations</div>`;
+        // Populate filter dropdowns
+        populateInboxFilters(allInboxChats);
+        renderInboxChats(allInboxChats);
+      } catch (e) {}
+    }
+
+    function populateInboxFilters(chats) {
+      const labelSelect = document.getElementById('inboxLabelFilter');
+      const agentSelect = document.getElementById('inboxAgentFilter');
+
+      const labels = new Set();
+      const agents = new Set();
+      chats.forEach(c => {
+        (c.labels || []).forEach(l => labels.add(l));
+        if (c.owner) agents.add(c.owner);
+      });
+
+      const currentLabel = labelSelect.value;
+      const currentAgent = agentSelect.value;
+
+      labelSelect.innerHTML = '<option value="">All Labels</option>' + Array.from(labels).map(l => `<option value="${l}">${l}</option>`).join('');
+      agentSelect.innerHTML = '<option value="">All Agents</option>' + Array.from(agents).map(a => `<option value="${a}">${a}</option>`).join('');
+
+      labelSelect.value = currentLabel;
+      agentSelect.value = currentAgent;
+    }
+
+    function filterInboxChats() {
+      const selectedLabel = document.getElementById('inboxLabelFilter').value;
+      const selectedAgent = document.getElementById('inboxAgentFilter').value;
+
+      let filtered = allInboxChats;
+      if (selectedLabel) {
+        filtered = filtered.filter(c => (c.labels || []).includes(selectedLabel));
+      }
+      if (selectedAgent) {
+        filtered = filtered.filter(c => c.owner === selectedAgent);
+      }
+      renderInboxChats(filtered);
+    }
+
+    function renderInboxChats(chats) {
+      const list = document.getElementById('chatList');
+      if (!chats || chats.length === 0) {
+        list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No conversations found</div>`;
+        return;
+      }
+
+      list.innerHTML = chats.map(c => `
+        <div onclick="selectChat('${c.jid}', '${c.phone || c.jid}')" class="p-3.5 hover:bg-slate-100 cursor-pointer transition flex items-center justify-between ${selectedChatWid === c.jid ? 'bg-blue-50 border-l-4 border-[#164e87]' : ''}">
+          <div class="truncate mr-2">
+            <div class="flex items-center space-x-1.5">
+              <p class="font-bold text-xs text-slate-800 truncate">${c.phone || c.jid}</p>
+              ${c.owner ? `<span class="bg-blue-100 text-blue-800 text-[9px] px-1.5 py-0.2 rounded font-semibold">${c.owner}</span>` : ''}
+            </div>
+            <p class="text-[11px] text-slate-500 truncate mt-0.5">${c.lastMessage?.body || `[${c.lastMessage?.type || 'Message'}]`}</p>
+            ${(c.labels && c.labels.length > 0) ? `<div class="flex space-x-1 mt-1">${c.labels.map(l => `<span class="bg-slate-200 text-slate-700 text-[9px] px-1 rounded">${l}</span>`).join('')}</div>` : ''}
+          </div>
+          <div class="text-right flex flex-col items-end">
+            <span class="text-[10px] text-slate-400">${new Date(c.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+            ${c.unreadCount > 0 ? `<span class="bg-[#164e87] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full mt-1">${c.unreadCount}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function useQuickReplyText(shortcut) {
+      const input = document.getElementById('replyInput');
+      if (shortcut === '/welcome') input.value = 'Hello! Welcome to our service, how can we assist you today?';
+      else if (shortcut === '/pricing') input.value = 'Our standard subscription is $49/mo and enterprise is $199/mo.';
+      else if (shortcut === '/support') input.value = 'A technical specialist is reviewing your inquiry now.';
+      else input.value = shortcut;
+      input.focus();
+    }
+
+    function openDealFromChat() {
+      if (!selectedChatWid) return;
+      openNewDealModal();
+      document.getElementById('dealPhoneInput').value = selectedChatWid.split('@')[0];
+      document.getElementById('dealTitleInput').value = `WhatsApp Deal - ${selectedChatWid.split('@')[0]}`;
+    }
+
+    // ================= DEALS & SALES PIPELINE (KANBAN CRM) =================
+    const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
+
+    async function fetchDeals() {
+      try {
+        const res = await fetch('/api/v1/deals');
+        const json = await res.json();
+        const deals = json.deals || [];
+
+        // Reset columns
+        let totalVal = 0;
+        STAGES.forEach(stage => {
+          document.getElementById(`col-${stage}`).innerHTML = '';
+          document.getElementById(`count-${stage}`).innerText = '0';
+        });
+
+        // Group by stage
+        const grouped = {};
+        STAGES.forEach(s => grouped[s] = []);
+        deals.forEach(d => {
+          totalVal += (Number(d.value) || 0);
+          if (grouped[d.stage]) grouped[d.stage].push(d);
+          else grouped['lead'].push(d);
+        });
+
+        document.getElementById('pipelineTotalValue').innerText = `$${totalVal.toLocaleString()}`;
+
+        STAGES.forEach(stage => {
+          const list = grouped[stage];
+          document.getElementById(`count-${stage}`).innerText = list.length;
+          const container = document.getElementById(`col-${stage}`);
+          if (list.length === 0) {
+            container.innerHTML = `<div class="p-4 text-center text-slate-400 text-[11px] border border-dashed border-slate-200 rounded-xl">No deals</div>`;
+            return;
+          }
+
+          container.innerHTML = list.map(d => `
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-2 hover:shadow-md transition">
+              <div class="flex justify-between items-start">
+                <span class="font-bold text-xs text-slate-800 leading-tight">${d.title}</span>
+                <span class="font-bold text-emerald-600 text-xs">$${(Number(d.value) || 0).toLocaleString()}</span>
+              </div>
+              <div class="text-[11px] text-slate-500">
+                <p class="font-medium text-slate-700"><i class="fa-solid fa-user text-[10px] mr-1 text-slate-400"></i> ${d.contactName || d.contactPhone}</p>
+                <p class="text-[10px] text-slate-400 font-mono">${d.contactPhone}</p>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">
+                <span class="bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded">${d.assignedTo || 'Agent'}</span>
+                <div class="flex items-center space-x-1">
+                  <select onchange="moveDealStage('${d.id}', this.value)" class="bg-slate-50 border border-slate-200 text-[10px] rounded px-1 py-0.5">
+                    ${STAGES.map(s => `<option value="${s}" ${s === d.stage ? 'selected' : ''}>${s}</option>`).join('')}
+                  </select>
+                  <button onclick="deleteDeal('${d.id}')" class="text-rose-400 hover:text-rose-600 px-1" title="Delete Deal"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        });
+      } catch (e) {}
+    }
+
+    function openNewDealModal() { document.getElementById('newDealModal').classList.remove('hidden'); }
+    function closeNewDealModal() { document.getElementById('newDealModal').classList.add('hidden'); }
+    async function submitNewDeal() {
+      const title = document.getElementById('dealTitleInput').value;
+      const contactPhone = document.getElementById('dealPhoneInput').value;
+      const contactName = document.getElementById('dealNameInput').value;
+      const value = document.getElementById('dealValueInput').value;
+      const stage = document.getElementById('dealStageSelect').value;
+      const assignedTo = document.getElementById('dealAgentInput').value || 'Sarah';
+
+      if (!title || !contactPhone) return alert('Title and phone are required');
+
+      await fetch('/api/v1/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: activeDeviceId, title, contactPhone, contactName, value, stage, assignedTo })
+      });
+      closeNewDealModal();
+      fetchDeals();
+    }
+
+    async function moveDealStage(id, stage) {
+      await fetch(`/api/v1/deals/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage })
+      });
+      fetchDeals();
+    }
+
+    async function deleteDeal(id) {
+      if (!confirm('Delete this deal?')) return;
+      await fetch(`/api/v1/deals/${id}`, { method: 'DELETE' });
+      fetchDeals();
+    }
+
+    // ================= INTERACTIVE TEMPLATES =================
+    async function fetchTemplates() {
+      try {
+        const res = await fetch('/api/v1/templates');
+        const json = await res.json();
+        const list = document.getElementById('templatesList');
+        if (!json.templates || json.templates.length === 0) {
+          list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs col-span-full">No templates saved yet</div>`;
           return;
         }
 
-        list.innerHTML = json.data.map(c => `
-          <div onclick="selectChat('${c.jid}', '${c.phone || c.jid}')" class="p-3.5 hover:bg-slate-100 cursor-pointer transition flex items-center justify-between ${selectedChatWid === c.jid ? 'bg-blue-50 border-l-4 border-[#164e87]' : ''}">
-            <div class="truncate mr-2">
-              <p class="font-bold text-xs text-slate-800 truncate">${c.phone || c.jid}</p>
-              <p class="text-[11px] text-slate-500 truncate mt-0.5">${c.lastMessage?.body || `[${c.lastMessage?.type || 'Message'}]`}</p>
+        list.innerHTML = json.templates.map(t => `
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-center">
+                <b class="font-bold text-xs text-slate-800 font-mono">${t.name}</b>
+                <span class="text-[9px] bg-blue-100 text-[#164e87] font-bold px-2 py-0.5 rounded-full">${t.category}</span>
+              </div>
+              <p class="text-xs text-slate-600 mt-2 line-clamp-3">${t.body}</p>
             </div>
-            <div class="text-right flex flex-col items-end">
-              <span class="text-[10px] text-slate-400">${new Date(c.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-              ${c.unreadCount > 0 ? `<span class="bg-[#164e87] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full mt-1">${c.unreadCount}</span>` : ''}
+            <div class="pt-3 border-t border-slate-200 flex justify-between items-center text-xs">
+              <button onclick="openSendTemplateModal('${t.id}')" class="text-xs font-semibold text-[#164e87] hover:underline flex items-center">
+                <i class="fa-solid fa-paper-plane mr-1 text-[10px]"></i> Send
+              </button>
+              <button onclick="deleteTemplate('${t.id}')" class="text-rose-500 hover:text-rose-700">
+                <i class="fa-solid fa-trash text-xs"></i>
+              </button>
             </div>
           </div>
         `).join('');
       } catch (e) {}
     }
 
-    async function selectChat(jid, title) {
-      selectedChatWid = jid;
-      document.getElementById('activeChatTitle').innerText = title;
-      document.getElementById('activeChatSubtitle').innerText = jid;
-      document.getElementById('replyArea').classList.remove('hidden');
-      fetchInbox();
-      loadMessagesForChat(jid);
+    function updateTemplatePreview() {
+      const header = document.getElementById('tplHeaderInput').value;
+      const body = document.getElementById('tplBodyInput').value;
+      const footer = document.getElementById('tplFooterInput').value;
+      const btnText = document.getElementById('tplBtnText').value;
+
+      const pHeader = document.getElementById('previewHeader');
+      const pBody = document.getElementById('previewBody');
+      const pFooter = document.getElementById('previewFooter');
+      const pBtnWrap = document.getElementById('previewButtonWrap');
+      const pBtnText = document.getElementById('previewButtonText');
+
+      if (header) { pHeader.innerText = header; pHeader.classList.remove('hidden'); }
+      else { pHeader.classList.add('hidden'); }
+
+      pBody.innerText = body || 'Type your template on the left to see live preview here...';
+
+      if (footer) { pFooter.innerText = footer; pFooter.classList.remove('hidden'); }
+      else { pFooter.classList.add('hidden'); }
+
+      if (btnText) {
+        pBtnText.innerText = btnText;
+        pBtnWrap.classList.remove('hidden');
+      } else {
+        pBtnWrap.classList.add('hidden');
+      }
     }
 
-    async function loadMessagesForChat(jid) {
-      const stream = document.getElementById('messageStream');
-      stream.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
+    function insertVariableToken() {
+      const textarea = document.getElementById('tplBodyInput');
+      const matches = textarea.value.match(/\{\{([^}]+)\}\}/g) || [];
+      const nextNum = matches.length + 1;
+      textarea.value += ` {{${nextNum}}}`;
+      updateTemplatePreview();
+    }
+
+    async function submitSaveTemplate() {
+      const name = document.getElementById('tplNameInput').value;
+      const category = document.getElementById('tplCategorySelect').value;
+      const header = document.getElementById('tplHeaderInput').value;
+      const body = document.getElementById('tplBodyInput').value;
+      const footer = document.getElementById('tplFooterInput').value;
+      const btnText = document.getElementById('tplBtnText').value;
+      const btnUrl = document.getElementById('tplBtnUrl').value;
+
+      if (!name || !body) return alert('Template name and body text are required');
+
+      const buttons = btnText ? [{ type: 'URL', text: btnText, value: btnUrl }] : [];
+
+      await fetch('/api/v1/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, category, header, body, footer, buttons })
+      });
+      alert('Template saved successfully!');
+      fetchTemplates();
+    }
+
+    let currentTemplateToSend = null;
+    async function openSendTemplateModal(id) {
+      const res = await fetch('/api/v1/templates');
+      const json = await res.json();
+      const t = (json.templates || []).find(x => x.id === id);
+      if (!t) return;
+
+      currentTemplateToSend = t;
+      document.getElementById('sendTemplateId').value = t.id;
+      document.getElementById('sendTemplatePhone').value = selectedChatWid ? selectedChatWid.split('@')[0] : '';
+
+      const varArea = document.getElementById('templateVariablesInputArea');
+      varArea.innerHTML = (t.variables || []).map(v => `
+        <div>
+          <label class="block font-semibold text-slate-600 text-[11px] mb-1">Variable {{${v}}}</label>
+          <input type="text" class="tpl-var-input w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs" data-var="${v}" placeholder="Value for {{${v}}}">
+        </div>
+      `).join('');
+
+      document.getElementById('sendTemplateModal').classList.remove('hidden');
+    }
+
+    function closeSendTemplateModal() {
+      document.getElementById('sendTemplateModal').classList.add('hidden');
+    }
+
+    async function submitSendTemplate() {
+      const id = document.getElementById('sendTemplateId').value;
+      const phone = document.getElementById('sendTemplatePhone').value;
+      if (!phone) return alert('Please enter recipient phone number');
+
+      const params = {};
+      document.querySelectorAll('.tpl-var-input').forEach(input => {
+        params[input.dataset.var] = input.value;
+      });
+
+      const res = await fetch(`/api/v1/templates/${id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: activeDeviceId, phone, parameters: params })
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Template message sent successfully!');
+        closeSendTemplateModal();
+      } else {
+        alert('Error sending template: ' + (json.error || 'Failed'));
+      }
+    }
+
+    async function deleteTemplate(id) {
+      if (!confirm('Delete this template?')) return;
+      await fetch(`/api/v1/templates/${id}`, { method: 'DELETE' });
+      fetchTemplates();
+    }
+
+    // ================= CHATBOT FLOWS =================
+    async function fetchChatbots() {
       try {
-        const res = await fetch(`/api/v1/chat/${activeDeviceId}/chats/${encodeURIComponent(jid)}/messages?limit=50`);
+        const res = await fetch(`/api/v1/chatbots?deviceId=${activeDeviceId}`);
         const json = await res.json();
-        if (!json.data || json.data.length === 0) {
-          stream.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">No messages in this chat</div>';
+        const list = document.getElementById('chatbotsList');
+        if (!json.chatbots || json.chatbots.length === 0) {
+          list.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-400 text-xs border border-slate-200">No chatbot flows configured</div>`;
           return;
         }
 
-        stream.innerHTML = json.data.reverse().map(m => {
-          const isMe = m.direction === 'outbound';
-          return `
-            <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
-              <div class="max-w-[70%] p-3 rounded-2xl text-xs ${isMe ? 'bg-[#164e87] text-white rounded-br-xs' : 'bg-white text-slate-800 border border-slate-200 rounded-bl-xs shadow-xs'}">
-                <p class="leading-relaxed">${m.body || `[${m.type}]`}</p>
-                <div class="text-[9px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-slate-400'}">
-                  ${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                </div>
+        list.innerHTML = json.chatbots.map(b => `
+          <div class="bg-white p-5 rounded-2xl shadow-xs border border-slate-200 space-y-3">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full ${b.active ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                <h4 class="font-bold text-xs text-slate-800">${b.name}</h4>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button onclick="testBotSimulate('${b.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg font-semibold">
+                  <i class="fa-solid fa-play text-[10px] mr-1"></i> Test
+                </button>
+                <button onclick="deleteBot('${b.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
               </div>
             </div>
-          `;
-        }).join('');
-        stream.scrollTop = stream.scrollHeight;
+            <div>
+              <span class="text-[10px] text-slate-400 uppercase font-semibold">Triggers:</span>
+              <div class="flex flex-wrap gap-1 mt-1">
+                ${b.triggerKeywords.map(k => `<span class="bg-blue-50 text-[#164e87] text-[10px] font-mono px-2 py-0.5 rounded-md">${k}</span>`).join('')}
+              </div>
+            </div>
+            <div class="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
+              ${b.steps.map((st, idx) => `
+                <div class="flex items-center space-x-2">
+                  <span class="w-4 h-4 rounded-full bg-slate-100 text-slate-500 text-[9px] flex items-center justify-center font-bold">${idx + 1}</span>
+                  <span class="font-semibold text-slate-700 capitalize">${st.type}:</span>
+                  <span class="truncate text-slate-500">${st.content}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
       } catch (e) {}
     }
 
-    async function handleSendReply(e) {
-      e.preventDefault();
-      const input = document.getElementById('replyInput');
-      const text = input.value.trim();
-      if (!text || !selectedChatWid) return;
+    function openNewBotModal() { document.getElementById('chatbotModal').classList.remove('hidden'); }
+    function closeNewBotModal() { document.getElementById('chatbotModal').classList.add('hidden'); }
 
-      input.value = '';
-      await fetch('/api/v1/messages', {
+    async function submitNewBot() {
+      const name = document.getElementById('botNameInput').value;
+      const rawKeywords = document.getElementById('botKeywordsInput').value;
+      const reply = document.getElementById('botReplyInput').value;
+      const tag = document.getElementById('botTagInput').value;
+      const stage = document.getElementById('botStageInput').value;
+
+      if (!name || !rawKeywords || !reply) return alert('Name, keywords, and reply are required');
+
+      const triggerKeywords = rawKeywords.split(/[\n,]+/).map(k => k.trim()).filter(Boolean);
+      const steps = [{ type: 'reply', content: reply }];
+      if (tag) steps.push({ type: 'tag', content: tag });
+      if (stage) steps.push({ type: 'deal_stage', content: stage });
+
+      await fetch('/api/v1/chatbots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId: activeDeviceId, phone: selectedChatWid, message: text })
+        body: JSON.stringify({ deviceId: activeDeviceId, name, triggerKeywords, steps })
       });
-      loadMessagesForChat(selectedChatWid);
+      closeNewBotModal();
+      fetchChatbots();
     }
 
-    // ================= CAMPAIGNS =================
-    async function fetchCampaigns() {
-      const res = await fetch('/api/v1/campaigns');
-      const json = await res.json();
-      const list = document.getElementById('campaignsList');
-      if (!json.data || json.data.length === 0) {
-        list.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-400 text-xs border border-slate-200">No campaigns launched yet</div>`;
-        return;
-      }
-      list.innerHTML = json.data.map(c => `
-        <div class="bg-white p-5 rounded-2xl shadow-xs border border-slate-200 flex justify-between items-center">
-          <div>
-            <h4 class="font-bold text-xs text-slate-800">${c.name} <span class="text-[9px] px-2 py-0.5 rounded-full uppercase bg-emerald-100 text-emerald-700 ml-2">${c.status}</span></h4>
-            <p class="text-xs text-slate-500 mt-1">${c.message}</p>
-            <p class="text-[10px] text-slate-400 mt-1">${c.progress.sent}/${c.progress.total} sent</p>
-          </div>
-        </div>
-      `).join('');
-    }
-    function openCampaignModal() { document.getElementById('campaignModal').classList.remove('hidden'); }
-    function closeCampaignModal() { document.getElementById('campaignModal').classList.add('hidden'); }
-    async function submitCampaign() {
-      const name = document.getElementById('campTitle').value;
-      const raw = document.getElementById('campRecipients').value;
-      const message = document.getElementById('campMessage').value;
-      const recipients = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    async function testBotSimulate(id) {
+      const testMsg = prompt('Enter a test customer message:');
+      if (!testMsg) return;
 
-      await fetch('/api/v1/campaigns', {
+      const res = await fetch(`/api/v1/chatbots/${id}/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId: activeDeviceId, name, recipients, message })
+        body: JSON.stringify({ message: testMsg })
       });
-      closeCampaignModal();
-      fetchCampaigns();
-    }
-
-    // ================= GROUPS =================
-    async function fetchGroups() {
-      const res = await fetch(`/api/v1/devices/${activeDeviceId}/groups`);
       const json = await res.json();
-      const list = document.getElementById('groupsList');
-      if (!json.data || json.data.length === 0) {
-        list.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs col-span-full">No groups found</div>`;
-        return;
-      }
-      list.innerHTML = json.data.map(g => `
-        <div class="bg-white p-5 rounded-2xl shadow-xs border border-slate-200 flex flex-col justify-between space-y-3">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
-              <i class="fa-solid fa-users"></i>
-            </div>
-            <div class="truncate">
-              <h4 class="font-bold text-xs text-slate-800 truncate">${g.subject}</h4>
-              <p class="text-[10px] text-slate-400">${g.participantsCount} members</p>
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // ================= AUTO REPLIES =================
-    async function fetchAutoReplies() {
-      const res = await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies`);
-      const json = await res.json();
-      const list = document.getElementById('autoRepliesList');
-      if (!json.data || json.data.length === 0) {
-        list.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs">No auto-reply rules configured</div>`;
-        return;
-      }
-      list.innerHTML = json.data.map(r => `
-        <div class="p-4 flex items-center justify-between">
-          <div>
-            <span class="font-bold text-xs text-slate-800">Trigger: "${r.keyword}"</span>
-            <p class="text-xs text-slate-500 mt-1">${r.reply}</p>
-          </div>
-        </div>
-      `).join('');
-    }
-    function openAddAutoReplyModal() { document.getElementById('autoReplyModal').classList.remove('hidden'); }
-    function closeAddAutoReplyModal() { document.getElementById('autoReplyModal').classList.add('hidden'); }
-    async function submitAutoReply() {
-      const keyword = document.getElementById('arKeyword').value;
-      const matchType = document.getElementById('arMatchType').value;
-      const reply = document.getElementById('arReply').value;
-      await fetch(`/api/v1/devices/${activeDeviceId}/autoreplies`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, matchType, reply })
-      });
-      closeAddAutoReplyModal();
-      fetchAutoReplies();
-    }
-
-    // ================= CONTACTS =================
-    async function runPhoneVerification() {
-      const phone = document.getElementById('verifyPhoneInput').value;
-      const result = document.getElementById('verifyPhoneResult');
-      if (!phone) return;
-      result.innerHTML = '<span class="text-slate-400">Verifying...</span>';
-      const res = await fetch(`/api/v1/contacts/${phone}/exists`);
-      const json = await res.json();
-      if (json.exists) {
-        result.innerHTML = `<span class="text-emerald-600 font-bold">✓ Registered on WhatsApp! (JID: ${json.jid})</span>`;
+      if (json.matched) {
+        alert(`✓ Bot Matched!\nExecuted ${json.triggeredSteps.length} action steps:\n` + json.triggeredSteps.map(s => `- [${s.type}] ${s.content}`).join('\n'));
       } else {
-        result.innerHTML = `<span class="text-rose-600 font-bold">✗ Not on WhatsApp</span>`;
+        alert('✗ Bot did not match this message.');
       }
     }
 
-    // ================= WEBHOOKS =================
-    async function fetchWebhooks() {
-      const res = await fetch('/api/v1/webhooks');
-      const json = await res.json();
-      const list = document.getElementById('webhooksList');
-      list.innerHTML = (json.data || []).map(w => `
-        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
-          <span class="font-mono text-xs text-slate-800">${w.url}</span>
-        </div>
-      `).join('') || '<p class="text-slate-400">No webhooks</p>';
+    async function deleteBot(id) {
+      if (!confirm('Delete this chatbot flow?')) return;
+      await fetch(`/api/v1/chatbots/${id}`, { method: 'DELETE' });
+      fetchChatbots();
     }
 
-    // ================= QUICK REPLIES & LABELS =================
-    async function fetchQuickReplies() {
-      const res = await fetch(`/api/v1/devices/${activeDeviceId}/quickReplies`);
-      const json = await res.json();
-      const list = document.getElementById('quickRepliesList');
-      list.innerHTML = (json.data || []).map(q => `
-        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl">
-          <b class="text-emerald-600 font-mono">${q.shortcut}</b>
-          <p class="text-slate-500 text-xs">${q.message}</p>
-        </div>
-      `).join('') || '<p class="text-slate-400">No shortcuts</p>';
-    }
+    // ================= WEBHOOK DELIVERIES AUDIT LOG =================
+    async function fetchWebhookDeliveries() {
+      try {
+        const res = await fetch('/api/v1/webhooks/deliveries?limit=30');
+        const json = await res.json();
+        const tbody = document.getElementById('webhookDeliveriesTableBody');
+        if (!json.deliveries || json.deliveries.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400 font-sans">No recent deliveries</td></tr>';
+          return;
+        }
 
-    async function fetchLabels() {
-      const res = await fetch(`/api/v1/devices/${activeDeviceId}/labels`);
-      const json = await res.json();
-      const list = document.getElementById('labelsList');
-      list.innerHTML = (json.data || []).map(l => `
-        <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl">
-          <span class="font-bold text-slate-700">${l.name}</span>
-        </div>
-      `).join('') || '<p class="text-slate-400">No labels</p>';
+        tbody.innerHTML = json.deliveries.map(d => `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${d.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${d.statusCode || 'ERR'} ${d.success ? 'OK' : 'FAIL'}
+              </span>
+            </td>
+            <td class="p-3 font-semibold text-slate-700">${d.event}</td>
+            <td class="p-3 text-slate-600 truncate max-w-xs" title="${d.url}">${d.url}</td>
+            <td class="p-3 text-slate-500">${d.durationMs}ms</td>
+            <td class="p-3 text-slate-400 text-[10px]">${new Date(d.timestamp).toLocaleTimeString()}</td>
+          </tr>
+        `).join('');
+      } catch (e) {}
     }
 
     // Initial load

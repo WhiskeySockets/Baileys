@@ -19,6 +19,9 @@ import { labelRoutes } from './routes/labels.js'
 import { quickReplyRoutes } from './routes/quick-replies.js'
 import { autoReplyRoutes } from './routes/autoreplies.js'
 import { syncRoutes } from './routes/sync.js'
+import { dealRoutes } from './routes/deals.js'
+import { templateRoutes } from './routes/templates.js'
+import { chatbotRoutes } from './routes/chatbots.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -54,6 +57,9 @@ async function bootstrap() {
 	app.register(quickReplyRoutes, { prefix: '/api/v1/devices' })
 	app.register(autoReplyRoutes, { prefix: '/api/v1/devices' })
 	app.register(syncRoutes, { prefix: '/api/v1/sync' })
+	app.register(dealRoutes, { prefix: '/api/v1/deals' })
+	app.register(templateRoutes, { prefix: '/api/v1/templates' })
+	app.register(chatbotRoutes, { prefix: '/api/v1/chatbots' })
 
 	// Health check endpoint
 	app.get('/health', async () => ({
@@ -68,6 +74,9 @@ async function bootstrap() {
 			'labels',
 			'quick_replies',
 			'autoreplies',
+			'deals_crm',
+			'templates',
+			'chatbots',
 			'webhooks',
 		],
 		time: new Date().toISOString(),

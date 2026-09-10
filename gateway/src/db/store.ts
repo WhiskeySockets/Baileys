@@ -116,6 +116,63 @@ export interface AutoReplyRule {
 	active: boolean
 }
 
+export interface DealRecord {
+	id: string
+	deviceId: string
+	contactPhone: string
+	contactName: string
+	title: string
+	value: number
+	currency: string
+	stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost'
+	assignedTo?: string
+	notes?: string
+	tags: string[]
+	createdAt: string
+	updatedAt: string
+}
+
+export interface TemplateRecord {
+	id: string
+	name: string
+	category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'
+	language: string
+	body: string
+	header?: string
+	footer?: string
+	buttons?: Array<{ type: 'URL' | 'PHONE' | 'QUICK_REPLY'; text: string; value?: string }>
+	variables: string[]
+	createdAt: string
+}
+
+export interface ChatbotStep {
+	type: 'reply' | 'tag' | 'assign' | 'deal_stage'
+	content: string
+}
+
+export interface ChatbotFlowRecord {
+	id: string
+	deviceId: string
+	name: string
+	triggerKeywords: string[]
+	matchType: 'exact' | 'contains'
+	steps: ChatbotStep[]
+	active: boolean
+	createdAt: string
+}
+
+export interface WebhookDeliveryRecord {
+	id: string
+	webhookId: string
+	event: string
+	url: string
+	statusCode: number
+	durationMs: number
+	payload: any
+	timestamp: string
+	success: boolean
+}
+
 interface DBData {
 	devices: Record<string, DeviceRecord>
 	webhooks: Record<string, WebhookRecord>
@@ -125,6 +182,10 @@ interface DBData {
 	labels: Record<string, LabelRecord>
 	quickReplies: Record<string, QuickReplyRecord>
 	autoReplies: Record<string, AutoReplyRule>
+	deals: Record<string, DealRecord>
+	templates: Record<string, TemplateRecord>
+	chatbots: Record<string, ChatbotFlowRecord>
+	webhookDeliveries: WebhookDeliveryRecord[]
 }
 
 export class Store {
@@ -138,6 +199,10 @@ export class Store {
 		labels: {},
 		quickReplies: {},
 		autoReplies: {},
+		deals: {},
+		templates: {},
+		chatbots: {},
+		webhookDeliveries: [],
 	}
 
 	constructor() {
@@ -166,6 +231,10 @@ export class Store {
 					labels: parsed.labels || {},
 					quickReplies: parsed.quickReplies || {},
 					autoReplies: parsed.autoReplies || {},
+					deals: parsed.deals || {},
+					templates: parsed.templates || {},
+					chatbots: parsed.chatbots || {},
+					webhookDeliveries: parsed.webhookDeliveries || [],
 				}
 			} else {
 				this.save()
@@ -371,6 +440,84 @@ export class Store {
 	deleteAutoReply(id: string) {
 		delete this.data.autoReplies[id]
 		this.save()
+	}
+
+	// Deals / CRM Pipeline
+	getDeals(deviceId?: string): DealRecord[] {
+		let list = Object.values(this.data.deals)
+		if (deviceId) {
+			list = list.filter(d => d.deviceId === deviceId)
+		}
+		return list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+	}
+
+	getDeal(id: string): DealRecord | undefined {
+		return this.data.deals[id]
+	}
+
+	saveDeal(deal: DealRecord) {
+		this.data.deals[deal.id] = deal
+		this.save()
+	}
+
+	deleteDeal(id: string) {
+		delete this.data.deals[id]
+		this.save()
+	}
+
+	// Message Templates
+	getTemplates(): TemplateRecord[] {
+		return Object.values(this.data.templates).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+	}
+
+	getTemplate(id: string): TemplateRecord | undefined {
+		return this.data.templates[id]
+	}
+
+	saveTemplate(tpl: TemplateRecord) {
+		this.data.templates[tpl.id] = tpl
+		this.save()
+	}
+
+	deleteTemplate(id: string) {
+		delete this.data.templates[id]
+		this.save()
+	}
+
+	// Chatbot Flows
+	getChatbots(deviceId?: string): ChatbotFlowRecord[] {
+		let list = Object.values(this.data.chatbots)
+		if (deviceId) {
+			list = list.filter(cb => cb.deviceId === deviceId)
+		}
+		return list
+	}
+
+	getChatbot(id: string): ChatbotFlowRecord | undefined {
+		return this.data.chatbots[id]
+	}
+
+	saveChatbot(cb: ChatbotFlowRecord) {
+		this.data.chatbots[cb.id] = cb
+		this.save()
+	}
+
+	deleteChatbot(id: string) {
+		delete this.data.chatbots[id]
+		this.save()
+	}
+
+	// Webhook Deliveries Log
+	saveWebhookDelivery(delivery: WebhookDeliveryRecord) {
+		this.data.webhookDeliveries.unshift(delivery)
+		if (this.data.webhookDeliveries.length > 500) {
+			this.data.webhookDeliveries = this.data.webhookDeliveries.slice(0, 500)
+		}
+		this.save()
+	}
+
+	getWebhookDeliveries(limit = 50): WebhookDeliveryRecord[] {
+		return this.data.webhookDeliveries.slice(0, limit)
 	}
 }
 

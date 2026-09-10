@@ -56,4 +56,14 @@ export const webhookRoutes: FastifyPluginAsync = async fastify => {
 
 		return { success: true, message: 'Test webhook event dispatched' }
 	})
+
+	// Get delivery logs
+	fastify.get<{
+		Querystring: { limit?: number }
+	}>('/deliveries', async req => {
+		const limit = Number(req.query.limit) || 50
+		const logs = store.getWebhookDeliveries(limit)
+		return { success: true, count: logs.length, deliveries: logs }
+	})
 }
+
