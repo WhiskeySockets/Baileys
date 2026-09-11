@@ -190,14 +190,55 @@ export const decryptMessageNode = (
 								})
 								break
 							case 'pkmsg':
-							case 'msg':
+							case 'msg': {
 								const user = isJidUser(sender) ? sender : author
-								msgBuffer = await repository.decryptMessage({
-									jid: user,
-									type: e2eType,
-									ciphertext: content
-								})
+								try {
+									msgBuffer = await repository.decryptMessage({
+										jid: user,
+										type: e2eType,
+										ciphertext: content
+									})
+								} catch (err) {
+									// WhatsApp tags this exact stanza with both identity
+									// forms (sender_pn/sender_lid, or participant_pn/
+									// participant_lid for group messages) whenever it
+									// knows the pairing. If the primary address's
+									// session doesn't verify, retry once with the OTHER
+									// form WhatsApp itself paired to this message before
+									// giving up — fixes persistent "Bad MAC" when our
+									// stored session and the sender's current session
+									// were established under different identity forms
+									// of the same device (own-account multi-device sync
+									// is the case observed in production; the same gap
+									// applies to any contact mid-migration to LID). See
+									// https://github.com/WhiskeySockets/Baileys/issues/2234
+									// and https://github.com/WhiskeySockets/Baileys/issues/2321.
+									const altUser = isLidUser(user)
+										? stanza.attrs.participant_pn || stanza.attrs.sender_pn
+										: stanza.attrs.participant_lid || stanza.attrs.sender_lid
+									if (!altUser || altUser === user) {
+										throw err
+									}
+
+									logger.debug(
+										{ key: fullMessage.key, primary: user, retryWith: altUser },
+										'primary identity failed to decrypt, retrying with stanza-provided PN/LID pairing'
+									)
+									try {
+										msgBuffer = await repository.decryptMessage({
+											jid: altUser,
+											type: e2eType,
+											ciphertext: content
+										})
+									} catch {
+										// preserve the original, more informative error
+										// (e.g. "Bad MAC") over the retry's (e.g. "no session")
+										throw err
+									}
+								}
+
 								break
+							}
 							case 'plaintext':
 								msgBuffer = content
 								break
