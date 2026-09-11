@@ -649,6 +649,11 @@ export const downloadEncryptedContent = async (
 			}
 		}
 	})
+	// pipe() does not forward 'error' events from source to destination —
+	// without this, a dropped connection or malformed response on `fetched`
+	// crashes the process (unhandled 'error' on the source) instead of
+	// surfacing as an error on the returned stream that callers can catch.
+	fetched.on('error', err => output.destroy(err))
 	return fetched.pipe(output, { end: true })
 }
 
