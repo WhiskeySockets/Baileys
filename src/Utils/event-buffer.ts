@@ -285,6 +285,17 @@ const makeBufferData = (): BufferedEventData => {
 	}
 }
 
+/**
+ * Merges an incoming socket event into the shared buffered-event accumulator
+ * (`data`), deduplicating and combining fields per event type (history sets,
+ * message upserts/updates/receipts, chat/contact changes, etc.) so the
+ * eventual flush emits one consolidated update instead of many partial ones.
+ *
+ * For message updates specifically, an already-decoded `messageTimestamp` on
+ * the buffered message is preserved across the merge — a receipt-only update
+ * must not overwrite a timestamp that was already correctly decoded from an
+ * earlier upsert, regardless of which order the two events arrive in.
+ */
 function append<E extends BufferableEvent>(
 	data: BufferedEventData,
 	historyCache: Set<string>,
