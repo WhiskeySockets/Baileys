@@ -1,0 +1,29 @@
+name: Sync Upstream (Baileys)
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Run every 6 hours
+  workflow_dispatch:      # Manual trigger button in GitHub Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Sync with upstream WhiskeySockets/Baileys
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/WhiskeySockets/Baileys.git
+          git fetch upstream master
+          git checkout master
+          git merge upstream/master --no-edit
+          git push origin master
