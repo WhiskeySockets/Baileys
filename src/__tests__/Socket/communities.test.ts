@@ -1,3 +1,4 @@
+import { Boom } from '@hapi/boom'
 import { extractCommunityMetadata } from '../../Socket/communities'
 import type { BinaryNode } from '../../WABinary'
 
@@ -29,7 +30,15 @@ describe('extractCommunityMetadata', () => {
 	it('throws a classified error when neither metadata node is present', () => {
 		const result: BinaryNode = { tag: 'iq', attrs: { type: 'result' }, content: [] }
 
-		expect(() => extractCommunityMetadata(result)).toThrow(/missing <community> or <group> node/)
+		let thrown: unknown
+		try {
+			extractCommunityMetadata(result)
+		} catch (err) {
+			thrown = err
+		}
+
+		expect(thrown).toBeInstanceOf(Boom)
+		expect((thrown as Boom).message).toMatch(/missing <community> or <group> node/)
 	})
 
 	it('throws when the metadata node has no id', () => {
@@ -37,6 +46,14 @@ describe('extractCommunityMetadata', () => {
 		delete (community.attrs as Record<string, string>).id
 		const result: BinaryNode = { tag: 'iq', attrs: { type: 'result' }, content: [community] }
 
-		expect(() => extractCommunityMetadata(result)).toThrow(/missing community id/)
+		let thrown: unknown
+		try {
+			extractCommunityMetadata(result)
+		} catch (err) {
+			thrown = err
+		}
+
+		expect(thrown).toBeInstanceOf(Boom)
+		expect((thrown as Boom).message).toMatch(/missing community id/)
 	})
 })
