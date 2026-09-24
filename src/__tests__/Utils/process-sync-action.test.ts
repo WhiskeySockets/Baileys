@@ -126,6 +126,33 @@ describe('processSyncAction', () => {
 				expect.arrayContaining([expect.objectContaining({ unreadCount: null })])
 			)
 		})
+
+		it('carries the message range the read covered', () => {
+			const messageRange: proto.SyncActionValue.ISyncActionMessageRange = {
+				lastMessageTimestamp: 1700000100,
+				messages: [{ key: { id: 'LAST', remoteJid: 'chat@s.whatsapp.net', fromMe: false }, timestamp: 1700000100 }]
+			}
+			const syncAction = createSyncAction({ markChatAsReadAction: { read: true, messageRange } }, [
+				'markRead',
+				'chat@s.whatsapp.net'
+			])
+			processSyncAction(syncAction, ev, mockMe, undefined, logger)
+			expect(ev.emit).toHaveBeenCalledWith(
+				'chats.update',
+				expect.arrayContaining([expect.objectContaining({ unreadCount: 0, readMessageRange: messageRange })])
+			)
+		})
+
+		it('omits readMessageRange when the action has no range', () => {
+			const syncAction = createSyncAction({ markChatAsReadAction: { read: true } }, ['markRead', 'chat@s.whatsapp.net'])
+			processSyncAction(syncAction, ev, mockMe, undefined, logger)
+			expect(ev.emittedEvents).toHaveLength(1)
+			expect(ev.emittedEvents[0]!.event).toBe('chats.update')
+			const updates = ev.emittedEvents[0]!.data as Array<Record<string, unknown>>
+			expect(updates).toHaveLength(1)
+			expect(updates[0]).toMatchObject({ id: 'chat@s.whatsapp.net', unreadCount: 0 })
+			expect(updates[0]).not.toHaveProperty('readMessageRange')
+		})
 	})
 
 	describe('deleteMessageForMeAction', () => {
