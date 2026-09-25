@@ -332,7 +332,25 @@ describe('getWAUploadToServer', () => {
 		await cleanupTempFile(tempFilePath)
 	})
 
-	it('does not pass a generic https Agent as a fetch dispatcher', async () => {
+	const mediaConn: MediaConnInfo = {
+		auth: 'auth-token',
+		ttl: 60,
+		hosts: [{ hostname: 'upload.example.com', maxContentLengthBytes: 1024 }],
+		fetchDate: new Date()
+	}
+
+	const makeUpload = (fetchAgent?: Agent) =>
+		getWAUploadToServer(
+			{
+				customUploadHosts: [],
+				fetchAgent,
+				logger: createLogger(),
+				options: {}
+			} as Partial<SocketConfig> as SocketConfig,
+			async () => mediaConn
+		)
+
+	it('keeps using fetch when no agent is set', async () => {
 		let fetchInit: RequestInit | undefined
 		globalThis.fetch = (async (_input, init) => {
 			fetchInit = init
@@ -341,30 +359,38 @@ describe('getWAUploadToServer', () => {
 			})
 		}) as typeof fetch
 
-		const mediaConn: MediaConnInfo = {
-			auth: 'auth-token',
-			ttl: 60,
-			hosts: [{ hostname: 'upload.example.com', maxContentLengthBytes: 1024 }],
-			fetchDate: new Date()
-		}
-		const upload = getWAUploadToServer(
-			{
-				customUploadHosts: [],
-				fetchAgent: new Agent(),
-				logger: createLogger(),
-				options: {}
-			} as Partial<SocketConfig> as SocketConfig,
-			async () => mediaConn
-		)
-
-		await expect(upload(tempFilePath, { fileEncSha256B64: 'abc123', mediaType: 'image' })).resolves.toEqual({
+		await expect(makeUpload()(tempFilePath, { fileEncSha256B64: 'abc123', mediaType: 'image' })).resolves.toEqual({
 			mediaUrl: 'https://example.com/media',
 			directPath: '/media',
 			meta_hmac: undefined,
 			fbid: undefined,
 			ts: undefined
 		})
-		expect((fetchInit as (RequestInit & { dispatcher?: unknown }) | undefined)?.dispatcher).toBeUndefined()
+		expect(fetchInit).toBeDefined()
+		expect((fetchInit as RequestInit & { dispatcher?: unknown }).dispatcher).toBeUndefined()
+	})
+
+	it('uploads through node:https when a generic https Agent is set, so proxy agents are honored', async () => {
+		let fetchCalls = 0
+		globalThis.fetch = (async () => {
+			fetchCalls++
+			return new Response('{}')
+		}) as typeof fetch
+
+		// the lookup only runs if the request actually goes through this agent
+		const lookedUp: string[] = []
+		const agent = new Agent({
+			lookup: (hostname, _options, callback) => {
+				lookedUp.push(hostname)
+				callback(new Error('blocked by test agent'), '', 4)
+			}
+		})
+
+		await expect(makeUpload(agent)(tempFilePath, { fileEncSha256B64: 'abc123', mediaType: 'image' })).rejects.toThrow(
+			'Media upload failed on all hosts'
+		)
+		expect(fetchCalls).toBe(0)
+		expect(lookedUp).toEqual(['upload.example.com'])
 	})
 })
 
