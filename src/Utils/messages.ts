@@ -818,6 +818,13 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 }
 
 /**
+ * Whether the outgoing content is a view once message.
+ * WA Web tags these sends with a `<meta view_once="true"/>` stanza node.
+ */
+export const isViewOnceMessage = (content: WAMessageContent | null | undefined) =>
+	!!(content?.viewOnceMessage || content?.viewOnceMessageV2 || content?.viewOnceMessageV2Extension)
+
+/**
  * Extract the true message content from a message
  * Eg. extracts the inner message from a disappearing message/view once message
  */
