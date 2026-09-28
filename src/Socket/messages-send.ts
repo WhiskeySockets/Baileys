@@ -675,7 +675,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		await authState.keys.transaction(async () => {
 			// normalize first so wrapped media (viewOnce/ephemeral) is detected correctly
-			const innerMessage = normalizeMessageContent(message)
+			// normalizeMessageContent may return undefined; fall back to the raw message
+			const innerMessage = normalizeMessageContent(message) ?? message
 			const mediaType = getMediaType(innerMessage)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
