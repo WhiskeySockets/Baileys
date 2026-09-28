@@ -674,7 +674,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		await authState.keys.transaction(async () => {
-			const mediaType = getMediaType(message)
+			// normalize first so wrapped media (viewOnce/ephemeral) is detected correctly
+			const innerMessage = normalizeMessageContent(message)
+			const mediaType = getMediaType(innerMessage)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
 			}
@@ -684,7 +686,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
 				binaryNodeContent.push({
 					tag: 'plaintext',
-					attrs: {},
+					// the server rejects media sent to channels without the mediatype attribute
+					attrs: extraAttrs,
 					content: bytes
 				})
 				const stanza: BinaryNode = {
@@ -692,7 +695,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {
 						to: jid,
 						id: msgId,
-						type: getMessageType(message),
+						type: getMessageType(innerMessage),
 						...(additionalAttributes || {})
 					},
 					content: binaryNodeContent
