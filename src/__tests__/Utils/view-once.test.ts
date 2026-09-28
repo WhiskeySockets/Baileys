@@ -8,6 +8,7 @@ describe('isViewOnceMessage', () => {
 		expect(isViewOnceMessage({ viewOnceMessage: { message: image } })).toBe(true)
 		expect(isViewOnceMessage({ viewOnceMessageV2: { message: image } })).toBe(true)
 		expect(isViewOnceMessage({ viewOnceMessageV2Extension: { message: { audioMessage: { ptt: true } } } })).toBe(true)
+		expect(isViewOnceMessage({ viewOnceMessage: { message: { ptvMessage: { seconds: 5 } } } })).toBe(true)
 	})
 
 	it('looks through a disappearing message wrapper', () => {
