@@ -11,4 +11,4 @@ hooks:
 npm:
   publish: false
   private: true
-  registry: "OMITTED"
+  registry: "https://registry.npmjs.org/"

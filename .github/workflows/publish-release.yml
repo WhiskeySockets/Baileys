@@ -47,14 +47,8 @@ jobs:
       - name: Install Dependencies
         run: yarn install --immutable
 
-      - name: Publish in NPM (as `baileys`)
+      - name: Publish NYXCORE package
         run: npm publish --access public --provenance --tag latest
-
-      - name: Publish in NPM (whiskeysockets scope)
-        run: |
-          npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
-          npm publish --access public --provenance --tag latest
-          npx json -I -f package.json -e "this.name='baileys'"
 
       - name: Generate Changelog
         id: generate_changelog
@@ -68,7 +62,7 @@ jobs:
         run: yarn pack
 
       - name: Rename Pack
-        run: mv *.tgz baileys.tgz
+        run: mv *.tgz nyxcorebailey.tgz
 
       - name: Create Release
         uses: meeDamian/github-release@2.0
@@ -83,6 +77,6 @@ jobs:
           draft: false
           prerelease: false
           files: >
-            baileys.tgz
+            nyxcorebailey.tgz
           gzip: folders
           allow_override: true

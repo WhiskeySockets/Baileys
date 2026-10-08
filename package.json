@@ -1,8 +1,8 @@
 {
-  "name": "@nyxcore/baileys",
+  "name": "@nyxcore/nyxcorebailey",
   "type": "module",
   "version": "1.0.0",
-  "description": "NYXCORE Baileys — Socket-based TypeScript/JavaScript API for WhatsApp Web",
+  "description": "NYXCORE-maintained fork of Baileys, a TypeScript/JavaScript WebSocket library for WhatsApp Web",
   "keywords": [
     "whatsapp",
     "automation"
@@ -13,6 +13,9 @@
 },
   "license": "MIT",
   "author": "NYXCORE",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [

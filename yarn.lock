@@ -3090,9 +3090,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"baileys@workspace:.":
+"@nyxcore/nyxcorebailey@workspace:.":
   version: 0.0.0-use.local
-  resolution: "baileys@workspace:."
+  resolution: "@nyxcore/nyxcorebailey@workspace:."
   dependencies:
     "@cacheable/node-cache": "npm:^1.4.0"
     "@eslint/eslintrc": "npm:^3.3.1"

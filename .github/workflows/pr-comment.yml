@@ -41,13 +41,13 @@ jobs:
 
             ```
             # NPM
-            npm install @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
+            npm install github:${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
 
             # Yarn (v2+)
-            yarn add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
+            yarn add github:${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
 
             # PNPM
-            pnpm add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
+            pnpm add github:${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
             ```
 
             If you encounter any issues or have feedback, feel free to comment as well.

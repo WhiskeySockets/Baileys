@@ -1,7 +1,8 @@
-<h1 align='center'><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
+# NYXCORE Baileys
 
-<div align='center'>Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.</div>
+NYXCORE Baileys is an independently maintained, MIT-licensed fork of [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys), a WebSocket-based TypeScript library for interacting with WhatsApp Web. It keeps the upstream API while publishing separately as `@nyxcore/nyxcorebailey`.
 
+This project is not affiliated with or endorsed by WhatsApp. Upstream copyright and MIT license notices are preserved in [LICENSE](LICENSE).
 
 > [!CAUTION]
 > NOTICE OF BREAKING CHANGE.
@@ -11,18 +12,7 @@
 > Please check out https://whiskey.so/migrate-latest for more information.
 
 # Important Note
-This is a temporary README.md, the new guide is in development and will this file will be replaced with .github/README.md (already a default on GitHub).
-
-New guide link: https://baileys.wiki
-
-# Get Support
-
-If you'd like business to enterprise-level support from Rajeh, the current maintainer of Baileys, you can book a video chat. Book a 1 hour time slot by contacting him on Discord or pre-ordering [here](https://purpshell.dev/book). The earlier you pre-order the better, as his time slots usually fill up very quickly. He offers immense value per hour and will answer all your questions before the time runs out.
-
-If you are a business, we encourage you to contribute back to the high development costs of the project and to feed the maintainers who dump tens of hours a week on this. You can do so by booking meetings or sponsoring below. All support, even in bona fide / contribution hours, is welcome by businesses of all sizes. This is not condoning or endorsing businesses to use the library. See the Disclaimer below.
-
-# Sponsor
-If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
+This fork keeps the upstream Baileys API and protocol implementation, but its package releases and versioning are maintained separately by NYXCORE. The upstream migration guide and API docs are still useful for this shared API.
 
 # Disclaimer
 This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
@@ -39,9 +29,7 @@ Use at your own discretion. Do not spam people with this. We discourage any stal
 - Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writing his observations on the workings of WhatsApp Multi-Device. Also, thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing his observations on the workings of WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
 
 > [!IMPORTANT]
-> The original repository had to be removed by the original author - we now continue development in this repository here.
-This is the only official repository and is maintained by the community.
-> **Join the Discord [here](https://discord.gg/WeJM5FP9GG)**
+> This is a NYXCORE-maintained fork, not the official upstream repository. Upstream development continues at [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys).
 
 ## Example
 
@@ -54,20 +42,22 @@ To run the example script, download or clone the repo and then type the followin
 
 ## Install
 
-Use the stable version:
+Install the NYXCORE package:
 ```
-yarn add @whiskeysockets/baileys
+npm install @nyxcore/nyxcorebailey
 ```
 
-Use the edge version (no guarantee of stability, but latest fixes + features)
+To install the current GitHub branch instead of the published package:
 ```
-yarn add github:WhiskeySockets/Baileys
+npm install github:NYXCORE-X/NYXCORE-BAILEYS
 ```
 
 Then import your code using:
 ```ts
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from '@nyxcore/nyxcorebailey'
 ```
+
+The npm command becomes available after the first public release. Maintainers must configure npm Trusted Publishing for `NYXCORE-X/NYXCORE-BAILEYS` and the `publish-release.yml` workflow before creating a release tag.
 
 # Links
 
@@ -195,7 +185,7 @@ WhatsApp provides a multi-device API that allows Baileys to be authenticated as 
 > You can customize browser name if you connect with **QR-CODE**, with `Browser` constant, we have some browsers config, **see the [BrowsersMap type alias](https://baileys.wiki/docs/api/type-aliases/BrowsersMap/)**
 
 ```ts
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from '@nyxcore/nyxcorebailey'
 
 const sock = makeWASocket({
     // can provide additional config here
@@ -215,7 +205,7 @@ If the connection is successful, you will see a QR code printed on your terminal
 The phone number can't have `+` or `()` or `-`, only numbers, you must provide country code
 
 ```ts
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from '@nyxcore/nyxcorebailey'
 
 const sock = makeWASocket({
     // can provide additional config here
@@ -288,7 +278,7 @@ You obviously don't want to keep scanning the QR code every time you want to con
 
 So, you can load the credentials to log back in:
 ```ts
-import makeWASocket, { useMultiFileAuthState } from '@whiskeysockets/baileys'
+import makeWASocket, { useMultiFileAuthState } from '@nyxcore/nyxcorebailey'
 
 const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
 
@@ -331,7 +321,7 @@ sock.ev.on('messages.upsert', ({ messages }) => {
 > For reliable serialization of the authentication state, especially when storing as JSON, always use the BufferJSON utility.
 
 ```ts
-import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys'
+import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@nyxcore/nyxcorebailey'
 import { Boom } from '@hapi/boom'
 
 async function connectToWhatsApp () {
@@ -413,7 +403,7 @@ sock.ev.on('messages.update', event => {
 It can be used as follows:
 
 ```ts
-import makeWASocket, { makeInMemoryStore } from '@whiskeysockets/baileys'
+import makeWASocket, { makeInMemoryStore } from '@nyxcore/nyxcorebailey'
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
 const store = makeInMemoryStore({ })
@@ -599,7 +589,7 @@ await sock.sendMessage(
 await sock.sendMessage(
     jid,
     {
-        text: 'Hi, this was sent using https://github.com/whiskeysockets/baileys'
+        text: 'Hi, this was sent using https://github.com/NYXCORE-X/NYXCORE-BAILEYS'
     }
 )
 ```
@@ -729,7 +719,7 @@ await sock.sendMessage(jid, {
 If you want to save the media you received
 ```ts
 import { createWriteStream } from 'fs'
-import { downloadMediaMessage, getContentType } from '@whiskeysockets/baileys'
+import { downloadMediaMessage, getContentType } from '@nyxcore/nyxcorebailey'
 
 sock.ev.on('messages.upsert', async ({ [m] }) => {
     if (!m.message) return // if there is no text or media message
