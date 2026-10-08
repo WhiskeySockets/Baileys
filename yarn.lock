@@ -2351,6 +2351,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/qrcode-terminal@npm:^0.12.2":
+  version: 0.12.2
+  resolution: "@types/qrcode-terminal@npm:0.12.2"
+  checksum: 10c0/9d8d75f76ed2f75faaa2007850d884ce71ad25e05d8683a2b42e6b6cb6568d0d87a3ebb427e174fd77ab4264de40923806785fde2d97d81fce393f127d88931f
+  languageName: node
+  linkType: hard
+
 "@types/stack-utils@npm:^2.0.3":
   version: 2.0.3
   resolution: "@types/stack-utils@npm:2.0.3"
@@ -3100,6 +3107,7 @@ __metadata:
     "@hapi/boom": "npm:^9.1.3"
     "@types/jest": "npm:^30.0.0"
     "@types/node": "npm:^20.9.0"
+    "@types/qrcode-terminal": "npm:^0.12.2"
     "@types/ws": "npm:^8.0.0"
     "@typescript-eslint/eslint-plugin": "npm:^8"
     "@typescript-eslint/parser": "npm:^8"
@@ -3126,6 +3134,7 @@ __metadata:
     prettier: "npm:^3.5.3"
     protobufjs: "npm:^7.5.6"
     protobufjs-cli: "npm:^1.1.3"
+    qrcode-terminal: "npm:^0.12.0"
     release-it: "npm:^20.0.1"
     ts-jest: "npm:^29.4.0"
     tsc-esm-fix: "npm:^3.1.2"
@@ -7476,6 +7485,15 @@ __metadata:
   version: 7.0.1
   resolution: "pure-rand@npm:7.0.1"
   checksum: 10c0/9cade41030f5ec95f5d55a11a71404cd6f46b69becaad892097cd7f58e2c6248cd0a933349ca7d21336ab629f1da42ffe899699b671bc4651600eaf6e57f837e
+  languageName: node
+  linkType: hard
+
+"qrcode-terminal@npm:^0.12.0":
+  version: 0.12.0
+  resolution: "qrcode-terminal@npm:0.12.0"
+  bin:
+    qrcode-terminal: ./bin/qrcode-terminal.js
+  checksum: 10c0/1d8996a743d6c95e22056bd45fe958c306213adc97d7ef8cf1e03bc1aeeb6f27180a747ec3d761141921351eb1e3ca688f7b673ab54cdae9fa358dffaa49563c
   languageName: node
   linkType: hard
 

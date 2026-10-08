@@ -1,5 +1,8 @@
 import { Boom } from '@hapi/boom'
-import { decodeMessageNode } from '../../Utils/decode-wa-message'
+import { proto } from '../../../WAProto/index.js'
+import type { SignalRepositoryWithLIDStore } from '../../Types/Signal'
+import { decodeMessageNode, decryptMessageNode } from '../../Utils/decode-wa-message'
+import type { ILogger } from '../../Utils/logger'
 import type { BinaryNode } from '../../WABinary'
 
 const ME_ID = '5511999999999@s.whatsapp.net'
@@ -12,6 +15,27 @@ const message = (attrs: Record<string, string>): BinaryNode => ({
 	attrs: { t: '1700000000', ...attrs },
 	content: []
 })
+
+const plaintextMessage = (content: proto.IMessage): BinaryNode => ({
+	...message({ id: 'PLAINTEXT_MESSAGE', from: PEER_ID }),
+	content: [
+		{
+			tag: 'plaintext',
+			attrs: {},
+			content: proto.Message.encode(proto.Message.create(content)).finish()
+		}
+	]
+})
+
+const repository = {
+	lidMapping: {
+		getLIDForPN: async () => null
+	}
+} as unknown as SignalRepositoryWithLIDStore
+
+const logger = {
+	error: () => undefined
+} as unknown as ILogger
 
 const captureThrow = (fn: () => unknown): unknown => {
 	try {
@@ -82,5 +106,91 @@ describe('decodeMessageNode', () => {
 			expect(result.fullMessage.key.participant).toBe(PEER_ID)
 			expect(result.author).toBe(PEER_ID)
 		})
+	})
+})
+
+describe('decryptMessageNode', () => {
+	it('preserves an outer message secret when unwrapping a device-sent message', async () => {
+		const messageSecret = Buffer.alloc(32, 7)
+		const result = decryptMessageNode(
+			plaintextMessage({
+				deviceSentMessage: {
+					message: { conversation: 'linked-device message' }
+				},
+				messageContextInfo: { messageSecret }
+			}),
+			ME_ID,
+			ME_LID,
+			repository,
+			logger
+		)
+
+		await result.decrypt()
+
+		expect(result.fullMessage.message?.conversation).toBe('linked-device message')
+		expect(result.fullMessage.message?.messageContextInfo?.messageSecret).toEqual(messageSecret)
+		expect(result.fullMessage.message?.deviceSentMessage).toBeUndefined()
+	})
+
+	it('merges an outer message secret with inner message context fields', async () => {
+		const messageSecret = Buffer.alloc(32, 7)
+		const result = decryptMessageNode(
+			plaintextMessage({
+				deviceSentMessage: {
+					message: {
+						conversation: 'linked-device message',
+						messageContextInfo: { messageAddOnDurationInSecs: 900 }
+					}
+				},
+				messageContextInfo: { messageSecret }
+			}),
+			ME_ID,
+			ME_LID,
+			repository,
+			logger
+		)
+
+		await result.decrypt()
+
+		expect(result.fullMessage.message?.messageContextInfo?.messageSecret).toEqual(messageSecret)
+		expect(result.fullMessage.message?.messageContextInfo?.messageAddOnDurationInSecs).toBe(900)
+	})
+
+	it('prefers inner fields when both device-sent layers provide message context', async () => {
+		const outerSecret = Buffer.alloc(32, 7)
+		const innerSecret = Buffer.alloc(32, 9)
+		const result = decryptMessageNode(
+			plaintextMessage({
+				deviceSentMessage: {
+					message: {
+						conversation: 'linked-device message',
+						messageContextInfo: { messageSecret: innerSecret }
+					}
+				},
+				messageContextInfo: { messageSecret: outerSecret }
+			}),
+			ME_ID,
+			ME_LID,
+			repository,
+			logger
+		)
+
+		await result.decrypt()
+
+		expect(result.fullMessage.message?.messageContextInfo?.messageSecret).toEqual(innerSecret)
+	})
+
+	it('leaves messages without a device-sent wrapper unchanged', async () => {
+		const messageSecret = Buffer.alloc(32, 5)
+		const originalMessage = {
+			conversation: 'ordinary message',
+			messageContextInfo: { messageSecret }
+		}
+		const decodedMessage = proto.Message.decode(proto.Message.encode(proto.Message.create(originalMessage)).finish())
+		const result = decryptMessageNode(plaintextMessage(originalMessage), ME_ID, ME_LID, repository, logger)
+
+		await result.decrypt()
+
+		expect(result.fullMessage.message).toEqual(decodedMessage)
 	})
 })
