@@ -11,7 +11,7 @@
  * Regression guard for: store B running inside store A's transaction seeing
  * A's ambient context and committing B's writes into A's backing store.
  */
-import type { SignalDataSet, SignalKeyStore } from '../../Types'
+import type { SignalDataSet, SignalDataTypeMap, SignalKeyStore } from '../../Types'
 import { addTransactionCapability } from '../../Utils/auth-utils'
 import type { ILogger } from '../../Utils/logger'
 
@@ -27,28 +27,47 @@ const silentLogger = (): ILogger =>
 		fatal: () => {}
 	}) as unknown as ILogger
 
+type StoreBuckets = { [T in keyof SignalDataTypeMap]: { [id: string]: SignalDataTypeMap[T] } }
+
+const emptyBuckets = (): StoreBuckets => ({
+	'pre-key': {},
+	session: {},
+	'sender-key': {},
+	'sender-key-memory': {},
+	'app-state-sync-key': {},
+	'app-state-sync-version': {},
+	'lid-mapping': {},
+	'device-list': {},
+	tctoken: {},
+	'identity-key': {}
+})
+
 const makeInMemoryStore = (): SignalKeyStore => {
-	const data: Record<string, Record<string, unknown>> = {}
+	const data = emptyBuckets()
+
+	const write = <T extends keyof SignalDataTypeMap>(type: T, incoming: SignalDataSet[T]) => {
+		const bucket: { [id: string]: SignalDataTypeMap[T] } = data[type]
+		for (const id in incoming) {
+			const v = incoming[id]
+			if (v === null || v === undefined) delete bucket[id]
+			else bucket[id] = v
+		}
+	}
+
 	return {
-		async get(type, ids) {
-			const bucket = data[type] ?? {}
-			const out: Record<string, any> = {}
+		async get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]) {
+			const bucket: { [id: string]: SignalDataTypeMap[T] } = data[type]
+			const out: { [id: string]: SignalDataTypeMap[T] } = {}
 			for (const id of ids) {
-				if (id in bucket) out[id] = bucket[id]
+				const v = bucket[id]
+				if (v !== undefined) out[id] = v
 			}
 
 			return out
 		},
 		async set(d: SignalDataSet) {
-			for (const type in d) {
-				data[type] = data[type] ?? {}
-				const bucket = data[type]
-				const incoming = (d as any)[type] as Record<string, unknown>
-				for (const id in incoming) {
-					const v = incoming[id]
-					if (v === null) delete bucket[id]
-					else bucket[id] = v
-				}
+			for (const type of Object.keys(d) as (keyof SignalDataTypeMap)[]) {
+				write(type, d[type])
 			}
 		}
 	}
