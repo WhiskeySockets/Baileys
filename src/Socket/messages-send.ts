@@ -518,8 +518,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
 				category: 'peer',
-
-				push_priority: 'high_force'
+				push_priority: 'high_force',
+				privacy_sensitive: '1'
 			},
 			additionalNodes: [
 				{
