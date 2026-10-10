@@ -173,7 +173,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let ts = oldestMsgTimestamp
 		if (typeof ts === 'number' && ts > 1e11) {
 			ts = Math.floor(ts / 1000)
-		} else if (typeof ts === 'object' && 'toNumber' in ts) {
+		} else if (ts !== null && typeof ts === 'object' && 'toNumber' in ts) {
 			const num = (ts as Long).toNumber()
 			if (num > 1e11) {
 				ts = Math.floor(num / 1000)
