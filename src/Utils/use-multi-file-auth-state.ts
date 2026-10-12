@@ -1,5 +1,5 @@
 import { Mutex } from 'async-mutex'
-import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
+import { mkdir, readFile, rename, stat, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { proto } from '../../WAProto/index.js'
 import type { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from '../Types'
@@ -39,8 +39,16 @@ export const useMultiFileAuthState = async (
 		const mutex = getFileLock(filePath)
 
 		return mutex.acquire().then(async release => {
+			// writeFile truncates in place, so a crash mid-write leaves an empty or partial file,
+			// and readData turns that into null: creds.json is silently replaced by fresh creds.
+			// Write a sibling temp file and rename it over the target (atomic on the same filesystem).
+			const tmpPath = `${filePath}.tmp`
 			try {
-				await writeFile(filePath, JSON.stringify(data, BufferJSON.replacer))
+				await writeFile(tmpPath, JSON.stringify(data, BufferJSON.replacer))
+				await rename(tmpPath, filePath)
+			} catch (error) {
+				await unlink(tmpPath).catch(() => {})
+				throw error
 			} finally {
 				release()
 			}
