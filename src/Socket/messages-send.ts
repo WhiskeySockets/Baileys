@@ -697,6 +697,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const newsletterMediaMsg =
 					innerMessage.imageMessage ||
 					innerMessage.videoMessage ||
+					innerMessage.ptvMessage ||
 					innerMessage.audioMessage ||
 					innerMessage.documentMessage ||
 					innerMessage.stickerMessage
