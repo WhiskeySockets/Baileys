@@ -6,7 +6,14 @@ import * as path from 'path'
 import { Readable } from 'stream'
 import type { MediaConnInfo, SocketConfig } from '../../Types'
 import type { ILogger } from '../../Utils/logger'
-import { encryptedStream, getWAUploadToServer, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import {
+	encryptedStream,
+	getWAUploadToServer,
+	setNewsletterMediaHandle,
+	takeNewsletterMediaHandle,
+	type UploadParams,
+	uploadWithNodeHttp
+} from '../../Utils/messages-media'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -484,5 +491,30 @@ describe('encryptedStream', () => {
 			expect(result.mediaKey).toBeDefined()
 			await cleanupFiles([result.encFilePath, result.originalFilePath])
 		}
+	})
+})
+
+describe('newsletter media handle map', () => {
+	it('stores and consumes a handle by directPath', () => {
+		setNewsletterMediaHandle('/v/test-handle-1', 'handle-abc')
+
+		expect(takeNewsletterMediaHandle('/v/test-handle-1')).toBe('handle-abc')
+		// consumed: a second take returns undefined
+		expect(takeNewsletterMediaHandle('/v/test-handle-1')).toBeUndefined()
+	})
+
+	it('returns undefined for unknown, null or undefined directPath', () => {
+		expect(takeNewsletterMediaHandle('/v/never-stored')).toBeUndefined()
+		expect(takeNewsletterMediaHandle(null)).toBeUndefined()
+		expect(takeNewsletterMediaHandle(undefined)).toBeUndefined()
+	})
+
+	it('keeps handles isolated per directPath', () => {
+		setNewsletterMediaHandle('/v/test-handle-a', 'handle-a')
+		setNewsletterMediaHandle('/v/test-handle-b', 'handle-b')
+
+		expect(takeNewsletterMediaHandle('/v/test-handle-a')).toBe('handle-a')
+		expect(takeNewsletterMediaHandle('/v/test-handle-b')).toBe('handle-b')
+		expect(takeNewsletterMediaHandle('/v/test-handle-a')).toBeUndefined()
 	})
 })
