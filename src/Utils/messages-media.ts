@@ -681,6 +681,7 @@ type MediaUploadResult = {
 	meta_hmac?: string
 	ts?: number
 	fbid?: number
+	handle?: string
 }
 
 export type UploadParams = {
@@ -823,6 +824,24 @@ const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<Medi
 	}
 }
 
+// Upload handles keyed by directPath, consumed when sending media to channels.
+// The server requires the newsletter upload `handle` as `media_id` on the
+// <message> node (see whatsmeow's sendNewsletter); without it media like
+// voice notes is rejected with ACK error 479.
+const newsletterMediaHandleMap = new Map<string, string>()
+
+/** Returns and removes the stored upload handle for a directPath, if any. */
+export const takeNewsletterMediaHandle = (directPath?: string | null): string | undefined => {
+	if (!directPath) {
+		return undefined
+	}
+	const handle = newsletterMediaHandleMap.get(directPath)
+	if (handle) {
+		newsletterMediaHandleMap.delete(directPath)
+	}
+	return handle
+}
+
 export const getWAUploadToServer = (
 	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
@@ -831,7 +850,7 @@ export const getWAUploadToServer = (
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
-		let urls: { mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number } | undefined
+		let urls: { mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number; handle?: string } | undefined
 		const hosts = [...customUploadHosts, ...uploadInfo.hosts]
 
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
@@ -874,7 +893,12 @@ export const getWAUploadToServer = (
 						directPath: result.direct_path!,
 						meta_hmac: result.meta_hmac,
 						fbid: result.fbid,
-						ts: result.ts
+						ts: result.ts,
+						handle: result.handle
+					}
+					// keep the handle so channel sends can use it as media_id
+					if (result.direct_path && result.handle) {
+						newsletterMediaHandleMap.set(result.direct_path, result.handle)
 					}
 					break
 				} else {
