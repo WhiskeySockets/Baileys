@@ -824,11 +824,18 @@ const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<Medi
 	}
 }
 
-// Upload handles keyed by directPath, consumed when sending media to channels.
-// The server requires the newsletter upload `handle` as `media_id` on the
-// <message> node (see whatsmeow's sendNewsletter); without it media like
-// voice notes is rejected with ACK error 479.
+// Upload handles for newsletter media, keyed by directPath and consumed when
+// sending to channels. The server requires the newsletter upload `handle` as
+// `media_id` on the <message> node (see whatsmeow's sendNewsletter); without
+// it media like voice notes is rejected with ACK error 479.
+// Only newsletter uploads are stored here (see prepareWAMessageMedia), so
+// regular-chat uploads never accumulate entries.
 const newsletterMediaHandleMap = new Map<string, string>()
+
+/** Stores the upload handle of a newsletter media upload, keyed by directPath. */
+export const setNewsletterMediaHandle = (directPath: string, handle: string) => {
+	newsletterMediaHandleMap.set(directPath, handle)
+}
 
 /** Returns and removes the stored upload handle for a directPath, if any. */
 export const takeNewsletterMediaHandle = (directPath?: string | null): string | undefined => {
@@ -895,10 +902,6 @@ export const getWAUploadToServer = (
 						fbid: result.fbid,
 						ts: result.ts,
 						handle: result.handle
-					}
-					// keep the handle so channel sends can use it as media_id
-					if (result.direct_path && result.handle) {
-						newsletterMediaHandleMap.set(result.direct_path, result.handle)
 					}
 					break
 				} else {
