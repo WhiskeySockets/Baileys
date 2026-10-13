@@ -219,11 +219,8 @@ export const prepareWAMessageMedia = async (
 			obj.stickerMessage.stickerSentTs = Date.now()
 		}
 
-		if (cacheableKey) {
-			logger?.debug({ cacheableKey }, 'set cache')
-			await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
-		}
-
+		// do not cache newsletter messages: the cached form has no mediaKey and
+		// no upload handle, so a later ordinary-chat send must never read it
 		return obj
 	}
 
