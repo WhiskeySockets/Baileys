@@ -1200,6 +1200,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'image'
 		} else if (message.videoMessage) {
 			return message.videoMessage.gifPlayback ? 'gif' : 'video'
+		} else if (message.ptvMessage) {
+			return 'video'
 		} else if (message.audioMessage) {
 			return message.audioMessage.ptt ? 'ptt' : 'audio'
 		} else if (message.contactMessage) {
