@@ -196,6 +196,21 @@ export const prepareWAMessageMedia = async (
 			setNewsletterMediaHandle(directPath, handle)
 		}
 
+		// the newsletter branch returns before the duration/waveform step below,
+		// so compute them here for audio — otherwise channel voice notes show no waveform
+		if (mediaType === 'audio') {
+			try {
+				if (typeof uploadData.seconds === 'undefined') {
+					uploadData.seconds = await getAudioDuration(filePath)
+				}
+				if (uploadData.ptt === true && typeof uploadData.waveform === 'undefined') {
+					uploadData.waveform = await getAudioWaveform(filePath, logger)
+				}
+			} catch (error) {
+				logger?.warn({ trace: (error as any)?.stack }, 'failed to obtain audio duration/waveform for newsletter')
+			}
+		}
+
 		await fs.unlink(filePath)
 
 		const obj = WAProto.Message.fromObject({
