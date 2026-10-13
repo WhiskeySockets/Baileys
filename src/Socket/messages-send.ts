@@ -37,6 +37,7 @@ import {
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
+import { takeNewsletterMediaHandle } from '../Utils/messages-media'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -691,12 +692,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: extraAttrs,
 					content: bytes
 				})
+				// voice notes (and possibly other media) are rejected by the server
+				// (ACK error 479) without the newsletter upload handle as media_id
+				const newsletterMediaMsg =
+					innerMessage.imageMessage ||
+					innerMessage.videoMessage ||
+					innerMessage.audioMessage ||
+					innerMessage.documentMessage ||
+					innerMessage.stickerMessage
+				const mediaId = takeNewsletterMediaHandle(newsletterMediaMsg?.directPath)
 				const stanza: BinaryNode = {
 					tag: 'message',
 					attrs: {
 						to: jid,
 						id: msgId,
 						type: getMessageType(innerMessage),
+						...(mediaId ? { media_id: mediaId } : {}),
 						...(additionalAttributes || {})
 					},
 					content: binaryNodeContent
