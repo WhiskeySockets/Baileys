@@ -23,6 +23,24 @@ const getFileLock = (path: string): Mutex => {
 	return mutex
 }
 
+// On Windows, rename fails with EPERM/EACCES/EBUSY while another process (antivirus, backup,
+// a reader outside this mutex) has the target open. The lock is short-lived, so retry briefly.
+const RENAME_RETRY_CODES = new Set(['EPERM', 'EACCES', 'EBUSY'])
+const renameWithRetry = async (from: string, to: string, attempts = 50) => {
+	for (let i = 1; ; i++) {
+		try {
+			return await rename(from, to)
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code
+			if (i >= attempts || !code || !RENAME_RETRY_CODES.has(code)) {
+				throw error
+			}
+
+			await new Promise(resolve => setTimeout(resolve, Math.min(10 * i, 100)))
+		}
+	}
+}
+
 /**
  * stores the full authentication state in a single folder.
  * Far more efficient than singlefileauthstate
@@ -45,7 +63,7 @@ export const useMultiFileAuthState = async (
 			const tmpPath = `${filePath}.tmp`
 			try {
 				await writeFile(tmpPath, JSON.stringify(data, BufferJSON.replacer))
-				await rename(tmpPath, filePath)
+				await renameWithRetry(tmpPath, filePath)
 			} catch (error) {
 				await unlink(tmpPath).catch(() => {})
 				throw error

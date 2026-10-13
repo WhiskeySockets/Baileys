@@ -46,6 +46,9 @@ describe('useMultiFileAuthState writes', () => {
 			} catch {
 				torn.push(raw.length)
 			}
+
+			// yield between reads: a reader that never closes the file blocks rename on Windows
+			await new Promise(resolve => setTimeout(resolve, 1))
 		}
 
 		await saving
