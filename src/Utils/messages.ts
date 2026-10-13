@@ -38,6 +38,7 @@ import {
 	getAudioDuration,
 	getAudioWaveform,
 	getRawMediaUploadData,
+	setNewsletterMediaHandle,
 	type MediaDownloadOptions
 } from './messages-media'
 import { shouldIncludeReportingToken } from './reporting-utils'
@@ -183,11 +184,15 @@ export const prepareWAMessageMedia = async (
 		)
 
 		const fileSha256B64 = fileSha256.toString('base64')
-		const { mediaUrl, directPath } = await options.upload(filePath, {
+		const { mediaUrl, directPath, handle } = await options.upload(filePath, {
 			fileEncSha256B64: fileSha256B64,
 			mediaType: mediaType,
 			timeoutMs: options.mediaUploadTimeoutMs
 		})
+		// keep the handle so the channel send can use it as media_id
+		if (directPath && handle) {
+			setNewsletterMediaHandle(directPath, handle)
+		}
 
 		await fs.unlink(filePath)
 
