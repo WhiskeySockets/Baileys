@@ -160,7 +160,10 @@ export const prepareWAMessageMedia = async (
 		uploadData.mimetype = MIMETYPE_MAP[mediaType]
 	}
 
-	if (cacheableKey) {
+	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
+	// Newsletter uploads must not use the media cache: a cached message carries
+	// no upload handle, but the channel send needs it as media_id.
+	if (cacheableKey && !isNewsletter) {
 		const mediaBuff = await options.mediaCache!.get<Buffer>(cacheableKey)
 		if (mediaBuff) {
 			logger?.debug({ cacheableKey }, 'got media cache hit')
@@ -174,7 +177,6 @@ export const prepareWAMessageMedia = async (
 		}
 	}
 
-	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
 	if (isNewsletter) {
 		logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter')
 		const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(
