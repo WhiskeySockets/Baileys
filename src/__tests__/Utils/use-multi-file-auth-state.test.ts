@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm } from 'fs/promises'
+import { chmod, mkdtemp, readdir, readFile, rm, stat } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { useMultiFileAuthState } from '../../Utils/use-multi-file-auth-state'
@@ -21,6 +21,16 @@ describe('useMultiFileAuthState writes', () => {
 		const raw = await readFile(join(folder, 'creds.json'), 'utf-8')
 		expect(() => JSON.parse(raw)).not.toThrow()
 		expect((await readdir(folder)).filter(f => f !== 'creds.json')).toEqual([])
+	})
+
+	// file modes are not meaningful on Windows
+	;(process.platform === 'win32' ? it.skip : it)('keeps the permissions of an existing creds.json', async () => {
+		const { saveCreds } = await useMultiFileAuthState(folder)
+		await saveCreds()
+		await chmod(join(folder, 'creds.json'), 0o600)
+
+		await saveCreds()
+		expect((await stat(join(folder, 'creds.json'))).mode & 0o777).toBe(0o600)
 	})
 
 	it('never exposes a truncated creds.json while saving', async () => {
