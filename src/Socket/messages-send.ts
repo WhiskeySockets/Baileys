@@ -70,6 +70,36 @@ import {
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
 
+/**
+ * Whether a device JID is one of our own devices. A LID device is compared with
+ * our LID and any other device with our PN: areJidsSameUser compares only the
+ * user part, and a PN can share its digits with our LID.
+ */
+export const isOwnDeviceJid = (jid: string, meId: string, meLid: string | undefined) =>
+	isLidUser(jid) || isHostedLidUser(jid) ? !!meLid && areJidsSameUser(jid, meLid) : areJidsSameUser(jid, meId)
+
+/**
+ * Stanza addressing for a resend to a single device (a retry). A resend to one
+ * of our own devices must name the chat as `recipient`; that device is
+ * addressed by LID as well as by PN, as handleReceipt already assumes.
+ */
+export const buildRetryResendAddressing = (
+	destinationJid: string,
+	participantJid: string,
+	meId: string,
+	meLid: string | undefined
+): BinaryNodeAttributes => {
+	if (isJidGroup(destinationJid)) {
+		return { to: destinationJid, participant: participantJid }
+	}
+
+	if (isOwnDeviceJid(participantJid, meId, meLid)) {
+		return { to: participantJid, recipient: destinationJid }
+	}
+
+	return { to: participantJid }
+}
+
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
 		logger,
@@ -920,8 +950,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isRetryResend) {
-				const isParticipantLid = isLidUser(participant!.jid)
-				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
+				const isMe = isOwnDeviceJid(participant!.jid, meId, meLid)
 
 				let messageToSend = message
 				if (isGroupOrStatus) {
@@ -1007,15 +1036,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// ensure the message is only sent to that person
 			// if a retry receipt is sent to everyone -- it'll fail decryption for everyone else who received the msg
 			if (participant) {
-				if (isJidGroup(destinationJid)) {
-					stanza.attrs.to = destinationJid
-					stanza.attrs.participant = participant.jid
-				} else if (areJidsSameUser(participant.jid, meId)) {
-					stanza.attrs.to = participant.jid
-					stanza.attrs.recipient = destinationJid
-				} else {
-					stanza.attrs.to = participant.jid
-				}
+				Object.assign(stanza.attrs, buildRetryResendAddressing(destinationJid, participant.jid, meId, meLid))
 			} else {
 				stanza.attrs.to = destinationJid
 			}
