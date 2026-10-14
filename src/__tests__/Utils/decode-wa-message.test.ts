@@ -3,6 +3,7 @@ import P from 'pino'
 import { proto } from '../../../WAProto/index.js'
 import type { WAMessageKey } from '../../Types'
 import type { SignalRepositoryWithLIDStore } from '../../Types/Signal'
+import { aesEncryptGCM, hkdf } from '../../Utils/crypto'
 import { decodeMessageNode, decryptMessageNode, MISSING_BOT_MESSAGE_SECRET_TEXT } from '../../Utils/decode-wa-message'
 import type { BinaryNode } from '../../WABinary'
 
@@ -106,12 +107,27 @@ describe('native bot messages', () => {
 	} as unknown as SignalRepositoryWithLIDStore
 	const logger = P({ level: 'silent' })
 
-	const botReply = (from: string, meta: Record<string, string>): BinaryNode => ({
+	// Encrypt a reply the way the bot does, for the given (bare) target sender.
+	const replyEncryptedFor = (targetSender: string, conversation: string) => {
+		const iv = Buffer.alloc(12, 1)
+		const key = hkdf(hkdf(SECRET, 32, { info: 'Bot Message' }), 32, {
+			info: `RESPONSE_FIXTURE_1${targetSender}${BOT}`
+		})
+		const encPayload = aesEncryptGCM(
+			proto.Message.encode({ conversation }).finish(),
+			key,
+			iv,
+			Buffer.from(`RESPONSE_FIXTURE_1\u0000${BOT}`)
+		)
+		return proto.MessageSecretMessage.encode({ version: 0, encIv: iv, encPayload }).finish()
+	}
+
+	const botReply = (from: string, meta: Record<string, string>, envelope = REPLY_ENVELOPE): BinaryNode => ({
 		tag: 'message',
 		attrs: { id: 'RESPONSE_FIXTURE_1', from, t: '1700000000', type: 'text' },
 		content: [
 			{ tag: 'meta', attrs: meta },
-			{ tag: 'enc', attrs: { v: '2', type: 'msmsg' }, content: REPLY_ENVELOPE }
+			{ tag: 'enc', attrs: { v: '2', type: 'msmsg' }, content: envelope }
 		]
 	})
 
@@ -175,12 +191,25 @@ describe('native bot messages', () => {
 		expect(fullMessage.message?.conversation).toBe('test-ai')
 	})
 
-	it('uses target_sender_jid when the reply names it', async () => {
+	it('derives the key from target_sender_jid when the reply names it, not from our LID', async () => {
 		const { fullMessage } = await decrypt(
-			botReply(BOT, { target_id: 'PROMPT_1', target_sender_jid: '15550009999@lid' })
+			botReply(BOT, { target_id: 'PROMPT_1', target_sender_jid: ME_ID }, replyEncryptedFor(ME_ID, 'answer to our PN'))
 		)
 
-		expect(fullMessage.message?.conversation).toBe('test-ai')
+		expect(fullMessage.message?.conversation).toBe('answer to our PN')
+	})
+
+	it('accepts a target sender given as our hosted LID', async () => {
+		const { fullMessage, lookups } = await decrypt(
+			botReply(
+				BOT,
+				{ target_id: 'PROMPT_1', target_sender_jid: '15550009999:99@hosted.lid' },
+				replyEncryptedFor('15550009999@hosted.lid', 'answer to our hosted LID')
+			)
+		)
+
+		expect(lookups).toEqual([{ remoteJid: BOT, id: 'PROMPT_1', fromMe: true }])
+		expect(fullMessage.message?.conversation).toBe('answer to our hosted LID')
 	})
 
 	it('leaves a ciphertext stub when the secret is not found', async () => {

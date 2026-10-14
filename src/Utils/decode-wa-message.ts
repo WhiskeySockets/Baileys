@@ -295,7 +295,9 @@ export const decryptMessageNode = (
 		const targetSenderJid = info.targetSenderJid || meLid
 		const isOwnTarget =
 			!!targetSenderJid &&
-			(isLidUser(targetSenderJid) ? areJidsSameUser(targetSenderJid, meLid) : areJidsSameUser(targetSenderJid, meId))
+			(isLidUser(targetSenderJid) || isHostedLidUser(targetSenderJid)
+				? areJidsSameUser(targetSenderJid, meLid)
+				: areJidsSameUser(targetSenderJid, meId))
 		if (!info.targetId || !isOwnTarget) {
 			throw new Error('bot reply does not answer one of our messages')
 		}

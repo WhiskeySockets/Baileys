@@ -176,14 +176,27 @@ describe('receiving a native bot reply', () => {
 		]
 	}
 
-	const receive = async (sock: ReturnType<typeof makeWASocket>, stanza = reply) => {
+	type Received = { upserts: proto.IWebMessageInfo[]; nodes: BinaryNode[] }
+
+	// Feed the stanza in and wait until the handler's last step (the upsert, or the ack that ends it) is visible.
+	const receive = async (sock: ReturnType<typeof makeWASocket>, stanza: BinaryNode, done: (r: Received) => boolean) => {
 		const upserts: proto.IWebMessageInfo[] = []
 		sock.ev.on('messages.upsert', ({ messages }) => upserts.push(...messages))
 		sock.ws.emit('CB:message', stanza)
-		await new Promise(resolve => setTimeout(resolve, 100))
-		sock.ev.flush()
-		return { upserts, nodes: await sentNodes() }
+		const deadline = Date.now() + 3000
+		let received: Received = { upserts, nodes: [] }
+		while (Date.now() < deadline) {
+			sock.ev.flush()
+			received = { upserts, nodes: await sentNodes() }
+			if (done(received)) break
+			await new Promise(resolve => setTimeout(resolve, 10))
+		}
+
+		return received
 	}
+
+	const upserted = ({ upserts }: Received) => upserts.length > 0
+	const acked = ({ nodes }: Received) => nodes.some(node => node.tag === 'ack')
 
 	it('decrypts the reply with the secret of our prompt and acknowledges it', async () => {
 		const lookups: proto.IMessageKey[] = []
@@ -195,7 +208,7 @@ describe('receiving a native bot reply', () => {
 				}
 			},
 			async sock => {
-				const { upserts, nodes } = await receive(sock)
+				const { upserts, nodes } = await receive(sock, reply, upserted)
 
 				expect(lookups).toEqual([{ remoteJid: BOT, id: 'PROMPT_1', fromMe: true }])
 				expect(upserts.map(msg => msg.message?.conversation)).toEqual(['test-ai'])
@@ -208,7 +221,7 @@ describe('receiving a native bot reply', () => {
 
 	it('nacks with 495 and sends no retry receipt when the secret is missing', async () => {
 		await withSocket({}, async sock => {
-			const { upserts, nodes } = await receive(sock)
+			const { upserts, nodes } = await receive(sock, reply, acked)
 
 			expect(upserts).toEqual([])
 			expect(nodes.find(node => node.tag === 'ack')?.attrs).toMatchObject({ id: 'RESPONSE_FIXTURE_1', error: '495' })
@@ -230,7 +243,7 @@ describe('receiving a native bot reply', () => {
 				}
 			},
 			async sock => {
-				const { upserts, nodes } = await receive(sock, copy)
+				const { upserts, nodes } = await receive(sock, copy, upserted)
 
 				expect(upserts.map(msg => [msg.key?.remoteJid, msg.key?.fromMe, msg.message?.conversation])).toEqual([
 					[BOT, true, 'asked on the phone']
