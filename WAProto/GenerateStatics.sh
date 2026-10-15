@@ -5,9 +5,9 @@
 # behind while the script still exits 0.
 set -eu
 cd "$(dirname "$0")"
+trap 'rm -f ./index.commented.tmp.js' EXIT
 
 yarn pbjs -t static-module --no-beautify -w es6 --no-bundle --no-delimited --no-verify --no-comments -o ./index.js ./WAProto.proto
 yarn pbjs -t static-module --no-beautify -w es6 --no-bundle --no-delimited --no-verify -o ./index.commented.tmp.js ./WAProto.proto
 yarn pbts --no-comments -o ./index.d.ts ./index.commented.tmp.js
-rm -f ./index.commented.tmp.js
 node ./fix-imports.js
