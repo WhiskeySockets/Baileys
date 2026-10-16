@@ -220,9 +220,13 @@ export const prepareWAMessageMedia = async (
 		if (mediaType === 'image' || mediaType === 'video') {
 			try {
 				if (typeof uploadData.jpegThumbnail === 'undefined') {
-					const { thumbnail } = await generateThumbnail(filePath, mediaType, { logger })
+					const { thumbnail, originalImageDimensions } = await generateThumbnail(filePath, mediaType, { logger })
 					if (thumbnail) {
 						uploadData.jpegThumbnail = thumbnail
+					}
+					if (!uploadData.width && originalImageDimensions) {
+						uploadData.width = originalImageDimensions.width
+						uploadData.height = originalImageDimensions.height
 					}
 				}
 			} catch (error) {
