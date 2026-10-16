@@ -37,6 +37,7 @@ import {
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
+import { takeNewsletterMediaHandle } from '../Utils/messages-media'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -674,7 +675,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		await authState.keys.transaction(async () => {
-			const mediaType = getMediaType(message)
+			// normalize first so wrapped media (viewOnce/ephemeral) is detected correctly
+			// normalizeMessageContent may return undefined; fall back to the raw message
+			const innerMessage = normalizeMessageContent(message) ?? message
+			const mediaType = getMediaType(innerMessage)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
 			}
@@ -684,15 +688,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
 				binaryNodeContent.push({
 					tag: 'plaintext',
-					attrs: {},
+					// the server rejects media sent to channels without the mediatype attribute
+					attrs: extraAttrs,
 					content: bytes
 				})
+				// voice notes (and possibly other media) are rejected by the server
+				// (ACK error 479) without the newsletter upload handle as media_id
+				const newsletterMediaMsg =
+					innerMessage.imageMessage ||
+					innerMessage.videoMessage ||
+					innerMessage.ptvMessage ||
+					innerMessage.audioMessage ||
+					innerMessage.documentMessage ||
+					innerMessage.stickerMessage
+				const mediaId = takeNewsletterMediaHandle(newsletterMediaMsg?.directPath)
 				const stanza: BinaryNode = {
 					tag: 'message',
 					attrs: {
 						to: jid,
 						id: msgId,
-						type: getMessageType(message),
+						type: getMessageType(innerMessage),
+						...(mediaId ? { media_id: mediaId } : {}),
 						...(additionalAttributes || {})
 					},
 					content: binaryNodeContent
@@ -1184,6 +1200,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'image'
 		} else if (message.videoMessage) {
 			return message.videoMessage.gifPlayback ? 'gif' : 'video'
+		} else if (message.ptvMessage) {
+			return 'video'
 		} else if (message.audioMessage) {
 			return message.audioMessage.ptt ? 'ptt' : 'audio'
 		} else if (message.contactMessage) {

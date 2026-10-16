@@ -38,6 +38,7 @@ import {
 	getAudioDuration,
 	getAudioWaveform,
 	getRawMediaUploadData,
+	setNewsletterMediaHandle,
 	type MediaDownloadOptions
 } from './messages-media'
 import { shouldIncludeReportingToken } from './reporting-utils'
@@ -159,7 +160,10 @@ export const prepareWAMessageMedia = async (
 		uploadData.mimetype = MIMETYPE_MAP[mediaType]
 	}
 
-	if (cacheableKey) {
+	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
+	// Newsletter uploads must not use the media cache: a cached message carries
+	// no upload handle, but the channel send needs it as media_id.
+	if (cacheableKey && !isNewsletter) {
 		const mediaBuff = await options.mediaCache!.get<Buffer>(cacheableKey)
 		if (mediaBuff) {
 			logger?.debug({ cacheableKey }, 'got media cache hit')
@@ -173,7 +177,6 @@ export const prepareWAMessageMedia = async (
 		}
 	}
 
-	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
 	if (isNewsletter) {
 		logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter')
 		const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(
@@ -183,11 +186,53 @@ export const prepareWAMessageMedia = async (
 		)
 
 		const fileSha256B64 = fileSha256.toString('base64')
-		const { mediaUrl, directPath } = await options.upload(filePath, {
+		const { mediaUrl, directPath, handle, thumbnailDirectPath, thumbnailSha256 } = await options.upload(filePath, {
 			fileEncSha256B64: fileSha256B64,
 			mediaType: mediaType,
-			timeoutMs: options.mediaUploadTimeoutMs
+			timeoutMs: options.mediaUploadTimeoutMs,
+			newsletter: true
 		})
+		// keep the handle so the channel send can use it as media_id
+		if (directPath && handle) {
+			setNewsletterMediaHandle(directPath, handle)
+		}
+
+		// the newsletter branch returns before the duration/waveform step below,
+		// so compute them here for audio — otherwise channel voice notes show no waveform
+		if (mediaType === 'audio') {
+			try {
+				if (typeof uploadData.seconds === 'undefined') {
+					uploadData.seconds = await getAudioDuration(filePath)
+				}
+				if (uploadData.ptt === true && typeof uploadData.waveform === 'undefined') {
+					uploadData.waveform = await getAudioWaveform(filePath, logger)
+				}
+			} catch (error) {
+				logger?.warn({ trace: (error as any)?.stack }, 'failed to obtain audio duration/waveform for newsletter')
+			}
+		}
+
+		// the newsletter branch also skips thumbnail generation — without one the
+		// media renders as a gray box with no preview. itsliaaa/baileys gets
+		// server-side thumbnails (thumbnailDirectPath) via the newsletter upload
+		// endpoints; we upload via the standard endpoints, so generate the
+		// standard inline jpegThumbnail instead
+		if (mediaType === 'image' || mediaType === 'video') {
+			try {
+				if (typeof uploadData.jpegThumbnail === 'undefined') {
+					const { thumbnail, originalImageDimensions } = await generateThumbnail(filePath, mediaType, { logger })
+					if (thumbnail) {
+						uploadData.jpegThumbnail = thumbnail
+					}
+					if (!uploadData.width && originalImageDimensions) {
+						uploadData.width = originalImageDimensions.width
+						uploadData.height = originalImageDimensions.height
+					}
+				}
+			} catch (error) {
+				logger?.warn({ trace: (error as any)?.stack }, 'failed to generate thumbnail for newsletter')
+			}
+		}
 
 		await fs.unlink(filePath)
 
@@ -198,6 +243,8 @@ export const prepareWAMessageMedia = async (
 				directPath,
 				fileSha256,
 				fileLength,
+				thumbnailDirectPath,
+				thumbnailSha256,
 				...uploadData,
 				media: undefined
 			})
@@ -212,11 +259,8 @@ export const prepareWAMessageMedia = async (
 			obj.stickerMessage.stickerSentTs = Date.now()
 		}
 
-		if (cacheableKey) {
-			logger?.debug({ cacheableKey }, 'set cache')
-			await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
-		}
-
+		// do not cache newsletter messages: the cached form has no mediaKey and
+		// no upload handle, so a later ordinary-chat send must never read it
 		return obj
 	}
 
