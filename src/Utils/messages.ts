@@ -186,10 +186,11 @@ export const prepareWAMessageMedia = async (
 		)
 
 		const fileSha256B64 = fileSha256.toString('base64')
-		const { mediaUrl, directPath, handle } = await options.upload(filePath, {
+		const { mediaUrl, directPath, handle, thumbnailDirectPath, thumbnailSha256 } = await options.upload(filePath, {
 			fileEncSha256B64: fileSha256B64,
 			mediaType: mediaType,
-			timeoutMs: options.mediaUploadTimeoutMs
+			timeoutMs: options.mediaUploadTimeoutMs,
+			newsletter: true
 		})
 		// keep the handle so the channel send can use it as media_id
 		if (directPath && handle) {
@@ -238,6 +239,8 @@ export const prepareWAMessageMedia = async (
 				directPath,
 				fileSha256,
 				fileLength,
+				thumbnailDirectPath,
+				thumbnailSha256,
 				...uploadData,
 				media: undefined
 			})
