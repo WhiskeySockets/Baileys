@@ -211,6 +211,24 @@ export const prepareWAMessageMedia = async (
 			}
 		}
 
+		// the newsletter branch also skips thumbnail generation — without one the
+		// media renders as a gray box with no preview. itsliaaa/baileys gets
+		// server-side thumbnails (thumbnailDirectPath) via the newsletter upload
+		// endpoints; we upload via the standard endpoints, so generate the
+		// standard inline jpegThumbnail instead
+		if (mediaType === 'image' || mediaType === 'video') {
+			try {
+				if (typeof uploadData.jpegThumbnail === 'undefined') {
+					const { thumbnail } = await generateThumbnail(filePath, mediaType, { logger })
+					if (thumbnail) {
+						uploadData.jpegThumbnail = thumbnail
+					}
+				}
+			} catch (error) {
+				logger?.warn({ trace: (error as any)?.stack }, 'failed to generate thumbnail for newsletter')
+			}
+		}
+
 		await fs.unlink(filePath)
 
 		const obj = WAProto.Message.fromObject({
