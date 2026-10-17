@@ -111,6 +111,10 @@ import makeWASocket from '@whiskeysockets/baileys'
         - [Audio Message](#audio-message)
         - [Image Message](#image-message)
         - [ViewOnce Message](#view-once-message)
+    - [Interactive Messages](#interactive-messages)
+    - [Albums](#albums)
+    - [Additional Message Types](#additional-message-types)
+    - [Newsletter (Channel) Messages](#newsletter-channel-messages)
 - [Modify Messages](#modify-messages)
     - [Delete Messages (for everyone)](#deleting-messages-for-everyone)
     - [Edit Messages](#editing-messages)
@@ -119,6 +123,7 @@ import makeWASocket from '@whiskeysockets/baileys'
     - [Downloading Media Messages](#downloading-media-messages)
     - [Re-upload Media Message to Whatsapp](#re-upload-media-message-to-whatsapp)
 - [Reject Call](#reject-call)
+- [Voice Calling](#voice-calling)
 - [Send States in Chat](#send-states-in-chat)
     - [Reading Messages](#reading-messages)
     - [Update Presence](#update-presence)
@@ -173,6 +178,7 @@ import makeWASocket from '@whiskeysockets/baileys'
     - [Update Default Disappearing Mode](#update-default-disappearing-mode)
 - [Broadcast Lists & Stories](#broadcast-lists--stories)
     - [Send Broadcast & Stories](#send-broadcast--stories)
+    - [Mention Chats in a Status](#mention-chats-in-a-status)
     - [Query a Broadcast List's Recipients & Name](#query-a-broadcast-lists-recipients--name)
 - [Writing Custom Functionality](#writing-custom-functionality)
     - [Enabling Debug Level in Baileys Logs](#enabling-debug-level-in-baileys-logs)
@@ -913,6 +919,8 @@ await sock.updateMediaMessage(msg)
 ```ts
 await sock.rejectCall(callId, callFrom)
 ```
+
+## Voice Calling
 
 - Baileys handles call signaling only. Placing calls needs a media engine (WASM, SRTP, Opus);
   see [CALLING.md](./CALLING.md) for the evaluation of `baileys-caller` and how to run it
