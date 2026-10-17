@@ -603,7 +603,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} else {
 			// Fallback to old system
 			const key = `${msgId}:${msgKey?.participant}`
-			let retryCount = (await msgRetryCache.get<number>(key)) || 0
+			// a cache miss means "never seen", not "zero retries": it must not reset the counter
+			let retryCount = (await msgRetryCache.get<number>(key)) ?? 1
 			if (retryCount >= maxMsgRetryCount) {
 				logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
 				await msgRetryCache.del(key)
@@ -615,7 +616,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		const key = `${msgId}:${msgKey?.participant}`
-		const retryCount = (await msgRetryCache.get<number>(key)) || 1
+		const retryCount = (await msgRetryCache.get<number>(key)) ?? 1
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
@@ -1311,13 +1312,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const willSendMessageAgain = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const retryCount = (await msgRetryCache.get<number>(key)) || 0
+		const retryCount = (await msgRetryCache.get<number>(key)) ?? 0
 		return retryCount < maxMsgRetryCount
 	}
 
 	const updateSendMessageAgainCount = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const newValue = ((await msgRetryCache.get<number>(key)) || 0) + 1
+		const newValue = ((await msgRetryCache.get<number>(key)) ?? 0) + 1
 		await msgRetryCache.set(key, newValue)
 	}
 
@@ -1685,21 +1686,33 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							participant: msg.participant,
 							verifiedBizName: msg.verifiedBizName
 						}
-						requestPlaceholderResend(cleanKey, msgData)
-							.then(requestId => {
-								if (requestId && requestId !== 'RESOLVED') {
-									logger.debug({ msgId: msg.key.id, requestId }, 'requested placeholder resend for unavailable message')
-									ev.emit('messages.update', [
-										{
-											key: msg.key,
-											update: { messageStubParameters: [NO_MESSAGE_FOUND_ERROR_TEXT, requestId] }
-										}
-									])
-								}
-							})
-							.catch(err => {
-								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
-							})
+						// honour a caller-supplied retry cache here too: a stored count at the
+						// ceiling means the caller does not want another placeholder request
+						const retryKey = `${msg.key.id}:${msg.key.participant}`
+						const retryCount = (await msgRetryCache.get<number>(retryKey)) ?? 0
+						if (retryCount < maxMsgRetryCount) {
+							requestPlaceholderResend(cleanKey, msgData)
+								.then(requestId => {
+									if (requestId && requestId !== 'RESOLVED') {
+										logger.debug(
+											{ msgId: msg.key.id, requestId },
+											'requested placeholder resend for unavailable message'
+										)
+										ev.emit('messages.update', [
+											{
+												key: msg.key,
+												update: { messageStubParameters: [NO_MESSAGE_FOUND_ERROR_TEXT, requestId] }
+											}
+										])
+									}
+								})
+								.catch(err => {
+									logger.warn(
+										{ err, msgId: msg.key.id },
+										'failed to request placeholder resend for unavailable message'
+									)
+								})
+						}
 						acked = true
 						await sendMessageAck(node)
 						// Don't return — fall through to upsertMessage so the stub is emitted
