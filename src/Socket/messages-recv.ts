@@ -54,7 +54,7 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
-import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
+import { isOfflineNode, makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -1782,7 +1782,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
 
-				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
+				await upsertMessage(msg, isOfflineNode(node) ? 'append' : 'notify')
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
@@ -1814,7 +1814,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				callerPn: infoChild.attrs['caller_pn'],
 				id: callId,
 				date: new Date(+attrs.t! * 1000),
-				offline: !!attrs.offline,
+				offline: isOfflineNode(node),
 				status
 			}
 
@@ -1996,7 +1996,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		const isOffline = !!node.attrs.offline
+		const isOffline = isOfflineNode(node)
 
 		if (isOffline) {
 			offlineNodeProcessor.enqueue(type, node)
