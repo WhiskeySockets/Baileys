@@ -7,10 +7,16 @@ import type { Agent } from 'https'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { Readable, Transform } from 'stream'
+import { pipeline, Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP, NEWSLETTER_MEDIA_PATH_MAP, type MediaType } from '../Defaults'
+import {
+	DEFAULT_ORIGIN,
+	MEDIA_HKDF_KEY_MAPPING,
+	MEDIA_PATH_MAP,
+	NEWSLETTER_MEDIA_PATH_MAP,
+	type MediaType
+} from '../Defaults'
 import type {
 	BaileysEventMap,
 	DownloadableMessage,
@@ -285,7 +291,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 }
 
 export const toReadable = (buffer: Buffer) => {
-	const readable = new Readable({ read: () => { } })
+	const readable = new Readable({ read: () => {} })
 	readable.push(buffer)
 	readable.push(null)
 	return readable
@@ -650,7 +656,17 @@ export const downloadEncryptedContent = async (
 			}
 		}
 	})
-	return fetched.pipe(output, { end: true })
+
+	// Readable.pipe() does not forward source errors to the destination. Use
+	// pipeline so transport and decrypt failures tear down the entire chain and
+	// remain observable through the returned transform.
+	pipeline(fetched, output, error => {
+		if (error && !output.destroyed) {
+			output.destroy(error)
+		}
+	})
+
+	return output
 }
 
 export function extensionForMediaMessage(message: WAMessageContent) {
@@ -868,7 +884,18 @@ export const getWAUploadToServer = (
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
-		let urls: { mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number; handle?: string; thumbnailDirectPath?: string; thumbnailSha256?: string } | undefined
+		let urls:
+			| {
+					mediaUrl: string
+					directPath: string
+					meta_hmac?: string
+					ts?: number
+					fbid?: number
+					handle?: string
+					thumbnailDirectPath?: string
+					thumbnailSha256?: string
+			  }
+			| undefined
 		const hosts = [...customUploadHosts, ...uploadInfo.hosts]
 
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
