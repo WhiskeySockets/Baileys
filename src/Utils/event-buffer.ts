@@ -415,11 +415,13 @@ function append<E extends BufferableEvent>(
 					// if there is an existing upsert, merge the update into it
 					const upsert = data.historySets.chats[chatId] || data.chatUpserts[chatId]
 					if (upsert) {
+						// readMessageRange describes this update only; the merged object is a Chat
+						delete update.readMessageRange
 						concatChats(upsert, update)
 					} else {
 						// merge the update into the existing update
 						const chatUpdate = data.chatUpdates[chatId] || {}
-						data.chatUpdates[chatId] = concatChats(chatUpdate, update)
+						data.chatUpdates[chatId] = mergeChatUpdates(chatUpdate, update)
 					}
 				} else if (conditionMatches === undefined) {
 					// condition yet to be fulfilled
@@ -633,6 +635,7 @@ function append<E extends BufferableEvent>(
 			const conditionMatches = update.conditional ? update.conditional(data) : true
 			if (conditionMatches) {
 				delete update.conditional
+				delete update.readMessageRange
 				logger.debug({ chatId }, 'absorbed chat update in existing chat')
 				Object.assign(existing, concatChats(update as Chat, existing))
 				delete data.chatUpdates[chatId]
@@ -744,6 +747,19 @@ function consolidateEvents(data: BufferedEventData) {
 	}
 
 	return map
+}
+
+/**
+ * A later read-state update replaces the earlier one's range, even when it carries none. Only markChatAsRead
+ * emits 0, a negative count or null; a positive count is a new incoming message and leaves the range alone.
+ */
+function mergeChatUpdates(a: ChatUpdate, b: ChatUpdate) {
+	const isReadState = b.unreadCount === null || (typeof b.unreadCount === 'number' && b.unreadCount <= 0)
+	if (isReadState && !b.readMessageRange) {
+		delete a.readMessageRange
+	}
+
+	return concatChats(a, b)
 }
 
 function concatChats<C extends Partial<Chat>>(a: C, b: Partial<Chat>) {

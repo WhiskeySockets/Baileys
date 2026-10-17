@@ -76,6 +76,12 @@ export type ChatUpdate = Partial<
 		conditional: (bufferedData: BufferedEventData) => boolean | undefined
 		/** last update time */
 		timestamp?: number
+		/**
+		 * set on an update from a markChatAsRead sync (the chat was read or marked unread on another device):
+		 * the message range that action covered, as sent by WhatsApp. Lets consumers tell which messages the
+		 * action applies to, instead of assuming everything up to the moment the sync arrived.
+		 */
+		readMessageRange?: proto.SyncActionValue.ISyncActionMessageRange
 	}
 >
 
