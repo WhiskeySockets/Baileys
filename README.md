@@ -701,6 +701,145 @@ await sock.sendMessage(
 )
 ```
 
+### Interactive Messages
+
+Baileys supports WhatsApp's interactive message families: reply buttons, lists, native flow
+buttons, template buttons and carousels. All of them are passed directly as the message content.
+
+#### Reply Buttons
+```ts
+await sock.sendMessage(jid, {
+    text: 'Pick one',
+    footer: 'Powered by Baileys',
+    buttons: [
+        { buttonId: 'yes', buttonText: 'Yes', type: 1 },
+        { buttonId: 'no', buttonText: 'No', type: 1 }
+    ]
+})
+```
+
+#### List Message
+```ts
+await sock.sendMessage(jid, {
+    text: 'Choose an option',
+    title: 'Menu',
+    footer: 'Powered by Baileys',
+    buttonText: 'Open list',
+    sections: [
+        {
+            title: 'Drinks',
+            rows: [
+                { title: 'Coffee', rowId: 'coffee' },
+                { title: 'Tea', rowId: 'tea', description: 'Green or black' }
+            ]
+        }
+    ]
+})
+```
+
+#### Native Flow Buttons
+```ts
+await sock.sendMessage(jid, {
+    text: 'Order here',
+    footer: 'Powered by Baileys',
+    nativeFlow: [
+        { id: 'order', text: 'Order', icon: 'DEFAULT' },
+        { url: 'https://example.com', text: 'Visit website' },
+        { copy: 'SAVE10', text: 'Copy coupon' },
+        { call: '+15551234567', text: 'Call us' }
+    ]
+})
+```
+Use `name` + `paramsJson` for advanced native flow buttons that are not covered by the helpers.
+
+#### Template Buttons
+```ts
+await sock.sendMessage(jid, {
+    text: 'Confirm your order',
+    footer: 'Powered by Baileys',
+    templateButtons: [
+        { index: 1, url: 'https://example.com', text: 'Open website' },
+        { index: 2, call: '+15551234567', text: 'Call us' },
+        { index: 3, id: 'confirm', text: 'Confirm' }
+    ]
+})
+```
+
+#### Carousel
+```ts
+await sock.sendMessage(jid, {
+    text: 'Our menu',
+    footer: 'Swipe for more',
+    cards: [
+        { image: { url: './card-1.png' }, caption: 'Card one', nativeFlow: [{ id: 'one', text: 'Pick one' }] },
+        { image: { url: './card-2.png' }, caption: 'Card two', nativeFlow: [{ url: 'https://example.com', text: 'Open' }] }
+    ]
+})
+```
+
+- Interactive messages accept an optional media header (`image`, `video`, `document`, `audio`,
+  `location` or `product`) alongside `text`.
+- Pass `interactiveAsTemplate: true` to wrap an `interactiveMessage` in a
+  `templateMessage.interactiveMessageTemplate`, which some clients render instead.
+- In private chats, pass `ai: true` to show the Meta AI badge on the outgoing message.
+
+### Albums
+Send an album by passing `album` with two or more media items. Baileys posts an `albumMessage`
+header and then relays each item with `messageAssociation.associationType = MEDIA_ALBUM`, so
+WhatsApp groups them in the chat.
+```ts
+await sock.sendMessage(jid, {
+    album: [
+        { image: { url: './one.png' }, caption: 'One' },
+        { image: { url: './two.png' }, caption: 'Two' },
+        { video: { url: './three.mp4' }, caption: 'Three' }
+    ]
+}, { delayMs: 1500 })
+```
+- `delayMs` (default `1500`) is the pause between the album items.
+- You can also build the header yourself with
+  `{ album: { expectedImageCount: 2, expectedVideoCount: 1 } }`, or attach an existing media
+  message to an album using `albumParentKey`.
+- Expecting fewer than two media items throws a `Boom` with status code `400`.
+
+### Additional Message Types
+The following contents are supported through `sendMessage`:
+
+| Content | Description |
+|---|---|
+| `keep: WAMessageKey` (+ `type`) | Keep (or `KeepType.UNDO` to unkeep) a message in the chat |
+| `flowReply: { ... }` | Response to a WhatsApp Flow (`flowReply` options) |
+| `pollResult: { name, votes, pollType }` | Poll result snapshot |
+| `pollUpdate: { key, vote }` | Vote on an existing poll |
+| `paymentInviteServiceType` | Payment invite message |
+| `orderText`, `itemCount`, `thumbnail` | Order message for a business catalog |
+| `requestPaymentFrom`, `amount1000`, `currencyCodeIso4217` | Request a payment |
+| `invoiceNote` (+ `image` or `document`) | Invoice note attached to a receipt |
+| `externalAdReply: { ... }` | External ad reply attached to text or media |
+| `raw: WAMessageContent` | Send a hand-built protobuf message, bypassing the builders |
+| `secureMetaServiceLabel: true` | Force the `biz` node on the stanza (WA Web's secure Meta service label) |
+
+Message wrappers can be requested for any supported content:
+
+```ts
+await sock.sendMessage(jid, { image: { url: './image.png' }, viewOnce: true })
+await sock.sendMessage(jid, { image: { url: './image.png' }, viewOnceV2: true })
+await sock.sendMessage(jid, { image: { url: './image.png' }, viewOnceV2Extension: true })
+await sock.sendMessage(jid, { text: 'bye', ephemeral: true })
+await sock.sendMessage(jid, { sticker: { url: './sticker.webp' }, isLottie: true })
+await sock.sendMessage(jid, { text: 'group update', groupStatus: true }) // in a group
+```
+
+### Newsletter (Channel) Messages
+- Newsletters accept the same media and interactive contents; media is uploaded as a channel
+  upload and the message carries the returned media handle.
+- Editing a channel message uses the channel edit tag automatically:
+  `await sock.sendMessage(channelJid, { text: 'fixed typo', edit: key })`.
+- Quoting works inside a channel. The quote points at the channel and deliberately omits
+  `remoteJid`, which channel messages do not expect:
+  `await sock.sendMessage(channelJid, { text: 'replying', quoted: channelMessage })`.
+- Quiz polls (`poll.pollType`) are allowed for newsletters only.
+
 ## Modify Messages
 
 ### Deleting Messages (for everyone)
@@ -774,6 +913,10 @@ await sock.updateMediaMessage(msg)
 ```ts
 await sock.rejectCall(callId, callFrom)
 ```
+
+- Baileys handles call signaling only. Placing calls needs a media engine (WASM, SRTP, Opus);
+  see [CALLING.md](./CALLING.md) for the evaluation of `baileys-caller` and how to run it
+  alongside Baileys-X.
 
 ## Send States in Chat
 
@@ -1215,6 +1358,22 @@ await sock.sendMessage(
 - You can send messages to broadcast lists the same way you send messages to groups & individual chats.
 - Right now, WA Web does not support creating broadcast lists, but you can still delete them.
 - Broadcast IDs are in the format `12345678@broadcast`
+### Mention Chats in a Status
+Pass an array of JIDs as the first argument to `sendMessage` to publish one status and mention
+the given users (or all participants of the given groups). Baileys relays the status to
+`status@broadcast` with the `mentioned_users` metadata, then sends an `is_status_mention` /
+`is_group_status_mention` message into each chat so they get notified.
+```ts
+await sock.sendMessage(
+    ['12345678901@s.whatsapp.net', '123456789-987654321@g.us'],
+    { text: 'New drop is live', font: 1 }
+)
+```
+- `delayMs` (default `1500`) is the pause after each mention message.
+- Group JIDs are expanded to their participants before the status is sent.
+- The status content must be a regular status type (text, image, video, audio); the mention
+  wrapper uses `buildStatusMentionContent` internally.
+
 ### Query a Broadcast List's Recipients & Name
 ```ts
 const bList = await sock.getBroadcastListInfo('1234@broadcast')

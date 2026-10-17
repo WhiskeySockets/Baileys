@@ -1268,8 +1268,20 @@ export const generateWAMessageContent = async (
 export const buildStatusMentionContent = (statusKey: proto.IMessageKey, isGroup: boolean): WAMessageContent => ({
 	messageContextInfo: { messageSecret: randomBytes(32) },
 	...(isGroup
-		? { groupStatusMentionMessage: { message: { protocolMessage: { key: statusKey, type: 25 } } } }
-		: { statusMentionMessage: { message: { protocolMessage: { key: statusKey, type: 25 } } } })
+		? {
+				groupStatusMentionMessage: {
+					message: {
+						protocolMessage: { key: statusKey, type: proto.Message.ProtocolMessage.Type.STATUS_MENTION_MESSAGE }
+					}
+				}
+			}
+		: {
+				statusMentionMessage: {
+					message: {
+						protocolMessage: { key: statusKey, type: proto.Message.ProtocolMessage.Type.STATUS_MENTION_MESSAGE }
+					}
+				}
+			})
 })
 
 export const generateWAMessageFromContent = (

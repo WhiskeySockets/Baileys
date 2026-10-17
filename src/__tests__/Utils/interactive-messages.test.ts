@@ -219,6 +219,51 @@ describe('poll and payment content', () => {
 	})
 })
 
+describe('carousel cards and wrappers', () => {
+	it('builds a carousel message', async () => {
+		const message = await generateWAMessageContent(
+			{
+				text: 'Our menu',
+				footer: 'Tap a card',
+				cards: [
+					{
+						image: Buffer.from('card'),
+						caption: 'Card one',
+						nativeFlow: [{ id: 'one', text: 'Pick one' }]
+					},
+					{
+						image: Buffer.from('card2'),
+						caption: 'Card two',
+						nativeFlow: [{ url: 'https://example.com', text: 'Open' }]
+					}
+				]
+			},
+			makeOptions()
+		)
+
+		expect(message.interactiveMessage?.carouselMessage?.cards).toHaveLength(2)
+		expect(message.interactiveMessage?.body?.text).toBe('Our menu')
+		expect(message.interactiveMessage?.footer?.text).toBe('Tap a card')
+	})
+
+	it('wraps an interactive message as a template', async () => {
+		const message = await generateWAMessageContent(
+			{ text: 'body', nativeFlow: [{ id: 'a', text: 'A' }], interactiveAsTemplate: true },
+			makeOptions()
+		)
+
+		expect(message.templateMessage?.interactiveMessageTemplate?.nativeFlowMessage?.buttons).toHaveLength(1)
+	})
+
+	it('wraps ephemeral and view once v2 content', async () => {
+		const ephemeral = await generateWAMessageContent({ text: 'gone', ephemeral: true }, makeOptions())
+		expect(ephemeral.ephemeralMessage?.message?.extendedTextMessage?.text).toBe('gone')
+
+		const viewOnce = await generateWAMessageContent({ text: 'once', viewOnceV2Extension: true }, makeOptions())
+		expect(viewOnce.viewOnceMessageV2Extension?.message?.extendedTextMessage?.text).toBe('once')
+	})
+})
+
 describe('newsletter quoting', () => {
 	const quoted = {
 		key: { remoteJid: '123@newsletter', id: 'quoted-id', fromMe: false },
