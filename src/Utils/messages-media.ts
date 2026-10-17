@@ -7,10 +7,16 @@ import type { Agent } from 'https'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { Readable, Transform } from 'stream'
+import { pipeline, Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP, type MediaType } from '../Defaults'
+import {
+	DEFAULT_ORIGIN,
+	MEDIA_HKDF_KEY_MAPPING,
+	MEDIA_PATH_MAP,
+	type MediaType,
+	NEWSLETTER_MEDIA_PATH_MAP
+} from '../Defaults'
 import type {
 	BaileysEventMap,
 	DownloadableMessage,
@@ -239,7 +245,7 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 }
 
 /**
-  referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
+	referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
  */
 export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: ILogger) {
 	try {
@@ -535,7 +541,8 @@ export const downloadContentFromMessage = async (
 ) => {
 	// Fallback host: explicit opt > host parsed from `url` > DEF_MEDIA_HOST.
 	// Lets us honor a non-default host carried by the proto without forcing callers to thread it through.
-	const fallbackHost = opts.host ?? extractHost(url)
+	const urlHost = extractHost(url)
+	const fallbackHost = opts.host ?? (urlHost !== 'a.whatsapp.net' ? urlHost : DEF_MEDIA_HOST)
 	const downloadUrl = directPath ? getUrlFromDirectPath(directPath, fallbackHost) : url
 	if (!downloadUrl) {
 		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
@@ -649,7 +656,17 @@ export const downloadEncryptedContent = async (
 			}
 		}
 	})
-	return fetched.pipe(output, { end: true })
+
+	// Readable.pipe() does not forward source errors to the destination. Use
+	// pipeline so transport and decrypt failures tear down the entire chain and
+	// remain observable through the returned transform.
+	pipeline(fetched, output, error => {
+		if (error && !output.destroyed) {
+			output.destroy(error)
+		}
+	})
+
+	return output
 }
 
 export function extensionForMediaMessage(message: WAMessageContent) {
@@ -681,6 +698,11 @@ type MediaUploadResult = {
 	meta_hmac?: string
 	ts?: number
 	fbid?: number
+	handle?: string
+	thumbnail_info?: {
+		thumbnail_direct_path?: string
+		thumbnail_sha256?: string
+	}
 }
 
 export type UploadParams = {
@@ -767,6 +789,10 @@ export const uploadWithNodeHttp = async (
 	})
 }
 
+// Native fetch only accepts Undici-style dispatchers, not generic https Agents.
+const isFetchDispatcher = (agent: UploadParams['agent']) =>
+	typeof (agent as { dispatch?: unknown } | undefined)?.dispatch === 'function'
+
 const uploadWithFetch = async ({
 	url,
 	filePath,
@@ -777,8 +803,7 @@ const uploadWithFetch = async ({
 	// Convert Node.js Readable to Web ReadableStream
 	const nodeStream = createReadStream(filePath)
 	const webStream = Readable.toWeb(nodeStream) as ReadableStream
-	// Native fetch only accepts Undici-style dispatchers, not generic https Agents.
-	const dispatcher = typeof (agent as { dispatch?: unknown } | undefined)?.dispatch === 'function' ? agent : undefined
+	const dispatcher = isFetchDispatcher(agent) ? agent : undefined
 
 	const response = await fetch(url, {
 		...(dispatcher ? { dispatcher } : {}),
@@ -807,15 +832,18 @@ const uploadWithFetch = async ({
  * See: https://github.com/nodejs/undici/issues/4058
  *
  * Other runtimes (Bun, Deno, browsers) correctly stream the request body without
- * buffering, so we can use the web-standard Fetch API there.
+ * buffering, so we can use the web-standard Fetch API there — unless a generic
+ * https Agent (e.g. a proxy agent passed as `fetchAgent`) is set. fetch can't use
+ * those, so the upload would silently skip the proxy; node:https honors them.
  *
  * ## Future considerations:
  * Once the undici bug is fixed, we can simplify this to use only the Fetch API
  * across all runtimes. Monitor the GitHub issue for updates.
  */
 const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<MediaUploadResult | undefined> => {
-	if (isNodeRuntime()) {
-		logger?.debug('Using Node.js https module for upload (avoids undici buffering bug)')
+	const hasHttpsAgent = !!params.agent && !isFetchDispatcher(params.agent)
+	if (isNodeRuntime() || hasHttpsAgent) {
+		logger?.debug({ hasHttpsAgent }, 'Using Node.js https module for upload')
 		return uploadWithNodeHttp(params)
 	} else {
 		logger?.debug('Using web-standard Fetch API for upload')
@@ -823,15 +851,53 @@ const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<Medi
 	}
 }
 
+// Upload handles for newsletter media, keyed by directPath and consumed when
+// sending to channels. The server requires the newsletter upload `handle` as
+// `media_id` on the <message> node (see whatsmeow's sendNewsletter); without
+// it media like voice notes is rejected with ACK error 479.
+// Only newsletter uploads are stored here (see prepareWAMessageMedia), so
+// regular-chat uploads never accumulate entries.
+const newsletterMediaHandleMap = new Map<string, string>()
+
+/** Stores the upload handle of a newsletter media upload, keyed by directPath. */
+export const setNewsletterMediaHandle = (directPath: string, handle: string) => {
+	newsletterMediaHandleMap.set(directPath, handle)
+}
+
+/** Returns and removes the stored upload handle for a directPath, if any. */
+export const takeNewsletterMediaHandle = (directPath?: string | null): string | undefined => {
+	if (!directPath) {
+		return undefined
+	}
+
+	const handle = newsletterMediaHandleMap.get(directPath)
+	if (handle) {
+		newsletterMediaHandleMap.delete(directPath)
+	}
+
+	return handle
+}
+
 export const getWAUploadToServer = (
 	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
-	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs }) => {
+	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, newsletter }) => {
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
-		let urls: { mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number } | undefined
+		let urls:
+			| {
+					mediaUrl: string
+					directPath: string
+					meta_hmac?: string
+					ts?: number
+					fbid?: number
+					handle?: string
+					thumbnailDirectPath?: string
+					thumbnailSha256?: string
+			  }
+			| undefined
 		const hosts = [...customUploadHosts, ...uploadInfo.hosts]
 
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
@@ -853,7 +919,11 @@ export const getWAUploadToServer = (
 			logger.debug(`uploading to "${hostname}"`)
 
 			const auth = encodeURIComponent(uploadInfo.auth)
-			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+			// newsletter uploads use dedicated endpoints which can generate
+			// a server-side thumbnail (used for channel media previews)
+			const mediaPathMap = newsletter ? NEWSLETTER_MEDIA_PATH_MAP : MEDIA_PATH_MAP
+			const serverThumb = newsletter ? '&server_thumb_gen=1' : ''
+			const url = `https://${hostname}${mediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}${serverThumb}`
 
 			let result: MediaUploadResult | undefined
 			try {
@@ -874,7 +944,10 @@ export const getWAUploadToServer = (
 						directPath: result.direct_path!,
 						meta_hmac: result.meta_hmac,
 						fbid: result.fbid,
-						ts: result.ts
+						ts: result.ts,
+						handle: result.handle,
+						thumbnailDirectPath: result.thumbnail_info?.thumbnail_direct_path,
+						thumbnailSha256: result.thumbnail_info?.thumbnail_sha256
 					}
 					break
 				} else {
@@ -898,14 +971,19 @@ export const getWAUploadToServer = (
 	}
 }
 
-const getMediaRetryKey = (mediaKey: Buffer | Uint8Array) => {
+const getMediaRetryKey = (mediaKey: Uint8Array | string) => {
+	// accept the base64 form getMediaKeys accepts, e.g. a message persisted as JSON
+	if (typeof mediaKey === 'string') {
+		mediaKey = Buffer.from(mediaKey.replace('data:;base64,', ''), 'base64')
+	}
+
 	return hkdf(mediaKey, 32, { info: 'WhatsApp Media Retry Notification' })
 }
 
 /**
  * Generate a binary node that will request the phone to re-upload the media & return the newly uploaded URL
  */
-export const encryptMediaRetryRequest = (key: WAMessageKey, mediaKey: Buffer | Uint8Array, meId: string) => {
+export const encryptMediaRetryRequest = (key: WAMessageKey, mediaKey: Uint8Array | string, meId: string) => {
 	const recp: proto.IServerErrorReceipt = { stanzaId: key.id }
 	const recpBuffer = proto.ServerErrorReceipt.encode(recp).finish()
 
@@ -982,7 +1060,7 @@ export const decodeMediaRetryNode = (node: BinaryNode) => {
 
 export const decryptMediaRetryData = (
 	{ ciphertext, iv }: { ciphertext: Uint8Array; iv: Uint8Array },
-	mediaKey: Uint8Array,
+	mediaKey: Uint8Array | string,
 	msgId: string
 ) => {
 	const retryKey = getMediaRetryKey(mediaKey)

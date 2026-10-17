@@ -35,11 +35,13 @@ import {
 	generateMdTagPrefix,
 	generateRegistrationNode,
 	getCodeFromWSError,
-	getCompanionPlatformId,
 	getErrorCodeFromStreamError,
 	getNextPreKeysNode,
+	getPairingCodePlatform,
+	handleCompanionRegRefresh,
 	makeEventBuffer,
 	makeNoiseHandler,
+	makePairingQRRenderer,
 	promiseTimeout,
 	signedKeyPair,
 	xmppSignedPreKey
@@ -391,6 +393,10 @@ export const makeSocket = (config: SocketConfig) => {
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
 	let closed = false
+	let pairingReady = false
+	let pairingInProgress = false
+	let pendingPairingResolve: (() => void) | undefined
+	let pendingPairingReject: ((err: Error) => void) | undefined
 
 	const socketEndHandlers: Array<(error: Error | undefined) => void | Promise<void>> = []
 
@@ -636,6 +642,14 @@ export const makeSocket = (config: SocketConfig) => {
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
 
+		pairingReady = false
+		pairingInProgress = false
+		pendingPairingReject?.(
+			error || new Boom('Connection closed before pairing completed', { statusCode: DisconnectReason.connectionClosed })
+		)
+		pendingPairingResolve = undefined
+		pendingPairingReject = undefined
+
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')
@@ -761,7 +775,7 @@ export const makeSocket = (config: SocketConfig) => {
 		void end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
-	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
+	const sendPairingCodeRequest = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
 		const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5))
 
 		if (customPairingCode && customPairingCode?.length !== 8) {
@@ -770,59 +784,106 @@ export const makeSocket = (config: SocketConfig) => {
 
 		authState.creds.pairingCode = pairingCode
 
-		authState.creds.me = {
-			id: jidEncode(phoneNumber, 's.whatsapp.net'),
-			name: '~'
-		}
-		ev.emit('creds.update', authState.creds)
-		await sendNode({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'set',
-				id: generateMessageTag(),
-				xmlns: 'md'
-			},
-			content: [
-				{
-					tag: 'link_code_companion_reg',
-					attrs: {
-						jid: authState.creds.me.id,
-						stage: 'companion_hello',
+		const jid = jidEncode(phoneNumber, 's.whatsapp.net')
+		const pairingPlatform = getPairingCodePlatform(browser)
 
-						should_show_push_notification: 'true'
-					},
-					content: [
-						{
-							tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
-							attrs: {},
-							content: await generatePairingKey()
+		try {
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					to: S_WHATSAPP_NET,
+					type: 'set',
+					xmlns: 'md'
+				},
+				content: [
+					{
+						tag: 'link_code_companion_reg',
+						attrs: {
+							jid,
+							stage: 'companion_hello',
+							should_show_push_notification: 'true'
 						},
-						{
-							tag: 'companion_server_auth_key_pub',
-							attrs: {},
-							content: authState.creds.noiseKey.public
-						},
-						{
-							tag: 'companion_platform_id',
-							attrs: {},
-							content: getCompanionPlatformId(browser)
-						},
-						{
-							tag: 'companion_platform_display',
-							attrs: {},
-							content: `${browser[1]} (${browser[0]})`
-						},
-						{
-							tag: 'link_code_pairing_nonce',
-							attrs: {},
-							content: '0'
-						}
-					]
-				}
-			]
-		})
-		return authState.creds.pairingCode
+						content: [
+							{
+								tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
+								attrs: {},
+								content: await generatePairingKey()
+							},
+							{
+								tag: 'companion_server_auth_key_pub',
+								attrs: {},
+								content: authState.creds.noiseKey.public
+							},
+							{
+								tag: 'companion_platform_id',
+								attrs: {},
+								content: pairingPlatform.id
+							},
+							{
+								tag: 'companion_platform_display',
+								attrs: {},
+								content: pairingPlatform.display
+							},
+							{
+								tag: 'link_code_pairing_nonce',
+								attrs: {},
+								content: '0'
+							}
+						]
+					}
+				]
+			})
+
+			if (!result) {
+				throw new Boom('Timed out waiting for pairing code response', { statusCode: DisconnectReason.timedOut })
+			}
+		} catch (error) {
+			if (authState.creds.pairingCode === pairingCode) {
+				authState.creds.pairingCode = undefined
+			}
+
+			throw error
+		}
+
+		authState.creds.me = { id: jid, name: '~' }
+		ev.emit('creds.update', authState.creds)
+
+		return pairingCode
+	}
+
+	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
+		if (customPairingCode && customPairingCode.length !== 8) {
+			throw new Error('Custom pairing code must be exactly 8 chars')
+		}
+
+		if (pairingInProgress) {
+			throw new Boom('A pairing request is already in progress', { statusCode: 400 })
+		}
+
+		pairingInProgress = true
+
+		try {
+			if (!pairingReady) {
+				logger.debug('pairing not ready yet, queuing request until pair-device is received')
+				await new Promise<void>((resolve, reject) => {
+					pendingPairingResolve = () => {
+						pendingPairingResolve = undefined
+						pendingPairingReject = undefined
+						resolve()
+					}
+
+					pendingPairingReject = (err: Error) => {
+						pendingPairingResolve = undefined
+						pendingPairingReject = undefined
+						reject(err)
+					}
+				})
+			}
+
+			return await sendPairingCodeRequest(phoneNumber, customPairingCode)
+		} finally {
+			pairingInProgress = false
+		}
 	}
 
 	async function generatePairingKey() {
@@ -868,6 +929,9 @@ export const makeSocket = (config: SocketConfig) => {
 		'CB:xmlstreamend',
 		() => void end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed }))
 	)
+	// Re-render the QR currently on screen. Set while a pairing QR flow is
+	// live on this connection, undefined otherwise.
+	let refreshPairingQR: (() => void) | undefined
 	// QR gen
 	ws.on('CB:iq,type:set,pair-device', async (stanza: BinaryNode) => {
 		const iq: BinaryNode = {
@@ -880,11 +944,24 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 		await sendNode(iq)
 
+		pairingReady = true
+		pendingPairingResolve?.()
+
 		const pairDeviceNode = getBinaryNodeChild(stanza, 'pair-device')
 		const refNodes = getBinaryNodeChildren(pairDeviceNode, 'ref')
 		const noiseKeyB64 = Buffer.from(creds.noiseKey.public).toString('base64')
 		const identityKeyB64 = Buffer.from(creds.signedIdentityKey.public).toString('base64')
-		const advB64 = creds.advSecretKey
+
+		const renderer = makePairingQRRenderer(
+			refNodes.map(refNode => (refNode.content as Buffer).toString('utf-8')),
+			// creds.advSecretKey is read per render rather than captured once:
+			// a companion_reg_refresh rotates it mid-flow.
+			ref =>
+				ev.emit('connection.update', {
+					qr: buildPairingQRData(ref, noiseKeyB64, identityKeyB64, creds.advSecretKey, browser)
+				})
+		)
+		refreshPairingQR = () => void renderer.refresh()
 
 		let qrMs = qrTimeout || 60_000 // time to let a QR live
 		const genPairQR = () => {
@@ -892,22 +969,29 @@ export const makeSocket = (config: SocketConfig) => {
 				return
 			}
 
-			const refNode = refNodes.shift()
-			if (!refNode) {
+			if (!renderer.next()) {
 				void end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
 				return
 			}
-
-			const ref = (refNode.content as Buffer).toString('utf-8')
-			const qr = buildPairingQRData(ref, noiseKeyB64, identityKeyB64, advB64, browser)
-
-			ev.emit('connection.update', { qr })
 
 			qrTimer = setTimeout(genPairQR, qrMs)
 			qrMs = qrTimeout || 20_000 // shorter subsequent qrs
 		}
 
 		genPairQR()
+	})
+	// the server retiring an unpaired companion's registration material
+	ws.on('CB:notification,type:companion_reg_refresh', (node: BinaryNode) => {
+		handleCompanionRegRefresh(node, {
+			creds,
+			emitCredsUpdate: update => ev.emit('creds.update', update),
+			// Deliberately re-renders the ref already on screen and leaves
+			// qrTimer alone: that ref has not expired, only the secret it
+			// advertises changed. Spending a ref here would drain the pool the
+			// server allotted and end the flow with 'QR refs attempts ended'.
+			refreshQR: () => refreshPairingQR?.(),
+			logger
+		})
 	})
 	// device paired for the first time
 	// if device pairs successfully, the server asks to restart the connection
@@ -1004,7 +1088,7 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:ib,,offline_preview', async (node: BinaryNode) => {
-		logger.info('offline preview received', JSON.stringify(node))
+		logger.info({ node }, 'offline preview received')
 		await sendNode({
 			tag: 'ib',
 			attrs: {},
@@ -1051,11 +1135,14 @@ export const makeSocket = (config: SocketConfig) => {
 	ev.on('creds.update', update => {
 		const name = update.me?.name
 		// if name has just been received
-		if (creds.me?.name !== name) {
+		// a partial update carries no `me`, which would otherwise send a nameless <presence/>.
+		// an attribute-less presence node is read as "available" by the server, which marks the
+		// account online and suppresses push notifications to the user's phone.
+		if (typeof name === 'string' && name.length > 0 && creds.me?.name !== name) {
 			logger.debug({ name }, 'updated pushName')
 			sendNode({
 				tag: 'presence',
-				attrs: { name: name! }
+				attrs: { name }
 			}).catch(err => {
 				logger.warn({ trace: err.stack }, 'error in sending presence update on name change')
 			})
@@ -1115,6 +1202,13 @@ export const makeSocket = (config: SocketConfig) => {
 	const registerSocketEndHandler = (handler: (error: Error | undefined) => void | Promise<void>) => {
 		socketEndHandlers.push(handler)
 	}
+
+	// free the per-socket AsyncLocalStorage created by addTransactionCapability -
+	// end() runs every handler unconditionally and is reached from ws.on('close'),
+	// so this also fires for abnormal closes (1006)
+	registerSocketEndHandler(() => {
+		keys.disposeTransactionStorage()
+	})
 
 	/**
 	 * Fetches your account's standing when it comes to restrictions.

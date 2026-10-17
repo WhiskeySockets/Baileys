@@ -216,7 +216,7 @@ export class MessageRetryManager {
 	 * Increment retry counter for a message
 	 */
 	incrementRetryCount(messageId: string): number {
-		this.retryCounters.set(messageId, (this.retryCounters.get(messageId) || 0) + 1)
+		this.retryCounters.set(messageId, (this.retryCounters.get(messageId) ?? 0) + 1)
 		this.statistics.totalRetries++
 		return this.retryCounters.get(messageId)!
 	}
@@ -225,7 +225,7 @@ export class MessageRetryManager {
 	 * Get retry count for a message
 	 */
 	getRetryCount(messageId: string): number {
-		return this.retryCounters.get(messageId) || 0
+		return this.retryCounters.get(messageId) ?? 0
 	}
 
 	/**

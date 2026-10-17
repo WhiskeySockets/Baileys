@@ -885,7 +885,8 @@ export const processSyncAction = (
 			{
 				id,
 				unreadCount: isNullUpdate ? null : !!markReadAction?.read ? 0 : -1,
-				conditional: getChatUpdateConditional(id!, markReadAction?.messageRange)
+				conditional: getChatUpdateConditional(id!, markReadAction?.messageRange),
+				...(markReadAction?.messageRange ? { readMessageRange: markReadAction.messageRange } : {})
 			}
 		])
 	} else if (action?.deleteMessageForMeAction || type === 'deleteMessageForMe') {

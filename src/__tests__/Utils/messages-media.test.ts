@@ -1,12 +1,27 @@
+import { createCipheriv, hkdfSync, randomBytes } from 'crypto'
 import * as fs from 'fs'
 import * as http from 'http'
 import { Agent } from 'https'
 import * as os from 'os'
 import * as path from 'path'
 import { Readable } from 'stream'
+import { proto } from '../../../WAProto/index.js'
 import type { MediaConnInfo, SocketConfig } from '../../Types'
+import { aesDecryptGCM, aesEncryptGCM } from '../../Utils/crypto'
 import type { ILogger } from '../../Utils/logger'
-import { encryptedStream, getWAUploadToServer, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import {
+	decryptMediaRetryData,
+	downloadEncryptedContent,
+	encryptedStream,
+	encryptMediaRetryRequest,
+	getWAUploadToServer,
+	setNewsletterMediaHandle,
+	takeNewsletterMediaHandle,
+	toBuffer,
+	type UploadParams,
+	uploadWithNodeHttp
+} from '../../Utils/messages-media'
+import { type BinaryNode, getBinaryNodeChild } from '../../WABinary'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -332,7 +347,25 @@ describe('getWAUploadToServer', () => {
 		await cleanupTempFile(tempFilePath)
 	})
 
-	it('does not pass a generic https Agent as a fetch dispatcher', async () => {
+	const mediaConn: MediaConnInfo = {
+		auth: 'auth-token',
+		ttl: 60,
+		hosts: [{ hostname: 'upload.example.com', maxContentLengthBytes: 1024 }],
+		fetchDate: new Date()
+	}
+
+	const makeUpload = (fetchAgent?: Agent) =>
+		getWAUploadToServer(
+			{
+				customUploadHosts: [],
+				fetchAgent,
+				logger: createLogger(),
+				options: {}
+			} as Partial<SocketConfig> as SocketConfig,
+			async () => mediaConn
+		)
+
+	it('keeps using fetch when no agent is set', async () => {
 		let fetchInit: RequestInit | undefined
 		globalThis.fetch = (async (_input, init) => {
 			fetchInit = init
@@ -341,30 +374,116 @@ describe('getWAUploadToServer', () => {
 			})
 		}) as typeof fetch
 
-		const mediaConn: MediaConnInfo = {
-			auth: 'auth-token',
-			ttl: 60,
-			hosts: [{ hostname: 'upload.example.com', maxContentLengthBytes: 1024 }],
-			fetchDate: new Date()
-		}
-		const upload = getWAUploadToServer(
-			{
-				customUploadHosts: [],
-				fetchAgent: new Agent(),
-				logger: createLogger(),
-				options: {}
-			} as Partial<SocketConfig> as SocketConfig,
-			async () => mediaConn
-		)
-
-		await expect(upload(tempFilePath, { fileEncSha256B64: 'abc123', mediaType: 'image' })).resolves.toEqual({
+		await expect(makeUpload()(tempFilePath, { fileEncSha256B64: 'abc123', mediaType: 'image' })).resolves.toEqual({
 			mediaUrl: 'https://example.com/media',
 			directPath: '/media',
 			meta_hmac: undefined,
 			fbid: undefined,
 			ts: undefined
 		})
-		expect((fetchInit as (RequestInit & { dispatcher?: unknown }) | undefined)?.dispatcher).toBeUndefined()
+		expect(fetchInit).toBeDefined()
+		expect((fetchInit as RequestInit & { dispatcher?: unknown }).dispatcher).toBeUndefined()
+	})
+
+	it('uploads through node:https when a generic https Agent is set, so proxy agents are honored', async () => {
+		let fetchCalls = 0
+		globalThis.fetch = (async () => {
+			fetchCalls++
+			return new Response('{}')
+		}) as typeof fetch
+
+		// the lookup only runs if the request actually goes through this agent
+		const lookedUp: string[] = []
+		const agent = new Agent({
+			lookup: (hostname, _options, callback) => {
+				lookedUp.push(hostname)
+				callback(new Error('blocked by test agent'), '', 4)
+			}
+		})
+
+		await expect(makeUpload(agent)(tempFilePath, { fileEncSha256B64: 'abc123', mediaType: 'image' })).rejects.toThrow(
+			'Media upload failed on all hosts'
+		)
+		expect(fetchCalls).toBe(0)
+		expect(lookedUp).toEqual(['upload.example.com'])
+	})
+})
+
+describe('downloadEncryptedContent', () => {
+	let originalFetch: typeof globalThis.fetch
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch
+	})
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch
+	})
+
+	it('forwards response body errors to the returned decrypt stream', async () => {
+		let failResponseBody: ((reason: unknown) => void) | undefined
+		const response = new Response(
+			new ReadableStream<Uint8Array>({
+				start(controller) {
+					failResponseBody = reason => controller.error(reason)
+				}
+			})
+		)
+		globalThis.fetch = (async () => response) as typeof fetch
+
+		const stream = await downloadEncryptedContent('https://mmg.whatsapp.net/media', {
+			cipherKey: Buffer.alloc(32),
+			iv: Buffer.alloc(16)
+		})
+		const consumption = toBuffer(stream)
+		const terminated = new TypeError('terminated')
+
+		if (!failResponseBody) {
+			throw new Error('response body controller was not initialized')
+		}
+
+		failResponseBody(terminated)
+
+		await expect(consumption).rejects.toBe(terminated)
+	})
+
+	it('continues to decrypt a complete response body', async () => {
+		const cipherKey = Buffer.alloc(32, 1)
+		const iv = Buffer.alloc(16, 2)
+		const plaintext = Buffer.from('media payload')
+		const cipher = createCipheriv('aes-256-cbc', cipherKey, iv)
+		const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()])
+		globalThis.fetch = (async () => new Response(encrypted)) as typeof fetch
+
+		const stream = await downloadEncryptedContent('https://mmg.whatsapp.net/media', { cipherKey, iv })
+
+		await expect(toBuffer(stream)).resolves.toEqual(plaintext)
+	})
+
+	it('destroys the response body when the returned stream is cancelled', async () => {
+		let markResponseCancelled: (() => void) | undefined
+		let cancelCount = 0
+		const responseCancelled = new Promise<void>(resolve => {
+			markResponseCancelled = resolve
+		})
+		const response = new Response(
+			new ReadableStream({
+				cancel() {
+					cancelCount += 1
+					markResponseCancelled?.()
+				}
+			})
+		)
+		globalThis.fetch = (async () => response) as typeof fetch
+		const stream = await downloadEncryptedContent('https://mmg.whatsapp.net/media', {
+			cipherKey: Buffer.alloc(32),
+			iv: Buffer.alloc(16)
+		})
+
+		stream.destroy()
+
+		await responseCancelled
+		expect(cancelCount).toBe(1)
 	})
 })
 
@@ -484,5 +603,84 @@ describe('encryptedStream', () => {
 			expect(result.mediaKey).toBeDefined()
 			await cleanupFiles([result.encFilePath, result.originalFilePath])
 		}
+	})
+})
+
+describe('media retry key', () => {
+	const mediaKey = randomBytes(32)
+	const msgId = '3EB0C0FFEE0123456789'
+	// what the phone derives: HKDF-SHA256 over the raw media key bytes
+	const retryKey = Buffer.from(hkdfSync('sha256', mediaKey, Buffer.alloc(0), 'WhatsApp Media Retry Notification', 32))
+	// a message persisted as JSON (protobuf toJSON) carries its bytes fields as base64 strings
+	const storedMediaKey: string = proto.Message.ImageMessage.create({ mediaKey }).toJSON().mediaKey
+
+	const phoneAnswer = () => {
+		const iv = randomBytes(12)
+		const plaintext = proto.MediaRetryNotification.encode({
+			stanzaId: msgId,
+			directPath: '/v/t62.7118-24/fresh-path',
+			result: proto.MediaRetryNotification.ResultType.SUCCESS
+		}).finish()
+		return { ciphertext: aesEncryptGCM(plaintext, retryKey, iv, Buffer.from(msgId)), iv }
+	}
+
+	it('decrypts the phone answer with a binary media key', () => {
+		const result = decryptMediaRetryData(phoneAnswer(), mediaKey, msgId)
+
+		expect(result.directPath).toBe('/v/t62.7118-24/fresh-path')
+		expect(result.result).toBe(proto.MediaRetryNotification.ResultType.SUCCESS)
+	})
+
+	it('decrypts the phone answer when the media key is a base64 string', () => {
+		expect(typeof storedMediaKey).toBe('string')
+
+		const result = decryptMediaRetryData(phoneAnswer(), storedMediaKey, msgId)
+
+		expect(result.directPath).toBe('/v/t62.7118-24/fresh-path')
+	})
+
+	it('accepts the data URI prefixed base64 form that getMediaKeys accepts', () => {
+		const result = decryptMediaRetryData(phoneAnswer(), `data:;base64,${storedMediaKey}`, msgId)
+
+		expect(result.directPath).toBe('/v/t62.7118-24/fresh-path')
+	})
+
+	it('encrypts the retry request with the same key when the media key is a base64 string', () => {
+		const key = { remoteJid: '1234567890@s.whatsapp.net', fromMe: false, id: msgId }
+
+		const node = encryptMediaRetryRequest(key, storedMediaKey, '1111111111:1@s.whatsapp.net')
+
+		const encrypt = getBinaryNodeChild(node, 'encrypt')!
+		const encP = getBinaryNodeChild(encrypt, 'enc_p')! as BinaryNode & { content: Uint8Array }
+		const encIv = getBinaryNodeChild(encrypt, 'enc_iv')! as BinaryNode & { content: Uint8Array }
+		const receipt = proto.ServerErrorReceipt.decode(
+			aesDecryptGCM(encP.content, retryKey, encIv.content, Buffer.from(msgId))
+		)
+		expect(receipt.stanzaId).toBe(msgId)
+	})
+})
+
+describe('newsletter media handle map', () => {
+	it('stores and consumes a handle by directPath', () => {
+		setNewsletterMediaHandle('/v/test-handle-1', 'handle-abc')
+
+		expect(takeNewsletterMediaHandle('/v/test-handle-1')).toBe('handle-abc')
+		// consumed: a second take returns undefined
+		expect(takeNewsletterMediaHandle('/v/test-handle-1')).toBeUndefined()
+	})
+
+	it('returns undefined for unknown, null or undefined directPath', () => {
+		expect(takeNewsletterMediaHandle('/v/never-stored')).toBeUndefined()
+		expect(takeNewsletterMediaHandle(null)).toBeUndefined()
+		expect(takeNewsletterMediaHandle(undefined)).toBeUndefined()
+	})
+
+	it('keeps handles isolated per directPath', () => {
+		setNewsletterMediaHandle('/v/test-handle-a', 'handle-a')
+		setNewsletterMediaHandle('/v/test-handle-b', 'handle-b')
+
+		expect(takeNewsletterMediaHandle('/v/test-handle-a')).toBe('handle-a')
+		expect(takeNewsletterMediaHandle('/v/test-handle-b')).toBe('handle-b')
+		expect(takeNewsletterMediaHandle('/v/test-handle-a')).toBeUndefined()
 	})
 })

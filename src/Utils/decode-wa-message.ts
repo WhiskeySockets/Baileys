@@ -16,6 +16,7 @@ import {
 	isPnUser
 	//	transferDevice
 } from '../WABinary'
+import { decryptBotReplyNode, getBotReplyInfo } from './bot-message'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
@@ -52,6 +53,7 @@ const storeMappingFromEnvelope = async (
 export const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
 export const ACCOUNT_RESTRICTED_TEXT = 'Your account has been restricted'
+export const MISSING_BOT_MESSAGE_SECRET_TEXT = 'Message secret for the bot reply not found'
 
 // Retry configuration for failed decryption
 export const DECRYPTION_RETRY_CONFIG = {
@@ -163,7 +165,9 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
 	if (isPnUser(from) || isLidUser(from) || isHostedLidUser(from) || isHostedPnUser(from)) {
-		if (recipient && !isJidMetaAI(recipient)) {
+		// A stanza from someone else can name a bot as recipient (Meta AI trigger
+		// messages); our own devices' copies of what we sent a bot belong to the bot's chat.
+		if (recipient && (!isJidMetaAI(recipient) || isMe(from) || isMeLid(from))) {
 			if (!isMe(from) && !isMeLid(from)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
@@ -185,6 +189,10 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		}
 
 		msgType = 'chat'
+		author = from
+	} else if (isJidMetaAI(from)) {
+		msgType = 'chat'
+		chatId = from
 		author = from
 	} else if (isJidGroup(from)) {
 		if (!participant) {
@@ -229,7 +237,8 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 
 	const key: WAMessageKey = {
 		remoteJid: chatId,
-		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		// a bot has no PN/LID alternate; never map our own alternate onto the bot's chat
+		remoteJidAlt: !isJidGroup(chatId) && !isJidMetaAI(chatId) ? addressingContext.senderAlt : undefined,
 		remoteJidUsername: !isJidGroup(chatId)
 			? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username
 			: undefined,
@@ -261,14 +270,94 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 }
 
+/**
+ * Decrypt a 1:1 Signal message, retrying once with the alternate identity form
+ * WhatsApp tags on the stanza. Stanzas carry both sender_pn/sender_lid (or
+ * participant_pn/participant_lid for groups) whenever the pairing is known;
+ * sessions are established under one of the two forms, so a Bad MAC on the
+ * primary address may still decrypt with the other. See #2234 and #2321.
+ */
+const decryptMessageWithStanzaFallback = async (
+	repository: SignalRepositoryWithLIDStore,
+	primaryJid: string,
+	alternateJid: string | undefined,
+	e2eType: 'pkmsg' | 'msg',
+	ciphertext: Uint8Array,
+	messageKey: proto.IMessageKey,
+	logger: ILogger
+): Promise<Uint8Array> => {
+	try {
+		return await repository.decryptMessage({ jid: primaryJid, type: e2eType, ciphertext })
+	} catch (err) {
+		if (!alternateJid || alternateJid === primaryJid) {
+			throw err
+		}
+
+		logger.debug(
+			{ key: messageKey, primary: primaryJid, retryWith: alternateJid },
+			'primary identity failed to decrypt, retrying with stanza-provided PN/LID pairing'
+		)
+
+		try {
+			return await repository.decryptMessage({ jid: alternateJid, type: e2eType, ciphertext })
+		} catch {
+			// preserve the original, more informative error (e.g. "Bad MAC") over the retry's
+			throw err
+		}
+	}
+}
+
+/**
+ * @param getBotMessageSecret looks up the messageSecret of one of our sent messages;
+ * needed to decrypt a bot's reply to it (`msmsg`)
+ */
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
 	meLid: string,
 	repository: SignalRepositoryWithLIDStore,
-	logger: ILogger
+	logger: ILogger,
+	getBotMessageSecret?: (key: WAMessageKey) => Promise<Uint8Array | null | undefined>
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
+
+	// A native bot encrypts its reply with the messageSecret of the message it
+	// answers: one of ours, identified by <meta target_id>.
+	const decryptBotReplyStanza = async (content: Uint8Array) => {
+		if (!isJidMetaAI(author)) {
+			throw new Error('msmsg from a sender that is not a bot')
+		}
+
+		const info = getBotReplyInfo(stanza)
+		const targetSenderJid = info.targetSenderJid || meLid
+		const isOwnTarget =
+			!!targetSenderJid &&
+			(isLidUser(targetSenderJid) || isHostedLidUser(targetSenderJid)
+				? areJidsSameUser(targetSenderJid, meLid)
+				: areJidsSameUser(targetSenderJid, meId))
+		if (!info.targetId || !isOwnTarget) {
+			throw new Error('bot reply does not answer one of our messages')
+		}
+
+		const messageSecret = await getBotMessageSecret?.({
+			remoteJid: fullMessage.key.remoteJid,
+			id: info.targetId,
+			fromMe: true
+		})
+		if (!messageSecret?.length) {
+			throw new Error(MISSING_BOT_MESSAGE_SECRET_TEXT)
+		}
+
+		return decryptBotReplyNode({
+			content,
+			stanzaId: fullMessage.key.id!,
+			info,
+			messageSecret,
+			targetSenderJid,
+			botJid: author
+		})
+	}
+
 	return {
 		fullMessage,
 		category: stanza.attrs.category,
@@ -322,22 +411,35 @@ export const decryptMessageNode = (
 								})
 								break
 							case 'pkmsg':
-							case 'msg':
-								msgBuffer = await repository.decryptMessage({
-									jid: decryptionJid,
-									type: e2eType,
-									ciphertext: content
-								})
+							case 'msg': {
+								const alternateJid = isLidUser(decryptionJid)
+									? stanza.attrs.participant_pn || stanza.attrs.sender_pn
+									: stanza.attrs.participant_lid || stanza.attrs.sender_lid
+
+								msgBuffer = await decryptMessageWithStanzaFallback(
+									repository,
+									decryptionJid,
+									alternateJid,
+									e2eType,
+									content,
+									fullMessage.key,
+									logger
+								)
 								break
+							}
+
 							case 'plaintext':
 								msgBuffer = content
+								break
+							case 'msmsg':
+								msgBuffer = await decryptBotReplyStanza(content)
 								break
 							default:
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
 						let msg: proto.IMessage = proto.Message.decode(
-							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
+							e2eType === 'plaintext' || e2eType === 'msmsg' ? msgBuffer : unpadRandomMax16(msgBuffer)
 						)
 						msg = msg.deviceSentMessage?.message || msg
 						if (msg.senderKeyDistributionMessage) {

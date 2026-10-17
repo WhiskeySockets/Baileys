@@ -1,4 +1,4 @@
-import type { BaileysEventMap } from '../../Types'
+import { type BaileysEventMap, WAMessageStatus } from '../../Types'
 import { makeEventBuffer } from '../../Utils/event-buffer'
 import type { ILogger } from '../../Utils/logger'
 
@@ -15,6 +15,166 @@ const makeTestLogger = (): ILogger =>
 	}) as unknown as ILogger
 
 describe('event-buffer', () => {
+	describe('messages.update buffering', () => {
+		it('preserves the decoded message timestamp when absorbing a prior receipt update', () => {
+			const ev = makeEventBuffer(makeTestLogger())
+			const receivedEvents: BaileysEventMap['messages.upsert'][] = []
+			const key = {
+				remoteJid: '1234567890@s.whatsapp.net',
+				id: 'message-id',
+				fromMe: false
+			}
+
+			ev.on('messages.upsert', (data: BaileysEventMap['messages.upsert']) => {
+				receivedEvents.push(data)
+			})
+
+			ev.buffer()
+			ev.emit('messages.update', [
+				{
+					key,
+					update: {
+						status: WAMessageStatus.DELIVERY_ACK,
+						messageTimestamp: 200
+					}
+				}
+			])
+			ev.emit('messages.upsert', {
+				messages: [{ key, messageTimestamp: 100 }],
+				type: 'append'
+			})
+			ev.flush()
+
+			expect(receivedEvents).toHaveLength(1)
+			expect(receivedEvents[0]!.messages[0]).toMatchObject({
+				messageTimestamp: 100,
+				status: WAMessageStatus.DELIVERY_ACK
+			})
+
+			ev.destroy()
+		})
+
+		it('preserves the decoded message timestamp when a receipt follows the upsert', () => {
+			const ev = makeEventBuffer(makeTestLogger())
+			const receivedEvents: BaileysEventMap['messages.upsert'][] = []
+			const key = {
+				remoteJid: '1234567890@s.whatsapp.net',
+				id: 'message-id',
+				fromMe: false
+			}
+
+			ev.on('messages.upsert', (data: BaileysEventMap['messages.upsert']) => {
+				receivedEvents.push(data)
+			})
+
+			ev.buffer()
+			ev.emit('messages.upsert', {
+				messages: [{ key, messageTimestamp: 100 }],
+				type: 'append'
+			})
+			ev.emit('messages.update', [
+				{
+					key,
+					update: {
+						status: WAMessageStatus.DELIVERY_ACK,
+						messageTimestamp: 200
+					}
+				}
+			])
+			ev.flush()
+
+			expect(receivedEvents).toHaveLength(1)
+			expect(receivedEvents[0]!.messages[0]).toMatchObject({
+				messageTimestamp: 100,
+				status: WAMessageStatus.DELIVERY_ACK
+			})
+
+			ev.destroy()
+		})
+	})
+
+	describe('chats.update readMessageRange', () => {
+		const id = 'chat@s.whatsapp.net'
+		const readMessageRange = {
+			lastMessageTimestamp: 1700000100,
+			messages: [{ key: { id: 'LAST', remoteJid: id, fromMe: false }, timestamp: 1700000100 }]
+		}
+
+		const collect = () => {
+			const ev = makeEventBuffer(makeTestLogger())
+			const upserts: BaileysEventMap['chats.upsert'][] = []
+			const updates: BaileysEventMap['chats.update'][] = []
+			ev.on('chats.upsert', (data: BaileysEventMap['chats.upsert']) => upserts.push(data))
+			ev.on('chats.update', (data: BaileysEventMap['chats.update']) => updates.push(data))
+			return { ev, upserts, updates }
+		}
+
+		const settle = () => new Promise(resolve => setTimeout(resolve, 100))
+
+		it('keeps readMessageRange on a buffered update that stays an update', async () => {
+			const { ev, updates } = collect()
+			ev.buffer()
+			ev.emit('chats.update', [{ id, unreadCount: 0, readMessageRange }])
+			ev.flush()
+			await settle()
+
+			expect(updates.flat()).toEqual([expect.objectContaining({ id, unreadCount: 0, readMessageRange })])
+		})
+
+		it('drops a stale range when a ranged mark-read is followed by an unranged mark-unread', async () => {
+			const { ev, updates } = collect()
+			ev.buffer()
+			ev.emit('chats.update', [{ id, unreadCount: 0, readMessageRange }])
+			ev.emit('chats.update', [{ id, unreadCount: -1 }])
+			ev.flush()
+			await settle()
+
+			const merged = updates.flat().filter(u => u.id === id)
+			expect(merged).toHaveLength(1)
+			expect(merged[0]).toMatchObject({ id, unreadCount: -1 })
+			expect(merged[0]).not.toHaveProperty('readMessageRange')
+		})
+
+		it('keeps the range when a new incoming message follows the mark-read', async () => {
+			const { ev, updates } = collect()
+			ev.buffer()
+			ev.emit('chats.update', [{ id, unreadCount: 0, readMessageRange }])
+			ev.emit('chats.update', [{ id, unreadCount: 1 }])
+			ev.flush()
+			await settle()
+
+			const merged = updates.flat().filter(u => u.id === id)
+			expect(merged).toHaveLength(1)
+			expect(merged[0]).toMatchObject({ id, unreadCount: 1, readMessageRange })
+		})
+
+		it('drops readMessageRange when the update merges into a buffered upsert', async () => {
+			const { ev, upserts } = collect()
+			ev.buffer()
+			ev.emit('chats.upsert', [{ id, conversationTimestamp: 1700000000 }])
+			ev.emit('chats.update', [{ id, unreadCount: 0, readMessageRange }])
+			ev.flush()
+			await settle()
+
+			const chat = upserts.flat().find(c => c.id === id)
+			expect(chat).toMatchObject({ id, unreadCount: 0 })
+			expect(chat).not.toHaveProperty('readMessageRange')
+		})
+
+		it('drops readMessageRange when a later upsert absorbs the buffered update', async () => {
+			const { ev, upserts } = collect()
+			ev.buffer()
+			ev.emit('chats.update', [{ id, unreadCount: 0, readMessageRange }])
+			ev.emit('chats.upsert', [{ id, conversationTimestamp: 1700000000 }])
+			ev.flush()
+			await settle()
+
+			const chat = upserts.flat().find(c => c.id === id)
+			expect(chat).toMatchObject({ id, unreadCount: 0 })
+			expect(chat).not.toHaveProperty('readMessageRange')
+		})
+	})
+
 	describe('messaging-history.set pastParticipants buffering', () => {
 		it('should include pastParticipants in flushed event', async () => {
 			const logger = makeTestLogger()

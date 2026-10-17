@@ -54,7 +54,7 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
-import { makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
+import { isOfflineNode, makeOfflineNodeProcessor, type MessageType } from '../Utils/offline-node-processor'
 import { buildAckStanza } from '../Utils/stanza-ack'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -76,6 +76,7 @@ import {
 	getBinaryNodeChildString,
 	getBinaryNodeChildUInt,
 	isJidGroup,
+	isJidMetaAI,
 	isJidNewsletter,
 	isJidStatusBroadcast,
 	isLidUser,
@@ -170,12 +171,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
+		let ts = oldestMsgTimestamp
+		if (typeof ts === 'number' && ts > 1e11) {
+			ts = Math.floor(ts / 1000)
+		} else if (ts !== null && typeof ts === 'object' && 'toNumber' in ts) {
+			const num = ts.toNumber()
+			if (num > 1e11) {
+				ts = Math.floor(num / 1000)
+			}
+		}
+
 		const pdoMessage: proto.Message.IPeerDataOperationRequestMessage = {
 			historySyncOnDemandRequest: {
 				chatJid: oldestMsgKey.remoteJid,
 				oldestMsgFromMe: oldestMsgKey.fromMe,
 				oldestMsgId: oldestMsgKey.id,
-				oldestMsgTimestampMs: oldestMsgTimestamp,
+				oldestMsgTimestampMs: ts,
 				onDemandMsgCount: count
 			},
 			peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType.HISTORY_SYNC_ON_DEMAND
@@ -544,7 +555,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessageAck = async (node: BinaryNode, errorCode?: number) => {
-		const stanza = buildAckStanza(node, errorCode, authState.creds.me!.id)
+		const stanza = buildAckStanza(node, errorCode, authState.creds.me?.id)
 		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
@@ -593,7 +604,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} else {
 			// Fallback to old system
 			const key = `${msgId}:${msgKey?.participant}`
-			let retryCount = (await msgRetryCache.get<number>(key)) || 0
+			// a cache miss means "never seen", not "zero retries": it must not reset the counter
+			let retryCount = (await msgRetryCache.get<number>(key)) ?? 1
 			if (retryCount >= maxMsgRetryCount) {
 				logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
 				await msgRetryCache.del(key)
@@ -605,7 +617,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		const key = `${msgId}:${msgKey?.participant}`
-		const retryCount = (await msgRetryCache.get<number>(key)) || 1
+		const retryCount = (await msgRetryCache.get<number>(key)) ?? 1
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
@@ -1301,13 +1313,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const willSendMessageAgain = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const retryCount = (await msgRetryCache.get<number>(key)) || 0
+		const retryCount = (await msgRetryCache.get<number>(key)) ?? 0
 		return retryCount < maxMsgRetryCount
 	}
 
 	const updateSendMessageAgainCount = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const newValue = ((await msgRetryCache.get<number>(key)) || 0) + 1
+		const newValue = ((await msgRetryCache.get<number>(key)) ?? 0) + 1
 		await msgRetryCache.set(key, newValue)
 	}
 
@@ -1582,14 +1594,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleMessage = async (node: BinaryNode) => {
-		const encNode = getBinaryNodeChild(node, 'enc')
-		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
-		if (encNode?.attrs.type === 'msmsg') {
-			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
-			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
-			return
+	// The secret a bot's reply is encrypted with is the messageSecret of the message we sent it.
+	const getBotMessageSecret = async (key: WAMessageKey) => {
+		let message = messageRetryManager?.getRecentMessage(key.remoteJid!, key.id!)?.message
+		if (!message) {
+			try {
+				message = await getMessage(key)
+			} catch (err) {
+				logger.warn({ err, key }, 'failed to get message for bot reply secret')
+			}
 		}
+
+		return message?.messageContextInfo?.messageSecret
+	}
+
+	const handleMessage = async (node: BinaryNode) => {
+		const isBotReply = getBinaryNodeChildren(node, 'enc').some(enc => enc.attrs.type === 'msmsg')
 
 		let acked = false
 
@@ -1599,7 +1619,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				category,
 				author,
 				decrypt
-			} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
+			} = decryptMessageNode(
+				node,
+				authState.creds.me!.id,
+				authState.creds.me!.lid || '',
+				signalRepository,
+				logger,
+				getBotMessageSecret
+			)
 
 			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 			// store new mappings we didn't have before
@@ -1629,6 +1656,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 						acked = true
 						return sendMessageAck(node, NACK_REASONS.ParsingError)
+					}
+
+					// A bot reply is not Signal-encrypted, so a retry receipt cannot help
+					if (isBotReply) {
+						logger.debug({ key: msg.key, reason: msg.messageStubParameters?.[0] }, 'failed to decrypt bot reply')
+						acked = true
+						return sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
 					}
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
@@ -1675,21 +1709,34 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							participant: msg.participant,
 							verifiedBizName: msg.verifiedBizName
 						}
-						requestPlaceholderResend(cleanKey, msgData)
-							.then(requestId => {
-								if (requestId && requestId !== 'RESOLVED') {
-									logger.debug({ msgId: msg.key.id, requestId }, 'requested placeholder resend for unavailable message')
-									ev.emit('messages.update', [
-										{
-											key: msg.key,
-											update: { messageStubParameters: [NO_MESSAGE_FOUND_ERROR_TEXT, requestId] }
-										}
-									])
-								}
-							})
-							.catch(err => {
-								logger.warn({ err, msgId: msg.key.id }, 'failed to request placeholder resend for unavailable message')
-							})
+						// honour a caller-supplied retry cache here too: a stored count at the
+						// ceiling means the caller does not want another placeholder request
+						const retryKey = `${msg.key.id}:${msg.key.participant}`
+						const retryCount = (await msgRetryCache.get<number>(retryKey)) ?? 0
+						if (retryCount < maxMsgRetryCount) {
+							requestPlaceholderResend(cleanKey, msgData)
+								.then(requestId => {
+									if (requestId && requestId !== 'RESOLVED') {
+										logger.debug(
+											{ msgId: msg.key.id, requestId },
+											'requested placeholder resend for unavailable message'
+										)
+										ev.emit('messages.update', [
+											{
+												key: msg.key,
+												update: { messageStubParameters: [NO_MESSAGE_FOUND_ERROR_TEXT, requestId] }
+											}
+										])
+									}
+								})
+								.catch(err => {
+									logger.warn(
+										{ err, msgId: msg.key.id },
+										'failed to request placeholder resend for unavailable message'
+									)
+								})
+						}
+
 						acked = true
 						await sendMessageAck(node)
 						// Don't return — fall through to upsertMessage so the stub is emitted
@@ -1747,7 +1794,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							// message was sent by us from a different device
 							type = 'sender'
 							// need to specially handle this case
-							if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt)) {
+							if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt) || isJidMetaAI(msg.key.remoteJid!)) {
 								participant = author // TODO: investigate sending receipts to LIDs and not PNs
 							}
 						} else if (!sendActiveReceipts) {
@@ -1772,7 +1819,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
 
-				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
+				await upsertMessage(msg, isOfflineNode(node) ? 'append' : 'notify')
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
@@ -1804,7 +1851,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				callerPn: infoChild.attrs['caller_pn'],
 				id: callId,
 				date: new Date(+attrs.t! * 1000),
-				offline: !!attrs.offline,
+				offline: isOfflineNode(node),
 				status
 			}
 
@@ -1986,7 +2033,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		const isOffline = !!node.attrs.offline
+		const isOffline = isOfflineNode(node)
 
 		if (isOffline) {
 			offlineNodeProcessor.enqueue(type, node)
@@ -2011,6 +2058,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	ws.on('CB:notification', async (node: BinaryNode) => {
 		await processNode('notification', node, 'handling notification', handleNotification)
 	})
+
+	// WhatsApp delivers some contacts' status updates as top-level <status> stanzas.
+	// They are never decrypted here; acking keeps the server from re-delivering them
+	// and from closing the stream with a class="status" ack error ~50 min later.
+	// Newsletter statuses are not acked, matching whatsmeow.
+	ws.on('CB:status', async (node: BinaryNode) => {
+		const from = node.attrs.from
+		if (from && jidDecode(from)?.server === 'newsletter') {
+			return
+		}
+
+		await sendMessageAck(node).catch(error => onUnexpectedError(error, 'acking status stanza'))
+	})
+
 	ws.on('CB:ack,class:message', (node: BinaryNode) => {
 		handleBadAck(node).catch(error => onUnexpectedError(error, 'handling bad ack'))
 	})

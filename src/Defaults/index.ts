@@ -4,7 +4,7 @@ import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
-const version = [2, 3000, 1043857760]
+const version = [2, 3000, 1049974625]
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -106,6 +106,15 @@ export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	'md-app-state': '',
 	'md-msg-hist': '/mms/md-app-state',
 	'biz-cover-photo': '/pps/biz-cover-photo'
+}
+
+export const NEWSLETTER_MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
+	image: '/newsletter/newsletter-image',
+	video: '/newsletter/newsletter-video',
+	document: '/newsletter/newsletter-document',
+	audio: '/newsletter/newsletter-audio',
+	sticker: '/newsletter/newsletter-image',
+	'thumbnail-link': '/newsletter/newsletter-thumbnail-link'
 }
 
 export const MEDIA_HKDF_KEY_MAPPING = {

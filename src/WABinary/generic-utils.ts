@@ -1,4 +1,5 @@
 import { Boom } from '@hapi/boom'
+import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto/index.js'
 import { type BinaryNode } from './types'
 
@@ -69,6 +70,103 @@ export const assertNodeErrorFree = (node: BinaryNode) => {
 		throw new Boom(errNode.attrs.text || 'Unknown error', { data: +errNode.attrs.code! })
 	}
 }
+
+const BIZ_FLOWS = new Set([
+	'mpm',
+	'cta_catalog',
+	'send_location',
+	'call_permission_request',
+	'wa_payment_transaction_details',
+	'automated_greeting_message_view_catalog'
+])
+
+const BIZ_DECISION_SOURCE_CONTENT: BinaryNode = {
+	tag: 'decision_source',
+	attrs: { value: 'df' }
+}
+
+const BIZ_NATIVE_FLOW_ATTRIBUTES = { type: 'native_flow', v: '1' }
+
+/**
+ * Builds the `<biz>` node WA Web attaches to interactive messages. The server
+ * rejects button/list/template messages without it.
+ */
+export const getBizBinaryNode = (message: proto.IMessage): BinaryNode => {
+	const flowMessage = message.interactiveMessage?.nativeFlowMessage
+	const firstButtonName = flowMessage?.buttons?.[0]?.name
+	const qualityContent: BinaryNode = {
+		tag: 'quality_control',
+		attrs: {
+			decision_id: randomBytes(20).toString('hex'),
+			source_type: 'third_party'
+		},
+		content: [BIZ_DECISION_SOURCE_CONTENT]
+	}
+	const bizAttributes = {
+		actual_actors: '2',
+		host_storage: '2',
+		privacy_mode_ts: `${(Date.now() / 1000) | 0}`
+	}
+
+	if (firstButtonName === 'review_and_pay' || firstButtonName === 'payment_info') {
+		return {
+			tag: 'biz',
+			attrs: {
+				...bizAttributes,
+				native_flow_name: firstButtonName === 'review_and_pay' ? 'order_details' : firstButtonName
+			},
+			content: [qualityContent]
+		}
+	}
+
+	if (firstButtonName && BIZ_FLOWS.has(firstButtonName)) {
+		return {
+			tag: 'biz',
+			attrs: bizAttributes,
+			content: [
+				{
+					tag: 'interactive',
+					attrs: BIZ_NATIVE_FLOW_ATTRIBUTES,
+					content: [{ tag: 'native_flow', attrs: { v: '2', name: firstButtonName } }]
+				},
+				qualityContent
+			]
+		}
+	}
+
+	if (flowMessage || message.buttonsMessage || message.templateMessage) {
+		return {
+			tag: 'biz',
+			attrs: bizAttributes,
+			content: [
+				{
+					tag: 'interactive',
+					attrs: BIZ_NATIVE_FLOW_ATTRIBUTES,
+					content: [{ tag: 'native_flow', attrs: { v: '9', name: 'mixed' } }]
+				},
+				qualityContent
+			]
+		}
+	}
+
+	if (message.listMessage) {
+		return {
+			tag: 'biz',
+			attrs: bizAttributes,
+			content: [{ tag: 'list', attrs: { v: '2', type: 'product_list' } }, qualityContent]
+		}
+	}
+
+	return { tag: 'biz', attrs: bizAttributes, content: [qualityContent] }
+}
+
+export const shouldIncludeBizBinaryNode = (message: proto.IMessage) =>
+	!!(
+		message.buttonsMessage ||
+		message.listMessage ||
+		message.templateMessage ||
+		message.interactiveMessage?.nativeFlowMessage
+	)
 
 export const reduceBinaryNodeToDictionary = (node: BinaryNode, tag: string) => {
 	const nodes = getBinaryNodeChildren(node, tag)

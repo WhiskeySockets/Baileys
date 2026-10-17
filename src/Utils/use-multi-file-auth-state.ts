@@ -1,5 +1,6 @@
 import { Mutex } from 'async-mutex'
-import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
+import { randomBytes } from 'crypto'
+import { mkdir, readFile, rename, stat, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { proto } from '../../WAProto/index.js'
 import type { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from '../Types'
@@ -23,6 +24,26 @@ const getFileLock = (path: string): Mutex => {
 	return mutex
 }
 
+// On Windows, rename fails with EPERM/EACCES/EBUSY while another process (antivirus, backup,
+// a reader outside this mutex) has the target open. The lock is short-lived, so retry briefly.
+// Elsewhere those codes mean a real permission problem, so fail on the first attempt.
+const RENAME_RETRY_CODES = new Set(['EPERM', 'EACCES', 'EBUSY'])
+const RENAME_ATTEMPTS = process.platform === 'win32' ? 50 : 1
+const renameWithRetry = async (from: string, to: string, attempts = RENAME_ATTEMPTS) => {
+	for (let i = 1; ; i++) {
+		try {
+			return await rename(from, to)
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code
+			if (i >= attempts || !code || !RENAME_RETRY_CODES.has(code)) {
+				throw error
+			}
+
+			await new Promise(resolve => setTimeout(resolve, Math.min(10 * i, 100)))
+		}
+	}
+}
+
 /**
  * stores the full authentication state in a single folder.
  * Far more efficient than singlefileauthstate
@@ -39,8 +60,19 @@ export const useMultiFileAuthState = async (
 		const mutex = getFileLock(filePath)
 
 		return mutex.acquire().then(async release => {
+			// writeFile truncates in place, so a crash mid-write leaves an empty or partial file,
+			// and readData turns that into null: creds.json is silently replaced by fresh creds.
+			// Write a sibling temp file and rename it over the target (atomic on the same filesystem).
+			// The mutex only covers this process, so the temp name is unique per write.
+			const tmpPath = `${filePath}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`
 			try {
-				await writeFile(filePath, JSON.stringify(data, BufferJSON.replacer))
+				// a new file gets the default mode; keep the target's (e.g. 0600) instead
+				const mode = (await stat(filePath).catch(() => undefined))?.mode
+				await writeFile(tmpPath, JSON.stringify(data, BufferJSON.replacer), { mode })
+				await renameWithRetry(tmpPath, filePath)
+			} catch (error) {
+				await unlink(tmpPath).catch(() => {})
+				throw error
 			} finally {
 				release()
 			}
