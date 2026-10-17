@@ -2034,6 +2034,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	ws.on('CB:notification', async (node: BinaryNode) => {
 		await processNode('notification', node, 'handling notification', handleNotification)
 	})
+
+	// WhatsApp delivers some contacts' status updates as top-level <status> stanzas.
+	// They are never decrypted here; acking keeps the server from re-delivering them
+	// and from closing the stream with a class="status" ack error ~50 min later.
+	// Newsletter statuses are not acked, matching whatsmeow.
+	ws.on('CB:status', async (node: BinaryNode) => {
+		const from = node.attrs.from
+		if (from && jidDecode(from)?.server === 'newsletter') {
+			return
+		}
+
+		await sendMessageAck(node).catch(error => onUnexpectedError(error, 'acking status stanza'))
+	})
+
 	ws.on('CB:ack,class:message', (node: BinaryNode) => {
 		handleBadAck(node).catch(error => onUnexpectedError(error, 'handling bad ack'))
 	})

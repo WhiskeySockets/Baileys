@@ -3,6 +3,8 @@ import { DEFAULT_CONNECTION_CONFIG } from '../../Defaults'
 import type { AuthenticationState } from '../../Types'
 import { type BinaryNode } from '../../WABinary'
 
+type WsListener = (node: BinaryNode) => unknown
+
 const sendNode = jest.fn(async () => undefined)
 const authState = {
 	creds: {},
@@ -58,5 +60,54 @@ describe('sendMessageAck', () => {
 				type: 'companion_reg_refresh'
 			}
 		})
+	})
+})
+
+describe('status stanza handling', () => {
+	const getStatusHandler = (sock: ReturnType<typeof makeMessagesRecvSocket>) => {
+		const on = sock.ws.on as unknown as jest.Mock
+		const call = on.mock.calls.find(([event]) => event === 'CB:status')
+		expect(call).toBeDefined()
+		return call![1] as WsListener
+	}
+
+	it('acks a top-level status stanza', async () => {
+		sendNode.mockClear()
+		const sock = makeMessagesRecvSocket({
+			...DEFAULT_CONNECTION_CONFIG,
+			auth: authState as unknown as AuthenticationState
+		})
+		const node: BinaryNode = {
+			tag: 'status',
+			attrs: { id: 'status-id', from: '1234567890@s.whatsapp.net', type: 'media' }
+		}
+
+		await getStatusHandler(sock)(node)
+
+		expect(sendNode).toHaveBeenCalledWith({
+			tag: 'ack',
+			attrs: {
+				id: 'status-id',
+				to: '1234567890@s.whatsapp.net',
+				class: 'status',
+				type: 'media'
+			}
+		})
+	})
+
+	it('does not ack newsletter statuses', async () => {
+		sendNode.mockClear()
+		const sock = makeMessagesRecvSocket({
+			...DEFAULT_CONNECTION_CONFIG,
+			auth: authState as unknown as AuthenticationState
+		})
+		const node: BinaryNode = {
+			tag: 'status',
+			attrs: { id: 'status-id', from: '1234567890@newsletter', type: 'text' }
+		}
+
+		await getStatusHandler(sock)(node)
+
+		expect(sendNode).not.toHaveBeenCalled()
 	})
 })
