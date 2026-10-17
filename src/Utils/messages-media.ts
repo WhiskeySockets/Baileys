@@ -14,8 +14,8 @@ import {
 	DEFAULT_ORIGIN,
 	MEDIA_HKDF_KEY_MAPPING,
 	MEDIA_PATH_MAP,
-	NEWSLETTER_MEDIA_PATH_MAP,
-	type MediaType
+	type MediaType,
+	NEWSLETTER_MEDIA_PATH_MAP
 } from '../Defaults'
 import type {
 	BaileysEventMap,
@@ -869,10 +869,12 @@ export const takeNewsletterMediaHandle = (directPath?: string | null): string | 
 	if (!directPath) {
 		return undefined
 	}
+
 	const handle = newsletterMediaHandleMap.get(directPath)
 	if (handle) {
 		newsletterMediaHandleMap.delete(directPath)
 	}
+
 	return handle
 }
 

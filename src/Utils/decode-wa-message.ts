@@ -255,6 +255,43 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 }
 
+/**
+ * Decrypt a 1:1 Signal message, retrying once with the alternate identity form
+ * WhatsApp tags on the stanza. Stanzas carry both sender_pn/sender_lid (or
+ * participant_pn/participant_lid for groups) whenever the pairing is known;
+ * sessions are established under one of the two forms, so a Bad MAC on the
+ * primary address may still decrypt with the other. See #2234 and #2321.
+ */
+const decryptMessageWithStanzaFallback = async (
+	repository: SignalRepositoryWithLIDStore,
+	primaryJid: string,
+	alternateJid: string | undefined,
+	e2eType: 'pkmsg' | 'msg',
+	ciphertext: Uint8Array,
+	messageKey: proto.IMessageKey,
+	logger: ILogger
+): Promise<Uint8Array> => {
+	try {
+		return await repository.decryptMessage({ jid: primaryJid, type: e2eType, ciphertext })
+	} catch (err) {
+		if (!alternateJid || alternateJid === primaryJid) {
+			throw err
+		}
+
+		logger.debug(
+			{ key: messageKey, primary: primaryJid, retryWith: alternateJid },
+			'primary identity failed to decrypt, retrying with stanza-provided PN/LID pairing'
+		)
+
+		try {
+			return await repository.decryptMessage({ jid: alternateJid, type: e2eType, ciphertext })
+		} catch {
+			// preserve the original, more informative error (e.g. "Bad MAC") over the retry's
+			throw err
+		}
+	}
+}
+
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
@@ -317,47 +354,22 @@ export const decryptMessageNode = (
 								break
 							case 'pkmsg':
 							case 'msg': {
-								const altUser = isLidUser(decryptionJid)
+								const alternateJid = isLidUser(decryptionJid)
 									? stanza.attrs.participant_pn || stanza.attrs.sender_pn
 									: stanza.attrs.participant_lid || stanza.attrs.sender_lid
-								try {
-									msgBuffer = await repository.decryptMessage({
-										jid: decryptionJid,
-										type: e2eType,
-										ciphertext: content
-									})
-								} catch (err) {
-									// WhatsApp tags this exact stanza with both identity forms
-									// (sender_pn/sender_lid, or participant_pn/participant_lid for
-									// group messages) whenever it knows the pairing. If the
-									// primary address's session doesn't verify, retry once with
-									// the other form WhatsApp itself paired to this message before
-									// giving up -- fixes persistent Bad MAC when our stored
-									// session and the sender's session were established under
-									// different identity forms. See #2234 and #2321.
-									if (!altUser || altUser === decryptionJid) {
-										throw err
-									}
 
-									logger.debug(
-										{ key: fullMessage.key, primary: decryptionJid, retryWith: altUser },
-										'primary identity failed to decrypt, retrying with stanza-provided PN/LID pairing'
-									)
-									try {
-										msgBuffer = await repository.decryptMessage({
-											jid: altUser,
-											type: e2eType,
-											ciphertext: content
-										})
-									} catch {
-										// preserve the original, more informative error
-										// (e.g. "Bad MAC") over the retry's (e.g. "no session")
-										throw err
-									}
-								}
-
+								msgBuffer = await decryptMessageWithStanzaFallback(
+									repository,
+									decryptionJid,
+									alternateJid,
+									e2eType,
+									content,
+									fullMessage.key,
+									logger
+								)
 								break
 							}
+
 							case 'plaintext':
 								msgBuffer = content
 								break

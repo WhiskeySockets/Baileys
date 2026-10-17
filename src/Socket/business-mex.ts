@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
-import type { ILogger } from '../Utils/logger'
 import { parseMexOrderDetails } from '../Utils/business-mex'
+import type { ILogger } from '../Utils/logger'
 import { areJidsSameUser, isLidUser, isPnUser, jidNormalizedUser } from '../WABinary'
 
 export const BUSINESS_ORDER_MEX_QUERY = {

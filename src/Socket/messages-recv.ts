@@ -174,7 +174,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (typeof ts === 'number' && ts > 1e11) {
 			ts = Math.floor(ts / 1000)
 		} else if (ts !== null && typeof ts === 'object' && 'toNumber' in ts) {
-			const num = (ts as Long).toNumber()
+			const num = ts.toNumber()
 			if (num > 1e11) {
 				ts = Math.floor(num / 1000)
 			}
@@ -1713,6 +1713,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									)
 								})
 						}
+
 						acked = true
 						await sendMessageAck(node)
 						// Don't return — fall through to upsertMessage so the stub is emitted

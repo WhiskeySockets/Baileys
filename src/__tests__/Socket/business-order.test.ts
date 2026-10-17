@@ -29,8 +29,9 @@ const logger: ILogger = {
 	error: jest.fn()
 }
 
-const query = jest.fn(
-	async (_node: BinaryNode): Promise<BinaryNode> => ({
+const query = jest.fn(async (_node: BinaryNode): Promise<BinaryNode> => {
+	void _node
+	return {
 		tag: 'iq',
 		attrs: {},
 		content: [
@@ -40,8 +41,8 @@ const query = jest.fn(
 				content: Buffer.from(JSON.stringify({ data: { xwa_checkout_get_order_info: orderResponse } }))
 			}
 		]
-	})
-)
+	}
+})
 
 jest.unstable_mockModule('../../Socket/messages-recv', () => ({
 	makeMessagesRecvSocket: () => ({

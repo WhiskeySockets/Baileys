@@ -6,9 +6,7 @@ type GetLIDsForPNs = (pns: string[]) => Promise<LIDMapping[] | null>
 
 describe('resolveStatusJidList', () => {
 	it('resolves PN recipients to LID and includes the sender LID', async () => {
-		const getLIDsForPNs = jest.fn<GetLIDsForPNs>().mockResolvedValue([
-			{ pn: '12345@s.whatsapp.net', lid: '54321@lid' }
-		])
+		const getLIDsForPNs = jest.fn<GetLIDsForPNs>().mockResolvedValue([{ pn: '12345@s.whatsapp.net', lid: '54321@lid' }])
 
 		await expect(
 			resolveStatusJidList({
@@ -22,9 +20,7 @@ describe('resolveStatusJidList', () => {
 	})
 
 	it('deduplicates recipients after PN to LID resolution', async () => {
-		const getLIDsForPNs = jest.fn<GetLIDsForPNs>().mockResolvedValue([
-			{ pn: '99999@s.whatsapp.net', lid: '88888@lid' }
-		])
+		const getLIDsForPNs = jest.fn<GetLIDsForPNs>().mockResolvedValue([{ pn: '99999@s.whatsapp.net', lid: '88888@lid' }])
 
 		await expect(
 			resolveStatusJidList({
