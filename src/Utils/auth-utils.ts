@@ -340,6 +340,22 @@ export const addTransactionCapability = (
 			} finally {
 				releaseTxMutexRef(key)
 			}
+		},
+
+		disposeTransactionStorage: () => {
+			// The first txStorage.run() enables the storage, which registers it in a
+			// module-global list inside node:async_hooks holding a STRONG reference.
+			// On Node < 24 every enabled storage also stamps one symbol-keyed property
+			// onto every async resource created anywhere in the process, so the cost of
+			// never disabling grows with sockets-ever-created x live async resources
+			// (observed: 1.9GB of a 2.1GB heap after 25h at ~250 concurrent sockets).
+			// Only .disable() releases it - GC alone never collects an enabled storage,
+			// on any Node version.
+			try {
+				txStorage.disable()
+			} catch (err) {
+				logger.warn({ err }, 'failed to disable transaction storage')
+			}
 		}
 	}
 }
