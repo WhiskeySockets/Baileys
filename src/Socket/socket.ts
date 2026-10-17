@@ -1088,7 +1088,7 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:ib,,offline_preview', async (node: BinaryNode) => {
-		logger.info('offline preview received', JSON.stringify(node))
+		logger.info({ node }, 'offline preview received')
 		await sendNode({
 			tag: 'ib',
 			attrs: {},
