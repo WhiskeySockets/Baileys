@@ -101,6 +101,7 @@ describe('relayMessage retry to a single device', () => {
 	const relayRetry = async (destinationJid: string, participantJid: string) => {
 		const creds = initAuthCreds()
 		creds.me = { id: meId, lid: meLid, name: 'Test' }
+		let encryptCalls = 0
 		const sock = makeWASocket({
 			...DEFAULT_CONNECTION_CONFIG,
 			logger: P({ level: 'silent' }),
@@ -108,7 +109,10 @@ describe('relayMessage retry to a single device', () => {
 			makeSignalRepository: (auth, logger, pnFromLIDUSync) => ({
 				...DEFAULT_CONNECTION_CONFIG.makeSignalRepository(auth, logger, pnFromLIDUSync),
 				validateSession: async () => ({ exists: true }),
-				encryptMessage: async () => ({ type: 'msg' as const, ciphertext: new Uint8Array([1, 2, 3]) })
+				encryptMessage: async () => {
+					encryptCalls++
+					return { type: 'msg' as const, ciphertext: new Uint8Array([1, 2, 3]) }
+				}
 			})
 		})
 
@@ -122,7 +126,7 @@ describe('relayMessage retry to a single device', () => {
 			const nodes = await Promise.all(sentFrames.map(decodeSentNode))
 			const stanza = nodes.find(node => node.tag === 'message' && node.attrs.id === 'RETRY_1')
 			expect(stanza).toBeDefined()
-			return stanza!.attrs
+			return { attrs: stanza!.attrs, encryptCalls }
 		} finally {
 			// let the socket's startup tasks settle first, or end() leaves the event buffer timer running
 			await new Promise(resolve => setTimeout(resolve, 50))
@@ -131,14 +135,20 @@ describe('relayMessage retry to a single device', () => {
 	}
 
 	it('names the chat as recipient when resending to our own LID device', async () => {
-		const attrs = await relayRetry('222222222222222@lid', '123456789012345:7@lid')
+		const { attrs } = await relayRetry('222222222222222@lid', '123456789012345:7@lid')
 		expect(attrs.to).toBe('123456789012345:7@lid')
 		expect(attrs.recipient).toBe('222222222222222@lid')
 	})
 
 	it('sends a retry for another user straight to their device without a recipient', async () => {
-		const attrs = await relayRetry('222222222222222@lid', '222222222222222:3@lid')
+		const { attrs } = await relayRetry('222222222222222@lid', '222222222222222:3@lid')
 		expect(attrs.to).toBe('222222222222222:3@lid')
 		expect(attrs.recipient).toBeUndefined()
+	})
+
+	it('encrypts a device-specific 1:1 retry exactly once', async () => {
+		const { attrs, encryptCalls } = await relayRetry('222222222222222@lid', '222222222222222:3@lid')
+		expect(attrs.to).toBe('222222222222222:3@lid')
+		expect(encryptCalls).toBe(1)
 	})
 })
