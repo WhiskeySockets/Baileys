@@ -85,7 +85,14 @@ export type MessageWithContextInfo =
 export type DownloadableMessage = { mediaKey?: Uint8Array | null; directPath?: string | null; url?: string | null }
 
 export type MessageReceiptType =
-	'read' | 'read-self' | 'hist_sync' | 'peer_msg' | 'sender' | 'inactive' | 'played' | undefined
+	| 'read'
+	| 'read-self'
+	| 'hist_sync'
+	| 'peer_msg'
+	| 'sender'
+	| 'inactive'
+	| 'played'
+	| undefined
 
 export type MediaConnInfo = {
 	auth: string

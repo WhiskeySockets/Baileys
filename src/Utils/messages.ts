@@ -1708,7 +1708,8 @@ const isExpiredLinkError = (error: unknown, message: WAMessage) => {
 		const content = extractMessageContent(message.message)
 		const contentType = content ? getContentType(content) : undefined
 		const media = (contentType && content?.[contentType]) as
-			{ url?: string | null; directPath?: string | null } | undefined
+			| { url?: string | null; directPath?: string | null }
+			| undefined
 		link = media?.directPath || media?.url
 	}
 
