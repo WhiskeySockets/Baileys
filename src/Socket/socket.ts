@@ -38,8 +38,10 @@ import {
 	getCompanionPlatformId,
 	getErrorCodeFromStreamError,
 	getNextPreKeysNode,
+	handleCompanionRegRefresh,
 	makeEventBuffer,
 	makeNoiseHandler,
+	makePairingQRRenderer,
 	promiseTimeout,
 	signedKeyPair,
 	xmppSignedPreKey
@@ -868,6 +870,9 @@ export const makeSocket = (config: SocketConfig) => {
 		'CB:xmlstreamend',
 		() => void end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed }))
 	)
+	// Re-render the QR currently on screen. Set while a pairing QR flow is
+	// live on this connection, undefined otherwise.
+	let refreshPairingQR: (() => void) | undefined
 	// QR gen
 	ws.on('CB:iq,type:set,pair-device', async (stanza: BinaryNode) => {
 		const iq: BinaryNode = {
@@ -884,7 +889,17 @@ export const makeSocket = (config: SocketConfig) => {
 		const refNodes = getBinaryNodeChildren(pairDeviceNode, 'ref')
 		const noiseKeyB64 = Buffer.from(creds.noiseKey.public).toString('base64')
 		const identityKeyB64 = Buffer.from(creds.signedIdentityKey.public).toString('base64')
-		const advB64 = creds.advSecretKey
+
+		const renderer = makePairingQRRenderer(
+			refNodes.map(refNode => (refNode.content as Buffer).toString('utf-8')),
+			// creds.advSecretKey is read per render rather than captured once:
+			// a companion_reg_refresh rotates it mid-flow.
+			ref =>
+				ev.emit('connection.update', {
+					qr: buildPairingQRData(ref, noiseKeyB64, identityKeyB64, creds.advSecretKey, browser)
+				})
+		)
+		refreshPairingQR = () => void renderer.refresh()
 
 		let qrMs = qrTimeout || 60_000 // time to let a QR live
 		const genPairQR = () => {
@@ -892,22 +907,29 @@ export const makeSocket = (config: SocketConfig) => {
 				return
 			}
 
-			const refNode = refNodes.shift()
-			if (!refNode) {
+			if (!renderer.next()) {
 				void end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
 				return
 			}
-
-			const ref = (refNode.content as Buffer).toString('utf-8')
-			const qr = buildPairingQRData(ref, noiseKeyB64, identityKeyB64, advB64, browser)
-
-			ev.emit('connection.update', { qr })
 
 			qrTimer = setTimeout(genPairQR, qrMs)
 			qrMs = qrTimeout || 20_000 // shorter subsequent qrs
 		}
 
 		genPairQR()
+	})
+	// the server retiring an unpaired companion's registration material
+	ws.on('CB:notification,type:companion_reg_refresh', (node: BinaryNode) => {
+		handleCompanionRegRefresh(node, {
+			creds,
+			emitCredsUpdate: update => ev.emit('creds.update', update),
+			// Deliberately re-renders the ref already on screen and leaves
+			// qrTimer alone: that ref has not expired, only the secret it
+			// advertises changed. Spending a ref here would drain the pool the
+			// server allotted and end the flow with 'QR refs attempts ended'.
+			refreshQR: () => refreshPairingQR?.(),
+			logger
+		})
 	})
 	// device paired for the first time
 	// if device pairs successfully, the server asks to restart the connection
