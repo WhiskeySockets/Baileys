@@ -14,6 +14,8 @@ import {
 	encryptedStream,
 	encryptMediaRetryRequest,
 	getWAUploadToServer,
+	setNewsletterMediaHandle,
+	takeNewsletterMediaHandle,
 	type UploadParams,
 	uploadWithNodeHttp
 } from '../../Utils/messages-media'
@@ -575,5 +577,30 @@ describe('media retry key', () => {
 			aesDecryptGCM(encP.content, retryKey, encIv.content, Buffer.from(msgId))
 		)
 		expect(receipt.stanzaId).toBe(msgId)
+	})
+})
+
+describe('newsletter media handle map', () => {
+	it('stores and consumes a handle by directPath', () => {
+		setNewsletterMediaHandle('/v/test-handle-1', 'handle-abc')
+
+		expect(takeNewsletterMediaHandle('/v/test-handle-1')).toBe('handle-abc')
+		// consumed: a second take returns undefined
+		expect(takeNewsletterMediaHandle('/v/test-handle-1')).toBeUndefined()
+	})
+
+	it('returns undefined for unknown, null or undefined directPath', () => {
+		expect(takeNewsletterMediaHandle('/v/never-stored')).toBeUndefined()
+		expect(takeNewsletterMediaHandle(null)).toBeUndefined()
+		expect(takeNewsletterMediaHandle(undefined)).toBeUndefined()
+	})
+
+	it('keeps handles isolated per directPath', () => {
+		setNewsletterMediaHandle('/v/test-handle-a', 'handle-a')
+		setNewsletterMediaHandle('/v/test-handle-b', 'handle-b')
+
+		expect(takeNewsletterMediaHandle('/v/test-handle-a')).toBe('handle-a')
+		expect(takeNewsletterMediaHandle('/v/test-handle-b')).toBe('handle-b')
+		expect(takeNewsletterMediaHandle('/v/test-handle-a')).toBeUndefined()
 	})
 })
