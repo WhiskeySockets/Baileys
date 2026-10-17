@@ -16,6 +16,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          # A PAT makes the generated PR trigger the lint/build/test workflows;
+          # the default token's pushes do not start new runs.
+          token: ${{ secrets.PERSONAL_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Install Node
         uses: actions/setup-node@v3
@@ -51,8 +55,10 @@ jobs:
           echo -e "{\n\t\"version\": [$WA_NUMBERS]\n}" > src/Defaults/baileys-version.json
 
       - name: Create Pull Request
+        id: cpr
         uses: peter-evans/create-pull-request@v5
         with:
+          github-token: ${{ secrets.PERSONAL_TOKEN || secrets.GITHUB_TOKEN }}
           commit-message: 'chore: updated proto/version to v${{steps.wa_proto_info.outputs.wa_version}}'
           title: 'Whatsapp v${{steps.wa_proto_info.outputs.wa_version}} proto/version change'
           branch: 'update-proto/stable'
@@ -62,3 +68,12 @@ jobs:
           add-paths: |
             WAProto/*
             src/Defaults/baileys-version.json
+
+      - name: Enable auto-merge
+        if: steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # Merge the generated update automatically. With no required checks the
+          # merge happens immediately; with branch protection it waits for them.
+          gh pr merge "${{ steps.cpr.outputs.pull-request-number }}" --auto --squash
