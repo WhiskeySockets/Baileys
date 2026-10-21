@@ -40,7 +40,7 @@ If you'd like to financially support this project, you can do so by supporting t
 > Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
 
 # License
-Copyright (c) 2025 Rajeh Taher/WhiskeySockets
+Copyright (c) 2026 Rajeh Taher/WhiskeySockets
 
 Licensed under the MIT License:
 Permission is hereby granted, free of charge, to any person obtaining a copy
