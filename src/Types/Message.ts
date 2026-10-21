@@ -143,6 +143,22 @@ export type PollMessageOptions = {
 	toAnnouncementGroup?: boolean
 }
 
+export type PollVoteMessageOptions = {
+	/** key of the poll creation message, as this account sees it */
+	pollCreationMessageKey: WAMessageKey
+	/** the poll's `messageContextInfo.messageSecret` */
+	pollEncKey: Uint8Array
+	/** names of the chosen options; an empty list withdraws the vote */
+	selectedOptions: string[]
+	/**
+	 * JID of the poll's creator, without device, in the chat's addressing mode:
+	 * the LID in a LID-addressed chat, the phone number otherwise
+	 */
+	pollCreatorJid: string
+	/** this account's JID, without device, in the same addressing mode as `pollCreatorJid` */
+	voterJid: string
+}
+
 export type EventMessageOptions = {
 	name: string
 	description?: string
@@ -243,6 +259,7 @@ export type AnyRegularMessageContent = (
 	  } & Mentionable &
 			Contextable &
 			Editable)
+	| { pollVote: PollVoteMessageOptions }
 	| ({
 			album: AlbumMessageOptions
 	  } & Contextable &
