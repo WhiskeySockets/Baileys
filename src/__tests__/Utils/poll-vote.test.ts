@@ -21,6 +21,13 @@ describe('encryptPollVote', () => {
 		expect(decrypted.selectedOptions.map(o => Buffer.from(o))).toEqual(vote.selectedOptions)
 	})
 
+	it('works with phone-number JIDs in a phone-number-addressed chat', () => {
+		const pnCtx = { ...ctx, pollCreatorJid: '41700000001@s.whatsapp.net', voterJid: '41700000000@s.whatsapp.net' }
+		const vote = { selectedOptions: [sha256(Buffer.from('No'))] }
+		const decrypted = decryptPollVote(encryptPollVote(vote, pnCtx), pnCtx)
+		expect(decrypted.selectedOptions.map(o => Buffer.from(o))).toEqual(vote.selectedOptions)
+	})
+
 	it('cannot be decrypted with the JIDs of another addressing mode', () => {
 		const encrypted = encryptPollVote({ selectedOptions: [sha256(Buffer.from('Yes'))] }, ctx)
 		expect(() => decryptPollVote(encrypted, { ...ctx, voterJid: '41700000000@s.whatsapp.net' })).toThrow()
@@ -75,6 +82,18 @@ describe('generateWAMessageContent with pollVote', () => {
 			{ upload }
 		)
 		expect(decryptPollVote(message.pollUpdateMessage!.vote!, ctx).selectedOptions).toEqual([])
+	})
+
+	it.each([
+		['pollCreatorJid', { pollCreatorJid: '222:3@lid', voterJid: '111@lid' }],
+		['voterJid', { pollCreatorJid: '222@lid', voterJid: '111:5@lid' }]
+	])('rejects a %s with a device', async (field, jids) => {
+		await expect(
+			generateWAMessageContent(
+				{ pollVote: { pollCreationMessageKey, pollEncKey, selectedOptions: ['Yes'], ...jids } },
+				{ upload }
+			)
+		).rejects.toThrow(`pollVote.${field} must be a JID without device`)
 	})
 
 	it('requires the poll message id', async () => {

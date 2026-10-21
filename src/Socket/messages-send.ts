@@ -702,12 +702,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				return
 			}
 
+			const isPollVote = !!normalizeMessageContent(message)?.pollUpdateMessage
 			if (
 				normalizeMessageContent(message)?.pinInChatMessage ||
 				normalizeMessageContent(message)?.reactionMessage ||
-				normalizeMessageContent(message)?.pollUpdateMessage
+				isPollVote
 			) {
 				extraAttrs['decrypt-fail'] = 'hide' // todo: expand for reactions and other types
+			}
+
+			// as a phone's vote; without this node the server acks the vote but does not deliver it.
+			// Added here rather than in sendMessage so that retry resends carry it too.
+			if (isPollVote && !additionalNodes?.some(node => node.tag === 'meta')) {
+				additionalNodes = [
+					...(additionalNodes || []),
+					{ tag: 'meta', attrs: { polltype: 'vote', content_type: 'add_on' } }
+				]
 			}
 
 			if (isGroupOrStatus && !isRetryResend) {
@@ -974,7 +984,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {
 						v: '2',
 						type,
-						count: participant!.count.toString()
+						count: participant!.count.toString(),
+						...(extraAttrs['decrypt-fail'] ? { 'decrypt-fail': extraAttrs['decrypt-fail'] } : {})
 					},
 					content: encryptedContent
 				})
@@ -1373,7 +1384,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const isEditMsg = 'edit' in content && !!content.edit
 				const isPinMsg = 'pin' in content && !!content.pin
 				const isPollMessage = 'poll' in content && !!content.poll
-				const isPollVote = 'pollVote' in content && !!content.pollVote
 				const additionalAttributes: BinaryNodeAttributes = {}
 				const additionalNodes: BinaryNode[] = []
 				// required for delete
@@ -1393,15 +1403,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						tag: 'meta',
 						attrs: {
 							polltype: 'creation'
-						}
-					} as BinaryNode)
-				} else if (isPollVote) {
-					// as a phone's vote; without this node the server acks the vote but does not deliver it
-					additionalNodes.push({
-						tag: 'meta',
-						attrs: {
-							polltype: 'vote',
-							content_type: 'add_on'
 						}
 					} as BinaryNode)
 				} else if (isEventMsg) {

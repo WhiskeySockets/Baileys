@@ -593,6 +593,16 @@ export const generateWAMessageContent = async (
 			throw new Boom('pollVote.pollCreationMessageKey must have an id', { statusCode: 400 })
 		}
 
+		// the creator derives the key from these exact strings, so a device suffix makes the vote undecryptable
+		for (const [field, value] of [
+			['pollCreatorJid', pollCreatorJid],
+			['voterJid', voterJid]
+		] as const) {
+			if (!value || jidNormalizedUser(value) !== value) {
+				throw new Boom(`pollVote.${field} must be a JID without device, got ${value}`, { statusCode: 400 })
+			}
+		}
+
 		m.pollUpdateMessage = {
 			pollCreationMessageKey,
 			vote: encryptPollVote(
