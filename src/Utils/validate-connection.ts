@@ -244,7 +244,8 @@ export const configureSuccessfulPairing = (
 		account,
 		me: { id: jid!, name: bizName, lid },
 		signalIdentities: [...(signalIdentities || []), identity],
-		platform: platformNode?.attrs.name
+		platform: platformNode?.attrs.name,
+		registered: true
 	}
 
 	return {
