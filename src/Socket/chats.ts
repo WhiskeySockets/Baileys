@@ -473,6 +473,42 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 	}
 
+	/**
+	 * Reports a single user to WhatsApp as spam (equivalent to "Report" in the official app).
+	 * Optionally blocks the user afterwards, like the "Report and block" option.
+	 *
+	 * This only sends one report for one user and has no bulk mode on purpose:
+	 * use it for real spam/abuse, not to harass people.
+	 */
+	const reportUser = async (jid: string, options: { block?: boolean } = {}) => {
+		const normalizedJid = jidNormalizedUser(jid)
+		if (!isLidUser(normalizedJid) && !isPnUser(normalizedJid)) {
+			throw new Boom(`Invalid jid: ${jid}`, { statusCode: 400 })
+		}
+
+		await query({
+			tag: 'iq',
+			attrs: {
+				xmlns: 'spam',
+				to: S_WHATSAPP_NET,
+				type: 'set'
+			},
+			content: [
+				{
+					tag: 'spam_list',
+					attrs: {
+						jid: normalizedJid,
+						spam_flow: 'contact_info'
+					}
+				}
+			]
+		})
+
+		if (options.block) {
+			await updateBlockStatus(normalizedJid, 'block')
+		}
+	}
+
 	const getBusinessProfile = async (jid: string): Promise<WABusinessProfile | void> => {
 		const results = await query({
 			tag: 'iq',
@@ -1504,6 +1540,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateProfileStatus,
 		updateProfileName,
 		updateBlockStatus,
+		reportUser,
 		updateDisableLinkPreviewsPrivacy,
 		updateCallPrivacy,
 		updateMessagesPrivacy,
