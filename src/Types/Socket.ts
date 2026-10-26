@@ -136,9 +136,12 @@ export type SocketConfig = {
 	/** options for HTTP fetch requests */
 	options: RequestInit
 	/**
-	 * fetch a message from your store
-	 * implement this so that messages failed to send
-	 * (solves the "this message can take a while" issue) can be retried
+	 * Fetch a message from your store.
+	 * Used to retry failed sends and to retrieve message secrets for encrypted updates.
+	 * Match the requested id, remoteJid and fromMe; never look up by id alone.
+	 * Resolve PN/LID aliases using trusted stored addressing or mappings.
+	 * Preserve messageContextInfo.messageSecret for encrypted updates. Return undefined
+	 * when the requested original is unavailable; its encrypted edits cannot be decrypted.
 	 * */
 	getMessage: (key: WAMessageKey) => Promise<proto.IMessage | undefined>
 
