@@ -767,6 +767,10 @@ export const uploadWithNodeHttp = async (
 	})
 }
 
+// Native fetch only accepts Undici-style dispatchers, not generic https Agents.
+const isFetchDispatcher = (agent: UploadParams['agent']) =>
+	typeof (agent as { dispatch?: unknown } | undefined)?.dispatch === 'function'
+
 const uploadWithFetch = async ({
 	url,
 	filePath,
@@ -777,8 +781,7 @@ const uploadWithFetch = async ({
 	// Convert Node.js Readable to Web ReadableStream
 	const nodeStream = createReadStream(filePath)
 	const webStream = Readable.toWeb(nodeStream) as ReadableStream
-	// Native fetch only accepts Undici-style dispatchers, not generic https Agents.
-	const dispatcher = typeof (agent as { dispatch?: unknown } | undefined)?.dispatch === 'function' ? agent : undefined
+	const dispatcher = isFetchDispatcher(agent) ? agent : undefined
 
 	const response = await fetch(url, {
 		...(dispatcher ? { dispatcher } : {}),
@@ -807,15 +810,18 @@ const uploadWithFetch = async ({
  * See: https://github.com/nodejs/undici/issues/4058
  *
  * Other runtimes (Bun, Deno, browsers) correctly stream the request body without
- * buffering, so we can use the web-standard Fetch API there.
+ * buffering, so we can use the web-standard Fetch API there — unless a generic
+ * https Agent (e.g. a proxy agent passed as `fetchAgent`) is set. fetch can't use
+ * those, so the upload would silently skip the proxy; node:https honors them.
  *
  * ## Future considerations:
  * Once the undici bug is fixed, we can simplify this to use only the Fetch API
  * across all runtimes. Monitor the GitHub issue for updates.
  */
 const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<MediaUploadResult | undefined> => {
-	if (isNodeRuntime()) {
-		logger?.debug('Using Node.js https module for upload (avoids undici buffering bug)')
+	const hasHttpsAgent = !!params.agent && !isFetchDispatcher(params.agent)
+	if (isNodeRuntime() || hasHttpsAgent) {
+		logger?.debug({ hasHttpsAgent }, 'Using Node.js https module for upload')
 		return uploadWithNodeHttp(params)
 	} else {
 		logger?.debug('Using web-standard Fetch API for upload')
