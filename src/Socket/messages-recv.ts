@@ -1127,8 +1127,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				break
-			case 'link_code_companion_reg':
+			case 'link_code_companion_reg': {
 				const linkCodeCompanionReg = getBinaryNodeChild(node, 'link_code_companion_reg')
+				// Server sends two notifications: immediately after companion_hello (stage=undefined,
+				// only link_code_pairing_ref) and after phone enters code (stage="primary_hello",
+				// all 3 crypto fields). Only process the latter.
+				if(linkCodeCompanionReg?.attrs?.stage !== 'primary_hello') break
 				const ref = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_ref'))
 				const primaryIdentityPublicKey = toRequiredBuffer(
 					getBinaryNodeChildBuffer(linkCodeCompanionReg, 'primary_identity_pub')
@@ -1196,6 +1200,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				authState.creds.registered = true
 				ev.emit('creds.update', authState.creds)
 				break
+			}
 			case 'privacy_token':
 				await handlePrivacyTokenNotification(node)
 				break
