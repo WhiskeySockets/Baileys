@@ -105,15 +105,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		registerSocketEndHandler
 	} = sock
 
-	const emitAppStateUpdate = (event: AppStatePatchResponse | ChatAppStateAction) => {
-		try {
-			ev.emit('app-state.update', event)
-		} catch {
-			// Consumer-thrown values can contain private state; omit them from diagnostics.
-			logger.warn({ kind: event.kind }, 'app-state.update listener threw')
-		}
-	}
-
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
 	let privacySettings: { [_: string]: string } | undefined
@@ -764,7 +755,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			}, authState?.creds?.me?.id || 'resync-app-state')
 
-			for (const observation of observations) emitAppStateUpdate(observation)
+			for (const observation of observations) ev.emit('app-state.update', observation)
 
 			const { onMutation } = newAppStateChunkHandler(isInitialSync)
 			for (const key in globalMutationMap) {
@@ -1026,7 +1017,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 		await patchRequest.finally(() => {
 			// A received response remains evidence even if the local commit subsequently fails.
-			if (response) emitAppStateUpdate(response)
+			if (response) ev.emit('app-state.update', response)
 		})
 
 		const { onMutation } = newAppStateChunkHandler(false)
@@ -1046,7 +1037,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				version: encodeResult!.state.version,
 				...(options.requestId !== undefined ? { requestId: options.requestId } : {})
 			})
-			if (observation) emitAppStateUpdate(observation)
+			if (observation) ev.emit('app-state.update', observation)
 			if (config.emitOwnEvents) onMutation(mutationMap[key]!)
 		}
 	}

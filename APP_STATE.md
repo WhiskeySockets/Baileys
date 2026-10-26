@@ -4,7 +4,7 @@
 
 This adds the unbuffered `app-state.update` event. Existing `chats.update` payloads and the `Promise<void>` return types of `chatModify` and `appPatch` are preserved.
 
-Synchronous exceptions from `app-state.update` listeners are contained so they cannot skip legacy chat callbacks or replace the operation's result. Diagnostics omit the thrown value, which may contain private consumer state.
+Each `app-state.update` listener is invoked independently, including handlers registered through `ev.process`. Exceptions and rejected promises from one consumer do not prevent delivery to later subscribers, skip legacy chat callbacks or replace the operation's result. Diagnostics omit the thrown value, which may contain private consumer state. Dispatch of other event types is unchanged.
 
 ```ts
 sock.ev.on('app-state.update', event => {

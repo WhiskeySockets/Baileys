@@ -440,17 +440,23 @@ describe('app-state listener failures', () => {
 	it('keeps committed sync and legacy chat callbacks when an observation listener throws', async () => {
 		const f = fixture()
 		const warn = jest.spyOn(silentLogger, 'warn')
+		const laterListener = jest.fn()
 		try {
 			f.ev.on('app-state.update', () => {
 				throw new Error('Fictional private listener error')
 			})
+			f.ev.on('app-state.update', laterListener)
 			const remote = await encodedAction(modification('archive', true))
 			f.syncReplies.push(syncResponse([remote.patch]))
 			await expect(f.sock.resyncAppState(['regular_low'], false)).resolves.toBeUndefined()
 			f.ev.flush()
 			expect(await f.version()).toBe(1)
 			expect(f.batches).toEqual([{ 'chats.update': [{ id: JID, archived: true }] }])
-			expect(warn).toHaveBeenCalledWith({ kind: 'chat-action' }, 'app-state.update listener threw')
+			expect(laterListener).toHaveBeenCalledWith(
+				expect.objectContaining({ kind: 'chat-action', source: 'sync', version: 1 })
+			)
+			expect(f.observations).toEqual([expect.objectContaining({ source: 'sync', version: 1 })])
+			expect(warn).toHaveBeenCalledWith({ event: 'app-state.update' }, 'app-state.update listener threw')
 		} finally {
 			warn.mockRestore()
 			f.close()
@@ -471,6 +477,7 @@ describe('app-state listener failures', () => {
 				await expect(f.modifyWithRequestId(modification('archive', true), 'throwing-listener')).resolves.toBeUndefined()
 				f.ev.flush()
 				expect(seen).toEqual(['patch-response', 'local-echo'])
+				expect(f.observations).toHaveLength(2)
 				expect(await f.version()).toBe(1)
 				expect(f.batches).toEqual([{ 'chats.update': [{ id: JID, archived: true }] }])
 			} finally {
@@ -493,8 +500,62 @@ describe('app-state listener failures', () => {
 				'Fictional commit failure'
 			)
 			expect(responseSeen).toBe(true)
+			expect(f.observations).toHaveLength(1)
 			expect(await f.version()).toBe(0)
 			expect(f.raw).toEqual([])
+		} finally {
+			f.close()
+		}
+	})
+
+	it('contains rejected listener promises while delivering to later on and process subscribers', async () => {
+		const f = fixture()
+		const warn = jest.spyOn(silentLogger, 'warn')
+		const direct: string[] = []
+		const processed: string[] = []
+		try {
+			f.ev.on('app-state.update', async () => {
+				throw new Error('Fictional async listener failure')
+			})
+			f.ev.on('app-state.update', event => {
+				direct.push(event.kind)
+			})
+			f.ev.process(async events => {
+				if (events['app-state.update']) throw new Error('Fictional async process failure')
+			})
+			f.ev.process(events => {
+				if (events['app-state.update']) processed.push(events['app-state.update'].kind)
+			})
+			await f.modifyWithRequestId(modification('archive', true), 'async-listeners')
+			f.ev.flush()
+			await jest.advanceTimersByTimeAsync(0)
+			expect(direct).toEqual(['patch-response', 'chat-action'])
+			expect(processed).toEqual(direct)
+			expect(f.observations).toHaveLength(2)
+			expect(f.batches).toEqual([{ 'chats.update': [{ id: JID, archived: true }] }])
+			expect(warn).toHaveBeenCalledTimes(4)
+		} finally {
+			warn.mockRestore()
+			f.close()
+		}
+	})
+
+	it('preserves listener snapshots, off and removeAllListeners without removing process subscribers', async () => {
+		const f = fixture()
+		const later = jest.fn()
+		try {
+			f.ev.on('app-state.update', event => {
+				if (event.kind === 'patch-response') f.ev.off('app-state.update', later)
+			})
+			f.ev.on('app-state.update', later)
+			await f.modifyWithRequestId(modification('archive', true), 'before-removal')
+			expect(later).toHaveBeenCalledTimes(1)
+			expect(later).toHaveBeenCalledWith(expect.objectContaining({ kind: 'patch-response' }))
+			f.ev.removeAllListeners('app-state.update')
+			await f.modifyWithRequestId(modification('archive', false), 'after-removal')
+			expect(later).toHaveBeenCalledTimes(1)
+			expect(f.observations).toHaveLength(4)
+			expect(await f.version()).toBe(2)
 		} finally {
 			f.close()
 		}
