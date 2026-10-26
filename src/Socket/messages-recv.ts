@@ -75,6 +75,7 @@ import {
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
 	getBinaryNodeChildUInt,
+	isJidBroadcast,
 	isJidGroup,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -1525,7 +1526,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 										: status === proto.WebMessageInfo.Status.PLAYED
 											? 'playedTimestamp'
 											: undefined
-							if (timestampField && Number.isSafeInteger(timestamp) && timestamp > 0) {
+							if (
+								!isJidBroadcast(remoteJid) &&
+								!isJidBroadcast(attrs.from) &&
+								timestampField &&
+								Number.isSafeInteger(timestamp) &&
+								timestamp > 0
+							) {
 								ev.emit(
 									'message-receipt.update',
 									ids.map(id => ({

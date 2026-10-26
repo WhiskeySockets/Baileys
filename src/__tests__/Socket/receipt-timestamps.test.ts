@@ -82,4 +82,66 @@ describe('direct receipt timestamps', () => {
 			f.close()
 		}
 	})
+
+	it.each([
+		['broadcast list', '120363000000000001@broadcast', undefined, JID],
+		['broadcast list without participant', '120363000000000001@broadcast', undefined, undefined],
+		['own-device broadcast list', ME.id, '120363000000000001@broadcast', undefined]
+	] as const)(
+		'%s does not create a user receipt for the broadcast address',
+		async (_, from, recipient, participant) => {
+			const f = fixture()
+			try {
+				await f.receive({
+					tag: 'receipt',
+					attrs: {
+						from,
+						...(recipient ? { recipient } : {}),
+						...(participant ? { participant } : {}),
+						id: 'fictional-broadcast-message',
+						type: 'read',
+						t: '1700000050'
+					}
+				})
+				expect(f.batches.flatMap(batch => batch['message-receipt.update'] ?? [])).toEqual([])
+				expect(f.batches.flatMap(batch => batch['messages.update'] ?? [])).toEqual([
+					{
+						key: {
+							remoteJid: recipient ?? from,
+							id: 'fictional-broadcast-message',
+							fromMe: !recipient,
+							participant
+						},
+						update: { status: proto.WebMessageInfo.Status.READ }
+					}
+				])
+				expect(f.sent.at(-1)?.tag).toBe('ack')
+			} finally {
+				f.close()
+			}
+		}
+	)
+
+	it.each(['120363000000000001@g.us', 'status@broadcast'])(
+		'%s keeps the participant receipt projection',
+		async from => {
+			const f = fixture()
+			try {
+				await f.receive({
+					tag: 'receipt',
+					attrs: { from, participant: JID, id: 'fictional-group-message', type: 'read', t: '1700000050' }
+				})
+				expect(f.batches.flatMap(batch => batch['messages.update'] ?? [])).toEqual([])
+				expect(f.batches.flatMap(batch => batch['message-receipt.update'] ?? [])).toEqual([
+					{
+						key: { remoteJid: from, id: 'fictional-group-message', fromMe: true, participant: JID },
+						receipt: { userJid: JID, readTimestamp: 1700000050 }
+					}
+				])
+				expect(f.sent.at(-1)?.tag).toBe('ack')
+			} finally {
+				f.close()
+			}
+		}
+	)
 })
