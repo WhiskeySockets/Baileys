@@ -78,6 +78,7 @@ const startSock = async() => {
 				if(connection === 'close') {
 					// reconnect if not logged out
 					if((lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
+						// A 515 restartRequired close after first pairing is expected; reconnect with saved creds.
 						startSock()
 					} else {
 						logger.fatal('Connection closed. You are logged out.')
@@ -85,11 +86,15 @@ const startSock = async() => {
 				}
 
 				if (qr) {
-					// Pairing code for Web clients
+					// Pairing code for Web clients. requestPairingCode also queues until this pair-device readiness point.
 					if (usePairingCode && !sock.authState.creds.registered) {
 						const phoneNumber = await question('Please enter your phone number:\n')
-						const code = await sock.requestPairingCode(phoneNumber)
-						console.log(`Pairing code: ${code}`)
+						try {
+							const code = await sock.requestPairingCode(phoneNumber)
+							console.log(`Pairing code: ${code}`)
+						} catch (err) {
+							logger.error({ err }, 'pairing code request failed')
+						}
 					}
 				}
 
