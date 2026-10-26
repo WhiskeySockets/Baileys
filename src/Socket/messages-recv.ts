@@ -1513,9 +1513,27 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								'messages.update',
 								ids.map(id => ({
 									key: { ...key, id },
-									update: { status, messageTimestamp: toNumber(+(attrs.t ?? 0)) }
+									update: { status }
 								}))
 							)
+							const timestamp = Number(attrs.t)
+							const timestampField =
+								status === proto.WebMessageInfo.Status.DELIVERY_ACK
+									? 'receiptTimestamp'
+									: status === proto.WebMessageInfo.Status.READ
+										? 'readTimestamp'
+										: status === proto.WebMessageInfo.Status.PLAYED
+											? 'playedTimestamp'
+											: undefined
+							if (timestampField && Number.isSafeInteger(timestamp) && timestamp > 0) {
+								ev.emit(
+									'message-receipt.update',
+									ids.map(id => ({
+										key: { ...key, id },
+										receipt: { userJid: jidNormalizedUser(attrs.from), [timestampField]: timestamp }
+									}))
+								)
+							}
 						}
 					}
 

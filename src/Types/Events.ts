@@ -72,6 +72,7 @@ export type BaileysEventMap = {
 	/** message was reacted to. If reaction was removed -- then "reaction.text" will be falsey */
 	'messages.reaction': { key: WAMessageKey; reaction: proto.IReaction }[]
 
+	/** Per-message receipts, including direct chats and own-device reads; times are seconds, not message timestamps. */
 	'message-receipt.update': MessageUserReceiptUpdate[]
 
 	'groups.upsert': GroupMetadata[]
