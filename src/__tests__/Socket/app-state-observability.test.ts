@@ -1,6 +1,13 @@
 import { jest } from '@jest/globals'
+import { expandAppStateKeys } from 'whatsapp-rust-bridge'
 import { proto } from '../../../WAProto/index.js'
-import { chatModificationToAppPatch, decodeSyncdSnapshot } from '../../Utils/chat-utils'
+import {
+	chatModificationToAppPatch,
+	decodeSyncdPatch,
+	decodeSyncdSnapshot,
+	newLTHashState
+} from '../../Utils/chat-utils'
+import { hmacSign } from '../../Utils/crypto'
 import { encodedAction, fixture, JID, KEY_ID, modification, silentLogger, syncResponse } from './app-state-fixtures'
 
 beforeEach(() => {
@@ -287,6 +294,24 @@ describe('app-state observations preserve evidence before chat consolidation', (
 			const mac = Buffer.from(remote.patch.snapshotMac!)
 			mac[0] = mac[0]! ^ 0xff
 			remote.patch.snapshotMac = mac
+			// Keep patch and record authentication valid so only the aggregate LTHash check fails.
+			const version = Buffer.alloc(8)
+			version.writeUInt32BE(remote.state.version, 4)
+			const valueMacs = remote.patch.mutations!.map(mutation => mutation.record!.value!.blob!.subarray(-32))
+			remote.patch.patchMac = hmacSign(
+				Buffer.concat([mac, ...valueMacs, version, Buffer.from('regular_low')]),
+				expandAppStateKeys(Buffer.alloc(32, 7)).patchMacKey
+			)
+			const decoded = jest.fn()
+			await decodeSyncdPatch(
+				remote.patch,
+				'regular_low',
+				newLTHashState(),
+				async () => ({ keyData: Buffer.alloc(32, 7) }),
+				decoded,
+				true
+			)
+			expect(decoded).toHaveBeenCalledTimes(1)
 			f.syncReplies.push(syncResponse([remote.patch]))
 			await f.sock.resyncAppState(['regular_low'], false)
 			expect(f.observations).toEqual([])

@@ -51,12 +51,15 @@ it('control: commits the same follow-up started outside the sync listener', asyn
 	}
 })
 
-it('retains committed preflight sync when the outgoing patch is rejected', async () => {
-	const f = fixture({ patchReply: 'conflict' })
+it.each([
+	['conflict', 'conflict'],
+	['missing', 'Missing app state patch response']
+] as const)('retains committed preflight sync when the outgoing patch fails: %s', async (patchReply, error) => {
+	const f = fixture({ patchReply })
 	try {
 		const remote = await encodedAction(modification('archive', false))
 		f.syncReplies.push(syncResponse([remote.patch]))
-		await expect(f.sock.chatModify(modification('archive', true), JID)).rejects.toThrow('conflict')
+		await expect(f.sock.chatModify(modification('archive', true), JID)).rejects.toThrow(error)
 		expect(await f.version()).toBe(1)
 		expect(f.observations).toEqual([expect.objectContaining({ kind: 'chat-action', source: 'sync', version: 1 })])
 	} finally {

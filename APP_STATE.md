@@ -27,7 +27,7 @@ A `patch-response` contains the collection, outgoing version, optional request I
 - `version-matched`: an IQ result includes the corresponding collection with the exact outgoing version.
 - `response-received`: a response arrived, without a matching collection version. A parseable server version is included when present.
 
-Missing responses and explicit nested collection errors reject before advancing local state or producing an own echo. A missing response leaves the remote outcome uncertain. No operation is automatically retried. A response event can still be emitted if the subsequent local transaction commit fails and the call rejects.
+Missing responses and explicit nested collection errors reject before saving the outgoing patch's local version or producing an own echo. Independently fetched preflight state may already have committed. A missing response leaves the remote outcome uncertain. No operation is automatically retried. A response event can still be emitted if the subsequent local transaction commit fails and the call rejects.
 
 The preflight sync commits before the outgoing patch's write transaction starts, under the same patch mutex. A sync listener can therefore queue another `chatModify` without inheriting a transaction context that has already committed when the queued call executes. A later outgoing rejection does not roll back that independently fetched sync state; a failed preflight commit prevents submission of the outgoing patch.
 
@@ -38,7 +38,7 @@ A `chat-action` contains its origin, JID, collection, version, action, and avail
 - `local-echo` describes the locally encoded patch. It is emitted regardless of `emitOwnEvents`; only legacy chat callbacks follow that option.
 - `sync` also includes `representation: 'patch' | 'snapshot'`, `initialSync` and `macVerified`. It does not identify the originating device. Snapshot versions describe the containing snapshot, not the original action version.
 
-Observers run before the maps that consolidate mutations and preserve same-version network replays. Events are delivered after the sync transaction, before consolidated chat callbacks. Records can be historical, repeated, superseded, or part of an initial snapshot; arrival order alone does not establish current state. The original chat projection and its consolidation behavior remain separate. This event is not a durable journal or exactly-once delivery mechanism.
+Decoded actions are collected separately from the consolidation maps, preserving individual records and same-version network replays. Events are emitted after the sync transaction and map construction, before consolidated chat callbacks. Records can be historical, repeated, superseded, or part of an initial snapshot; arrival order alone does not establish current state. The original chat projection and its consolidation behavior remain separate. This event is not a durable journal or exactly-once delivery mechanism.
 
 `REMOVE` mutations retire an encrypted app-state record. Their payload describes the old action and must not be applied as a new chat action. They still participate in validation and LTHash accounting, but do not generate `chat-action` or consolidated chat changes. Snapshot records without an operation remain SET records. This matters when a new action under one app-state key is followed by retirement of the previous record under another key, including within the same collection version.
 
