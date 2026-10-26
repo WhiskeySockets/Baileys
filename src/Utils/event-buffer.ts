@@ -73,6 +73,25 @@ type BaileysBufferableEventEmitter = BaileysEventEmitter & {
 export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter => {
 	const ev = new EventEmitter()
 	const historyCache = new Set<string>()
+	const reportAppStateListenerError = () => {
+		// Consumer-thrown values can contain private state; omit them from diagnostics.
+		logger.warn({ event: 'app-state.update' }, 'app-state.update listener threw')
+	}
+
+	const emitAppStateUpdate = (event: 'event' | 'app-state.update', value: unknown) => {
+		// Snapshot listeners and retain their EventEmitter context, including once wrappers.
+		const listeners = ev.rawListeners(event)
+		for (const listener of listeners) {
+			try {
+				const result: unknown = listener.call(ev, value)
+				if (result !== undefined) void Promise.resolve(result).catch(reportAppStateListenerError)
+			} catch {
+				reportAppStateListenerError()
+			}
+		}
+
+		return listeners.length > 0
+	}
 
 	let data = makeBufferData()
 	let isBuffering = false
@@ -85,7 +104,8 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	// take the generic event and fire it as a baileys event
 	ev.on('event', (map: BaileysEventData) => {
 		for (const event in map) {
-			ev.emit(event, map[event as keyof BaileysEventMap])
+			if (event === 'app-state.update') emitAppStateUpdate(event, map[event])
+			else ev.emit(event, map[event as keyof BaileysEventMap])
 		}
 	})
 
@@ -149,11 +169,11 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		}
 
 		const consolidatedData = consolidateEvents(data)
+		// Flush listeners can synchronously buffer more events; retain them in the new buffer.
+		data = newData
 		if (Object.keys(consolidatedData).length) {
 			ev.emit('event', consolidatedData)
 		}
-
-		data = newData
 
 		logger.trace({ conditionalChatUpdatesLeft }, 'released buffered events')
 
@@ -172,6 +192,8 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			}
 		},
 		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap[T]) {
+			if (event === 'app-state.update') return emitAppStateUpdate('event', { [event]: evData })
+
 			// Check if this is a messages.upsert with a different type than what's buffered
 			// If so, flush the buffered messages first to avoid type overshadowing
 			if (event === 'messages.upsert') {

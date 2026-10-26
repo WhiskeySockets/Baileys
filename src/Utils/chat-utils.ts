@@ -2,8 +2,10 @@ import { Boom } from '@hapi/boom'
 import { expandAppStateKeys } from 'whatsapp-rust-bridge'
 import { proto } from '../../WAProto/index.js'
 import type {
+	AppStateActionContext,
 	BaileysEventEmitter,
 	Chat,
+	ChatAppStateAction,
 	ChatModification,
 	ChatMutation,
 	ChatUpdate,
@@ -30,6 +32,8 @@ import { emitSyncActionResults, processContactAction } from './sync-action-utils
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
 export type ChatMutationMap = { [index: string]: ChatMutation }
+
+type MutationObserver = (mutation: ChatMutation, context: { collection: WAPatchName; version: number }) => void
 
 const mutationKeys = (keydata: Uint8Array) => {
 	const keys = expandAppStateKeys(keydata)
@@ -285,7 +289,10 @@ export const decodeSyncdMutations = async (
 		}
 
 		const indexStr = Buffer.from(syncAction.index!).toString()
-		onMutation({ syncAction, index: JSON.parse(indexStr) })
+		// REMOVE carries the retired record's old action, not a new state transition.
+		if (operation !== proto.SyncdMutation.SyncdOperation.REMOVE) {
+			onMutation({ syncAction, index: JSON.parse(indexStr) })
+		}
 
 		ltGenerator.mix({
 			indexMac: record.index!.blob!,
@@ -425,24 +432,29 @@ export const decodeSyncdSnapshot = async (
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	minimumVersionNumber: number | undefined,
 	validateMacs = true,
-	logger?: ILogger
+	logger?: ILogger,
+	onMutation?: MutationObserver
 ) => {
 	const newState = newLTHashState()
 	newState.version = toNumber(snapshot.version!.version)
 
 	const mutationMap: ChatMutationMap = {}
+	const observedMutations: ChatMutation[] = []
+	let canObserve = !validateMacs
 	const areMutationsRequired = typeof minimumVersionNumber === 'undefined' || newState.version > minimumVersionNumber
 
 	const { hash, indexValueMap } = await decodeSyncdMutations(
 		snapshot.records!,
 		newState,
 		getAppStateSyncKey,
-		areMutationsRequired
-			? mutation => {
-					const index = mutation.syncAction.index?.toString()
-					mutationMap[index!] = mutation
-				}
-			: () => {},
+		mutation => {
+			if (areMutationsRequired) {
+				const index = mutation.syncAction.index?.toString()
+				mutationMap[index!] = mutation
+			}
+
+			if (onMutation) observedMutations.push(mutation)
+		},
 		validateMacs
 	)
 	newState.hash = hash
@@ -467,7 +479,13 @@ export const decodeSyncdSnapshot = async (
 				{ name, version: newState.version },
 				'LTHash verification failed on snapshot, continuing with partial state'
 			)
+		} else {
+			canObserve = true
 		}
+	}
+
+	if (canObserve) {
+		for (const mutation of observedMutations) onMutation?.(mutation, { collection: name, version: newState.version })
 	}
 
 	return {
@@ -484,7 +502,8 @@ export const decodePatches = async (
 	options: RequestInit,
 	minimumVersionNumber?: number,
 	logger?: ILogger,
-	validateMacs = true
+	validateMacs = true,
+	onMutation?: MutationObserver
 ) => {
 	const newState: LTHashState = {
 		...initial,
@@ -494,6 +513,7 @@ export const decodePatches = async (
 	const mutationMap: ChatMutationMap = {}
 
 	for (const syncd of syncds) {
+		const observedMutations: ChatMutation[] = []
 		const { version, keyId, snapshotMac } = syncd
 		if (syncd.externalMutations) {
 			logger?.trace({ name, version }, 'downloading external patch')
@@ -514,12 +534,14 @@ export const decodePatches = async (
 				name,
 				newState,
 				getAppStateSyncKey,
-				shouldMutate
-					? mutation => {
-							const index = mutation.syncAction.index?.toString()
-							mutationMap[index!] = mutation
-						}
-					: () => {},
+				mutation => {
+					if (shouldMutate) {
+						const index = mutation.syncAction.index?.toString()
+						mutationMap[index!] = mutation
+					}
+
+					if (onMutation) observedMutations.push(mutation)
+				},
 				validateMacs
 			)
 		} catch (err) {
@@ -546,11 +568,71 @@ export const decodePatches = async (
 			}
 		}
 
+		for (const mutation of observedMutations) onMutation?.(mutation, { collection: name, version: patchVersion })
+
 		// clear memory used up by the mutations
 		syncd.mutations = []
 	}
 
 	return { state: newState, mutationMap }
+}
+
+/** Project only chat-state fields; do not expose sync payloads, keys or cryptographic material. */
+export const getChatAppStateAction = (
+	mutation: ChatMutation,
+	context: AppStateActionContext
+): ChatAppStateAction | undefined => {
+	const { value } = mutation.syncAction
+	const jid = mutation.index[1]
+	const read = value?.markChatAsReadAction
+	const archive = value?.archiveChatAction
+	if (!jid) return
+
+	let action: ChatAppStateAction['action']
+	if (typeof read?.read === 'boolean') {
+		action = { kind: 'mark-read', read: read.read }
+	} else if (typeof archive?.archived === 'boolean') {
+		action = { kind: 'archive', archived: archive.archived }
+	} else {
+		return
+	}
+
+	const observation: ChatAppStateAction = {
+		...context,
+		kind: 'chat-action',
+		jid,
+		action
+	}
+	if (value?.timestamp !== undefined && value.timestamp !== null) {
+		observation.timestamp = toNumber(value.timestamp)
+	}
+
+	const range = read?.messageRange ?? archive?.messageRange
+	if (range) {
+		const messageRange: NonNullable<ChatAppStateAction['messageRange']> = {}
+		if (range.lastMessageTimestamp !== undefined && range.lastMessageTimestamp !== null) {
+			messageRange.lastMessageTimestamp = toNumber(range.lastMessageTimestamp)
+		}
+
+		if (range.lastSystemMessageTimestamp !== undefined && range.lastSystemMessageTimestamp !== null) {
+			messageRange.lastSystemMessageTimestamp = toNumber(range.lastSystemMessageTimestamp)
+		}
+
+		if (range.messages) {
+			messageRange.messages = range.messages.map(message => ({
+				...(typeof message.key?.id === 'string' ? { id: message.key.id } : {}),
+				...(typeof message.key?.fromMe === 'boolean' ? { fromMe: message.key.fromMe } : {}),
+				...(typeof message.key?.participant === 'string' ? { participant: message.key.participant } : {}),
+				...(message.timestamp !== undefined && message.timestamp !== null
+					? { timestamp: toNumber(message.timestamp) }
+					: {})
+			}))
+		}
+
+		observation.messageRange = messageRange
+	}
+
+	return observation
 }
 
 export const chatModificationToAppPatch = (mod: ChatModification, jid: string) => {
@@ -579,7 +661,7 @@ export const chatModificationToAppPatch = (mod: ChatModification, jid: string) =
 								m.key.participant = jidNormalizedUser(m.key.participant)
 							}
 
-							return m
+							return { key: m.key, timestamp: m.messageTimestamp }
 						})
 					: undefined
 			}

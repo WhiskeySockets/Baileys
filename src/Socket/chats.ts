@@ -3,8 +3,11 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, HISTORY_SYNC_PAUSED_TIMEOUT_MS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import type {
+	AppStatePatchOptions,
+	AppStatePatchResponse,
 	BotListInfo,
 	CacheStore,
+	ChatAppStateAction,
 	ChatModification,
 	ChatMutation,
 	LTHashState,
@@ -38,6 +41,7 @@ import {
 	ensureLTHashStateVersion,
 	extractSyncdPatches,
 	generateProfilePicture,
+	getChatAppStateAction,
 	getHistoryMsg,
 	isAppStateSyncIrrecoverable,
 	isMissingKeyError,
@@ -49,6 +53,7 @@ import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { buildTcTokenFromJid } from '../Utils/tc-token-utils'
 import {
+	assertNodeErrorFree,
 	type BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
@@ -579,6 +584,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			// otherwise when we resync from scratch -- all notifications will fire
 			const initialVersionMap: { [T in WAPatchName]?: number } = {}
 			const globalMutationMap: ChatMutationMap = {}
+			const observations: ChatAppStateAction[] = []
+			const observe =
+				(representation: 'patch' | 'snapshot', macVerified: boolean) =>
+				(mutation: ChatMutation, context: { collection: WAPatchName; version: number }) => {
+					const observation = getChatAppStateAction(mutation, {
+						...context,
+						source: 'sync',
+						representation,
+						initialSync: isInitialSync,
+						macVerified
+					})
+					if (observation) observations.push(observation)
+				}
 
 			await authState.keys.transaction(async () => {
 				const collectionsToHandle = new Set<string>(collections)
@@ -656,7 +674,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									getCachedAppStateSyncKey,
 									initialVersionMap[name],
 									appStateMacVerification.snapshot,
-									logger
+									logger,
+									observe('snapshot', appStateMacVerification.snapshot)
 								)
 								states[name] = newState
 								Object.assign(globalMutationMap, mutationMap)
@@ -676,7 +695,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									config.options,
 									initialVersionMap[name],
 									logger,
-									appStateMacVerification.patch
+									appStateMacVerification.patch,
+									observe('patch', appStateMacVerification.patch)
 								)
 
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
@@ -734,6 +754,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					}
 				}
 			}, authState?.creds?.me?.id || 'resync-app-state')
+
+			for (const observation of observations) ev.emit('app-state.update', observation)
 
 			const { onMutation } = newAppStateChunkHandler(isInitialSync)
 			for (const key in globalMutationMap) {
@@ -907,7 +929,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const appPatch = async (patchCreate: WAPatchCreate) => {
+	const appPatch = async (patchCreate: WAPatchCreate, options: AppStatePatchOptions = {}) => {
 		const name = patchCreate.type
 		const myAppStateKeyId = authState.creds.myAppStateKeyId
 		if (!myAppStateKeyId) {
@@ -916,12 +938,15 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		let initial: LTHashState
 		let encodeResult: { patch: proto.ISyncdPatch; state: LTHashState }
+		let response: AppStatePatchResponse | undefined
 
-		await appStatePatchMutex.mutex(async () => {
+		const patchRequest = appStatePatchMutex.mutex(async () => {
+			// Sync listeners can queue another patch; they must not inherit a transaction
+			// context that will have committed before that queued patch runs.
+			await resyncAppState([name], false)
+
 			await authState.keys.transaction(async () => {
 				logger.debug({ patch: patchCreate }, 'applying app patch')
-
-				await resyncAppState([name], false)
 
 				const { [name]: currentSyncVersion } = await authState.keys.get('app-state-sync-version', [name])
 				initial = currentSyncVersion ? ensureLTHashStateVersion(currentSyncVersion) : newLTHashState()
@@ -960,26 +985,60 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						}
 					]
 				}
-				await query(node)
+				const result: BinaryNode | undefined = await query(node)
+				if (!result) {
+					throw new Boom('Missing app state patch response', { statusCode: 408 })
+				}
+
+				for (const collection of getBinaryNodeChildren(getBinaryNodeChild(result, 'sync'), 'collection')) {
+					assertNodeErrorFree(collection)
+				}
+
+				const collection = getBinaryNodeChildren(getBinaryNodeChild(result, 'sync'), 'collection').find(
+					item => item.attrs.name === name
+				)
+				const versionText = collection?.attrs.version
+				const serverVersion =
+					versionText && /^\d+$/.test(versionText) && Number.isSafeInteger(Number(versionText))
+						? Number(versionText)
+						: undefined
+				response = {
+					kind: 'patch-response',
+					collection: name,
+					version: state.version,
+					...(options.requestId !== undefined ? { requestId: options.requestId } : {}),
+					...(result.attrs.type === 'result' && serverVersion === state.version
+						? { status: 'version-matched', serverVersion }
+						: { status: 'response-received', ...(serverVersion !== undefined ? { serverVersion } : {}) })
+				}
 
 				await authState.keys.set({ 'app-state-sync-version': { [name]: state } })
 			}, authState?.creds?.me?.id || 'app-patch')
 		})
+		await patchRequest.finally(() => {
+			// A received response remains evidence even if the local commit subsequently fails.
+			if (response) ev.emit('app-state.update', response)
+		})
 
-		if (config.emitOwnEvents) {
-			const { onMutation } = newAppStateChunkHandler(false)
-			const { mutationMap } = await decodePatches(
-				name,
-				[{ ...encodeResult!.patch, version: { version: encodeResult!.state.version } }],
-				initial!,
-				getAppStateSyncKey,
-				config.options,
-				undefined,
-				logger
-			)
-			for (const key in mutationMap) {
-				onMutation(mutationMap[key]!)
-			}
+		const { onMutation } = newAppStateChunkHandler(false)
+		const { mutationMap } = await decodePatches(
+			name,
+			[{ ...encodeResult!.patch, version: { version: encodeResult!.state.version } }],
+			initial!,
+			getAppStateSyncKey,
+			config.options,
+			undefined,
+			logger
+		)
+		for (const key in mutationMap) {
+			const observation = getChatAppStateAction(mutationMap[key]!, {
+				source: 'local-echo',
+				collection: name,
+				version: encodeResult!.state.version,
+				...(options.requestId !== undefined ? { requestId: options.requestId } : {})
+			})
+			if (observation) ev.emit('app-state.update', observation)
+			if (config.emitOwnEvents) onMutation(mutationMap[key]!)
 		}
 	}
 
@@ -1042,9 +1101,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * lastMessages must be sorted in reverse chronologically
 	 * requires the last messages till the last message received; required for archive & unread
 	 */
-	const chatModify = (mod: ChatModification, jid: string) => {
+	const chatModify = (mod: ChatModification, jid: string, options?: AppStatePatchOptions) => {
 		const patch = chatModificationToAppPatch(mod, jid)
-		return appPatch(patch)
+		return appPatch(patch, options)
 	}
 
 	/**
