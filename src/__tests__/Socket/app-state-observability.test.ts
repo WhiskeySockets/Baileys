@@ -435,3 +435,68 @@ describe('app-state observations preserve evidence before chat consolidation', (
 		}
 	})
 })
+
+describe('app-state listener failures', () => {
+	it('keeps committed sync and legacy chat callbacks when an observation listener throws', async () => {
+		const f = fixture()
+		const warn = jest.spyOn(silentLogger, 'warn')
+		try {
+			f.ev.on('app-state.update', () => {
+				throw new Error('Fictional private listener error')
+			})
+			const remote = await encodedAction(modification('archive', true))
+			f.syncReplies.push(syncResponse([remote.patch]))
+			await expect(f.sock.resyncAppState(['regular_low'], false)).resolves.toBeUndefined()
+			f.ev.flush()
+			expect(await f.version()).toBe(1)
+			expect(f.batches).toEqual([{ 'chats.update': [{ id: JID, archived: true }] }])
+			expect(warn).toHaveBeenCalledWith({ kind: 'chat-action' }, 'app-state.update listener threw')
+		} finally {
+			warn.mockRestore()
+			f.close()
+		}
+	})
+
+	it.each(['patch-response', 'local-echo'] as const)(
+		'preserves a successful patch and its legacy echo when a %s listener throws',
+		async stage => {
+			const f = fixture()
+			const seen: string[] = []
+			try {
+				f.ev.on('app-state.update', event => {
+					const kind = event.kind === 'patch-response' ? event.kind : event.source
+					seen.push(kind)
+					if (kind === stage) throw new Error('Fictional observer failure')
+				})
+				await expect(f.modifyWithRequestId(modification('archive', true), 'throwing-listener')).resolves.toBeUndefined()
+				f.ev.flush()
+				expect(seen).toEqual(['patch-response', 'local-echo'])
+				expect(await f.version()).toBe(1)
+				expect(f.batches).toEqual([{ 'chats.update': [{ id: JID, archived: true }] }])
+			} finally {
+				f.close()
+			}
+		}
+	)
+
+	it('preserves the original commit error when a response listener also throws', async () => {
+		const f = fixture({ failCommit: true })
+		let responseSeen = false
+		try {
+			f.ev.on('app-state.update', event => {
+				if (event.kind === 'patch-response') {
+					responseSeen = true
+					throw new Error('Fictional observer failure')
+				}
+			})
+			await expect(f.modifyWithRequestId(modification('archive', true), 'commit-failed')).rejects.toThrow(
+				'Fictional commit failure'
+			)
+			expect(responseSeen).toBe(true)
+			expect(await f.version()).toBe(0)
+			expect(f.raw).toEqual([])
+		} finally {
+			f.close()
+		}
+	})
+})

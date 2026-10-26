@@ -1,6 +1,6 @@
 import { decodePatches, newLTHashState } from '../../Utils/chat-utils'
 import { toNumber } from '../../Utils/generics'
-import { encodedAction, modification, silentLogger } from './app-state-fixtures'
+import { encodedAction, modification, silentLogger } from '../Socket/app-state-fixtures'
 
 describe('lastMessages timestamps survive app-state protobuf serialization', () => {
 	it.each(['read', 'archive'] as const)(

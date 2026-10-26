@@ -4,6 +4,8 @@
 
 This adds the unbuffered `app-state.update` event. Existing `chats.update` payloads and the `Promise<void>` return types of `chatModify` and `appPatch` are preserved.
 
+Synchronous exceptions from `app-state.update` listeners are contained so they cannot skip legacy chat callbacks or replace the operation's result. Diagnostics omit the thrown value, which may contain private consumer state.
+
 ```ts
 sock.ev.on('app-state.update', event => {
 	if (event.kind === 'patch-response') {
@@ -50,6 +52,6 @@ Opening a chat on another device can yield an own-device `read-self` receipt wit
 
 The event buffer replaces its internal batch before invoking synchronous listeners, preserving updates emitted reentrantly during a flush. The array form of `lastMessages` maps each `messageTimestamp` to protobuf `timestamp`, preserving per-message timestamps on the wire.
 
-The focused tests live in `src/__tests__/Socket/app-state*.test.ts`. They use fictional cryptographic fixtures, a mocked transport and fake timers; chat conversion, encoding/decoding, transactions, handlers and event buffering are real. No WhatsApp connection, session or live message is used. Run them with `corepack yarn test --runInBand --testPathPatterns=app-state`, or run the complete suite with `corepack yarn test --runInBand`.
+The focused tests live in `src/__tests__/Socket/app-state*.test.ts` and `src/__tests__/Utils/chat-utils.test.ts`. They use fictional cryptographic fixtures, a mocked transport and fake timers; chat conversion, encoding/decoding, transactions, handlers and event buffering are real. No WhatsApp connection, session or live message is used. Run them with `corepack yarn test --runInBand --runTestsByPath src/__tests__/Socket/app-state*.test.ts src/__tests__/Utils/chat-utils.test.ts`, or run the complete suite with `corepack yarn test --runInBand`.
 
 The implementation was compared with upstream rc14 (`7e7b0757e3f9f3c7789fb1cfd2f241d5002a199a`) and master (`0af2386292907f7d9742d8d41f830d8c48208fa1`). The response error fixture reconstructs the shape discussed in [upstream issue #1406](https://github.com/WhiskeySockets/Baileys/issues/1406#issuecomment-3904719766). The buffer fix follows the mechanism in [upstream PR #2577](https://github.com/WhiskeySockets/Baileys/pull/2577).
