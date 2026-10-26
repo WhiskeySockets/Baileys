@@ -149,11 +149,11 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		}
 
 		const consolidatedData = consolidateEvents(data)
+		// Flush listeners can synchronously buffer more events; retain them in the new buffer.
+		data = newData
 		if (Object.keys(consolidatedData).length) {
 			ev.emit('event', consolidatedData)
 		}
-
-		data = newData
 
 		logger.trace({ conditionalChatUpdatesLeft }, 'released buffered events')
 
