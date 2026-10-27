@@ -1,4 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
+import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import P from 'pino'
 import type { LegacySessionRecord } from '../../Signal/legacy-session'
 import { isLegacySessionRecord } from '../../Signal/legacy-session'
@@ -6,6 +8,7 @@ import { fromTypedRecord, toTypedRecord } from '../../Signal/legacy-session-code
 import { makeLibSignalRepository } from '../../Signal/libsignal'
 import type { SignalAuthState, SignalDataSet, SignalDataTypeMap, SignalKeyStore } from '../../Types'
 import { addTransactionCapability } from '../../Utils/auth-utils'
+import type { ILogger } from '../../Utils/logger'
 import fixture from '../fixtures/legacy-session-rc9.json'
 
 /**
@@ -32,8 +35,8 @@ const revive = (value: unknown): unknown => {
 	return value
 }
 
-const makeBob = () => {
-	const data = revive(fixture.bob.store) as Record<string, Record<string, unknown>>
+const makeParty = (side: 'alice' | 'bob' = 'bob') => {
+	const data = revive(fixture[side].store) as Record<string, Record<string, unknown>>
 	const store: SignalKeyStore = {
 		get: async (type, ids) => {
 			const bucket = data[type] || {}
@@ -58,19 +61,131 @@ const makeBob = () => {
 	}
 
 	const auth: SignalAuthState = {
-		creds: revive(fixture.bob.creds) as never,
+		creds: revive(fixture[side].creds) as never,
 		keys: addTransactionCapability(store, logger, { maxCommitRetries: 1, delayBetweenTriesMs: 1 })
 	}
 
-	return { data, repository: makeLibSignalRepository(auth, logger) }
+	return { data, auth, creds: auth.creds, repository: makeLibSignalRepository(auth, logger) }
 }
 
 const { aliceJid, groupJid } = fixture.jids
 const sessionAddr = '5511900000001.0'
 
+const makeOldRepository = async (auth: SignalAuthState) => {
+	const require = createRequire(import.meta.resolve('whatsapp-rust-bridge'))
+	const oldModule = new URL('./Signal/libsignal.js', pathToFileURL(require.resolve('baileys')))
+	const oldEngine = (await import(oldModule.href)) as {
+		makeLibSignalRepository(
+			auth: SignalAuthState,
+			logger: ILogger
+		): Pick<
+			ReturnType<typeof makeLibSignalRepository>,
+			'encryptGroupMessage' | 'decryptGroupMessage' | 'encryptMessage' | 'decryptMessage'
+		>
+	}
+	return oldEngine.makeLibSignalRepository(auth, logger)
+}
+
 describe('rolling back to a pre-WASM release', () => {
+	it('lets the old group engine consume skipped keys and continue after a rollback', async () => {
+		const alice = makeParty('alice')
+		const bob = makeParty()
+		const oldAlice = await makeOldRepository(alice.auth)
+		const oldBob = await makeOldRepository(bob.auth)
+		try {
+			const modernMessage = await alice.repository.encryptGroupMessage({
+				group: groupJid,
+				meId: aliceJid,
+				data: Buffer.from('modern group message')
+			})
+			expect(
+				Buffer.from(
+					await bob.repository.decryptGroupMessage({
+						group: groupJid,
+						authorJid: aliceJid,
+						msg: modernMessage.ciphertext
+					})
+				).toString()
+			).toBe('modern group message')
+
+			const skipped = fixture.pendingGroup[0]!
+			expect(
+				Buffer.from(
+					await oldBob.decryptGroupMessage({
+						group: groupJid,
+						authorJid: aliceJid,
+						msg: Buffer.from(skipped.ct, 'base64')
+					})
+				).toString()
+			).toBe(skipped.pt)
+
+			const oldMessage = await oldAlice.encryptGroupMessage({
+				group: groupJid,
+				meId: aliceJid,
+				data: Buffer.from('old group message')
+			})
+			expect(
+				Buffer.from(
+					await bob.repository.decryptGroupMessage({
+						group: groupJid,
+						authorJid: aliceJid,
+						msg: oldMessage.ciphertext
+					})
+				).toString()
+			).toBe('old group message')
+		} finally {
+			alice.repository.close?.()
+			bob.repository.close?.()
+		}
+	})
+
+	it('continues both directions after the old JS engine reads an advanced legacy row', async () => {
+		const alice = makeParty('alice')
+		const bob = makeParty()
+		try {
+			for (const message of fixture.pending) {
+				await bob.repository.decryptMessage({
+					jid: aliceJid,
+					type: message.type as 'msg' | 'pkmsg',
+					ciphertext: Buffer.from(message.ct, 'base64')
+				})
+			}
+
+			const beforeRollback = await bob.repository.encryptMessage({
+				jid: aliceJid,
+				data: Buffer.from('before rollback')
+			})
+			expect(
+				Buffer.from(await alice.repository.decryptMessage({ jid: fixture.jids.bobJid, ...beforeRollback })).toString()
+			).toBe('before rollback')
+
+			const oldBob = await makeOldRepository(bob.auth)
+			const next = await alice.repository.encryptMessage({
+				jid: fixture.jids.bobJid,
+				data: Buffer.from('after rollback')
+			})
+			expect(next.type).toBe('msg')
+			expect(
+				Buffer.from(
+					await oldBob.decryptMessage({ jid: aliceJid, type: next.type, ciphertext: Buffer.from(next.ciphertext) })
+				).toString()
+			).toBe('after rollback')
+
+			const reply = await oldBob.encryptMessage({ jid: aliceJid, data: Buffer.from('old engine reply') })
+			expect(reply.type).toBe('msg')
+			const readBack = await alice.repository.decryptMessage({
+				jid: fixture.jids.bobJid,
+				...reply
+			})
+			expect(Buffer.from(readBack).toString()).toBe('old engine reply')
+		} finally {
+			alice.repository.close?.()
+			bob.repository.close?.()
+		}
+	})
+
 	it('leaves a session it advanced in the shape the old build reads', async () => {
-		const bob = makeBob()
+		const bob = makeParty()
 
 		// Use the upgraded state the way a running client would.
 		for (const message of fixture.pending) {
@@ -95,7 +210,7 @@ describe('rolling back to a pre-WASM release', () => {
 	})
 
 	it('keeps the stored record stable through the bridge round trip', async () => {
-		const bob = makeBob()
+		const bob = makeParty()
 		await bob.repository.encryptMessage({ jid: aliceJid, data: Buffer.from('one more') })
 
 		const stored = bob.data.session![sessionAddr] as LegacySessionRecord
@@ -107,7 +222,7 @@ describe('rolling back to a pre-WASM release', () => {
 	})
 
 	it('leaves a group sender key in the shape the old build reads', async () => {
-		const bob = makeBob()
+		const bob = makeParty()
 
 		await bob.repository.decryptGroupMessage({
 			group: groupJid,
@@ -131,7 +246,7 @@ describe('rolling back to a pre-WASM release', () => {
 	})
 
 	it('advances that row without leaving the legacy shape', async () => {
-		const bob = makeBob()
+		const bob = makeParty()
 		const first = bob.data['sender-key']?.[`${groupJid}::5511900000001::0`]
 
 		await bob.repository.decryptGroupMessage({

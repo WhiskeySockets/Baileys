@@ -1,16 +1,4 @@
-/**
- * Auth states written before the WASM backend hold sessions in the JS libsignal
- * shape — `SessionRecord.serialize()` returned a plain object, never bytes:
- *
- *   { _sessions: { [baseKeyB64]: SessionEntry }, version: 'v1' }
- *
- * The bridge can migrate one of these, but it picks `Object.keys(_sessions)[0]`,
- * which is insertion-ordered — after a ratchet rotation that is an old *closed*
- * state, not the live one, so the upgraded session would be unusable. It also
- * accepts a bare `SessionEntry` (anything carrying `registrationId` +
- * `currentRatchet`), so selecting the open entry here hands it the right state.
- */
-
+/** Session metadata used to decide whether a persisted JS record can send. */
 export type LegacySessionEntry = {
 	registrationId?: number
 	currentRatchet?: unknown

@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import P from 'pino'
+import { isLegacySessionRecord } from '../../Signal/legacy-session'
 import { makeLibSignalRepository } from '../../Signal/libsignal'
 import type { SignalAuthState, SignalDataSet, SignalDataTypeMap, SignalKeyStore } from '../../Types'
 import { addTransactionCapability } from '../../Utils/auth-utils'
@@ -95,6 +96,53 @@ const makeParty = (side: 'alice' | 'bob') => {
 const { aliceJid, bobJid, groupJid } = fixture.jids
 
 describe('pre-WASM auth state (baileys@7.0.0-rc.9 fixture)', () => {
+	const closeSessions = (party: ReturnType<typeof makeParty>) => {
+		for (const record of Object.values(party.data.session ?? {})) {
+			if (!isLegacySessionRecord(record)) {
+				throw new Error('Expected a legacy session fixture')
+			}
+
+			for (const entry of Object.values(record._sessions ?? {})) {
+				if (entry?.indexInfo) entry.indexInfo.closed = 1700000000000
+			}
+		}
+	}
+
+	it('decrypts delayed ciphertext when every legacy session is closed', async () => {
+		const bob = makeParty('bob')
+		closeSessions(bob)
+		try {
+			for (const message of fixture.pending) {
+				const plaintext = await bob.repository.decryptMessage({
+					jid: aliceJid,
+					type: message.type as 'msg' | 'pkmsg',
+					ciphertext: Buffer.from(message.ct, 'base64')
+				})
+				expect(Buffer.from(plaintext).toString()).toBe(message.pt)
+			}
+		} finally {
+			bob.repository.close?.()
+		}
+	})
+
+	it('refuses to encrypt using only closed legacy sessions', async () => {
+		const alice = makeParty('alice')
+		closeSessions(alice)
+		const before = JSON.stringify(alice.data.session)
+		try {
+			await expect(
+				alice.repository.encryptMessage({ jid: bobJid, data: Buffer.from('requires a new session') })
+			).rejects.toThrow()
+			expect(JSON.stringify(alice.data.session)).toBe(before)
+			await expect(alice.repository.validateSession(bobJid)).resolves.toEqual({
+				exists: false,
+				reason: 'no session'
+			})
+		} finally {
+			alice.repository.close?.()
+		}
+	})
+
 	it('decrypts direct messages the JS backend enciphered but never delivered', async () => {
 		const bob = makeParty('bob')
 

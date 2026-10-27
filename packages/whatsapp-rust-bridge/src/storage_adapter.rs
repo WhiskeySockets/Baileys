@@ -139,33 +139,32 @@ impl JsStorageAdapter {
                 let msg_seed =
                     required_key_bytes(&msg_key_obj, "seed", "senderMessageKeys[].seed")?;
 
-                sender_message_keys.push(SenderMessageKey {
-                    iteration: Some(msg_iteration),
-                    seed: Some(msg_seed.into()),
-                });
+                sender_message_keys.push(
+                    SenderMessageKey::default()
+                        .with_iteration(msg_iteration)
+                        .with_seed(msg_seed),
+                );
             }
 
-            let signing_key = SenderSigningKey {
-                public: Some(public_key.into()),
-                private: private_key.map(Into::into),
-            };
+            let mut signing_key = SenderSigningKey::default().with_public(public_key);
+            signing_key.private = private_key.map(Into::into);
 
-            let chain_key = SenderChainKey {
-                iteration: Some(iteration),
-                seed: Some(seed.into()),
-            };
+            let chain_key = SenderChainKey::default()
+                .with_iteration(iteration)
+                .with_seed(seed);
 
-            sender_key_states.push(SenderKeyStateStructure {
-                sender_key_id: Some(sender_key_id),
-                sender_chain_key: MessageField::some(chain_key),
-                sender_signing_key: MessageField::some(signing_key),
-                sender_message_keys,
-            });
+            let mut state = SenderKeyStateStructure::default();
+            state.sender_key_id = Some(sender_key_id);
+            state.sender_chain_key = MessageField::some(chain_key);
+            state.sender_signing_key = MessageField::some(signing_key);
+            state.sender_message_keys = sender_message_keys;
+            sender_key_states.push(state);
         }
 
-        // Mirror of the order note in `legacy_sender_key::serialize`.
+        // Legacy records keep the current state last; the core keeps it first.
         sender_key_states.reverse();
-        let record = SenderKeyRecordStructure { sender_key_states };
+        let mut record = SenderKeyRecordStructure::default();
+        record.sender_key_states = sender_key_states;
 
         Ok(Some(record.encode_to_vec()))
     }
@@ -359,16 +358,25 @@ impl SenderKeyStore for JsStorageAdapter {
 /// the row readable by a pre-WASM release: unlike a session, every field of a
 /// sender-key state has a v1 counterpart, so nothing is lost either way.
 pub mod legacy_sender_key {
+    use base64::{display::Base64Display, prelude::*};
     use serde::Serialize;
     use wacore_libsignal::protocol::SenderKeyRecord as CoreSenderKeyRecord;
     use wacore_libsignal::protocol::error::Result as SignalResult;
 
-    /// `JSON.stringify` of a Buffer, which is the shape the JS backend wrote.
+    // Older readers revive only base64 Buffer payloads before consuming skipped seeds.
     #[derive(Serialize)]
     struct Bytes<'a> {
         #[serde(rename = "type")]
         kind: &'static str,
+        #[serde(serialize_with = "serialize_base64")]
         data: &'a [u8],
+    }
+
+    fn serialize_base64<S: serde::Serializer>(
+        data: &[u8],
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(&Base64Display::new(data, &BASE64_STANDARD))
     }
 
     fn bytes(data: &[u8]) -> Bytes<'_> {
@@ -587,25 +595,27 @@ mod legacy_sender_key_tests {
     }
 
     #[test]
-    fn writes_the_shape_the_js_backend_wrote() {
-        let bytes = legacy_sender_key::serialize(record()).expect("serialize");
-        let text = String::from_utf8(bytes).expect("utf8");
+    fn writes_base64_buffer_payloads_that_the_js_reader_revives() {
+        use base64::prelude::*;
 
-        assert!(
-            text.starts_with('['),
-            "legacy records are a JSON array: {text}"
+        let bytes = legacy_sender_key::serialize(record()).expect("serialize");
+        let states: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
+        let state = &states.as_array().expect("states")[0];
+        let seed = &state["senderChainKey"]["seed"];
+        assert_eq!(seed["type"], "Buffer");
+        assert_eq!(
+            BASE64_STANDARD
+                .decode(seed["data"].as_str().expect("base64"))
+                .expect("seed"),
+            [9u8; 32]
         );
-        for field in [
-            "senderKeyId",
-            "senderChainKey",
-            "senderSigningKey",
-            "senderMessageKeys",
-        ] {
-            assert!(text.contains(field), "missing {field} in {text}");
-        }
+        assert_eq!(state["senderKeyId"], 7);
+        assert_eq!(state["senderChainKey"]["iteration"], 42);
         assert!(
-            text.contains(r#""type":"Buffer""#),
-            "bytes use the Buffer envelope"
+            state["senderMessageKeys"]
+                .as_array()
+                .expect("skipped keys")
+                .is_empty()
         );
     }
 
@@ -622,11 +632,8 @@ mod legacy_sender_key_tests {
             .expect("state added");
 
         let bytes = legacy_sender_key::serialize(record).expect("serialize");
-        let text = String::from_utf8(bytes).expect("utf8");
-
-        assert!(
-            text.contains(r#""private":{"type":"Buffer","data":[]}"#),
-            "got {text}"
-        );
+        let states: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
+        assert_eq!(states[0]["senderSigningKey"]["private"]["type"], "Buffer");
+        assert_eq!(states[0]["senderSigningKey"]["private"]["data"], "");
     }
 }

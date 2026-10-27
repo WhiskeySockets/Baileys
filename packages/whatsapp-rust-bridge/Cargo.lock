@@ -106,9 +106,9 @@ dependencies = [
 
 [[package]]
 name = "buffa"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf9e6224bc4ee1f189ad257120c156fb05f95b826f5369d620b24984476c200a"
+checksum = "a92f2f5df67a9d5ccfc65237bfc954c56328aee40a04a9b92381ecba370be246"
 dependencies = [
  "base64",
  "bytes",
@@ -124,9 +124,9 @@ dependencies = [
 
 [[package]]
 name = "buffa-build"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "247d43740a4854a9c1b98a5931d6d67d8f8b41ffeb2a43ca008d460e79b1eb2c"
+checksum = "eee6b6b4a8d23f1f98a043f188f4d9d2ef8bee43191f42e93ac577f3c3b0f334"
 dependencies = [
  "buffa",
  "buffa-codegen",
@@ -135,13 +135,13 @@ dependencies = [
 
 [[package]]
 name = "buffa-codegen"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2074a9c2f76b2ebe6af40f7bf67b6a19d6ce3663253ef2a55124dc93f38b230e"
+checksum = "bb4bea10ef85ea3d06a20412c67cb612527feb25f33367eab850139441fb5dd9"
 dependencies = [
  "buffa",
  "buffa-descriptor",
- "prettyplease",
+ "prettyplease 0.2.37",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -150,9 +150,9 @@ dependencies = [
 
 [[package]]
 name = "buffa-descriptor"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "964d735e0b06cb24fa15a68c5aa99549abcc7e0bbeb76298f2fec57912fb79c1"
+checksum = "2b7dd79a6898e70dac8adae959c8ad2cae51ed96397935c91c996280cedcb55e"
 dependencies = [
  "buffa",
  "rustversion",
@@ -877,6 +877,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prettyplease"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bfe0f4c752e450fc2faf62654f1c134747922825d5b04ca717b8874f41a40c0"
+dependencies = [
+ "proc-macro2",
+ "syn 3.0.3",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1384,8 +1394,8 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "wacore-appstate"
-version = "0.6.0"
-source = "git+https://github.com/jlucaso1/whatsapp-rust.git?branch=main#81c26b3cb08d22750e79d4b1a3e9f45fbd3f355f"
+version = "0.7.0"
+source = "git+https://github.com/oxidezap/whatsapp-rust.git?rev=0ec2942c1db85af97364743746f9b88c72d299b9#0ec2942c1db85af97364743746f9b88c72d299b9"
 dependencies = [
  "anyhow",
  "buffa",
@@ -1405,8 +1415,8 @@ dependencies = [
 
 [[package]]
 name = "wacore-binary"
-version = "0.6.0"
-source = "git+https://github.com/jlucaso1/whatsapp-rust.git?branch=main#81c26b3cb08d22750e79d4b1a3e9f45fbd3f355f"
+version = "0.7.0"
+source = "git+https://github.com/oxidezap/whatsapp-rust.git?rev=0ec2942c1db85af97364743746f9b88c72d299b9#0ec2942c1db85af97364743746f9b88c72d299b9"
 dependencies = [
  "bytes",
  "compact_str",
@@ -1422,8 +1432,8 @@ dependencies = [
 
 [[package]]
 name = "wacore-derive"
-version = "0.6.0"
-source = "git+https://github.com/jlucaso1/whatsapp-rust.git?branch=main#81c26b3cb08d22750e79d4b1a3e9f45fbd3f355f"
+version = "0.7.0"
+source = "git+https://github.com/oxidezap/whatsapp-rust.git?rev=0ec2942c1db85af97364743746f9b88c72d299b9#0ec2942c1db85af97364743746f9b88c72d299b9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1432,8 +1442,8 @@ dependencies = [
 
 [[package]]
 name = "wacore-libsignal"
-version = "0.6.0"
-source = "git+https://github.com/jlucaso1/whatsapp-rust.git?branch=main#81c26b3cb08d22750e79d4b1a3e9f45fbd3f355f"
+version = "0.7.0"
+source = "git+https://github.com/oxidezap/whatsapp-rust.git?rev=0ec2942c1db85af97364743746f9b88c72d299b9#0ec2942c1db85af97364743746f9b88c72d299b9"
 dependencies = [
  "aes",
  "async-lock",
@@ -1463,8 +1473,8 @@ dependencies = [
 
 [[package]]
 name = "wacore-noise"
-version = "0.6.0"
-source = "git+https://github.com/jlucaso1/whatsapp-rust.git?branch=main#81c26b3cb08d22750e79d4b1a3e9f45fbd3f355f"
+version = "0.7.0"
+source = "git+https://github.com/oxidezap/whatsapp-rust.git?rev=0ec2942c1db85af97364743746f9b88c72d299b9#0ec2942c1db85af97364743746f9b88c72d299b9"
 dependencies = [
  "anyhow",
  "buffa",
@@ -1491,16 +1501,19 @@ dependencies = [
 
 [[package]]
 name = "waproto"
-version = "0.6.0"
-source = "git+https://github.com/jlucaso1/whatsapp-rust.git?branch=main#81c26b3cb08d22750e79d4b1a3e9f45fbd3f355f"
+version = "0.7.0"
+source = "git+https://github.com/oxidezap/whatsapp-rust.git?rev=0ec2942c1db85af97364743746f9b88c72d299b9#0ec2942c1db85af97364743746f9b88c72d299b9"
 dependencies = [
  "buffa",
  "buffa-build",
  "buffa-descriptor",
  "bytes",
  "heck",
+ "prettyplease 0.3.0",
+ "quote",
  "serde",
  "sha2 0.11.0",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1753,7 +1766,7 @@ dependencies = [
  "anyhow",
  "heck",
  "indexmap",
- "prettyplease",
+ "prettyplease 0.2.37",
  "syn 2.0.117",
  "wasm-metadata",
  "wit-bindgen-core",
@@ -1767,7 +1780,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c0f9bfd77e6a48eccf51359e3ae77140a7f50b1e2ebfe62422d8afdaffab17a"
 dependencies = [
  "anyhow",
- "prettyplease",
+ "prettyplease 0.2.37",
  "proc-macro2",
  "quote",
  "syn 2.0.117",

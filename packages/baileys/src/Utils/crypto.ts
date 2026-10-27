@@ -24,7 +24,7 @@ export const Curve = {
 		const shared = calculateAgreement(generateSignalPubKey(publicKey), privateKey)
 		return Buffer.from(shared)
 	},
-	sign: (privateKey: Uint8Array, buf: Uint8Array) => calculateSignature(privateKey, buf),
+	sign: (privateKey: Uint8Array, buf: Uint8Array) => Buffer.from(calculateSignature(privateKey, buf)),
 	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
 		try {
 			// verifySignature returns false for a well-formed but wrong signature

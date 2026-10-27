@@ -42,22 +42,11 @@ import {
 	transferDevice,
 	WAJIDDomains
 } from '../WABinary'
-import { hasOpenLegacySession, isLegacySessionEntry, isLegacySessionRecord, legacySessionInfo } from './legacy-session'
+import { hasOpenLegacySession, isLegacySessionRecord } from './legacy-session'
 import { fromTypedRecord, toTypedRecord } from './legacy-session-codec'
 import { LIDMappingStore } from './lid-mapping'
 
-/**
- * Resolve a signal-protocol-address string (`user[_domainType].device`) to its
- * post-LID-mapping form. If `id` is already a LID/HOSTED_LID address, or no PN
- * mapping exists, it's returned unchanged.
- *
- * Lifted from `signalStorage()`'s closure (where it was hidden as a private
- * helper) so the repository methods can pre-resolve before acquiring locks —
- * otherwise `transactWith` would lock the raw PN id while
- * `loadSession`/`storeSession`/`saveIdentity` internally rewrite to the LID
- * form, letting two callers think they're touching different records when
- * they're actually mutating the same underlying storage row.
- */
+/** Resolve before locking so PN and LID operations lock the same storage row. */
 async function resolveSignalAddressId(id: string, lidMapping: LIDMappingStore): Promise<string> {
 	if (!id.includes('.')) return id
 
@@ -206,11 +195,8 @@ export function makeLibSignalRepository(
 		const address = jidToSignalProtocolAddress(jid)
 		const wireJid = await resolveLIDSignalAddress(address.toString())
 
-		// The identity row is locked alongside the session because applying the
-		// changeset writes it too. signalStorage.saveIdentity holds both and can
-		// clear the session when the key differs, so taking only the session here
-		// would let the two paths overwrite each other. transactWith acquires in a
-		// fixed order, so naming both cannot deadlock against it.
+		// Applying a changeset can replace both rows. Lock their resolved IDs
+		// together so another operation cannot observe a mismatched identity and session.
 		return parsedKeys.transactWith(
 			{
 				records: [
@@ -306,7 +292,7 @@ export function makeLibSignalRepository(
 
 		try {
 			if (isLegacySessionRecord(stored)) {
-				if (!hasOpenLegacySession(stored)) return undefined
+				// Archived states can decrypt delayed messages without providing a current state for encryption.
 				return importLegacySessionRecordV1(toTypedRecord(stored), {
 					identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
 					registrationId: creds.registrationId
@@ -373,15 +359,6 @@ export function makeLibSignalRepository(
 			const senderMsg = SenderKeyDistributionMessage.deserialize(item.axolotlSenderKeyDistributionMessage)
 			const senderNameStr = senderName.toString()
 
-			// The "ensure a SenderKeyRecord exists" check runs INSIDE the
-			// per-record transactWith below. The previous pre-lock get + write
-			// here was both redundant and unsafe: a concurrent
-			// `processSenderKeyDistributionMessage` (or any other writer to the
-			// same sender-key record) could commit a populated record between
-			// our pre-lock read and our pre-lock write, which our write would
-			// then clobber with an empty record. Removing it eliminates that
-			// race window without changing observable behavior — the in-lock
-			// re-check handles the first-time-seeing-this-sender case.
 			return parsedKeys.transactWith({ records: [{ type: 'sender-key', id: senderNameStr }] }, async () =>
 				builder.process(senderName, senderMsg)
 			)
@@ -471,17 +448,6 @@ export function makeLibSignalRepository(
 				return null
 			}
 
-			// A not-yet-converted session arrives as the JS libsignal state, which
-			// carries these fields directly — read them so the retry protections
-			// also cover sessions that predate the bridge format.
-			if (isLegacySessionEntry(serialized)) {
-				return legacySessionInfo(serialized)
-			}
-
-			// `storage.loadSession` hands the bridge the raw persisted record, and
-			// `SessionRecord` only exposes `haveOpenSession`/`serialize` — no accessor
-			// for the open state's fields. Decode the record here instead: it is the
-			// wire `RecordStructure` protobuf, whose schema WAProto already carries.
 			try {
 				const { currentSession } = proto.RecordStructure.decode(serialized)
 				const baseKey = currentSession?.aliceBaseKey
@@ -492,7 +458,7 @@ export function makeLibSignalRepository(
 
 				return { baseKey: new Uint8Array(baseKey), registrationId }
 			} catch (error) {
-				logger.debug({ jid, error }, 'failed to decode session record for session info')
+				logger.debug({ jid, err: error }, 'failed to decode session record for session info')
 				return null
 			}
 		},
@@ -531,12 +497,6 @@ export function makeLibSignalRepository(
 					return { exists: false, reason: 'no session' }
 				}
 
-				// `loadSession` only yields a legacy entry when it found an OPEN one,
-				// and SessionRecord.deserialize would reject the object outright.
-				if (isLegacySessionEntry(serialized)) {
-					return { exists: true }
-				}
-
 				if (!SessionRecord.deserialize(serialized).haveOpenSession()) {
 					return { exists: false, reason: 'no open session' }
 				}
@@ -564,9 +524,6 @@ export function makeLibSignalRepository(
 				sessionAddrs.push(wireJid)
 			}
 
-			// H4 fix: lock by the actual session record ids instead of a synthetic
-			// `delete-N-sessions` key. Now serializes against concurrent
-			// encrypt/decrypt transactions for any of these jids.
 			return parsedKeys.transactWith({ records: sessionAddrs.map(id => ({ type: 'session', id })) }, async () => {
 				await auth.keys.set({ session: sessionUpdates })
 			})
@@ -681,10 +638,6 @@ export function makeLibSignalRepository(
 				'bulk device migration complete - all user devices processed'
 			)
 
-			// Prepare migration operations with addressing metadata up-front so
-			// we can build a precise lock scope before entering the critical
-			// section (H4 fix: lock the actual session record ids + the
-			// device-list record, instead of a synthetic `migrate-N-...` key).
 			type MigrationOp = {
 				fromJid: string
 				toJid: string
@@ -834,53 +787,19 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
-	lidMapping: LIDMappingStore,
-	/**
-	 * Optional pinned-resolution override. When the repository methods
-	 * pre-resolve `addrStr → wireJid` to scope a `transactWith` lock, they
-	 * pass a per-call `signalStorage` instance with `pinnedResolver` set so
-	 * libsignal's internal storage calls don't independently re-resolve
-	 * (which would TOCTOU against a mid-flight LID mapping change — see
-	 * Stage 3 round 2 commit). The function receives the same raw `id`
-	 * libsignal would pass and returns the wire form to use, bypassing
-	 * any consult of `lidMapping`.
-	 */
-	pinnedResolver?: (id: string) => Promise<string>
+	lidMapping: LIDMappingStore
 ): SignalStorage & {
-	// Members the bridge no longer asks for, but this file still calls: the
-	// group path is all the adapter needs from us now.
-	loadSession(id: string): Promise<Uint8Array | SignalDataTypeMap['session'] | null>
-	storeSession(id: string, session: SessionRecord): Promise<void>
-	loadIdentityKey(id: string): Promise<Uint8Array | undefined>
-	saveIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
-	isTrustedIdentity(): boolean
-	loadPreKey(id: number): Promise<{ pubKey: Uint8Array; privKey: Uint8Array } | null>
-	removePreKey(id: number): unknown
-	loadSignedPreKey(id: number): Promise<unknown>
-	getOurRegistrationId(): number
-	getOurIdentity(): { privKey: Uint8Array; pubKey: Uint8Array }
+	loadSession(id: string): Promise<Uint8Array | null>
 } {
-	const resolveLIDSignalAddress = pinnedResolver ?? ((id: string) => resolveSignalAddressId(id, lidMapping))
-
 	return {
 		loadSession: async (id: string) => {
 			try {
-				const wireJid = await resolveLIDSignalAddress(id)
+				const wireJid = await resolveSignalAddressId(id, lidMapping)
 				const { [wireJid]: sess } = await keys.get('session', [wireJid])
 				if (!sess) {
 					return null
 				}
 
-				// Pre-WASM auth states hold the JS libsignal object. Convert it through
-				// the core's typed model, which reconstructs the message-key material
-				// from its seed. The adapter's own field-by-field fallback cannot: it
-				// stores the seed as a cipher key and zeroes the mac/iv, so the very
-				// first ciphertext the old build enciphered fails its MAC.
-				//
-				// With every state closed there is nothing safe to hand over — the
-				// converted record would promote a closed state to current, and
-				// encrypting under a ratchet the peer already dropped yields messages
-				// nobody can decrypt. Report "no session" so it renegotiates.
 				if (isLegacySessionRecord(sess)) {
 					if (!hasOpenLegacySession(sess)) {
 						return null
@@ -897,86 +816,6 @@ function signalStorage(
 				return null
 			}
 		},
-		storeSession: async (id: string, session: SessionRecord) => {
-			const wireJid = await resolveLIDSignalAddress(id)
-			await keys.set({ session: { [wireJid]: session.serialize() } })
-		},
-		isTrustedIdentity: () => {
-			return true // TOFU - Trust on First Use (same as WhatsApp Web)
-		},
-		loadIdentityKey: async (id: string) => {
-			const wireJid = await resolveLIDSignalAddress(id)
-			const { [wireJid]: key } = await keys.get('identity-key', [wireJid])
-			return key || undefined
-		},
-		saveIdentity: async (id: string, identityKey: Uint8Array): Promise<boolean> => {
-			const wireJid = await resolveLIDSignalAddress(id)
-
-			// H3 fix: the read-then-write sequence and the cross-type
-			// session+identity-key write run inside a single transactWith. The
-			// commit lands as ONE state.set covering both types — readers can
-			// no longer observe `session=null` paired with the OLD identity-key.
-			const txKeys = keys as SignalKeyStoreWithRecordTransaction
-			return txKeys.transactWith(
-				{
-					records: [
-						{ type: 'identity-key', id: wireJid },
-						{ type: 'session', id: wireJid }
-					]
-				},
-				async () => {
-					const { [wireJid]: existingKey } = await txKeys.get('identity-key', [wireJid])
-
-					const keysMatch =
-						existingKey?.length === identityKey.length && existingKey.every((byte, i) => byte === identityKey[i])
-
-					if (existingKey && !keysMatch) {
-						// Identity changed — clear session and update key atomically.
-						await txKeys.set({
-							session: { [wireJid]: null },
-							'identity-key': { [wireJid]: identityKey }
-						})
-						return true
-					}
-
-					if (!existingKey) {
-						// New contact - Trust on First Use (TOFU)
-						await txKeys.set({ 'identity-key': { [wireJid]: identityKey } })
-						return true
-					}
-
-					return false
-				}
-			)
-		},
-		loadPreKey: async (id: number) => {
-			const keyId = id.toString()
-			const { [keyId]: key } = await keys.get('pre-key', [keyId])
-			if (key) {
-				return {
-					privKey: key.private,
-					pubKey: key.public
-				}
-			}
-
-			return null
-		},
-		removePreKey: (id: number) => keys.set({ 'pre-key': { [id]: null } }),
-		loadSignedPreKey: async (id: number) => {
-			const key = creds.signedPreKey
-			if (key?.keyId !== id) {
-				return null
-			}
-
-			return {
-				keyId: key.keyId,
-				signature: key.signature,
-				keyPair: {
-					pubKey: key.keyPair.public,
-					privKey: key.keyPair.private
-				}
-			}
-		},
 		loadSenderKey: async (keyId: string) => {
 			const { [keyId]: key } = await keys.get('sender-key', [keyId])
 			return key ?? null
@@ -986,14 +825,6 @@ function signalStorage(
 			// reads. Every field of a sender-key state has a v1 counterpart, so
 			// unlike a session this conversion cannot lose anything.
 			await keys.set({ 'sender-key': { [keyId]: projectLegacySenderKeyRecordV1(keyBytes) } })
-		},
-		getOurRegistrationId: () => creds.registrationId,
-		getOurIdentity: () => {
-			const { signedIdentityKey } = creds
-			return {
-				privKey: signedIdentityKey.private,
-				pubKey: signedIdentityKey.public
-			}
 		}
 	}
 }

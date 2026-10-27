@@ -109,13 +109,10 @@ describe('group sender keys', () => {
 		// array. Both shapes reach us, and reading one of them as absent would
 		// leave the record with empty keys and fail far from here.
 		const [key] = Object.keys(bob.data['sender-key']!)
-		const states = JSON.parse(Buffer.from(bob.data['sender-key']![key!] as Uint8Array).toString())
+		const states = JSON.parse(Buffer.from(bob.data['sender-key']![key!] as Uint8Array).toString(), BufferJSON.reviver)
 		const rewritten = JSON.stringify(states, BufferJSON.replacer)
 		bob.data['sender-key']![key!] = Buffer.from(rewritten)
 
-		// The replacer also rewrites a { type: 'Buffer', data: [...] } object,
-		// which is what JSON.parse leaves behind, so pin the shape rather than
-		// trusting that it produced one.
 		expect(JSON.parse(rewritten)[0].senderChainKey.seed).toEqual({
 			type: 'Buffer',
 			data: expect.any(String)

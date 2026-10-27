@@ -1,14 +1,4 @@
-/**
- * Converts between the JS libsignal on-disk session JSON and the bridge's typed
- * `LegacySessionRecordV1` model.
- *
- * The bridge deliberately knows nothing about Baileys' storage shape: it speaks
- * the typed model, and the core owns the actual protocol translation (including
- * the HKDF split that a raw field-by-field copy gets wrong). This module is the
- * only place that understands the legacy JSON, and it goes BOTH ways —
- * `toTypedRecord` for reading an upgraded store, `fromTypedRecord` for handing a
- * session back in the shape the pre-WASM code can still read.
- */
+/** Maps the persisted libsignal JSON shape to the core's typed legacy model. */
 import type {
 	LegacySessionChainV1,
 	LegacySessionMessageKeyV1,
@@ -131,7 +121,7 @@ export const toTypedRecord = (record: LegacySessionRecord): LegacySessionRecordV
 
 /** The bridge's typed model → legacy on-disk JSON, byte-for-byte comparable. */
 export const fromTypedRecord = (record: LegacySessionRecordV1): LegacySessionRecord => {
-	const sessions: Record<string, unknown> = {}
+	const sessions: Record<string, LegacyEntryJson> = {}
 	for (const indexed of record.sessions) {
 		const s = indexed.session
 		const chains: Record<string, LegacyChainJson> = {}
@@ -183,5 +173,5 @@ export const fromTypedRecord = (record: LegacySessionRecordV1): LegacySessionRec
 		}
 	}
 
-	return { _sessions: sessions as never, version: 'v1' }
+	return { _sessions: sessions, version: 'v1' }
 }
