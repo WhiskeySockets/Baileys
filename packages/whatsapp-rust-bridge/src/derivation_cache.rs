@@ -1,44 +1,16 @@
-//! Keeps the XEdDSA derivations that a sender-key record cannot keep for us.
-//!
-//! `SenderKeyState` memoizes the signing key's basepoint multiplication and the
-//! verifier's Edwards entries, but the memo lives in the record. This crate
-//! rebuilds the record from storage on every operation, so the memo is always
-//! cold and every message repays a derivation that never changes.
-//!
-//! Keeping the record alive instead would be the obvious fix and is the wrong
-//! one: the record would go stale the moment anything else rotated the key, and
-//! an encrypt under a chain the peer already dropped is worse than a slow one.
-//! Keying on the signing key's public bytes has no such window. A rotated key
-//! is a different entry by construction, and a stale entry is unreachable
-//! rather than wrong.
-//!
-//! The core takes the derivations back through `prewarm_*`, which verify that
-//! what they are handed belongs to the state before installing it, so a wrong
-//! entry here cannot become a signature under the wrong key.
+//! Reuses public verification precomputation across sender-key operations.
+//! Private signing material stays in the operation's record and is not cached.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 use wacore_libsignal::core::curve::PreparedVerifyingKey;
-use wacore_libsignal::protocol::{PrivateKey, SenderKeyRecord};
+use wacore_libsignal::protocol::SenderKeyRecord;
 
-/// Entries are ~200 bytes and a live conversation touches a handful of senders,
-/// so this is far above any working set while staying bounded. On overflow the
-/// map is cleared rather than evicted one by one: picking a victim needs
-/// bookkeeping this does not otherwise carry, and the cost of being wrong is
-/// one derivation per active sender, paid once.
 const MAX_ENTRIES: usize = 256;
 
-#[derive(Clone)]
-struct Derivations {
-    verifier: PreparedVerifyingKey,
-    /// Absent for a sender key received from someone else, which has no private
-    /// half to sign with.
-    signing: Option<PrivateKey>,
-}
-
 thread_local! {
-    static CACHE: RefCell<HashMap<[u8; 33], Derivations>> = RefCell::new(HashMap::new());
+    static CACHE: RefCell<HashMap<[u8; 33], PreparedVerifyingKey>> = RefCell::new(HashMap::new());
 }
 
 /// Hand the record whatever has already been derived for its signing key, and
@@ -56,38 +28,35 @@ pub(crate) fn warm(record: &SenderKeyRecord) {
     let key = public.serialize();
 
     let hit = CACHE.with(|cache| cache.borrow().get(&key).cloned());
-    if let Some(derivations) = hit {
-        let _ = state.prewarm_verifying_key(derivations.verifier);
-        if let Some(signing) = derivations.signing {
-            let _ = state.prewarm_signing_key(signing);
+    if let Some(verifier) = hit {
+        if state.prewarm_verifying_key(verifier).is_ok() {
+            #[cfg(test)]
+            HITS.with(|hits| hits.set(hits.get() + 1));
         }
-
         return;
     }
-
-    // A miss derives both halves even though one operation uses one of them.
-    // That is one wasted derivation per sender, against one per message.
     let Ok(verifier) = state.signing_key_verifier() else {
         return;
     };
-    let derivations = Derivations {
-        verifier: verifier.clone(),
-        signing: state.signing_key_private().ok(),
-    };
-
     CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
         if cache.len() >= MAX_ENTRIES {
             cache.clear();
         }
 
-        cache.insert(key, derivations);
+        cache.insert(key, verifier.clone());
     });
+}
+
+#[cfg(test)]
+thread_local! {
+    static HITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 #[cfg(test)]
 pub(crate) fn reset() {
     CACHE.with(|cache| cache.borrow_mut().clear());
+    HITS.with(|hits| hits.set(0));
 }
 
 #[cfg(test)]
@@ -124,18 +93,20 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn repeated_keys_keep_one_usable_cache_entry() {
+    fn repeated_keys_reuse_verification_precomputation() {
         reset();
         let pair = keys();
 
         warm(&record_with(&pair, true));
         assert_eq!(len(), 1);
+        assert_eq!(HITS.with(|hits| hits.get()), 0);
 
         // A record rebuilt from storage: same signing key, cold memo.
         let rebuilt = record_with(&pair, true);
         warm(&rebuilt);
 
         assert_eq!(len(), 1, "the same key must not add a second entry");
+        assert_eq!(HITS.with(|hits| hits.get()), 1);
         let state = rebuilt.sender_key_state().expect("state");
         assert!(
             state.signing_key_private().is_ok(),
