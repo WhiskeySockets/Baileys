@@ -70,7 +70,7 @@ async function storeTcTokensFromHistorySync(
 		const ts = chat.tcTokenTimestamp ? toNumber(chat.tcTokenTimestamp) : 0
 		if (chat.tcToken?.length && ts > 0) {
 			const jid = jidNormalizedUser(chat.id!)
-			const storageJid = await resolveTcTokenJid(jid, getLIDForPN)
+			const storageJid = await resolveTcTokenJid(jid, getLIDForPN, logger)
 			candidates.push({
 				storageJid,
 				token: Buffer.from(chat.tcToken),

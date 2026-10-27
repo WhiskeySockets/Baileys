@@ -98,6 +98,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
+	const recentlyChangedIdentities = new Set<string>()
+
 	/**
 	 * Set of tctoken storage JIDs with a fire-and-forget `issuePrivacyTokens` IQ in flight.
 	 * Prevents duplicate IQs from rapid back-to-back sends before `senderTimestamp` persists.
@@ -626,6 +628,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			statusJidList
 		}: MessageRelayOptions
 	) => {
+		if (jidDecode(jid)?.server === 's.whatsapp.net') {
+			try {
+				const mappedLid = await getLIDForPN(jid)
+				if (mappedLid) {
+					jid = mappedLid
+				}
+			} catch (error: any) {
+				logger.debug({ jid, err: error?.message }, 'failed to check LID mapping for PN')
+			}
+		}
+
 		const meId = assertMeId(authState.creds)
 		const meLid = authState.creds.me?.lid
 		const isRetryResend = Boolean(participant?.jid)
@@ -772,7 +785,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const senderKeyRecipients: string[] = []
 				for (const device of devices) {
 					const deviceJid = device.jid
-					const hasKey = !!senderKeyMap[deviceJid]
+					const hasKey = !recentlyChangedIdentities.has(jidNormalizedUser(deviceJid)) && !!senderKeyMap[deviceJid]
 					if (
 						(!hasKey || !!participant) &&
 						!isHostedLidUser(deviceJid) &&
@@ -1059,7 +1072,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const is1on1Send = !isGroup && !isRetryResend && !isStatus && !isNewsletter && !isPeerMessage
 
 			// Resolve destination to LID for tctoken storage — matches Signal session key pattern
-			const tcTokenJid = is1on1Send ? await resolveTcTokenJid(destinationJid, getLIDForPN) : destinationJid
+			const tcTokenJid = is1on1Send ? await resolveTcTokenJid(destinationJid, getLIDForPN, logger) : destinationJid
 			const contactTcTokenData = is1on1Send ? await authState.keys.get('tctoken', [tcTokenJid]) : {}
 			const existingTokenEntry = contactTcTokenData[tcTokenJid]
 			let tcTokenBuffer = existingTokenEntry?.token
@@ -1260,6 +1273,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		recentlyChangedIdentities,
 		userDevicesCache,
 		devicesMutex,
 		issuePrivacyTokens,
@@ -1326,6 +1340,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return message
 		},
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
+			const { user, server } = jidDecode(jid) || {}
+			if (server === 's.whatsapp.net') {
+				try {
+					const mappedLid = await getLIDForPN(jid)
+					if (mappedLid) {
+						jid = mappedLid
+					}
+				} catch (error: any) {
+					logger.debug({ jid, err: error?.message }, 'failed to check LID mapping for PN')
+				}
+			}
+
 			const userJid = authState.creds.me!.id
 			if (
 				typeof content === 'object' &&
