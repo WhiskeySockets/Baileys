@@ -50,7 +50,7 @@ function run(cmd, args, env = {}) {
 // A profiling build keeps the name section so a CPU profile resolves symbols;
 // wasm-opt would strip it, and its rewrites make the remaining frames hard to
 // map back to source. Never used for a release artifact.
-const profiling = process.env.WHATSAPP_RUST_BRIDGE_PROFILE === '1'
+const profiling = process.argv.includes('--profile') || process.env.WHATSAPP_RUST_BRIDGE_PROFILE === '1'
 
 // wasm-pack downloads the wasm-bindgen matching the crate's schema; a globally
 // installed one usually does not match and refuses the module.
@@ -69,7 +69,7 @@ function wasmBindgen() {
 	const cacheRoot = resolve(process.env.HOME ?? '', '.cache/.wasm-pack')
 	if (wanted && existsSync(cacheRoot)) {
 		for (const entry of readdirSync(cacheRoot)) {
-			const candidate = resolve(cacheRoot, entry, 'wasm-bindgen')
+			const candidate = resolve(cacheRoot, entry, process.platform === 'win32' ? 'wasm-bindgen.exe' : 'wasm-bindgen')
 			if (matches(candidate)) return candidate
 		}
 	}

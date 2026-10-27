@@ -246,6 +246,17 @@ describe("snapshot API", () => {
 
     expect(new TextDecoder().decode(received.plaintext)).toBe("first");
     expect(again.changes.session).toBeDefined();
+    const reply = await encryptWithSnapshot(
+      snapshotOf(bob, { session: received.changes.session }),
+      aliceAddr(),
+      new TextEncoder().encode("reply on the original session"),
+    );
+    const readBack = await decryptWhisperWithSnapshot(
+      snapshotOf(alice, { session: again.changes.session }),
+      bobAddr(),
+      reply.ciphertext,
+    );
+    expect(new TextDecoder().decode(readBack.plaintext)).toBe("reply on the original session");
   });
 
   it("converges when both sides open a session at the same time", async () => {

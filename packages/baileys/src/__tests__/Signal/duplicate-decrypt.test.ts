@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import P from 'pino'
+import { proto } from '../../../WAProto/index.js'
 import { makeLibSignalRepository } from '../../Signal/libsignal'
 import type { SignalAuthState, SignalDataSet, SignalDataTypeMap, SignalKeyStore } from '../../Types'
 import { addTransactionCapability, initAuthCreds } from '../../Utils/auth-utils'
@@ -111,7 +112,10 @@ describe('decryptMessage duplicate handling', () => {
 	})
 
 	it('leaves unrelated decrypt failures untouched', async () => {
-		const { bob } = await establish()
+		const { alice, bob } = await establish()
+		const outgoing = await alice.repository.encryptMessage({ jid: bobJid, data: Buffer.from('unknown peer') })
+		const whisper = proto.PreKeySignalMessage.decode(outgoing.ciphertext.subarray(1)).message
+		if (!whisper) throw new Error('Expected a whisper message inside the prekey envelope')
 		const strangerJid = '5511900000009@s.whatsapp.net'
 
 		// No session with this peer at all: must NOT be reported as a duplicate.
@@ -119,8 +123,8 @@ describe('decryptMessage duplicate handling', () => {
 			bob.repository.decryptMessage({
 				jid: strangerJid,
 				type: 'msg',
-				ciphertext: Buffer.from([0x33, 0x0a, 0x21, 0x05])
+				ciphertext: whisper
 			})
-		).rejects.not.toThrow(MISSING_KEYS_ERROR_TEXT)
+		).rejects.toThrow('SessionNotFound')
 	})
 })

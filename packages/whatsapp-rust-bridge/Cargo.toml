@@ -104,10 +104,7 @@ web-sys = { version = "0.3", features = [
     "ReadableStreamDefaultReader",
 ] }
 
-# Runs the crate's `#[test]` unit tests on wasm32 in Node via
-# `wasm-pack test --node` — plain `cargo test` cannot, because the crate only
-# builds for wasm32 (no native test harness). The test modules alias
-# `#[test]` -> `#[wasm_bindgen_test]`, so there is no per-test annotation churn.
+# Run WASM unit tests in Node with `wasm-pack test --node`.
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 

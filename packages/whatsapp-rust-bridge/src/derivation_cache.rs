@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn a_second_record_for_the_same_key_is_served_from_the_cache() {
+    fn repeated_keys_keep_one_usable_cache_entry() {
         reset();
         let pair = keys();
 
@@ -139,7 +139,7 @@ mod tests {
         let state = rebuilt.sender_key_state().expect("state");
         assert!(
             state.signing_key_private().is_ok(),
-            "the served derivation has to be usable"
+            "the rebuilt record must retain usable signing material"
         );
     }
 

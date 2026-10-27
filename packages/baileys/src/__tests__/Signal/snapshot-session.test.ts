@@ -3,6 +3,7 @@ import P from 'pino'
 import { hasOpenLegacySession, isLegacySessionRecord } from '../../Signal/legacy-session'
 import { makeLibSignalRepository } from '../../Signal/libsignal'
 import type {
+	RecordRef,
 	SignalAuthState,
 	SignalDataSet,
 	SignalDataTypeMap,
@@ -27,9 +28,6 @@ const deferred = () => {
 	const promise = new Promise<void>(r => (resolve = r))
 	return { promise, resolve }
 }
-
-/** Lets any already-queued microtasks and timers run before checking state. */
-const tick = () => new Promise<void>(resolve => setTimeout(resolve, 20))
 
 type Call = { op: 'get' | 'set'; types: string[]; ids: string[] }
 
@@ -292,41 +290,91 @@ describe('snapshot session path', () => {
 		expect(bob.recorder.data['session']).toBeUndefined()
 	})
 
-	it('holds the identity row too, so the group path cannot race it', async () => {
-		// Applying the changeset writes identity-key as well as session, and
-		// signalStorage.saveIdentity does a read-modify-write on that row while
-		// holding its lock (clearing the session when the key differs). If the
-		// session path took only the session lock, the two would overwrite each
-		// other. Holding the identity lock from outside must therefore block it.
+	it('locks the identity and session rows in the same transaction', async () => {
 		const alice = makeParty()
 		const bob = makeParty()
 		await alice.repository.injectE2ESession({ jid: bobJid, session: await bundleOf(bob, 1) })
-
 		const keys = alice.auth.keys as SignalKeyStoreWithRecordTransaction
 		const wireJid = '2222222222.0'
-
-		// Recorded rather than timed: asserting "not finished yet" after a delay
-		// would also hold on a slow machine where the encrypt simply had not got
-		// there, so the order is what proves it waited.
-		const order: string[] = []
+		const locked = deferred()
 		const release = deferred()
-		// Held from a scope of its own: calling encrypt inside the callback would
-		// nest it, and a nested scope does not contend with its parent.
-		const holding = keys
-			.transactWith({ records: [{ type: 'identity-key', id: wireJid }] }, () => release.promise)
-			.then(() => order.push('lock released'))
+		const holding = keys.transactWith({ records: [{ type: 'identity-key', id: wireJid }] }, () => {
+			locked.resolve()
+			return release.promise
+		})
+		await locked.promise
 
-		await tick()
-		const encrypting = alice.repository
-			.encryptMessage({ jid: bobJid, data: Buffer.from('blocked') })
-			.then(() => order.push('encrypt finished'))
+		const attempted = deferred()
+		const scopes: (readonly RecordRef[])[] = []
+		const transactWith = keys.transactWith
+		keys.transactWith = (scope, work) => {
+			scopes.push(scope.records)
+			attempted.resolve()
+			return transactWith(scope, work)
+		}
 
-		// Give an unblocked encrypt every chance to land before the lock goes.
-		await Promise.race([encrypting, tick()])
-		release.resolve()
-		await Promise.all([holding, encrypting])
+		const encrypting = alice.repository.encryptMessage({ jid: bobJid, data: Buffer.from('blocked') })
+		try {
+			await attempted.promise
+			expect(scopes[0]).toEqual(
+				expect.arrayContaining([
+					{ type: 'session', id: wireJid },
+					{ type: 'identity-key', id: wireJid }
+				])
+			)
+		} finally {
+			release.resolve()
+			await Promise.all([holding, encrypting])
+			keys.transactWith = transactWith
+		}
+	})
 
-		expect(order).toEqual(['lock released', 'encrypt finished'])
+	it('rejects an encrypt when persistence fails and retries from the durable session', async () => {
+		const alice = makeParty()
+		const bob = makeParty()
+		await alice.repository.injectE2ESession({ jid: bobJid, session: await bundleOf(bob, 1) })
+		const before = JSON.stringify(alice.recorder.data)
+		const set = alice.recorder.store.set
+		alice.recorder.store.set = async () => {
+			throw new Error('persistence unavailable')
+		}
+
+		try {
+			await expect(alice.repository.encryptMessage({ jid: bobJid, data: Buffer.from('retry') })).rejects.toThrow(
+				'persistence unavailable'
+			)
+			expect(JSON.stringify(alice.recorder.data)).toBe(before)
+		} finally {
+			alice.recorder.store.set = set
+		}
+
+		const outgoing = await alice.repository.encryptMessage({ jid: bobJid, data: Buffer.from('retry') })
+		expect(Buffer.from(await bob.repository.decryptMessage({ jid: aliceJid, ...outgoing })).toString()).toBe('retry')
+	})
+
+	it('keeps the session, identity and pre-key unchanged when decrypt persistence fails', async () => {
+		const alice = makeParty()
+		const bob = makeParty()
+		await alice.repository.injectE2ESession({ jid: bobJid, session: await bundleOf(bob, 1) })
+		const outgoing = await alice.repository.encryptMessage({ jid: bobJid, data: Buffer.from('retry decrypt') })
+		const before = JSON.stringify(bob.recorder.data)
+		const set = bob.recorder.store.set
+		bob.recorder.store.set = async () => {
+			throw new Error('persistence unavailable')
+		}
+
+		try {
+			await expect(bob.repository.decryptMessage({ jid: aliceJid, ...outgoing })).rejects.toThrow(
+				'persistence unavailable'
+			)
+			expect(JSON.stringify(bob.recorder.data)).toBe(before)
+		} finally {
+			bob.recorder.store.set = set
+		}
+
+		expect(Buffer.from(await bob.repository.decryptMessage({ jid: aliceJid, ...outgoing })).toString()).toBe(
+			'retry decrypt'
+		)
 	})
 
 	it('keeps the chain monotonic when encrypts overlap on one session', async () => {

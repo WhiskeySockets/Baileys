@@ -78,22 +78,8 @@ const bundleOf = async (party: ReturnType<typeof makeParty>, preKeyId: number) =
 	}
 }
 
-/**
- * `relayMessage` wraps sending in `transaction(meId)`, and `encryptMessage`
- * opens a nested `transactWith({session})` inside it. A nested transactWith
- * shares the OUTER context: it takes the session lock, buffers its write into
- * the outer accumulator, then RELEASES the lock — while the write is still
- * uncommitted.
- *
- * The decrypt path runs outside that outer transaction. It can therefore take
- * the just-released session lock, read the pre-encrypt session from the store,
- * advance it and commit — and then the outer transaction commits the encrypt's
- * buffered write on top, rewinding the chain.
- *
- * That rewind is what the peer reports as `message with old counter N / 0`,
- * which is exactly what the wabench server logged for this branch under load.
- */
-describe('session lost update between relayMessage and the decrypt path', () => {
+/** A nested transaction must not rewind a session advanced by another operation. */
+describe('session updates inside nested transactions', () => {
 	const aliceJid = '5511900000001@s.whatsapp.net'
 	const bobJid = '5511900000002@s.whatsapp.net'
 	const meId = 'alice-device'
@@ -118,8 +104,6 @@ describe('session lost update between relayMessage and the decrypt path', () => 
 		const encryptDone = deferred()
 		const releaseOuter = deferred()
 
-		// Mirror relayMessage: an outer transaction keyed by meId that stays open
-		// after the nested encrypt has already released the session lock.
 		const sending = alice.keys.transaction(async () => {
 			const outgoing = await alice.repository.encryptMessage({
 				jid: bobJid,
@@ -131,15 +115,18 @@ describe('session lost update between relayMessage and the decrypt path', () => 
 		}, meId)
 
 		// The decrypt path is NOT inside that transaction.
-		await encryptDone.promise
-		const plaintext = await alice.repository.decryptMessage({
-			jid: bobJid,
-			type: inbound.type,
-			ciphertext: inbound.ciphertext
-		})
-		expect(Buffer.from(plaintext).toString()).toBe('inbound')
+		try {
+			await Promise.race([encryptDone.promise, sending])
+			const plaintext = await alice.repository.decryptMessage({
+				jid: bobJid,
+				type: inbound.type,
+				ciphertext: inbound.ciphertext
+			})
+			expect(Buffer.from(plaintext).toString()).toBe('inbound')
+		} finally {
+			releaseOuter.resolve()
+		}
 
-		releaseOuter.resolve()
 		const outgoing = await sending
 
 		// The peer must still be able to read what Alice sent. If the outer
@@ -169,14 +156,17 @@ describe('session lost update between relayMessage and the decrypt path', () => 
 			return outgoing
 		}, meId)
 
-		await encryptDone.promise
-		await alice.repository.decryptMessage({
-			jid: bobJid,
-			type: inbound.type,
-			ciphertext: inbound.ciphertext
-		})
+		try {
+			await Promise.race([encryptDone.promise, sending])
+			await alice.repository.decryptMessage({
+				jid: bobJid,
+				type: inbound.type,
+				ciphertext: inbound.ciphertext
+			})
+		} finally {
+			releaseOuter.resolve()
+		}
 
-		releaseOuter.resolve()
 		const first = await sending
 
 		// A follow-up send must continue the chain rather than restart it.

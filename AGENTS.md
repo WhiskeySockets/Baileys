@@ -52,10 +52,9 @@ If you are working on the Rust crate:
 WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1 pnpm install
 pnpm --filter whatsapp-rust-bridge build   # needs cargo, wasm-pack, and wasm-opt
 
-# Rust unit tests. The crate only builds for wasm32, so they run in Node
-# through wasm-pack rather than `cargo test`. `pnpm test` skips them when
-# wasm-pack is absent, on any platform, so a no-Rust checkout still passes;
-# CI always runs them.
+# Rust unit tests run in Node through wasm-pack, not native cargo test.
+# `pnpm --filter whatsapp-rust-bridge test` skips them without wasm-pack.
+# CI calls test:rust directly and requires the toolchain.
 pnpm --filter whatsapp-rust-bridge test:rust
 ```
 

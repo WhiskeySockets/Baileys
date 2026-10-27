@@ -52,28 +52,3 @@ export const pickOpenLegacySession = (record: LegacySessionRecord): LegacySessio
 }
 
 export const hasOpenLegacySession = (record: LegacySessionRecord): boolean => !!pickOpenLegacySession(record)
-
-/** A single state, as handed to the bridge by `loadSession` for legacy records. */
-export const isLegacySessionEntry = (value: unknown): value is LegacySessionEntry =>
-	typeof value === 'object' &&
-	value !== null &&
-	!ArrayBuffer.isView(value) &&
-	'registrationId' in value &&
-	'currentRatchet' in value
-
-/**
- * `indexInfo.baseKey` is the JS libsignal equivalent of wacore's
- * `alice_base_key`, so the retry protections keep working on a session that has
- * not been rewritten into the bridge format yet.
- */
-export const legacySessionInfo = (
-	entry: LegacySessionEntry
-): { baseKey: Uint8Array; registrationId: number } | null => {
-	const baseKey = entry.indexInfo?.baseKey
-	const { registrationId } = entry
-	if (!baseKey || typeof registrationId !== 'number') {
-		return null
-	}
-
-	return { baseKey: new Uint8Array(Buffer.from(baseKey, 'base64')), registrationId }
-}

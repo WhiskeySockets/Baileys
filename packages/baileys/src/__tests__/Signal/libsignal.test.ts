@@ -40,7 +40,7 @@ describe('jidToSignalProtocolAddress', () => {
 			const jid = '5511999887766:99@hosted'
 			expect(() => repository.jidToSignalProtocolAddress(jid)).not.toThrow()
 			const result = repository.jidToSignalProtocolAddress(jid)
-			expect(result).toContain('5511999887766_128.99')
+			expect(result).toBe('5511999887766_128.99')
 		})
 
 		it('should accept :99@hosted.lid for hosted LID devices', () => {

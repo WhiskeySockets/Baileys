@@ -1,12 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import P from 'pino'
-import {
-	hasOpenLegacySession,
-	isLegacySessionEntry,
-	isLegacySessionRecord,
-	legacySessionInfo,
-	pickOpenLegacySession
-} from '../../Signal/legacy-session'
+import { hasOpenLegacySession, isLegacySessionRecord, pickOpenLegacySession } from '../../Signal/legacy-session'
 import { makeLibSignalRepository } from '../../Signal/libsignal'
 import type { SignalAuthState, SignalDataSet, SignalDataTypeMap, SignalKeyStore } from '../../Types'
 import { addTransactionCapability, initAuthCreds } from '../../Utils/auth-utils'
@@ -124,22 +118,6 @@ describe('legacy session helpers', () => {
 
 		expect(pickOpenLegacySession(broken)).toBeUndefined()
 	})
-
-	it('detects a bare entry and reads its session info', () => {
-		const entry = legacyEntry({ closed: -1, registrationId: 222, baseKeyFill: 8 })
-
-		expect(isLegacySessionEntry(entry)).toBe(true)
-		expect(isLegacySessionEntry(new Uint8Array([1]))).toBe(false)
-
-		const info = legacySessionInfo(entry)
-		expect(info?.registrationId).toBe(222)
-		expect(Buffer.from(info!.baseKey).toString('base64')).toBe(b64(8))
-	})
-
-	it('returns null session info when the entry lacks a base key', () => {
-		expect(legacySessionInfo({ registrationId: 1 })).toBeNull()
-		expect(legacySessionInfo({ indexInfo: { baseKey: b64(8) } })).toBeNull()
-	})
 })
 
 describe('repository on a pre-WASM auth state', () => {
@@ -221,8 +199,10 @@ describe('repository on a pre-WASM auth state', () => {
 	 * keys they hold rather than byte-for-byte: that is what identifies the
 	 * session, and it survives the conversion.
 	 */
-	const sessionIdentity = (row: unknown): string[] =>
-		Object.keys((row as { _sessions?: Record<string, unknown> })?._sessions ?? {}).sort()
+	const sessionIdentity = (row: unknown): string[] => {
+		if (!isLegacySessionRecord(row)) throw new Error('Expected a persisted legacy session')
+		return Object.keys(row._sessions ?? {}).sort()
+	}
 
 	/** A real session, exactly as injectE2ESession leaves it in storage. */
 	const bridgeSessionBytes = async (jid: string, preKeyId: number): Promise<unknown> => {

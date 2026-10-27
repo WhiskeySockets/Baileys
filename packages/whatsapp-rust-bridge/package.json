@@ -40,7 +40,7 @@
         "prebuild": "node scripts/clean.mjs",
         "postbuild": "tsc -p tsconfig.json --outDir dist",
         "build": "pnpm run prebuild && pnpm run build:wasm && pnpm run build:ts && pnpm run postbuild",
-        "build:profile": "WHATSAPP_RUST_BRIDGE_PROFILE=1 pnpm run build",
+        "build:profile": "pnpm run prebuild && node scripts/build-wasm.mjs --profile && pnpm run build:ts && pnpm run postbuild",
         "test:typecheck": "tsc -p tsconfig.test.json --noEmit",
         "test:rust": "wasm-pack test --node",
         "test:rust:if-available": "node scripts/test-rust.mjs",
@@ -48,7 +48,7 @@
         "test:modules": "node --test test/module-formats.test.mjs test/module-formats.test.cjs",
         "test:package": "pnpm run test:modules && node scripts/check-package.mjs",
         "test": "pnpm run test:typecheck && pnpm run test:rust:if-available && pnpm run test:jest && pnpm run test:package",
-        "prepublishOnly": "pnpm run build"
+        "prepublishOnly": "node -e \"if (process.env.WHATSAPP_RUST_BRIDGE_PROFILE === '1') { throw new Error('Release builds cannot use WHATSAPP_RUST_BRIDGE_PROFILE=1') }\" && pnpm run build"
     },
     "devDependencies": {
         "@jest/globals": "^30.0.5",

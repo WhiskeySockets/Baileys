@@ -132,7 +132,7 @@ describe('pre-WASM auth state (baileys@7.0.0-rc.9 fixture)', () => {
 		try {
 			await expect(
 				alice.repository.encryptMessage({ jid: bobJid, data: Buffer.from('requires a new session') })
-			).rejects.toThrow()
+			).rejects.toThrow('SessionNotFound')
 			expect(JSON.stringify(alice.data.session)).toBe(before)
 			await expect(alice.repository.validateSession(bobJid)).resolves.toEqual({
 				exists: false,

@@ -353,10 +353,8 @@ impl SenderKeyStore for JsStorageAdapter {
     }
 }
 
-/// The JS backend stored a sender-key record as UTF-8 JSON, and
-/// `migrate_legacy_sender_key` above reads exactly that. Writing it back keeps
-/// the row readable by a pre-WASM release: unlike a session, every field of a
-/// sender-key state has a v1 counterpart, so nothing is lost either way.
+/// Optional JSON projection for callers that need legacy storage compatibility.
+/// The adapter otherwise persists canonical protobuf bytes.
 pub mod legacy_sender_key {
     use base64::{display::Base64Display, prelude::*};
     use serde::Serialize;

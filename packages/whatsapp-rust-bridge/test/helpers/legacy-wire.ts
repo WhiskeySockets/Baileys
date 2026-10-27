@@ -18,7 +18,7 @@ type Node = { tag: string; attrs: Record<string, string>; content?: unknown };
 
 const here = dirname(fileURLToPath(import.meta.url));
 const store = resolve(here, "legacy-wire-vectors.json");
-const recording = Boolean(process.env.RECORD_LEGACY_VECTORS);
+const recording = process.env.RECORD_LEGACY_VECTORS === "1";
 
 const vectors: { encoded: Record<string, string>; decoded: Record<string, string> } = existsSync(store)
   ? JSON.parse(readFileSync(store, "utf8"))
