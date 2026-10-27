@@ -1,0 +1,162 @@
+name: Setup workspace
+description: >-
+  Installs workspace dependencies, building whatsapp-rust-bridge from source
+  when the change touches it.
+
+# `pnpm install` runs a postinstall hook that copies the last PUBLISHED bridge
+# tarball into the workspace, so a change to the Rust crate or its TS wrapper is
+# invisible to every other package until it is released. A PR that adds an
+# export therefore fails here with "does not provide an export named ...",
+# which says nothing about the code under review.
+#
+# When the change touches the bridge, skip that download and compile the crate
+# instead, so the suite runs against the source in the PR. Otherwise keep the
+# prebuilt: it is the same artifact consumers get, and it costs seconds.
+
+inputs:
+  force-bridge-build:
+    description: >-
+      Compile the bridge regardless of what the change touches. Set by jobs that
+      cannot run without it, such as the bridge's own build.
+    required: false
+    default: 'false'
+  node-version:
+    description: Node version to install
+    required: false
+    default: 20.x
+  pnpm-version:
+    description: pnpm version to install
+    required: false
+    default: 10.28.2
+
+outputs:
+  bridge-built:
+    description: Whether the bridge was compiled from source
+    value: ${{ steps.detect.outputs.changed }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Detect bridge changes
+      id: detect
+      shell: bash
+      env:
+        FORCE_BUILD: ${{ inputs.force-bridge-build }}
+        GH_TOKEN: ${{ github.token }}
+        EVENT_NAME: ${{ github.event_name }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        set -euo pipefail
+
+        # Some jobs cannot run against a prebuilt at all.
+        if [ "$FORCE_BUILD" = "true" ]; then
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Bridge build forced by the caller."
+          exit 0
+        fi
+
+        # On a push to a protected branch there is no diff to consult and the
+        # published bridge may already be behind, so always build.
+        if [ "$EVENT_NAME" != "pull_request" ] && [ "$EVENT_NAME" != "pull_request_target" ]; then
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Not a pull request; building the bridge from source."
+          exit 0
+        fi
+
+        # Ask the API rather than diffing, which would need the full history.
+        if ! files="$(gh api --paginate \
+          "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
+          --jq '.[].filename')"; then
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "::warning::Could not read the changed files; building the bridge from source."
+          exit 0
+        fi
+
+        # A here-string, not a pipe: grep -q exits at the first match, and a
+        # writer still filling the pipe would take SIGPIPE, which under pipefail
+        # fails the condition and quietly selects the prebuilt on exactly the
+        # large pull requests that most need the source build.
+        if grep -qE '^packages/whatsapp-rust-bridge/' <<< "$files"; then
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Bridge touched; building it from source."
+        else
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          echo "Bridge untouched; using the published prebuilt."
+        fi
+
+    - uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'pnpm'
+
+    - name: Install Rust toolchain (pinned via rust-toolchain.toml)
+      if: steps.detect.outputs.changed == 'true'
+      shell: bash
+      working-directory: packages/whatsapp-rust-bridge
+      run: rustup show
+
+    - name: Install wasm-pack
+      if: steps.detect.outputs.changed == 'true'
+      uses: taiki-e/install-action@v2
+      with:
+        tool: wasm-pack
+
+    # Ubuntu's Binaryen is too old for the wasm-opt flags scripts/build-wasm.mjs
+    # passes. Keep this pinned pair in step with .github/workflows/bridge-build.yml.
+    - name: Cache Binaryen
+      if: steps.detect.outputs.changed == 'true'
+      id: cache-binaryen
+      uses: actions/cache@v4
+      with:
+        path: /tmp/binaryen-version_129
+        key: binaryen-129-x86_64-linux
+
+    - name: Download & verify Binaryen (wasm-opt)
+      if: steps.detect.outputs.changed == 'true' && steps.cache-binaryen.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        BINARYEN_VERSION: '129'
+        BINARYEN_SHA256: 50b9fa62b9abea752da92ec57e0c555fee578760cd237c40107957715d2976ba
+      run: |
+        set -euo pipefail
+        tarball="binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz"
+        curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/${tarball}" -o "${tarball}"
+        echo "${BINARYEN_SHA256}  ${tarball}" | sha256sum -c -
+        tar -xzf "${tarball}" -C /tmp
+        rm -f "${tarball}"
+
+    - name: Add Binaryen to PATH
+      if: steps.detect.outputs.changed == 'true'
+      shell: bash
+      run: echo "/tmp/binaryen-version_129/bin" >> "$GITHUB_PATH"
+
+    - name: Cache cargo registry + target
+      if: steps.detect.outputs.changed == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          packages/whatsapp-rust-bridge/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('packages/whatsapp-rust-bridge/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Skip the prebuilt download
+      if: steps.detect.outputs.changed == 'true'
+      shell: bash
+      run: echo "WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1" >> "$GITHUB_ENV"
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Build the bridge from source
+      if: steps.detect.outputs.changed == 'true'
+      shell: bash
+      run: pnpm --filter whatsapp-rust-bridge build

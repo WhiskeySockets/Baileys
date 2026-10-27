@@ -6,27 +6,22 @@ on:
       - master
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   check-lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.2
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'pnpm'
-
-      - name: Install packages
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Check linting
         run: pnpm lint

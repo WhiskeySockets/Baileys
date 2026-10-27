@@ -1,6 +1,20 @@
 import { describe, expect, it } from '@jest/globals'
 import { Curve, generateSignalPubKey, signedKeyPair } from '../../Utils/crypto'
 
+describe('Curve.sign', () => {
+	it('returns a Buffer that can be encoded as base64 and verified', () => {
+		const identity = Curve.generateKeyPair()
+		const message = Buffer.from('signature encoding compatibility')
+		const signature = Curve.sign(identity.private, message)
+
+		expect(Buffer.isBuffer(signature)).toBe(true)
+		const encoded = signature.toString('base64')
+		const decoded = Buffer.from(encoded, 'base64')
+		expect(decoded).toEqual(signature)
+		expect(Curve.verify(identity.public, message, decoded)).toBe(true)
+	})
+})
+
 /**
  * `curve.verifySignature` returns false for a well-formed but wrong signature
  * and only throws when the input itself is malformed. A wrapper that returns

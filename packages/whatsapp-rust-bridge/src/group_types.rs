@@ -16,9 +16,10 @@ pub struct SenderKeyRecord {
 
 impl Default for SenderKeyRecord {
     fn default() -> Self {
-        Self {
-            core: CoreSenderKeyRecord::new_empty(),
-        }
+        let mut core = CoreSenderKeyRecord::new_empty();
+        // A fresh record never reaches the adapter's load path, so it waives here.
+        let _ = core.waive_counter_lease();
+        Self { core }
     }
 }
 
@@ -31,7 +32,10 @@ impl SenderKeyRecord {
 
     #[wasm_bindgen(js_name = deserialize)]
     pub fn deserialize(serialized: &[u8]) -> Result<SenderKeyRecord, JsValue> {
-        let core = CoreSenderKeyRecord::deserialize(serialized).map_err(map_err)?;
+        let core = crate::counter_lease::waive_sender_key(
+            CoreSenderKeyRecord::deserialize(serialized).map_err(map_err)?,
+        )
+        .map_err(map_err)?;
         Ok(Self { core })
     }
 

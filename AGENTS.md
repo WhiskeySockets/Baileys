@@ -19,7 +19,7 @@ packages/
   baileys/                         The npm `baileys` library
     src/
       Socket/                      High-level socket — chats, groups, messages send/recv, newsletter, USync
-      Signal/                      Signal Protocol session/sender-key wrapping over libsignal-node
+      Signal/                      Signal Protocol session/sender-key wrapping over whatsapp-rust-bridge
       Utils/                       Decoding, media, auth state, retry, app-state sync, generics
       Types/                       Public TypeScript types — touching these is a public-API change
       WABinary/                    Binary node encoding/decoding
@@ -51,6 +51,11 @@ If you are working on the Rust crate:
 # Skip the prebuilt fetch and use your local build instead.
 WHATSAPP_RUST_BRIDGE_SKIP_PREBUILT=1 pnpm install
 pnpm --filter whatsapp-rust-bridge build   # needs cargo, wasm-pack, and wasm-opt
+
+# Rust unit tests run in Node through wasm-pack, not native cargo test.
+# `pnpm --filter whatsapp-rust-bridge test` skips them without wasm-pack.
+# CI calls test:rust directly and requires the toolchain.
+pnpm --filter whatsapp-rust-bridge test:rust
 ```
 
 A new bridge release goes out by tagging `whatsapp-rust-bridge@<version>` — the `bridge-release.yml` workflow builds, publishes to npm, and opens a follow-up PR refreshing `dist.sha256`.

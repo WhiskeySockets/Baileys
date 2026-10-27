@@ -212,7 +212,7 @@ impl InternalBinaryNode {
             return Some(content.clone());
         }
 
-        let result: Option<Content> = match self.node_ref().content.as_deref() {
+        let result: Option<Content> = match self.node_ref().content.as_ref() {
             Some(NodeContentRef::Bytes(bytes)) => {
                 Some(Uint8Array::from(bytes.as_ref()).unchecked_into())
             }
