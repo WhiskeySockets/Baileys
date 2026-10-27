@@ -9,10 +9,10 @@ use wacore_libsignal::protocol::{
     LegacySessionBaseKeyRoleV1 as CoreBaseKeyRole, LegacySessionChainCounterV1 as CoreChainCounter,
     LegacySessionChainKeyV1 as CoreChainKey, LegacySessionChainRoleV1 as CoreChainRole,
     LegacySessionChainV1 as CoreChain, LegacySessionDispositionV1 as CoreDisposition,
-    LegacySessionInteropError as CoreInteropError, LegacySessionKeyPairV1 as CoreKeyPair,
-    LegacySessionLocalContext as CoreLocalContext, LegacySessionMessageKeyV1 as CoreMessageKey,
-    LegacySessionPendingPreKeyV1 as CorePendingPreKey, LegacySessionRatchetV1 as CoreRatchet,
-    LegacySessionRecordV1 as CoreRecord,
+    LegacySessionImportLimits as CoreImportLimits, LegacySessionInteropError as CoreInteropError,
+    LegacySessionKeyPairV1 as CoreKeyPair, LegacySessionLocalContext as CoreLocalContext,
+    LegacySessionMessageKeyV1 as CoreMessageKey, LegacySessionPendingPreKeyV1 as CorePendingPreKey,
+    LegacySessionRatchetV1 as CoreRatchet, LegacySessionRecordV1 as CoreRecord,
     LegacySessionUnrepresentableFieldV1 as CoreUnrepresentableField,
     LegacySessionV1 as CoreSession, SessionRecord,
 };
@@ -439,6 +439,9 @@ fn projection_issue(
     }
 }
 
+/// Imports at most two normal retention windows per chain, within the core's
+/// default whole-record budget. Returned bytes preserve extended retention;
+/// the legacy projection omits that local policy.
 #[wasm_bindgen(js_name = importLegacySessionRecordV1)]
 pub fn import_legacy_session_record_v1(
     record: LegacySessionRecordV1,
@@ -448,12 +451,44 @@ pub fn import_legacy_session_record_v1(
         .map_err(|error| JsValue::from_str(&format!("context.identityKey: {error}")))?;
     let record = CoreRecord::try_from(record)
         .map_err(|error| JsValue::from_str(&format!("record: {error}")))?;
+    let defaults = CoreImportLimits::default();
+    let largest_chain = record
+        .indexed_sessions()
+        .iter()
+        .flat_map(|indexed| &indexed.session.chains)
+        .map(|chain| chain.message_keys.len())
+        .max()
+        .unwrap_or(0);
+    // Admit two normal skipped-key windows without multiplying the core's
+    // per-chain runtime retention by its much larger whole-record budget.
+    let limits = CoreImportLimits {
+        max_message_keys_per_chain: u32::try_from(largest_chain)
+            .unwrap_or(u32::MAX)
+            .max(defaults.max_message_keys_per_chain)
+            .min(defaults.max_message_keys_per_chain.saturating_mul(2)),
+        ..defaults
+    };
     let record = record
-        .into_session_record(CoreLocalContext {
-            identity_key,
-            registration_id: context.registration_id,
-        })
-        .map_err(|error| JsValue::from_str(&format!("record: {error}")))?;
+        .into_session_record_with_limits(
+            CoreLocalContext {
+                identity_key,
+                registration_id: context.registration_id,
+            },
+            limits,
+        )
+        .map_err(|error| match error {
+            CoreInteropError::TooManyMessageKeys { .. }
+            | CoreInteropError::TooManyMessageKeysInRecord => {
+                let error = js_sys::Error::new(&format!("record: {error}"));
+                let _ = js_sys::Reflect::set(
+                    &error,
+                    &JsValue::from_str("code"),
+                    &JsValue::from_str("LEGACY_SESSION_IMPORT_LIMIT"),
+                );
+                error.into()
+            }
+            error => JsValue::from_str(&format!("record: {error}")),
+        })?;
     let bytes = record.serialize().map_err(|error| {
         JsValue::from_str(&format!(
             "serialize imported legacy session record: {error}"

@@ -88,15 +88,15 @@ symphonia = { version = "0.5.4", default-features = false, features = [
 tsify = { version = "0.5.6", default-features = false, features = ["js"] }
 uuid = { version = "1.18.1", default-features = false, features = ["v4", "js"] }
 
-wacore-appstate = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "0ec2942c1db85af97364743746f9b88c72d299b9", package = "wacore-appstate" }
-wacore-binary = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "0ec2942c1db85af97364743746f9b88c72d299b9", default-features = false, features = [
+wacore-appstate = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "9649af098260cf53b6b1d7c2434b1a21cd6378b3", package = "wacore-appstate" }
+wacore-binary = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "9649af098260cf53b6b1d7c2434b1a21cd6378b3", default-features = false, features = [
     "serde",
 ] }
-wacore-libsignal = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "0ec2942c1db85af97364743746f9b88c72d299b9", package = "wacore-libsignal", features = [
+wacore-libsignal = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "9649af098260cf53b6b1d7c2434b1a21cd6378b3", package = "wacore-libsignal", features = [
     "legacy-session-interop",
 ] }
-wacore-noise = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "0ec2942c1db85af97364743746f9b88c72d299b9", package = "wacore-noise" }
-waproto = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "0ec2942c1db85af97364743746f9b88c72d299b9", package = "waproto" }
+wacore-noise = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "9649af098260cf53b6b1d7c2434b1a21cd6378b3", package = "wacore-noise" }
+waproto = { git = "https://github.com/oxidezap/whatsapp-rust.git", rev = "9649af098260cf53b6b1d7c2434b1a21cd6378b3", package = "waproto" }
 wasm-bindgen = "0.2.100"
 wasm-bindgen-futures = "0.4.55"
 web-sys = { version = "0.3", features = [

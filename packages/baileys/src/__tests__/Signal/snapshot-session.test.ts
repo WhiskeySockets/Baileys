@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import P from 'pino'
-import { hasOpenLegacySession, isLegacySessionRecord } from '../../Signal/legacy-session'
+import { SessionRecord } from 'whatsapp-rust-bridge'
 import { makeLibSignalRepository } from '../../Signal/libsignal'
 import type {
 	RecordRef,
@@ -245,8 +245,9 @@ describe('snapshot session path', () => {
 		// message hits the same bad row and nothing was actually recovered.
 		const stored = bob.recorder.data['session']!['1111111111.0']
 		expect(stored).not.toEqual(corrupt)
-		expect(isLegacySessionRecord(stored)).toBe(true)
-		expect(hasOpenLegacySession(stored as never)).toBe(true)
+		expect(stored).toBeInstanceOf(Uint8Array)
+		if (!(stored instanceof Uint8Array)) throw new Error('Expected a canonical session')
+		expect(SessionRecord.deserialize(stored).haveOpenSession()).toBe(true)
 		// ...and the pre-key the message consumed is gone, as on the normal path.
 		expect(bob.recorder.data['pre-key']?.[1]).toBeUndefined()
 

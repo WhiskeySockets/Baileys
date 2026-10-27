@@ -95,12 +95,8 @@ function normalizeDecryptError(error: unknown): Error {
 	return asError(error)
 }
 
-/**
- * What the bridge's v1 import accepts per chain. Mirrors MAX_MESSAGE_KEYS in the
- * core: the engine prunes above that plus a threshold, so a live session can
- * legitimately sit above it for a while.
- */
-const MAX_LEGACY_MESSAGE_KEYS = 2000
+/** Backlogs above normal core retention need canonical persistence. */
+const DEFAULT_LEGACY_MESSAGE_KEYS = 2000
 
 /** The bridge refuses a session it cannot decode; the row has to be replaced. */
 function isUnreadableSession(error: unknown): boolean {
@@ -218,13 +214,14 @@ export function makeLibSignalRepository(
 					}
 				}
 
+				const loadedSession = await readSessionBytes(wireJid, sessions[wireJid])
 				const snapshot: SignalSnapshot = {
 					identity: {
 						public: creds.signedIdentityKey.public,
 						private: creds.signedIdentityKey.private
 					},
 					registrationId: creds.registrationId,
-					session: await readSessionBytes(wireJid, sessions[wireJid]),
+					session: loadedSession?.bytes,
 					peerIdentity: identities[wireJid],
 					preKeys,
 					signedPreKeys: [
@@ -249,20 +246,19 @@ export function makeLibSignalRepository(
 				}
 
 				const { changes, ...rest } = result
-				await applyChanges(wireJid, changes)
+				await applyChanges(wireJid, changes, loadedSession?.preserveNative ?? false)
 				return rest as T
 			}
 		)
 	}
 
-	/**
-	 * Sessions are stored in the shape a pre-WASM release wrote them, so this
-	 * branch does not change what is on disk. A record the v1 model cannot
-	 * express keeps its bridge bytes: `readSessionBytes` accepts both, so the
-	 * fallback costs compatibility with an older release for that one row
-	 * rather than failing the operation.
-	 */
-	const toStoredSession = (wireJid: string, session: Uint8Array): SignalDataTypeMap['session'] => {
+	/** Canonical rows retain local policy that the legacy projection cannot carry. */
+	const toStoredSession = (
+		wireJid: string,
+		session: Uint8Array,
+		preserveNative: boolean
+	): SignalDataTypeMap['session'] => {
+		if (preserveNative) return session
 		const projection = projectLegacySessionRecordV1(session)
 		if (projection.status !== 'projected') {
 			logger.warn(
@@ -272,14 +268,12 @@ export function makeLibSignalRepository(
 			return session
 		}
 
-		// The projection does not bound the skipped-key count but the import
-		// does, so a chain that grew past the limit would write cleanly and fail
-		// to load. Keep those as bytes rather than storing a row we cannot read.
+		// Expanded backlogs need their persisted retention policy on every reload.
 		const overflowing = projection.record.sessions.some(indexed =>
-			indexed.session.chains.some(chain => chain.messageKeys.length > MAX_LEGACY_MESSAGE_KEYS)
+			indexed.session.chains.some(chain => chain.messageKeys.length > DEFAULT_LEGACY_MESSAGE_KEYS)
 		)
 		if (overflowing) {
-			logger.warn({ wireJid }, 'session holds more skipped keys than the legacy shape accepts, storing bridge bytes')
+			logger.warn({ wireJid }, 'session holds an extended skipped-key backlog, storing canonical bytes')
 			return session
 		}
 
@@ -287,20 +281,39 @@ export function makeLibSignalRepository(
 	}
 
 	/** Pre-WASM records are converted on read; bridge records pass straight through. */
-	const readSessionBytes = async (wireJid: string, stored: unknown): Promise<Uint8Array | undefined> => {
+	const readSessionBytes = async (
+		wireJid: string,
+		stored: unknown
+	): Promise<{ bytes: Uint8Array; preserveNative: boolean } | undefined> => {
 		if (!stored) return undefined
 
 		try {
 			if (isLegacySessionRecord(stored)) {
-				// Archived states can decrypt delayed messages without providing a current state for encryption.
-				return importLegacySessionRecordV1(toTypedRecord(stored), {
-					identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
-					registrationId: creds.registrationId
-				})
+				const record = toTypedRecord(stored)
+				const preserveNative = record.sessions.some(indexed =>
+					indexed.session.chains.some(chain => chain.messageKeys.length > DEFAULT_LEGACY_MESSAGE_KEYS)
+				)
+				return {
+					bytes: importLegacySessionRecordV1(record, {
+						identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+						registrationId: creds.registrationId
+					}),
+					preserveNative
+				}
 			}
 
-			return stored as Uint8Array
+			// Canonical rows may carry local retention policy omitted by the legacy projection.
+			return { bytes: stored as Uint8Array, preserveNative: true }
 		} catch (error) {
+			if (
+				typeof error === 'object' &&
+				error !== null &&
+				'code' in error &&
+				error.code === 'LEGACY_SESSION_IMPORT_LIMIT'
+			) {
+				throw asError(error)
+			}
+
 			// A row we cannot read is reported as absent, not raised: a prekey
 			// message carries everything needed to build a replacement, and
 			// failing here would leave the conversation stuck on the bad row
@@ -314,13 +327,13 @@ export function makeLibSignalRepository(
 	 * One write for everything the operation touched. Absent fields are left
 	 * alone: rewriting an untouched record would clobber a concurrent update.
 	 */
-	const applyChanges = async (wireJid: string, changes: SignalChanges) => {
+	const applyChanges = async (wireJid: string, changes: SignalChanges, preserveNative: boolean) => {
 		const update: SignalDataSet = {}
 
 		if (changes.sessionCleared) {
 			update.session = { [wireJid]: null }
 		} else if (changes.session) {
-			update.session = { [wireJid]: toStoredSession(wireJid, changes.session) }
+			update.session = { [wireJid]: toStoredSession(wireJid, changes.session, preserveNative) }
 		}
 
 		if (changes.identity) {
