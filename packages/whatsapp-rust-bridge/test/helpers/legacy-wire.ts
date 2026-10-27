@@ -34,7 +34,7 @@ const persist = () => {
   const merged = JSON.stringify({
     encoded: { ...onDisk.encoded, ...vectors.encoded },
     decoded: { ...onDisk.decoded, ...vectors.decoded },
-  });
+  }, null, 2) + "\n";
   writeFileSync(store + ".tmp", merged);
   renameSync(store + ".tmp", store);
 };
