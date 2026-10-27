@@ -30,10 +30,12 @@ import {
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
+	MessageRetryCoordinator,
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
-	unixTimestampSeconds
+	unixTimestampSeconds,
+	withMessageRetryInvalidation
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
@@ -114,8 +116,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	/** Serializes writes to userDevicesCache across USync refresh and device-notification handling. */
 	const devicesMutex = makeMutex()
 
-	// Initialize message retry manager if enabled
-	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
+	// Coordination remains active even when the optional recent-message payload cache is disabled.
+	const messageRetryCoordinator = new MessageRetryCoordinator()
+	const messageRetryManager = enableRecentMessageCache
+		? new MessageRetryManager(logger, maxMsgRetryCount, messageRetryCoordinator)
+		: null
 
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
@@ -1255,6 +1260,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		mediaConn = undefined
 		if (messageRetryManager) {
 			messageRetryManager.clear()
+		} else {
+			messageRetryCoordinator.clear()
 		}
 	})
 
@@ -1277,6 +1284,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		createParticipantNodes,
 		getUSyncDevices,
 		messageRetryManager,
+		messageRetryCoordinator,
 		updateMemberLabel,
 		updateMediaMessage: async (message: WAMessage) => {
 			const content = assertMediaContent(message.message)
@@ -1399,13 +1407,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					} as BinaryNode)
 				}
 
-				await relayMessage(jid, fullMsg.message!, {
-					messageId: fullMsg.key.id!,
-					useCachedGroupMetadata: options.useCachedGroupMetadata,
-					additionalAttributes,
-					statusJidList: options.statusJidList,
-					additionalNodes
-				})
+				const relay = () =>
+					relayMessage(jid, fullMsg.message!, {
+						messageId: fullMsg.key.id!,
+						useCachedGroupMetadata: options.useCachedGroupMetadata,
+						additionalAttributes,
+						statusJidList: options.statusJidList,
+						additionalNodes
+					})
+
+				await withMessageRetryInvalidation(messageRetryCoordinator, messageRetryManager, content, relay)
+
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
 						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))

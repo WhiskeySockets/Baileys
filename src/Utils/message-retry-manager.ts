@@ -1,6 +1,8 @@
 import { LRUCache } from 'lru-cache'
 import type { proto } from '../../WAProto/index.js'
+import type { AnyMessageContent } from '../Types/Message'
 import type { ILogger } from './logger'
+import { makeKeyedMutex } from './make-mutex'
 
 /** Number of sent messages to cache in memory for handling retry receipts */
 const RECENT_MESSAGES_SIZE = 512
@@ -39,6 +41,87 @@ export interface RetryStatistics {
 	phoneRequests: number
 }
 
+export interface PreparedMessageRetry {
+	isCancelled(): boolean
+	finish(): void
+}
+
+/**
+ * Coordinates edits/revokes with retry relays independently of whether the
+ * optional recent-message payload cache is enabled.
+ */
+export class MessageRetryCoordinator {
+	private invalidatedMessages = new LRUCache<string, true>({
+		max: RECENT_MESSAGES_SIZE,
+		ttl: 5 * 60 * 1000,
+		ttlAutopurge: true
+	})
+	private preparedRetries = new Map<string, Set<{ cancelled: boolean }>>()
+	private mutex = makeKeyedMutex()
+
+	private key(to: string, id: string): string {
+		return `${to}${MESSAGE_KEY_SEPARATOR}${id}`
+	}
+
+	invalidateMessage(to: string, id: string): void {
+		const key = this.key(to, id)
+		this.invalidatedMessages.set(key, true)
+		for (const retry of this.preparedRetries.get(key) ?? []) {
+			retry.cancelled = true
+		}
+	}
+
+	isMessageInvalidated(to: string, id: string): boolean {
+		return this.invalidatedMessages.has(this.key(to, id))
+	}
+
+	prepareRetry(to: string, id: string): PreparedMessageRetry {
+		const key = this.key(to, id)
+		const retry = { cancelled: this.invalidatedMessages.has(key) }
+		const retries = this.preparedRetries.get(key) ?? new Set<{ cancelled: boolean }>()
+		retries.add(retry)
+		this.preparedRetries.set(key, retries)
+
+		let finished = false
+		return {
+			isCancelled: () => retry.cancelled,
+			finish: () => {
+				if (finished) return
+				finished = true
+				retries.delete(retry)
+				if (retries.size === 0 && this.preparedRetries.get(key) === retries) {
+					this.preparedRetries.delete(key)
+				}
+			}
+		}
+	}
+
+	withMessageLock<T>(to: string, id: string, task: () => Promise<T> | T): Promise<T> {
+		return this.mutex.mutex(this.key(to, id), task)
+	}
+
+	withMessageLocks<T>(to: string, ids: string[], task: () => Promise<T> | T): Promise<T> {
+		const orderedIds = [...new Set(ids)].sort()
+		const lockNext = (index: number): Promise<T> => {
+			const id = orderedIds[index]
+			return id === undefined ? Promise.resolve().then(task) : this.withMessageLock(to, id, () => lockNext(index + 1))
+		}
+
+		return lockNext(0)
+	}
+
+	clear(): void {
+		for (const retries of this.preparedRetries.values()) {
+			for (const retry of retries) {
+				retry.cancelled = true
+			}
+		}
+
+		this.invalidatedMessages.clear()
+		this.preparedRetries.clear()
+	}
+}
+
 // Retry reason codes matching WhatsApp Web's Signal error codes.
 export enum RetryReason {
 	UnknownError = 0,
@@ -71,11 +154,15 @@ export class MessageRetryManager {
 			const separatorIndex = key.lastIndexOf(MESSAGE_KEY_SEPARATOR)
 			if (separatorIndex > -1) {
 				const messageId = key.slice(separatorIndex + MESSAGE_KEY_SEPARATOR.length)
-				this.messageKeyIndex.delete(messageId)
+				const indexedKeys = this.messageKeyIndex.get(messageId)
+				indexedKeys?.delete(key)
+				if (indexedKeys?.size === 0) {
+					this.messageKeyIndex.delete(messageId)
+				}
 			}
 		}
 	})
-	private messageKeyIndex = new Map<string, string>()
+	private messageKeyIndex = new Map<string, Set<string>>()
 	private sessionRecreateHistory = new LRUCache<string, number>({
 		ttl: RECREATE_SESSION_TIMEOUT * 2,
 		ttlAutopurge: true
@@ -103,7 +190,8 @@ export class MessageRetryManager {
 
 	constructor(
 		private logger: ILogger,
-		maxMsgRetryCount: number
+		maxMsgRetryCount: number,
+		private coordinator = new MessageRetryCoordinator()
 	) {
 		this.maxMsgRetryCount = maxMsgRetryCount
 	}
@@ -120,7 +208,9 @@ export class MessageRetryManager {
 			message,
 			timestamp: Date.now()
 		})
-		this.messageKeyIndex.set(id, keyStr)
+		const indexedKeys = this.messageKeyIndex.get(id) ?? new Set<string>()
+		indexedKeys.add(keyStr)
+		this.messageKeyIndex.set(id, indexedKeys)
 
 		this.logger.debug(`Added message to retry cache: ${to}/${id}`)
 	}
@@ -215,56 +305,71 @@ export class MessageRetryManager {
 	/**
 	 * Increment retry counter for a message
 	 */
-	incrementRetryCount(messageId: string): number {
-		this.retryCounters.set(messageId, (this.retryCounters.get(messageId) || 0) + 1)
+	incrementRetryCount(messageId: string, to?: string): number {
+		const key = this.retryKey(messageId, to)
+		this.retryCounters.set(key, (this.retryCounters.get(key) || 0) + 1)
 		this.statistics.totalRetries++
-		return this.retryCounters.get(messageId)!
+		return this.retryCounters.get(key)!
 	}
 
 	/**
 	 * Get retry count for a message
 	 */
-	getRetryCount(messageId: string): number {
-		return this.retryCounters.get(messageId) || 0
+	getRetryCount(messageId: string, to?: string): number {
+		return this.retryCounters.get(this.retryKey(messageId, to)) || 0
 	}
 
 	/**
 	 * Check if message has exceeded maximum retry attempts
 	 */
-	hasExceededMaxRetries(messageId: string): boolean {
-		return this.getRetryCount(messageId) >= this.maxMsgRetryCount
+	hasExceededMaxRetries(messageId: string, to?: string): boolean {
+		return this.getRetryCount(messageId, to) >= this.maxMsgRetryCount
 	}
 
 	/**
 	 * Mark retry as successful
 	 */
-	markRetrySuccess(messageId: string): void {
+	markRetrySuccess(messageId: string, to?: string): void {
 		this.statistics.successfulRetries++
 		// Clean up retry counter for successful message
-		this.retryCounters.delete(messageId)
-		this.cancelPendingPhoneRequest(messageId)
-		this.removeRecentMessage(messageId)
+		this.retryCounters.delete(this.retryKey(messageId, to))
+		this.cancelPendingPhoneRequest(messageId, to)
+		if (to) {
+			this.removeRecentMessage(to, messageId)
+		} else {
+			this.removeRecentMessagesById(messageId)
+		}
 	}
 
 	/**
 	 * Mark retry as failed
 	 */
-	markRetryFailed(messageId: string): void {
+	markRetryFailed(messageId: string, to?: string): void {
 		this.statistics.failedRetries++
-		this.retryCounters.delete(messageId)
-		this.cancelPendingPhoneRequest(messageId)
-		this.removeRecentMessage(messageId)
+		this.retryCounters.delete(this.retryKey(messageId, to))
+		this.cancelPendingPhoneRequest(messageId, to)
+		if (to) {
+			this.removeRecentMessage(to, messageId)
+		} else {
+			this.removeRecentMessagesById(messageId)
+		}
 	}
 
 	/**
 	 * Schedule a phone request with delay
 	 */
-	schedulePhoneRequest(messageId: string, callback: () => void, delay: number = PHONE_REQUEST_DELAY): void {
+	schedulePhoneRequest(
+		messageId: string,
+		callback: () => void,
+		delay: number = PHONE_REQUEST_DELAY,
+		to?: string
+	): void {
+		const key = this.retryKey(messageId, to)
 		// Cancel any existing request for this message
-		this.cancelPendingPhoneRequest(messageId)
+		this.cancelPendingPhoneRequest(messageId, to)
 
-		this.pendingPhoneRequests[messageId] = setTimeout(() => {
-			delete this.pendingPhoneRequests[messageId]
+		this.pendingPhoneRequests[key] = setTimeout(() => {
+			delete this.pendingPhoneRequests[key]
 			this.statistics.phoneRequests++
 			callback()
 		}, delay)
@@ -275,11 +380,12 @@ export class MessageRetryManager {
 	/**
 	 * Cancel pending phone request
 	 */
-	cancelPendingPhoneRequest(messageId: string): void {
-		const timeout = this.pendingPhoneRequests[messageId]
+	cancelPendingPhoneRequest(messageId: string, to?: string): void {
+		const key = this.retryKey(messageId, to)
+		const timeout = this.pendingPhoneRequests[key]
 		if (timeout) {
 			clearTimeout(timeout)
-			delete this.pendingPhoneRequests[messageId]
+			delete this.pendingPhoneRequests[key]
 			this.logger.debug(`Cancelled pending phone request for message ${messageId}`)
 		}
 	}
@@ -287,6 +393,7 @@ export class MessageRetryManager {
 	clear(): void {
 		this.recentMessagesMap.clear()
 		this.messageKeyIndex.clear()
+		this.coordinator.clear()
 		this.sessionRecreateHistory.clear()
 		this.retryCounters.clear()
 		this.baseKeys.clear()
@@ -329,13 +436,89 @@ export class MessageRetryManager {
 		return `${key.to}${MESSAGE_KEY_SEPARATOR}${key.id}`
 	}
 
-	private removeRecentMessage(messageId: string): void {
-		const keyStr = this.messageKeyIndex.get(messageId)
-		if (!keyStr) {
-			return
+	private retryKey(messageId: string, to?: string): string {
+		return to ? this.keyToString({ to, id: messageId }) : messageId
+	}
+
+	/** Remove one exact destination/message pair from the retry cache. */
+	removeRecentMessage(to: string, messageId: string): boolean {
+		return this.recentMessagesMap.delete(this.keyToString({ to, id: messageId }))
+	}
+
+	/** Remove one exact cache entry and mark the message unavailable for retries. */
+	invalidateRecentMessage(to: string, messageId: string): boolean {
+		const keyStr = this.keyToString({ to, id: messageId })
+		this.coordinator.invalidateMessage(to, messageId)
+		return this.recentMessagesMap.delete(keyStr)
+	}
+
+	isRecentMessageInvalidated(to: string, messageId: string): boolean {
+		return this.coordinator.isMessageInvalidated(to, messageId)
+	}
+
+	withRecentMessageLock<T>(to: string, messageId: string, task: () => Promise<T> | T): Promise<T> {
+		return this.coordinator.withMessageLock(to, messageId, task)
+	}
+
+	private removeRecentMessagesById(messageId: string): boolean {
+		const indexedKeys = this.messageKeyIndex.get(messageId)
+		if (!indexedKeys) {
+			return false
 		}
 
-		this.recentMessagesMap.delete(keyStr)
-		this.messageKeyIndex.delete(messageId)
+		let removed = false
+		for (const keyStr of [...indexedKeys]) {
+			removed = this.recentMessagesMap.delete(keyStr) || removed
+		}
+
+		return removed
 	}
+}
+
+const retryCacheTargetForContent = (content: AnyMessageContent): proto.IMessageKey | undefined => {
+	const target = 'delete' in content && content.delete ? content.delete : 'edit' in content ? content.edit : undefined
+	return target?.fromMe === true && target.remoteJid && target.id ? target : undefined
+}
+
+/**
+ * Drop the original message from the retry cache after a local revoke or edit
+ * has been relayed successfully.
+ *
+ * The full destination/message pair is required because callers may provide
+ * custom message IDs and reuse the same ID in different chats.
+ */
+export const invalidateRecentMessageForContent = (
+	manager: MessageRetryManager,
+	content: AnyMessageContent
+): boolean => {
+	const target = retryCacheTargetForContent(content)
+	if (!target) {
+		return false
+	}
+
+	return manager.invalidateRecentMessage(target.remoteJid!, target.id!)
+}
+
+/**
+ * Serialize a sendMessage-generated edit/revoke with retries for its target.
+ * Coordination is updated only after the caller's relay succeeds; the optional
+ * recent-message payload cache is removed when present.
+ */
+export const withMessageRetryInvalidation = async <T>(
+	coordinator: MessageRetryCoordinator,
+	manager: MessageRetryManager | null,
+	content: AnyMessageContent,
+	task: () => Promise<T> | T
+): Promise<T> => {
+	const target = retryCacheTargetForContent(content)
+	if (!target) {
+		return task()
+	}
+
+	return coordinator.withMessageLock(target.remoteJid!, target.id!, async () => {
+		const result = await task()
+		coordinator.invalidateMessage(target.remoteJid!, target.id!)
+		manager?.removeRecentMessage(target.remoteJid!, target.id!)
+		return result
+	})
 }
