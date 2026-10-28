@@ -239,7 +239,7 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 }
 
 /**
-  referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
+	referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
  */
 export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: ILogger) {
 	try {
@@ -285,7 +285,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 }
 
 export const toReadable = (buffer: Buffer) => {
-	const readable = new Readable({ read: () => {} })
+	const readable = new Readable({ read: () => { } })
 	readable.push(buffer)
 	readable.push(null)
 	return readable
@@ -535,7 +535,8 @@ export const downloadContentFromMessage = async (
 ) => {
 	// Fallback host: explicit opt > host parsed from `url` > DEF_MEDIA_HOST.
 	// Lets us honor a non-default host carried by the proto without forcing callers to thread it through.
-	const fallbackHost = opts.host ?? extractHost(url)
+	const urlHost = extractHost(url)
+	const fallbackHost = opts.host ?? (urlHost !== 'a.whatsapp.net' ? urlHost : DEF_MEDIA_HOST)
 	const downloadUrl = directPath ? getUrlFromDirectPath(directPath, fallbackHost) : url
 	if (!downloadUrl) {
 		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
