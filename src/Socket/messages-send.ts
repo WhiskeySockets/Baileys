@@ -36,6 +36,7 @@ import {
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
+import { resolveStatusJidList } from '../Utils/status-broadcast'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
@@ -740,7 +741,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				if (isStatus && statusJidList) {
-					participantsList.push(...statusJidList)
+					const resolvedStatusJids = await resolveStatusJidList({
+						statusJidList,
+						meLid,
+						getLIDsForPNs: pns => signalRepository.lidMapping.getLIDsForPNs(pns)
+					})
+					participantsList.push(...resolvedStatusJids)
 				}
 
 				const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
