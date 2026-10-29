@@ -2,6 +2,8 @@ import type { BinaryNode } from '../WABinary'
 
 export type MessageType = 'message' | 'call' | 'receipt' | 'notification'
 
+export const isOfflineNode = (node: BinaryNode) => node.attrs.offline === '1'
+
 type OfflineNode = {
 	type: MessageType
 	node: BinaryNode

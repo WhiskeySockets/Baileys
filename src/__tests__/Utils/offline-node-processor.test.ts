@@ -1,10 +1,24 @@
 import { jest } from '@jest/globals'
-import { makeOfflineNodeProcessor, type MessageType } from '../../Utils/offline-node-processor'
+import { isOfflineNode, makeOfflineNodeProcessor, type MessageType } from '../../Utils/offline-node-processor'
 import { type BinaryNode } from '../../WABinary'
 
 function makeNode(id: string, tag = 'message'): BinaryNode {
 	return { tag, attrs: { id, from: 'user@s.whatsapp.net', offline: '1' } }
 }
+
+describe('isOfflineNode', () => {
+	it('treats offline="1" as offline', () => {
+		expect(isOfflineNode({ tag: 'message', attrs: { offline: '1' } })).toBe(true)
+	})
+
+	it('treats offline="0" as online', () => {
+		expect(isOfflineNode({ tag: 'message', attrs: { offline: '0' } })).toBe(false)
+	})
+
+	it('treats a missing offline attribute as online', () => {
+		expect(isOfflineNode({ tag: 'message', attrs: {} })).toBe(false)
+	})
+})
 
 describe('makeOfflineNodeProcessor', () => {
 	let mockOnUnexpectedError: jest.Mock<(error: Error, msg: string) => void>
