@@ -31,6 +31,7 @@ import {
 	jidNormalizedUser
 } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
+import { isEncryptedMessageEdit } from './decrypt-message-edit'
 import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
@@ -178,7 +179,8 @@ export const isRealMessage = (message: WAMessage) => {
 		hasSomeContent &&
 		!normalizedContent?.protocolMessage &&
 		!normalizedContent?.reactionMessage &&
-		!normalizedContent?.pollUpdateMessage
+		!normalizedContent?.pollUpdateMessage &&
+		!isEncryptedMessageEdit(normalizedContent)
 	)
 }
 
