@@ -16,9 +16,13 @@ class FakeWebSocket extends EventEmitter {
 	static readonly CLOSING = 2
 	static readonly CLOSED = 3
 
+	/** Every frame a socket writes, so a test can read back what went out. */
+	static readonly written = new EventEmitter()
+
 	readyState: number = FakeWebSocket.OPEN
 
 	send(data: Uint8Array | string, cb?: (err?: Error) => void) {
+		FakeWebSocket.written.emit('frame', Buffer.from(data))
 		cb?.()
 	}
 
@@ -31,8 +35,9 @@ class FakeWebSocket extends EventEmitter {
 jest.unstable_mockModule('ws', () => ({ __esModule: true, default: FakeWebSocket }))
 
 // Imported after the mock is registered: mock factories are not hoisted in ESM.
-const { DEF_CALLBACK_PREFIX, DEFAULT_CONNECTION_CONFIG } = await import('../../Defaults')
+const { DEF_CALLBACK_PREFIX, DEFAULT_CONNECTION_CONFIG, NOISE_WA_HEADER } = await import('../../Defaults')
 const { default: makeWASocket } = await import('../../Socket')
+const { decodeBinaryNode } = await import('../../WABinary')
 const { makeSession } = await import('../TestUtils/session')
 
 const logger = P({ level: 'silent' })
@@ -74,6 +79,17 @@ const deliver = (ws: EventEmitter, node: BinaryNode) => {
 
 	ws.emit(`${DEF_CALLBACK_PREFIX}${node.tag},,${childTag}`, node)
 	ws.emit(`${DEF_CALLBACK_PREFIX}${node.tag}`, node)
+}
+
+/**
+ * Reads back the stanza in a frame the socket wrote. No noise handshake runs
+ * against the fake, so frames go out in the clear: a 3-byte length and the
+ * encoded node, behind the intro header on the first frame only.
+ */
+const readFrame = (frame: Buffer) => {
+	const start = frame.subarray(0, NOISE_WA_HEADER.length).equals(NOISE_WA_HEADER) ? NOISE_WA_HEADER.length : 0
+	const length = frame.readUIntBE(start, 3)
+	return decodeBinaryNode(frame.subarray(start + 3, start + 3 + length))
 }
 
 /** ref, noise key, identity key, adv secret, platform id - what the QR advertises */
@@ -184,5 +200,49 @@ describe('CB:notification,type:companion_reg_refresh', () => {
 		expect(creds.advSecretKey).toBe(secretOnScreen)
 		expect(credsUpdates.some(update => 'advSecretKey' in update)).toBe(false)
 		expect(qrs).toHaveLength(1)
+	})
+
+	it('acks the notification while creds.me is still unset', async () => {
+		const { sock, creds, waitForQR } = await bootUnpairedSocket()
+		expect(creds.me).toBeUndefined()
+
+		const firstQR = waitForQR()
+		deliver(sock.ws, pairDeviceIq())
+		await firstQR
+
+		// the generic notification path either sends the ack or logs why it
+		// could not: settle on whichever comes first
+		const sent: BinaryNode[] = []
+		const ackFailures: unknown[] = []
+		const handled = new Promise<void>(resolve => {
+			const onFrame = (frame: Buffer) =>
+				void readFrame(frame).then(node => {
+					sent.push(node)
+					if (node.tag === 'ack' && node.attrs.id === 'notification-1') {
+						resolve()
+					}
+				})
+			const errorSpy = jest.spyOn(logger, 'error').mockImplementation((obj: unknown, msg?: string) => {
+				if (msg === 'failed to ack notification') {
+					ackFailures.push(obj)
+					resolve()
+				}
+			})
+
+			FakeWebSocket.written.on('frame', onFrame)
+			cleanups.push(async () => {
+				FakeWebSocket.written.off('frame', onFrame)
+				errorSpy.mockRestore()
+			})
+		})
+
+		deliver(sock.ws, refreshNotification('companion_reg_refresh'))
+		await handled
+
+		expect(ackFailures).toEqual([])
+		expect(sent).toContainEqual({
+			tag: 'ack',
+			attrs: { id: 'notification-1', to: 's.whatsapp.net', class: 'notification', type: 'companion_reg_refresh' }
+		})
 	})
 })

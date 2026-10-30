@@ -544,7 +544,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessageAck = async (node: BinaryNode, errorCode?: number) => {
-		const stanza = buildAckStanza(node, errorCode, authState.creds.me!.id)
+		// an unpaired companion has no creds.me yet, but still has to ack the
+		// notifications it gets before pairing (e.g. companion_reg_refresh);
+		// buildAckStanza only reads meId for message-class acks
+		const stanza = buildAckStanza(node, errorCode, authState.creds.me?.id)
 		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
