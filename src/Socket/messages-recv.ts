@@ -546,8 +546,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const sendMessageAck = async (node: BinaryNode, errorCode?: number) => {
 		// an unpaired companion has no creds.me yet, but still has to ack the
 		// notifications it gets before pairing (e.g. companion_reg_refresh);
-		// buildAckStanza only reads meId for message-class acks
-		const stanza = buildAckStanza(node, errorCode, authState.creds.me?.id)
+		// buildAckStanza only reads meId for message-class acks, which must
+		// carry `from`, so those cannot be sent without an identity
+		const meId = authState.creds.me?.id
+		if (node.tag === 'message' && !meId) {
+			throw new Boom('cannot ack a message before creds.me is set')
+		}
+
+		const stanza = buildAckStanza(node, errorCode, meId)
 		logger.debug({ recv: { tag: node.tag, attrs: node.attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}

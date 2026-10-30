@@ -246,3 +246,56 @@ describe('CB:notification,type:companion_reg_refresh', () => {
 		})
 	})
 })
+
+describe('sendMessageAck while creds.me is unset', () => {
+	afterEach(async () => {
+		for (const cleanup of cleanups.splice(0)) {
+			await cleanup()
+		}
+	})
+
+	/** Records every frame written from here on; the returned fn decodes them. */
+	const captureFrames = () => {
+		const frames: Buffer[] = []
+		const onFrame = (frame: Buffer) => {
+			frames.push(frame)
+		}
+
+		FakeWebSocket.written.on('frame', onFrame)
+		cleanups.push(async () => {
+			FakeWebSocket.written.off('frame', onFrame)
+		})
+		return () => Promise.all(frames.map(readFrame))
+	}
+
+	it('still acks a notification-class node', async () => {
+		const { sock, creds } = await bootUnpairedSocket()
+		expect(creds.me).toBeUndefined()
+		const sent = captureFrames()
+
+		await sock.sendMessageAck(refreshNotification('companion_reg_refresh'))
+
+		expect(await sent()).toEqual([
+			{
+				tag: 'ack',
+				attrs: { id: 'notification-1', to: 's.whatsapp.net', class: 'notification', type: 'companion_reg_refresh' }
+			}
+		])
+	})
+
+	it('refuses to ack a message-class node, and writes nothing', async () => {
+		const { sock, creds } = await bootUnpairedSocket()
+		expect(creds.me).toBeUndefined()
+		const sent = captureFrames()
+
+		const message: BinaryNode = {
+			tag: 'message',
+			attrs: { from: '1234567890@s.whatsapp.net', id: 'message-1', type: 'text' }
+		}
+		// WA Web always puts `from` on a message-class ack, and there is no
+		// identity to put there yet
+		await expect(sock.sendMessageAck(message)).rejects.toThrow('cannot ack a message before creds.me is set')
+
+		expect(await sent()).toEqual([])
+	})
+})
