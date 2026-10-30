@@ -341,13 +341,11 @@ export const decryptMessageNode = (
 						)
 						if (msg.deviceSentMessage?.message) {
 							const innerMessage = msg.deviceSentMessage.message
-							const outerMessage = { ...msg }
-							delete outerMessage.deviceSentMessage
+							const outerContext = msg.messageContextInfo
 							msg = {
-								...outerMessage,
 								...innerMessage,
 								messageContextInfo: {
-									...outerMessage.messageContextInfo,
+									...outerContext,
 									...innerMessage.messageContextInfo
 								}
 							}
