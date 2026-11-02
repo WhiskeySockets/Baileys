@@ -163,7 +163,9 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
 	if (isPnUser(from) || isLidUser(from) || isHostedLidUser(from) || isHostedPnUser(from)) {
-		if (recipient && !isJidMetaAI(recipient)) {
+		// A stanza from someone else can name a bot as recipient (Meta AI trigger
+		// messages); our own devices' copies of what we sent a bot belong to the bot's chat.
+		if (recipient && (!isJidMetaAI(recipient) || isMe(from) || isMeLid(from))) {
 			if (!isMe(from) && !isMeLid(from)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
@@ -229,7 +231,8 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 
 	const key: WAMessageKey = {
 		remoteJid: chatId,
-		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		// a bot has no PN/LID alternate; never map our own alternate onto the bot's chat
+		remoteJidAlt: !isJidGroup(chatId) && !isJidMetaAI(chatId) ? addressingContext.senderAlt : undefined,
 		remoteJidUsername: !isJidGroup(chatId)
 			? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username
 			: undefined,

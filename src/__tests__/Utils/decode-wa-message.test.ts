@@ -6,6 +6,7 @@ const ME_ID = '5511999999999@s.whatsapp.net'
 const ME_LID = '111111111111111@lid'
 const PEER_ID = '5511888888888@s.whatsapp.net'
 const GROUP_ID = '120363000000000000@g.us'
+const BOT_ID = '13135550002@bot'
 
 const message = (attrs: Record<string, string>): BinaryNode => ({
 	tag: 'message',
@@ -72,6 +73,31 @@ describe('decodeMessageNode', () => {
 		it('rejects a recipient-tagged message that is not from me', () => {
 			const stanza = message({ id: 'MSG_3', from: PEER_ID, recipient: ME_ID })
 			expect(() => decodeMessageNode(stanza, ME_ID, ME_LID)).toThrow(/not from me/)
+		})
+
+		it('files our own copy of a message sent to a bot under the bot chat', () => {
+			const stanza = message({ id: 'MSG_B1', from: ME_LID, recipient: BOT_ID, sender_pn: ME_ID })
+			const result = decodeMessageNode(stanza, ME_ID, ME_LID)
+
+			expect(result.fullMessage.key.fromMe).toBe(true)
+			expect(result.fullMessage.key.remoteJid).toBe(BOT_ID)
+			expect(result.fullMessage.key.remoteJidAlt).toBeUndefined()
+		})
+
+		it('files our own PN-addressed copy of a message sent to a bot under the bot chat', () => {
+			const stanza = message({ id: 'MSG_B2', from: ME_ID, recipient: BOT_ID })
+			const result = decodeMessageNode(stanza, ME_ID, ME_LID)
+
+			expect(result.fullMessage.key.fromMe).toBe(true)
+			expect(result.fullMessage.key.remoteJid).toBe(BOT_ID)
+		})
+
+		it('keeps a peer message that names a bot as recipient in the peer chat', () => {
+			const stanza = message({ id: 'MSG_B3', from: PEER_ID, recipient: BOT_ID })
+			const result = decodeMessageNode(stanza, ME_ID, ME_LID)
+
+			expect(result.fullMessage.key.fromMe).toBeFalsy()
+			expect(result.fullMessage.key.remoteJid).toBe(PEER_ID)
 		})
 
 		it('decodes a group message', () => {
