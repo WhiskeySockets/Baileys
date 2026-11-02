@@ -649,6 +649,7 @@ export const downloadEncryptedContent = async (
 			}
 		}
 	})
+	fetched.on('error', error => output.destroy(error))
 	return fetched.pipe(output, { end: true })
 }
 

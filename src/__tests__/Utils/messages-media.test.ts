@@ -6,7 +6,13 @@ import * as path from 'path'
 import { Readable } from 'stream'
 import type { MediaConnInfo, SocketConfig } from '../../Types'
 import type { ILogger } from '../../Utils/logger'
-import { encryptedStream, getWAUploadToServer, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import {
+	downloadEncryptedContent,
+	encryptedStream,
+	getWAUploadToServer,
+	type UploadParams,
+	uploadWithNodeHttp
+} from '../../Utils/messages-media'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -298,6 +304,49 @@ describe('uploadWithNodeHttp', () => {
 
 		expect(result).toEqual(expectedResponse)
 		expect(finalReceivedBody).toBe(testFileContent)
+	})
+})
+
+describe('downloadEncryptedContent', () => {
+	let server: http.Server
+
+	afterEach(() => {
+		server?.close()
+	})
+
+	it('propagates an interrupted download error to the returned stream', async () => {
+		server = http.createServer((_req, res) => {
+			res.writeHead(200, { 'content-length': '100000' })
+			res.write(Buffer.alloc(4096))
+
+			setTimeout(() => res.socket?.destroy(), 20)
+		})
+
+		const port = await new Promise<number>(resolve => {
+			server.listen(0, '127.0.0.1', () => {
+				const address = server.address()
+				if (address && typeof address === 'object') {
+					resolve(address.port)
+				}
+			})
+		})
+
+		const stream = await downloadEncryptedContent(
+			`http://127.0.0.1:${port}/media.enc`,
+			{
+				cipherKey: Buffer.alloc(32),
+				iv: Buffer.alloc(16)
+			},
+			{}
+		)
+
+		const consume = async () => {
+			for await (const chunk of stream) {
+				void chunk
+			}
+		}
+
+		await expect(consume()).rejects.toThrow()
 	})
 })
 
