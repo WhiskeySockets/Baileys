@@ -7,7 +7,7 @@ import type { Agent } from 'https'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { Readable, Transform } from 'stream'
+import { pipeline, Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP, type MediaType } from '../Defaults'
@@ -649,7 +649,17 @@ export const downloadEncryptedContent = async (
 			}
 		}
 	})
-	return fetched.pipe(output, { end: true })
+
+	// Readable.pipe() does not forward source errors to the destination. Use
+	// pipeline so transport and decrypt failures tear down the entire chain and
+	// remain observable through the returned transform.
+	pipeline(fetched, output, error => {
+		if (error && !output.destroyed) {
+			output.destroy(error)
+		}
+	})
+
+	return output
 }
 
 export function extensionForMediaMessage(message: WAMessageContent) {
