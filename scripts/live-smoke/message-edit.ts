@@ -6,7 +6,6 @@ import qrcode from 'qrcode-terminal'
 import makeWASocket, {
 	type BaileysEventMap,
 	Browsers,
-	DisconnectReason,
 	type WASocket,
 	type WAMessage,
 	useMultiFileAuthState
@@ -18,6 +17,7 @@ import {
 	OriginalMessageLookup
 } from './message-edit-helpers'
 import { openRetainedAuthSession, type RetainedAuthSession } from './auth-session'
+import { connectionFailure, describeDisconnectReason, PairingLoggedOutError } from './connection-errors'
 
 const PAIRING_TIMEOUT_MS = 5 * 60 * 1000
 const OPERATOR_TIMEOUT_MS = 5 * 60 * 1000
@@ -77,7 +77,7 @@ const waitFor = <T>(label: string, timeoutMs: number, signal: AbortSignal, subsc
 	})
 }
 
-const disconnectReason = (lastDisconnect: { error?: unknown } | undefined): DisconnectReason | undefined => {
+const disconnectReason = (lastDisconnect: { error?: unknown } | undefined): number | undefined => {
 	const error = lastDisconnect?.error
 	return error instanceof Boom ? error.output?.statusCode : undefined
 }
@@ -90,14 +90,13 @@ const safeEnd = async (sock: WASocket): Promise<void> => {
 	}
 }
 
-class PairingLoggedOutError extends Error {}
-
-type ConnectionAttemptResult = 'open' | 'reconnect'
+type ConnectionAttemptResult = { status: 'open' } | { status: 'reconnect'; reason: number | undefined }
 
 const waitForConnectionAttempt = (
 	sock: WASocket,
 	signal: AbortSignal,
-	renderedQrs: Set<string>
+	renderedQrs: Set<string>,
+	authDir: string
 ): Promise<ConnectionAttemptResult> =>
 	waitFor<ConnectionAttemptResult>('pairing and connection', PAIRING_TIMEOUT_MS, signal, (resolve, reject) => {
 		const handler = (update: BaileysEventMap['connection.update']) => {
@@ -109,18 +108,19 @@ const waitForConnectionAttempt = (
 			}
 
 			if (update.connection === 'open') {
-				resolve('open')
+				resolve({ status: 'open' })
 				return
 			}
 
 			if (update.connection === 'close') {
 				const reason = disconnectReason(update.lastDisconnect)
-				if (reason === DisconnectReason.loggedOut) {
-					reject(new PairingLoggedOutError('The paired account logged out while connecting'))
+				const failure = connectionFailure(reason, authDir)
+				if (failure) {
+					reject(failure)
 					return
 				}
 
-				resolve('reconnect')
+				resolve({ status: 'reconnect', reason })
 			}
 		}
 
@@ -140,6 +140,7 @@ const connect = async (
 	secureAuthFiles: () => Promise<void>
 ): Promise<ConnectedSocket> => {
 	const renderedQrs = new Set<string>()
+	let lastReason: number | undefined
 	// Protocol logs stay off by default because they can contain identifiers and payload metadata.
 	const logger = P({ level: process.env.SMOKE_LOG_LEVEL?.trim() || 'silent' })
 
@@ -161,7 +162,7 @@ const connect = async (
 
 		let result: ConnectionAttemptResult
 		try {
-			result = await waitForConnectionAttempt(sock, signal, renderedQrs)
+			result = await waitForConnectionAttempt(sock, signal, renderedQrs, authDir)
 		} catch (error) {
 			sock.ev.off('creds.update', persistCreds)
 			try {
@@ -172,7 +173,7 @@ const connect = async (
 			throw error
 		}
 
-		if (result === 'open') {
+		if (result.status === 'open') {
 			try {
 				await persistCreds()
 				return { sock, saveCreds: persistCreds }
@@ -183,6 +184,7 @@ const connect = async (
 			}
 		}
 
+		lastReason = result.reason
 		sock.ev.off('creds.update', persistCreds)
 		try {
 			await persistCreds()
@@ -191,12 +193,16 @@ const connect = async (
 		}
 		if (attempt < MAX_CONNECTION_ATTEMPTS) {
 			const retryDelayMs = CONNECTION_RETRY_DELAY_MS * attempt
-			writeLine(`[PAIR] Pairing handoff received; reconnecting the smoke client in ${retryDelayMs / 1000} second(s).`)
+			writeLine(
+				`[PAIR] Connection closed: ${describeDisconnectReason(lastReason)}; retrying in ${retryDelayMs / 1000} second(s).`
+			)
 			await delay(retryDelayMs, undefined, { signal })
 		}
 	}
 
-	throw new Error(`Could not establish a connection after ${MAX_CONNECTION_ATTEMPTS} attempts`)
+	throw new Error(
+		`Could not establish a connection after ${MAX_CONNECTION_ATTEMPTS} attempts; last disconnect: ${describeDisconnectReason(lastReason)}`
+	)
 }
 
 const waitForOriginal = (sock: WASocket, expectedText: string, signal: AbortSignal): Promise<WAMessage> =>

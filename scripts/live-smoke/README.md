@@ -28,8 +28,16 @@ Preserve `messageContextInfo.messageSecret` when storing originals. If the origi
 
 Authentication state is isolated per checkout outside the repository. Its directory is restricted to the current
 operating-system user, contained files are restricted to that user, symlinks are rejected, and concurrent runs are
-blocked. After eight idle hours the next run deletes the local state and requests a new pairing. The old linked-device
+blocked by an exclusive loopback TCP listener held for the run's lifetime. The operating system releases the lock
+on exit, including crashes; obsolete PID lock files are no longer used. The port is derived from the canonical session directory, so filesystem aliases share a lock.
+If another local service or a different checkout occupies that port, the run stops safely and reports the port number.
+Stop any smoke runs using the same checkout before switching between versions of this tool.
+After eight idle hours the next run deletes the local state and requests a new pairing. The old linked-device
 entry may remain visible on the phone after local expiry and can be removed there.
+
+Connection failures report the disconnect reason. Invalid sessions, competing connections, account restrictions,
+and client compatibility errors stop immediately with recovery instructions; transient failures still retry. A competing
+connection does not discard retained credentials. Only a logged-out retained pairing is reset automatically.
 
 Socket protocol logging is disabled by default. Set `SMOKE_LOG_LEVEL` to a Pino level such as `debug` only when
 diagnosing a failed run. Protocol diagnostics can include account identifiers and payload metadata, so do not

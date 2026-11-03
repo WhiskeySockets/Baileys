@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
@@ -107,46 +109,91 @@ describe('retained live-smoke authentication session', () => {
 		})
 	})
 
-	it('recovers a lock left by a process that is no longer running', async () => {
+	it('shares the lock when temporary-root aliases refer to the same credentials directory', async () => {
 		await withTemporaryRoot(async tempRoot => {
-			const workspacePath = '/synthetic/stale-lock-worktree'
+			const workspacePath = '/synthetic/aliased-temp-root'
+			const aliasRoot = join(tempRoot, 'alias')
+			await symlink(tempRoot, aliasRoot, 'dir')
+			const first = await openRetainedAuthSession({ workspacePath, tempRoot })
+			try {
+				await assert.rejects(
+					openRetainedAuthSession({ workspacePath, tempRoot: aliasRoot }),
+					/already using the retained pairing/
+				)
+			} finally {
+				await first.release()
+			}
+
+			const next = await openRetainedAuthSession({ workspacePath, tempRoot: aliasRoot })
+			await next.release()
+		})
+	})
+
+	it('ignores obsolete PID lock files, including a PID reused by a running process', async () => {
+		await withTemporaryRoot(async tempRoot => {
+			const workspacePath = '/synthetic/obsolete-lock-worktree'
 			const sessionRoot = getRetainedAuthSessionRoot(workspacePath, tempRoot)
 			await mkdir(sessionRoot, { mode: 0o700 })
 			await writeFile(
 				join(sessionRoot, 'active-run.lock'),
-				JSON.stringify({ pid: 2_147_483_647, token: 'stale-lock-token' }),
+				JSON.stringify({ pid: process.pid, token: 'obsolete-lock-token' }),
 				{ mode: 0o600 }
 			)
 
 			const session = await openRetainedAuthSession({ workspacePath, tempRoot })
+			await assert.rejects(openRetainedAuthSession({ workspacePath, tempRoot }), /already using the retained pairing/)
 			await session.release()
 		})
 	})
 
-	it('recovers a malformed lock after its initialization grace period', async () => {
+	it('admits one competing process and releases the lock after that process crashes', async () => {
 		await withTemporaryRoot(async tempRoot => {
-			const workspacePath = '/synthetic/malformed-lock-worktree'
-			const sessionRoot = getRetainedAuthSessionRoot(workspacePath, tempRoot)
-			const lockPath = join(sessionRoot, 'active-run.lock')
-			await mkdir(sessionRoot, { mode: 0o700 })
-			await writeFile(lockPath, '')
-			await utimes(lockPath, new Date(0), new Date(0))
+			const options = { workspacePath: '/synthetic/competing-worktree', tempRoot }
+			const moduleUrl = new URL('./auth-session.ts', import.meta.url).href
+			const script = `
+				import { openRetainedAuthSession } from ${JSON.stringify(moduleUrl)}
+				process.stdout.write('ready\\n')
+				process.stdin.once('data', async () => {
+					try {
+						await openRetainedAuthSession(${JSON.stringify(options)})
+						process.stdout.write('acquired\\n')
+					} catch (error) {
+						process.stdout.write('blocked: ' + error.message + '\\n')
+					}
+				})
+				setInterval(() => {}, 1000)
+			`
+			const contenders = Array.from({ length: 4 }, () =>
+				spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', script], {
+					stdio: ['pipe', 'pipe', 'pipe']
+				})
+			)
+			try {
+				await Promise.all(contenders.map(child => once(child.stdout, 'data', { signal: AbortSignal.timeout(10_000) })))
+				const results = contenders.map(child => once(child.stdout, 'data', { signal: AbortSignal.timeout(10_000) }))
+				for (const child of contenders) child.stdin.write('go')
+				const output = (await Promise.all(results)).map(([data]) => String(data))
+				assert.equal(output.filter(value => value === 'acquired\n').length, 1)
+				assert.equal(output.filter(value => /blocked: Another message-edit smoke run/.test(value)).length, 3)
+				await assert.rejects(openRetainedAuthSession(options), /already using the retained pairing/)
 
-			const session = await openRetainedAuthSession({ workspacePath, tempRoot })
-			await session.release()
-		})
-	})
-
-	it('does not remove a lock entry when reading it fails', async () => {
-		await withTemporaryRoot(async tempRoot => {
-			const workspacePath = '/synthetic/unreadable-lock-worktree'
-			const sessionRoot = getRetainedAuthSessionRoot(workspacePath, tempRoot)
-			const lockPath = join(sessionRoot, 'active-run.lock')
-			await mkdir(sessionRoot, { mode: 0o700 })
-			await mkdir(lockPath)
-
-			await assert.rejects(openRetainedAuthSession({ workspacePath, tempRoot }), { code: 'EISDIR' })
-			assert.equal((await stat(lockPath)).isDirectory(), true)
+				const winner = contenders[output.indexOf('acquired\n')]!
+				const exited = once(winner, 'exit')
+				winner.kill('SIGKILL')
+				await exited
+				const recovered = await openRetainedAuthSession(options)
+				await recovered.release()
+			} finally {
+				await Promise.all(
+					contenders.map(async child => {
+						if (child.exitCode === null && child.signalCode === null) {
+							const exited = once(child, 'exit')
+							child.kill('SIGKILL')
+							await exited
+						}
+					})
+				)
+			}
 		})
 	})
 

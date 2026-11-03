@@ -1,6 +1,14 @@
 import { proto } from '../../WAProto/index.js'
 import type { SocketConfig, WAMessage, WAMessageKey, WAMessageUpdate } from '../Types'
-import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser, jidNormalizedUser } from '../WABinary'
+import {
+	isHostedLidUser,
+	isHostedPnUser,
+	isLidUser,
+	isPnUser,
+	jidDecode,
+	jidEncode,
+	jidNormalizedUser
+} from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import type { ILogger } from './logger'
@@ -42,8 +50,13 @@ const expandAddressingCandidates = async (
 	const candidates = uniqueNormalizedJids(jids)
 	for (const jid of [...candidates]) {
 		try {
-			const alternate =
-				isLidUser(jid) || isHostedLidUser(jid) ? await lidMapping.getPNForLID(jid) : await lidMapping.getLIDForPN(jid)
+			const decoded = jidDecode(jid)
+			if (!decoded) continue
+			// Embedded target keys can retain hosted domains after receive cleanup. The mapping store accepts @lid.
+			const mappingJid = isHostedLidUser(jid) ? jidEncode(decoded.user, 'lid') : jid
+			const alternate = isLidUser(mappingJid)
+				? await lidMapping.getPNForLID(mappingJid)
+				: await lidMapping.getLIDForPN(mappingJid)
 			if (isUserJid(alternate)) {
 				const normalized = jidNormalizedUser(alternate)
 				if (!candidates.includes(normalized)) {

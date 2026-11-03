@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals'
 import { createCipheriv, hkdfSync } from 'node:crypto'
 import { proto } from '../../../WAProto/index.js'
+import { LIDMappingStore } from '../../Signal/lid-mapping'
 import type {
 	AuthenticationCreds,
 	BaileysEventEmitter,
@@ -13,7 +14,7 @@ import type {
 } from '../../Types'
 import { decryptMessageEdit, processEncryptedMessageEdit } from '../../Utils/decrypt-message-edit'
 import type { ILogger } from '../../Utils/logger'
-import processMessage from '../../Utils/process-message'
+import processMessage, { cleanMessage } from '../../Utils/process-message'
 
 const ORIGINAL_ID = 'ORIGINAL-MESSAGE-ID'
 const ENVELOPE_ID = 'EDIT-ENVELOPE-ID'
@@ -554,17 +555,18 @@ describe('processMessage encrypted edit integration', () => {
 
 	const processFixture = async ({
 		message,
-		getMessage
-	}: {
-		message: WAMessage
-		getMessage: SocketConfig['getMessage']
-	}) => {
-		const ev = createMockEventEmitter()
-		const logger = createMockLogger()
-		const lidMapping = createLidMapping({
+		getMessage,
+		lidMapping = createLidMapping({
 			[DIRECT_AUTHOR_PN]: DIRECT_AUTHOR_LID,
 			[DIRECT_AUTHOR_LID]: DIRECT_AUTHOR_PN
 		})
+	}: {
+		message: WAMessage
+		getMessage: SocketConfig['getMessage']
+		lidMapping?: Pick<LIDMappingStore, 'getLIDForPN' | 'getPNForLID'>
+	}) => {
+		const ev = createMockEventEmitter()
+		const logger = createMockLogger()
 
 		await processMessage(message, {
 			shouldProcessHistoryMsg: false,
@@ -663,6 +665,54 @@ describe('processMessage encrypted edit integration', () => {
 			}
 		])
 		expect(events.some(event => event.event === 'chats.update')).toBe(false)
+	})
+
+	it('resolves a hosted target identity left intact by receive cleanup using the real mapping store', async () => {
+		const hostedAuthorLid = '222222222222@hosted.lid'
+		const encrypted = sealProtocolMessage({
+			originalSenderJid: DIRECT_AUTHOR_PN,
+			editorJid: DIRECT_AUTHOR_LID,
+			editedText: 'hosted target edit',
+			targetKey: {
+				id: ORIGINAL_ID,
+				remoteJid: GROUP_JID,
+				participant: hostedAuthorLid,
+				fromMe: false
+			}
+		})
+		const message = createEnvelope(
+			{ remoteJid: GROUP_JID, participant: hostedAuthorLid, fromMe: false, id: ENVELOPE_ID },
+			encrypted
+		)
+		cleanMessage(message, LOCAL_PN, LOCAL_LID)
+		expect(message.key.participant).toBe(DIRECT_AUTHOR_LID)
+		expect(encrypted.targetMessageKey?.participant).toBe(hostedAuthorLid)
+
+		const keys = {
+			get: jest.fn<() => Promise<Record<string, string>>>().mockResolvedValue({
+				'222222222222_reverse': '111111111111'
+			})
+		} as unknown as SignalKeyStoreWithTransaction
+		const lidMapping = new LIDMappingStore(keys, createMockLogger())
+		try {
+			const { events } = await processFixture({
+				message,
+				getMessage: async () => originalMessage(),
+				lidMapping
+			})
+			const updateEvent = events.find(event => event.event === 'messages.update')
+			expect(updateEvent?.data).toEqual([
+				{
+					key: { ...message.key, id: ORIGINAL_ID },
+					update: {
+						message: { editedMessage: { message: { conversation: 'hosted target edit' } } },
+						messageTimestamp: 1_725_000_000
+					}
+				}
+			])
+		} finally {
+			lidMapping.close()
+		}
 	})
 
 	it('contains unexpected edit-processing errors in the receive path', async () => {

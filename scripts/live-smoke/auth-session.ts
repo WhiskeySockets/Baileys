@@ -1,5 +1,6 @@
-import { createHash, randomBytes } from 'node:crypto'
-import { chmod, lstat, mkdir, open, readFile, readdir, rm, unlink, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { chmod, lstat, mkdir, readFile, readdir, realpath, rm, unlink, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -7,10 +8,8 @@ export const AUTH_SESSION_RETENTION_MS = 8 * 60 * 60 * 1000
 
 const AUTH_DIRECTORY_NAME = 'auth'
 const LAST_USED_FILE_NAME = 'last-used'
-const LOCK_FILE_NAME = 'active-run.lock'
 const SESSION_DIRECTORY_MODE = 0o700
 const SESSION_FILE_MODE = 0o600
-const LOCK_INITIALIZATION_GRACE_MS = 30_000
 
 type Clock = () => number
 
@@ -19,11 +18,6 @@ type OpenRetainedAuthSessionOptions = {
 	tempRoot?: string
 	retentionMs?: number
 	now?: Clock
-}
-
-type LockRecord = {
-	pid: number
-	token: string
 }
 
 export interface RetainedAuthSession {
@@ -97,101 +91,41 @@ const secureTree = async (path: string): Promise<void> => {
 	await chmod(path, SESSION_FILE_MODE)
 }
 
-const processIsRunning = (pid: number): boolean => {
-	try {
-		process.kill(pid, 0)
-		return true
-	} catch (error) {
-		return !(isNodeError(error) && error.code === 'ESRCH')
-	}
-}
-
-const readLock = async (lockPath: string): Promise<LockRecord | undefined> => {
-	let raw: string
-	try {
-		raw = await readFile(lockPath, 'utf8')
-	} catch (error) {
-		if (isNodeError(error) && error.code === 'ENOENT') {
-			return
+const acquireLock = async (sessionRoot: string): Promise<{ release: () => Promise<void> }> => {
+	// The kernel releases this lock even after SIGKILL, with no stale-file deletion or PID identity check.
+	// A hash collision (or another local service on this port) must fail closed rather than share credentials.
+	const canonicalRoot = await realpath(sessionRoot)
+	const port = 49152 + (createHash('sha256').update(canonicalRoot).digest().readUInt32BE(0) % 16384)
+	const server = createServer(socket => socket.destroy())
+	await new Promise<void>((resolve, reject) => {
+		const onError = (error: NodeJS.ErrnoException) => {
+			if (error.code === 'EADDRINUSE') {
+				reject(
+					new Error(
+						`Another message-edit smoke run is already using the retained pairing, or local port ${port} is occupied`
+					)
+				)
+			} else {
+				reject(error)
+			}
 		}
+		server.once('error', onError)
+		server.listen({ host: '127.0.0.1', port, exclusive: true }, () => {
+			server.off('error', onError)
+			resolve()
+		})
+	})
+	server.unref()
 
-		throw error
-	}
-
-	try {
-		const value = JSON.parse(raw) as Partial<LockRecord>
-		const pid = value.pid
-		return typeof pid === 'number' &&
-			Number.isSafeInteger(pid) &&
-			pid > 0 &&
-			typeof value.token === 'string' &&
-			value.token.length > 0
-			? { pid, token: value.token }
-			: undefined
-	} catch {
-		return
-	}
-}
-
-const acquireLock = async (lockPath: string): Promise<{ token: string; release: () => Promise<void> }> => {
-	const token = randomBytes(16).toString('hex')
-
-	for (let attempt = 0; attempt < 2; attempt++) {
-		try {
-			const handle = await open(lockPath, 'wx', SESSION_FILE_MODE)
-			try {
-				await handle.writeFile(JSON.stringify({ pid: process.pid, token }))
-			} finally {
-				await handle.close()
-			}
-
-			return {
-				token,
-				release: async () => {
-					const current = await readLock(lockPath)
-					if (current?.token === token) {
-						await unlink(lockPath).catch(error => {
-							if (!(isNodeError(error) && error.code === 'ENOENT')) {
-								throw error
-							}
-						})
-					}
-				}
-			}
-		} catch (error) {
-			if (!(isNodeError(error) && error.code === 'EEXIST')) {
-				throw error
-			}
-
-			const current = await readLock(lockPath)
-			if (!current) {
-				const lockInfo = await lstat(lockPath).catch(lockError => {
-					if (isNodeError(lockError) && lockError.code === 'ENOENT') {
-						return
-					}
-
-					throw lockError
-				})
-				if (!lockInfo) {
-					continue
-				}
-
-				if (Date.now() - lockInfo.mtimeMs <= LOCK_INITIALIZATION_GRACE_MS) {
-					throw new Error('Another message-edit smoke run is already using the retained pairing')
-				}
-			} else if (processIsRunning(current.pid)) {
-				throw new Error('Another message-edit smoke run is already using the retained pairing')
-			}
-
-			await unlink(lockPath).catch(unlinkError => {
-				if (!(isNodeError(unlinkError) && unlinkError.code === 'ENOENT')) {
-					throw unlinkError
-				}
+	let releasePromise: Promise<void> | undefined
+	return {
+		release: () => {
+			releasePromise ??= new Promise<void>((resolve, reject) => {
+				server.close(error => (error ? reject(error) : resolve()))
 			})
+			return releasePromise
 		}
 	}
-
-	throw new Error('Could not acquire the retained pairing lock')
 }
 
 const readLastUsed = async (path: string): Promise<number | undefined> => {
@@ -229,7 +163,7 @@ export const openRetainedAuthSession = async ({
 
 	const sessionRoot = getRetainedAuthSessionRoot(workspacePath, tempRoot)
 	await ensureSecureDirectory(sessionRoot)
-	const lock = await acquireLock(join(sessionRoot, LOCK_FILE_NAME))
+	const lock = await acquireLock(sessionRoot)
 
 	try {
 		const authDir = join(sessionRoot, AUTH_DIRECTORY_NAME)
