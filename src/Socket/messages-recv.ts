@@ -1948,12 +1948,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	// Some accounts now get contacts' statuses as a top-level <status> stanza
+	// instead of <message from="status@broadcast">. It isn't decoded here, but it
+	// must be acked: otherwise the server ends the stream ~50 minutes later with
+	// <stream:error><ack class="status"/></stream:error> and redelivers it on reconnect.
+	const handleStatus = async (node: BinaryNode) => {
+		try {
+			await sendMessageAck(node)
+		} catch (error) {
+			onUnexpectedError(error as Error, 'acking status stanza')
+		}
+	}
+
 	const offlineNodeProcessor = makeOfflineNodeProcessor(
 		new Map<MessageType, (node: BinaryNode) => Promise<void>>([
 			['message', handleMessage],
 			['call', handleCall],
 			['receipt', handleReceipt],
-			['notification', handleNotification]
+			['notification', handleNotification],
+			['status', handleStatus]
 		]),
 		{
 			isWsOpen: () => ws.isOpen,
@@ -2011,6 +2024,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	ws.on('CB:notification', async (node: BinaryNode) => {
 		await processNode('notification', node, 'handling notification', handleNotification)
 	})
+
+	ws.on('CB:status', async (node: BinaryNode) => {
+		await processNode('status', node, 'acking status stanza', handleStatus)
+	})
+
 	ws.on('CB:ack,class:message', (node: BinaryNode) => {
 		handleBadAck(node).catch(error => onUnexpectedError(error, 'handling bad ack'))
 	})
