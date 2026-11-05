@@ -1,6 +1,6 @@
 import type { BinaryNode } from '../WABinary'
 
-export type MessageType = 'message' | 'call' | 'receipt' | 'notification'
+export type MessageType = 'message' | 'call' | 'receipt' | 'notification' | 'status'
 
 type OfflineNode = {
 	type: MessageType
