@@ -2026,7 +2026,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:status', async (node: BinaryNode) => {
-		await processNode('status', node, 'acking status stanza', handleStatus)
+		// processNode acks ignored JIDs itself, outside handleStatus' try/catch
+		await processNode('status', node, 'acking status stanza', handleStatus).catch(error =>
+			onUnexpectedError(error, 'acking status stanza')
+		)
 	})
 
 	ws.on('CB:ack,class:message', (node: BinaryNode) => {
