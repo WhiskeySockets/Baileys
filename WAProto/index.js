@@ -36330,7 +36330,7 @@ export const proto = $root.proto = (() => {
             if (m.newsletterFollowerInviteMessageV2 != null && Object.hasOwnProperty.call(m, "newsletterFollowerInviteMessageV2"))
                 $root.proto.Message.NewsletterFollowerInviteMessage.encode(m.newsletterFollowerInviteMessageV2, w.uint32(906).fork()).ldelim();
             if (m.pollResultSnapshotMessageV3 != null && Object.hasOwnProperty.call(m, "pollResultSnapshotMessageV3"))
-                $root.proto.Message.PollResultSnapshotMessage.encode(m.pollResultSnapshotMessageV3, w.uint32(914).fork()).ldelim();
+                $root.proto.Message.PollResultSnapshotMessage.encode(m.pollResultSnapshotMessageV3, w.uint32(922).fork()).ldelim();
             return w;
         };
 
@@ -36719,7 +36719,7 @@ export const proto = $root.proto = (() => {
                         m.newsletterFollowerInviteMessageV2 = $root.proto.Message.NewsletterFollowerInviteMessage.decode(r, r.uint32());
                         break;
                     }
-                case 114: {
+                case 115: {
                         m.pollResultSnapshotMessageV3 = $root.proto.Message.PollResultSnapshotMessage.decode(r, r.uint32());
                         break;
                     }
