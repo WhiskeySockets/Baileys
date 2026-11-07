@@ -151,7 +151,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		})
 	const getRetryCount = async (key: string, defaultValue: number) => {
 		const retryCount = await msgRetryCache.get<number>(key)
-		return retryCount !== undefined && Number.isFinite(retryCount) ? retryCount : defaultValue
+		if (retryCount === undefined) {
+			return defaultValue
+		}
+
+		return Number.isFinite(retryCount) ? retryCount : maxMsgRetryCount
 	}
 	const callOfferCache =
 		config.callOfferCache ||
