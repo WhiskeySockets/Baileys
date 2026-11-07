@@ -607,7 +607,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			let retryCount = await getRetryCount(key, 0)
 			if (retryCount >= maxMsgRetryCount) {
 				logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
-				await msgRetryCache.del(key)
 				return
 			}
 
