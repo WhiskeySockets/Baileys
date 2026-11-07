@@ -82,12 +82,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		maxMsgRetryCount
 	} = config
 
-	// ───────────── CikoSyncPriv flag ─────────────
-	// Jika `true`, pesan yang di-emit oleh socket ini sendiri (via sendMessage
-	// → emitOwnEvents) TIDAK akan memicu `messages.upsert`. Filter ini
-	// melengkapi filter di messages-recv.ts (yang menangani pesan masuk).
+	// ───────────── CikoSyncPriv flag & helper ─────────────
+	// Global flag dari makeWASocket({ CikoSyncPriv: true })
 	const __CikoSyncPriv = (config as any)?.CikoSyncPriv === true
-	// ───────────── end CikoSyncPriv flag ─────────────
+
+	// Per-call override: kalau `perCall` didefinisikan (true/false), pakai itu.
+	// Kalau `undefined`, fallback ke global config.
+	const resolveCikoSyncPriv = (perCall?: boolean): boolean => {
+		if (perCall !== undefined) return perCall
+		return __CikoSyncPriv
+	}
+	// ───────────── end CikoSyncPriv flag & helper ─────────────
 
 	const sock = makeNewsletterSocket(config)
 	const {
@@ -631,9 +636,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			additionalNodes,
 			useUserDevicesCache,
 			useCachedGroupMetadata,
-			statusJidList
+			statusJidList,
+			CikoSyncPriv: perCallCikoSyncPriv // 👈 TAMBAHAN
 		}: MessageRelayOptions
 	) => {
+		// 👈 Resolve CikoSyncPriv: per-call > global
+		const CikoSyncPriv = resolveCikoSyncPriv(perCallCikoSyncPriv)
+
 		const meId = assertMeId(authState.creds)
 		const meLid = authState.creds.me?.lid
 		const isRetryResend = Boolean(participant?.jid)
@@ -899,6 +908,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const isMe = user === mePnUser || user === meLidUser
 
 					if (isMe) {
+						// 👈 Skip device sendiri kalau CikoSyncPriv aktif
+						if (CikoSyncPriv) {
+							logger.debug({ jid }, 'CikoSyncPriv: skipping self device in fanout')
+							continue
+						}
 						meRecipients.push(jid)
 					} else {
 						otherRecipients.push(jid)
@@ -1006,6 +1020,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					id: msgId,
 					to: destinationJid,
 					type: getMessageType(message),
+					// 👈 device_fanout=false kalau CikoSyncPriv aktif (jangan sync ke device lain)
+					...(CikoSyncPriv && !isStatus && !isNewsletter ? { device_fanout: 'false' } : {}),
 					...(additionalAttributes || {})
 				},
 				content: binaryNodeContent
@@ -1412,19 +1428,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					useCachedGroupMetadata: options.useCachedGroupMetadata,
 					additionalAttributes,
 					statusJidList: options.statusJidList,
-					additionalNodes
+					additionalNodes,
+					CikoSyncPriv: options.CikoSyncPriv // 👈 TAMBAHAN — pass per-call
 				})
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
-						// ───── CikoSyncPriv: skip self-message upsert kalau aktif ─────
-						if (__CikoSyncPriv && jid !== 'status@broadcast') {
+						// 👈 CikoSyncPriv: pakai resolveCikoSyncPriv (per-call > global)
+						const effectiveCikoSyncPriv = resolveCikoSyncPriv(options.CikoSyncPriv)
+						if (effectiveCikoSyncPriv && jid !== 'status@broadcast') {
 							logger.debug(
 								{ jid, msgId: fullMsg.key.id },
 								'CikoSyncPriv: skipping self message upsert (sendMessage)'
 							)
 							return
 						}
-						// ───── end CikoSyncPriv ─────
 						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
 					})
 				}
@@ -1433,4 +1450,4 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 	}
-																		 }
+				}
