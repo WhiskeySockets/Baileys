@@ -151,7 +151,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		})
 	const getRetryCount = async (key: string, defaultValue: number) => {
 		const retryCount = await msgRetryCache.get<number>(key)
-		if (retryCount === undefined) {
+		if (retryCount === undefined || retryCount === null) {
 			return defaultValue
 		}
 
@@ -585,6 +585,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const msgId = msgKey.id!
 
 		if (messageRetryManager) {
+			const key = `${msgId}:${msgKey?.participant}`
+			const cachedRetryCount = await getRetryCount(key, 0)
+			messageRetryManager.restoreRetryCount(msgId, cachedRetryCount)
+
 			// Check if we've exceeded max retries using the new system
 			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
 				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
@@ -596,7 +600,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const retryCount = messageRetryManager.incrementRetryCount(msgId)
 
 			// Use the new retry count for the rest of the logic
-			const key = `${msgId}:${msgKey?.participant}`
 			await msgRetryCache.set(key, retryCount)
 		} else {
 			// Fallback to old system

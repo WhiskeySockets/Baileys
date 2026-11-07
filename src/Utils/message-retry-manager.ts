@@ -229,6 +229,15 @@ export class MessageRetryManager {
 	}
 
 	/**
+	 * Restore a persisted retry count without lowering an in-memory count.
+	 */
+	restoreRetryCount(messageId: string, retryCount: number): void {
+		if (retryCount > this.getRetryCount(messageId)) {
+			this.retryCounters.set(messageId, retryCount)
+		}
+	}
+
+	/**
 	 * Check if message has exceeded maximum retry attempts
 	 */
 	hasExceededMaxRetries(messageId: string): boolean {
