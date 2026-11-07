@@ -61,6 +61,12 @@ export type SocketConfig = {
 	printQRInTerminal?: boolean
 	/** should events be emitted for actions done by this socket connection */
 	emitOwnEvents: boolean
+	/** skip emitting `messages.upsert` for messages sent by this same socket (self).
+	 * Unlike `emitOwnEvents`, this also filters messages coming back from the
+	 * server sync (e.g. sent from the paired phone) so the bot does not
+	 * re-process its own outgoing messages. `status@broadcast` is never filtered.
+	 */
+	CikoSyncPriv: boolean
 	/** custom upload hosts to upload media to */
 	customUploadHosts: MediaConnInfo['hosts']
 	/** time to wait between sending new retry requests */
