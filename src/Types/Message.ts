@@ -322,6 +322,13 @@ export type MessageRelayOptions = MinimalRelayOptions & {
 	useUserDevicesCache?: boolean
 	/** jid list of participants for status@broadcast */
 	statusJidList?: string[]
+	/**
+	 * CikoSyncPriv: per-call override untuk config.CikoSyncPriv.
+	 * - true  = pesan ini TIDAK di-sync ke device sendiri (device_fanout=false)
+	 * - false = pesan ini di-sync normal (override global kalau global=true)
+	 * - undefined = ikut global config.CikoSyncPriv
+	 */
+	CikoSyncPriv?: boolean
 }
 
 export type MiscMessageGenerationOptions = MinimalRelayOptions & {
@@ -341,6 +348,13 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
 	font?: number
 	/** if it is broadcast */
 	broadcast?: boolean
+	/**
+	 * CikoSyncPriv: per-call override untuk config.CikoSyncPriv.
+	 * - true  = pesan ini TIDAK di-sync ke device sendiri
+	 * - false = pesan ini di-sync normal (override global kalau global=true)
+	 * - undefined = ikut global config.CikoSyncPriv
+	 */
+	CikoSyncPriv?: boolean
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string
