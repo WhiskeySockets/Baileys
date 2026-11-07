@@ -81,6 +81,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		enableRecentMessageCache,
 		maxMsgRetryCount
 	} = config
+
+	// ───────────── CikoSyncPriv flag ─────────────
+	// Jika `true`, pesan yang di-emit oleh socket ini sendiri (via sendMessage
+	// → emitOwnEvents) TIDAK akan memicu `messages.upsert`. Filter ini
+	// melengkapi filter di messages-recv.ts (yang menangani pesan masuk).
+	const __CikoSyncPriv = (config as any)?.CikoSyncPriv === true
+	// ───────────── end CikoSyncPriv flag ─────────────
+
 	const sock = makeNewsletterSocket(config)
 	const {
 		ev,
@@ -1408,6 +1416,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
+						// ───── CikoSyncPriv: skip self-message upsert kalau aktif ─────
+						if (__CikoSyncPriv && jid !== 'status@broadcast') {
+							logger.debug(
+								{ jid, msgId: fullMsg.key.id },
+								'CikoSyncPriv: skipping self message upsert (sendMessage)'
+							)
+							return
+						}
+						// ───── end CikoSyncPriv ─────
 						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
 					})
 				}
@@ -1416,4 +1433,4 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 	}
-}
+																		 }
