@@ -1,5 +1,5 @@
 {
-  "name": "baileys",
+  "name": "@cikobug/baileys",
   "type": "module",
   "version": "7.0.0-rc14",
   "description": "A WebSockets library for interacting with WhatsApp Web",

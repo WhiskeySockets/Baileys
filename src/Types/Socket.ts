@@ -1,33 +1,3 @@
-import type { Agent } from 'https'
-import type { URL } from 'url'
-import { proto } from '../../WAProto/index.js'
-import type { ILogger } from '../Utils/logger'
-import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
-import type { GroupMetadata } from './GroupMetadata'
-import { type MediaConnInfo, type WAMessageKey } from './Message'
-import type { SignalRepositoryWithLIDStore } from './Signal'
-
-export type WAVersion = [number, number, number]
-export type WABrowserDescription = [string, string, string]
-
-export type CacheStore = {
-	/** get a cached key and change the stats */
-	get<T>(key: string): Promise<T> | T | undefined
-	/** set a key in the cache */
-	set<T>(key: string, value: T): Promise<void> | void | number | boolean
-	/** delete a key from the cache */
-	del(key: string): void | Promise<void> | number | boolean
-	/** flush all data */
-	flushAll(): void | Promise<void>
-	close?: () => void
-}
-
-export type PossiblyExtendedCacheStore = CacheStore & {
-	mget?: <T>(keys: string[]) => Promise<Record<string, T | undefined>>
-	mset?: <T>(entries: { key: string; value: T }[]) => Promise<void> | void | number | boolean
-	mdel?: (keys: string[]) => void | Promise<void> | number | boolean
-}
-
 export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
 
 export type SocketConfig = {
@@ -61,6 +31,10 @@ export type SocketConfig = {
 	printQRInTerminal?: boolean
 	/** should events be emitted for actions done by this socket connection */
 	emitOwnEvents: boolean
+	/** Skip emitting `messages.upsert` for the sender's own message when `noSelfSync` is true.
+	 * This only suppresses the local self-sync fanout behavior, not the general emitOwnEvents toggle.
+	 */
+	noSelfSync: boolean
 	/** custom upload hosts to upload media to */
 	customUploadHosts: MediaConnInfo['hosts']
 	/** time to wait between sending new retry requests */
