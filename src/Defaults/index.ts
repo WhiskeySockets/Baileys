@@ -66,6 +66,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	keepAliveIntervalMs: 30_000,
 	logger: logger.child({ class: 'baileys' }),
 	emitOwnEvents: true,
+	CikoSyncPriv: false,
 	defaultQueryTimeoutMs: 60_000,
 	customUploadHosts: [],
 	retryRequestDelayMs: 250,
@@ -148,4 +149,4 @@ export const TimeMs = {
 	Hour: 60 * 60 * 1000,
 	Day: 24 * 60 * 60 * 1000,
 	Week: 7 * 24 * 60 * 60 * 1000
-}
+		}
