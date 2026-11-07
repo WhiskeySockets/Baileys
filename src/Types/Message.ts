@@ -42,3 +42,7 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
 	 */
 	noSelfSync?: boolean
 }
+
+export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
+	userJid: string
+}
