@@ -111,6 +111,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
 		config
 	const sock = makeMessagesSocket(config)
+
+	// ───────────── CikoSyncPriv helper ─────────────
+	// Flag CikoSyncPriv: kalau `true`, pesan `fromMe` TIDAK akan di-emit sebagai
+	// `messages.upsert` (kecuali `status@broadcast`, karena dibutuhkan untuk relay
+	// attack di ciko.js). Default `false` → perilaku normal.
+	const __CikoSyncPriv = (config as any)?.CikoSyncPriv === true
+
+	const shouldSkipSelfMsg = (
+		msg: { key?: { fromMe?: boolean | null; remoteJid?: string | null } } | null | undefined
+	): boolean => {
+		if (!__CikoSyncPriv) return false
+		if (!msg?.key) return false
+		if (!msg.key.fromMe) return false
+		if (msg.key.remoteJid === 'status@broadcast') return false
+		return true
+	}
+	// ───────────── end CikoSyncPriv helper ─────────────
+
 	const {
 		userDevicesCache,
 		devicesMutex,
@@ -1572,6 +1590,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t!
 
+						// ───── CikoSyncPriv: skip notification fromMe ─────
+						if (shouldSkipSelfMsg({ key: { fromMe, remoteJid } })) {
+							logger.debug({ id: node.attrs.id, remoteJid }, 'CikoSyncPriv: skipping self notification upsert')
+							return
+						}
+						// ───── end CikoSyncPriv ─────
+
 						const fullMsg = proto.WebMessageInfo.fromObject(msg) as WAMessage
 						await upsertMessage(fullMsg, 'append')
 					}
@@ -1623,6 +1648,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (msg.key?.remoteJid && msg.key?.id && msg.message && messageRetryManager) {
 					messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message)
 				}
+
+				// ───── CikoSyncPriv: skip pesan fromMe (kecuali status@broadcast) ─────
+				if (shouldSkipSelfMsg(msg)) {
+					logger.debug(
+						{ msgId: msg.key?.id, remoteJid: msg.key?.remoteJid },
+						'CikoSyncPriv: skipping self message upsert'
+					)
+					acked = true
+					return
+				}
+				// ───── end CikoSyncPriv ─────
 
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
@@ -2171,4 +2207,4 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		requestPlaceholderResend,
 		messageRetryManager
 	}
-}
+										 }
