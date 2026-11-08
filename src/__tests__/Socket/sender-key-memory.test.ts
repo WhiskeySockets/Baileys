@@ -208,17 +208,23 @@ describe('sender-key-memory', () => {
 		expect(harness.senderKeyMemory()).toEqual({ [BOB]: true, [successfulJid]: true })
 
 		harness.failedRecipients.clear()
+		await harness.relay()
+
+		expect(harness.sentRecipients(1)).toEqual([failedJid])
+		expect(harness.encryptMessage.mock.calls[harness.encryptMessage.mock.calls.length - 1]?.[0]?.jid).toBe(failedJid)
+		expect(harness.senderKeyMemory()).toEqual({ [BOB]: true, [successfulJid]: true, [failedJid]: true })
+
 		await harness.relay({ participant: { jid: BOB, count: 1 } })
 
-		expect(harness.set).toHaveBeenCalledTimes(1)
-		expect(harness.encryptGroupMessage).toHaveBeenCalledTimes(1)
-		expect(harness.sentNode(1).attrs.participant).toBe(BOB)
+		expect(harness.set).toHaveBeenCalledTimes(2)
+		expect(harness.encryptGroupMessage).toHaveBeenCalledTimes(2)
+		expect(harness.sentNode(2).attrs.participant).toBe(BOB)
 		const retry = harness.encryptMessage.mock.calls[harness.encryptMessage.mock.calls.length - 1]?.[0]
 		if (!retry) {
 			throw new Error('Expected retry encryption')
 		}
 
 		expect(proto.Message.decode(unpadRandomMax16(retry.data)).senderKeyDistributionMessage?.groupId).toBe(GROUP_JID)
-		expect(harness.senderKeyMemory()).toEqual({ [BOB]: true, [successfulJid]: true })
+		expect(harness.senderKeyMemory()).toEqual({ [BOB]: true, [successfulJid]: true, [failedJid]: true })
 	})
 })
