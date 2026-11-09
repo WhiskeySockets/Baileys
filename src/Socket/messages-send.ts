@@ -37,6 +37,7 @@ import {
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
+import { buildReceiptAddressing } from '../Utils/receipt-addressing'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	buildMergedTcTokenIndexWrite,
@@ -184,15 +185,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid))) {
-			node.attrs.recipient = jid
-			node.attrs.to = participant!
-		} else {
-			node.attrs.to = jid
-			if (participant) {
-				node.attrs.participant = participant
-			}
-		}
+		Object.assign(node.attrs, buildReceiptAddressing(jid, participant, type))
 
 		if (type) {
 			node.attrs.type = type
