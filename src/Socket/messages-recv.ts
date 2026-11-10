@@ -156,6 +156,41 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
+	/**
+	 * Album children (imageMessage / videoMessage) indexed by the parent albumMessage's id.
+	 * A quoted albumMessage only carries the expected counts, so we keep the real
+	 * media messages here and re-attach them when someone quotes the album.
+	 */
+	const albumCache = new NodeCache<WAMessage[]>({ stdTTL: 24 * 60 * 60, useClones: false })
+
+	const getAlbumMessages = (albumId: string): WAMessage[] => albumCache.get(albumId) || []
+
+	const trackAlbumChild = (msg: WAMessage) => {
+		const assoc = msg.message?.messageContextInfo?.messageAssociation
+		const parentId = assoc?.parentMessageKey?.id
+		if (assoc?.associationType !== proto.MessageAssociation.AssociationType.MEDIA_ALBUM || !parentId) {
+			return
+		}
+
+		const list = albumCache.get(parentId) || []
+		if (!list.some(m => m.key.id === msg.key.id)) {
+			list.push(msg)
+		}
+
+		albumCache.set(parentId, list)
+	}
+
+	/** If this message quotes an album, attach the cached children to the quoted albumMessage */
+	const hydrateQuotedAlbum = (msg: WAMessage) => {
+		const content =
+			msg.message && Object.values(msg.message).find(v => v && typeof v === 'object' && 'contextInfo' in v)
+		const ctx = (content as { contextInfo?: proto.IContextInfo } | undefined)?.contextInfo
+		const album = ctx?.quotedMessage?.albumMessage
+		if (album && ctx?.stanzaId) {
+			;(album as any).messages = getAlbumMessages(ctx.stanzaId)
+		}
+	}
+
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
 
@@ -1772,6 +1807,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
 
+				trackAlbumChild(msg)
+				hydrateQuotedAlbum(msg)
+
 				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 			})
 		} catch (error) {
@@ -2093,6 +2131,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		identityAssertDebounce.close()
+		albumCache.close()
 		sendActiveReceipts = false
 	})
 
@@ -2169,6 +2208,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		rejectCall,
 		fetchMessageHistory,
 		requestPlaceholderResend,
-		messageRetryManager
+		messageRetryManager,
+		getAlbumMessages
 	}
 }
