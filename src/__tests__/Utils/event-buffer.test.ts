@@ -1,5 +1,7 @@
+import { proto } from '../../../WAProto/index.js'
 import type { BaileysEventMap } from '../../Types'
 import { makeEventBuffer } from '../../Utils/event-buffer'
+import { toNumber } from '../../Utils/generics'
 import type { ILogger } from '../../Utils/logger'
 
 const makeTestLogger = (): ILogger =>
@@ -149,6 +151,48 @@ describe('event-buffer', () => {
 
 			expect(receivedEvents).toHaveLength(1)
 			expect(receivedEvents[0]!.pastParticipants).toEqual(batch1)
+		})
+	})
+
+	describe('messages.upsert absorbing a prior messages.update', () => {
+		it('preserves the upserted message send timestamp when a buffered status update is absorbed', async () => {
+			const logger = makeTestLogger()
+			const ev = makeEventBuffer(logger)
+
+			const key = { remoteJid: '1234567890123@s.whatsapp.net', id: 'ABCD1234', fromMe: true }
+			const sendTime = 1700000000
+			const receiptTime = 1700000095
+
+			const received: BaileysEventMap['messages.upsert'][] = []
+			ev.on('messages.upsert', data => received.push(data))
+
+			ev.buffer()
+
+			// A read/delivery receipt is processed first and emits a status update whose
+			// `update` carries the receipt timestamp (see handleReceipt in messages-recv).
+			ev.emit('messages.update', [
+				{
+					key,
+					update: { status: proto.WebMessageInfo.Status.READ, messageTimestamp: receiptTime }
+				}
+			])
+
+			// The message itself is then upserted carrying the authoritative send time.
+			ev.emit('messages.upsert', {
+				messages: [{ key, messageTimestamp: sendTime, message: { conversation: 'hi' } }],
+				type: 'notify'
+			})
+
+			ev.flush()
+
+			await new Promise(resolve => setTimeout(resolve, 100))
+
+			expect(received).toHaveLength(1)
+			const msg = received[0]!.messages[0]!
+			// send time must be preserved, not overwritten by the receipt timestamp
+			expect(toNumber(msg.messageTimestamp)).toBe(sendTime)
+			// the status from the absorbed update must still be applied
+			expect(msg.status).toBe(proto.WebMessageInfo.Status.READ)
 		})
 	})
 })

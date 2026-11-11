@@ -503,7 +503,14 @@ function append<E extends BufferableEvent>(
 
 				if (data.messageUpdates[key]) {
 					logger.debug('absorbed prior message update in message upsert')
+					// Preserve the upsert's own messageTimestamp (the authoritative send time).
+					// A buffered status update (e.g. from a read/delivery receipt) carries the
+					// receipt's timestamp in its `update`, which must not clobber the send time.
+					const ownTimestamp = message.messageTimestamp
 					Object.assign(message, data.messageUpdates[key].update)
+					if (ownTimestamp !== undefined && ownTimestamp !== null) {
+						message.messageTimestamp = ownTimestamp
+					}
 					delete data.messageUpdates[key]
 				}
 
