@@ -66,7 +66,7 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 	}
 
 	var r = t[t.length - 1]!
-	if (r > t.length) {
+	if (r < 1 || r > t.length) {
 		throw new Error(`unpad given ${t.length} bytes, but pad is ${r}`)
 	}
 

@@ -1,4 +1,4 @@
-import { BufferJSON } from '../../Utils/generics'
+import { BufferJSON, unpadRandomMax16, writeRandomPadMax16 } from '../../Utils/generics'
 
 describe('BufferJSON', () => {
 	const originalObject = {
@@ -66,5 +66,31 @@ describe('BufferJSON', () => {
 	it('should correctly handle an empty object', () => {
 		const revived = JSON.parse('{}', BufferJSON.reviver)
 		expect(revived).toEqual({})
+	})
+})
+
+describe('unpadRandomMax16', () => {
+	it('should round-trip data padded by writeRandomPadMax16', () => {
+		const data = new Uint8Array([1, 2, 3, 4, 5])
+		const padded = writeRandomPadMax16(data)
+		// writeRandomPadMax16 always appends 1..16 pad bytes, so padding must grow the buffer
+		expect(padded.length).toBeGreaterThan(data.length)
+		expect(unpadRandomMax16(padded)).toEqual(data)
+	})
+
+	it('should throw on empty input', () => {
+		expect(() => unpadRandomMax16(new Uint8Array([]))).toThrow('unpadPkcs7 given empty bytes')
+	})
+
+	it('should reject a trailing pad byte of 0 instead of returning the full buffer', () => {
+		// A pad length of 0 is invalid PKCS7 (writeRandomPadMax16 only ever emits 1..16).
+		// Previously this silently returned the whole buffer, masking corrupted input.
+		const corrupted = new Uint8Array([0x41, 0x42, 0x43, 0x00])
+		expect(() => unpadRandomMax16(corrupted)).toThrow('but pad is 0')
+	})
+
+	it('should reject a pad byte larger than the buffer', () => {
+		const corrupted = new Uint8Array([0x41, 0x05])
+		expect(() => unpadRandomMax16(corrupted)).toThrow('but pad is 5')
 	})
 })
