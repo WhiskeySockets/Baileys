@@ -27,7 +27,7 @@ import type {
 	WATextMessage
 } from '../Types'
 import { WAMessageStatus, WAProto } from '../Types'
-import { isJidGroup, isJidNewsletter, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
+import { isJidGroup, isJidNewsletter, isJidStatusBroadcast, jidDecode, jidNormalizedUser } from '../WABinary'
 import { aesEncryptGCM, hmacSign, sha256 } from './crypto'
 import { generateMessageIDV2, getKeyAuthor, unixTimestampSeconds } from './generics'
 import type { ILogger } from './logger'
@@ -601,6 +601,19 @@ export const generateWAMessageContent = async (
 			if (!value || jidNormalizedUser(value) !== value) {
 				throw new Boom(`pollVote.${field} must be a JID without device, got ${value}`, { statusCode: 400 })
 			}
+
+			const server = jidDecode(value)?.server
+			if (server !== 'lid' && server !== 's.whatsapp.net') {
+				throw new Boom(`pollVote.${field} must be a LID or phone-number JID, got ${value}`, { statusCode: 400 })
+			}
+		}
+
+		// both JIDs come from the chat's addressing mode; a mixed pair encrypts a vote the creator cannot decrypt
+		if (jidDecode(pollCreatorJid)?.server !== jidDecode(voterJid)?.server) {
+			throw new Boom(
+				`pollVote.pollCreatorJid and pollVote.voterJid must use the same addressing mode, got ${pollCreatorJid} and ${voterJid}`,
+				{ statusCode: 400 }
+			)
 		}
 
 		m.pollUpdateMessage = {

@@ -96,6 +96,40 @@ describe('generateWAMessageContent with pollVote', () => {
 		).rejects.toThrow(`pollVote.${field} must be a JID without device`)
 	})
 
+	it.each([
+		['pollCreatorJid', { pollCreatorJid: '123456@g.us', voterJid: '111@lid' }],
+		['voterJid', { pollCreatorJid: '222@lid', voterJid: '111@newsletter' }]
+	])('rejects a %s that is not a LID or phone number', async (field, jids) => {
+		await expect(
+			generateWAMessageContent(
+				{ pollVote: { pollCreationMessageKey, pollEncKey, selectedOptions: ['Yes'], ...jids } },
+				{ upload }
+			)
+		).rejects.toThrow(`pollVote.${field} must be a LID or phone-number JID`)
+	})
+
+	it.each([
+		{ pollCreatorJid: '222@lid', voterJid: '41700000000@s.whatsapp.net' },
+		{ pollCreatorJid: '41700000001@s.whatsapp.net', voterJid: '111@lid' }
+	])('rejects mixed addressing modes ($pollCreatorJid, $voterJid)', async jids => {
+		await expect(
+			generateWAMessageContent(
+				{ pollVote: { pollCreationMessageKey, pollEncKey, selectedOptions: ['Yes'], ...jids } },
+				{ upload }
+			)
+		).rejects.toThrow('must use the same addressing mode')
+	})
+
+	it('builds a vote with both JIDs as phone numbers', async () => {
+		const pnJids = { pollCreatorJid: '41700000001@s.whatsapp.net', voterJid: '41700000000@s.whatsapp.net' }
+		const message = await generateWAMessageContent(
+			{ pollVote: { pollCreationMessageKey, pollEncKey, selectedOptions: ['No'], ...pnJids } },
+			{ upload }
+		)
+		const decrypted = decryptPollVote(message.pollUpdateMessage!.vote!, { ...ctx, ...pnJids })
+		expect(decrypted.selectedOptions.map(o => Buffer.from(o))).toEqual([sha256(Buffer.from('No'))])
+	})
+
 	it('requires the poll message id', async () => {
 		await expect(
 			generateWAMessageContent(
