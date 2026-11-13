@@ -1694,6 +1694,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node)
 						// Don't return — fall through to upsertMessage so the stub is emitted
 					} else {
+						// A retry receipt only makes sense for a message from SOMEONE ELSE.
+						// An undecryptable `fromMe` message is the echo of our own account
+						// synced from another of our devices (sender fanout / deviceSentMessage),
+						// encrypted under the ORIGINATING device's session — not under a session
+						// this client holds. Asking for a resend is asking ourselves; the server
+						// answers with `<stream:error><ack/>` and tears the stream down (surfaces
+						// as a 500 "bad session" close, which it is not). Measured 26/08/2026 on a
+						// 6.7.x production client: a burst of 28 `SessionError: No matching
+						// sessions`, all fromMe, and the `<ack>` id inside the stream:error was one
+						// of them. Ack and move on: a retry for our own message cannot bring the
+						// content back, and keeping the connection alive is what matters.
+						if (msg.key.fromMe) {
+							logger.debug({ key: msg.key }, 'undecryptable fromMe message: acking without a retry receipt')
+							acked = true
+							return sendMessageAck(node)
+						}
+
 						// Skip retry for expired status messages (>24h old)
 						if (isJidStatusBroadcast(msg.key.remoteJid!)) {
 							const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
