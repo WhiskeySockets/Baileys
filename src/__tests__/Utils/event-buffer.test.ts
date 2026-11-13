@@ -165,6 +165,8 @@ describe('event-buffer', () => {
 
 			const received: BaileysEventMap['messages.upsert'][] = []
 			ev.on('messages.upsert', data => received.push(data))
+			const receivedUpdates: BaileysEventMap['messages.update'][] = []
+			ev.on('messages.update', data => receivedUpdates.push(data))
 
 			ev.buffer()
 
@@ -193,6 +195,51 @@ describe('event-buffer', () => {
 			expect(toNumber(msg.messageTimestamp)).toBe(sendTime)
 			// the status from the absorbed update must still be applied
 			expect(msg.status).toBe(proto.WebMessageInfo.Status.READ)
+			// the absorbed update must not be re-emitted separately
+			expect(receivedUpdates).toHaveLength(0)
+		})
+
+		it('preserves a buffered edit timestamp when the upsert is absorbed', async () => {
+			const logger = makeTestLogger()
+			const ev = makeEventBuffer(logger)
+
+			const key = { remoteJid: '1234567890123@s.whatsapp.net', id: 'ABCD1234', fromMe: true }
+			const sendTime = 1700000000
+			const editTime = 1700000200
+
+			const received: BaileysEventMap['messages.upsert'][] = []
+			ev.on('messages.upsert', data => received.push(data))
+			const receivedUpdates: BaileysEventMap['messages.update'][] = []
+			ev.on('messages.update', data => receivedUpdates.push(data))
+
+			ev.buffer()
+
+			// An edit arrives before its target upsert. Unlike a receipt, it carries an
+			// edited `message` plus its own (edit) messageTimestamp, which must survive.
+			ev.emit('messages.update', [
+				{
+					key,
+					update: {
+						message: { editedMessage: { message: { conversation: 'edited' } } },
+						messageTimestamp: editTime
+					}
+				}
+			])
+
+			ev.emit('messages.upsert', {
+				messages: [{ key, messageTimestamp: sendTime, message: { conversation: 'hi' } }],
+				type: 'notify'
+			})
+
+			ev.flush()
+
+			await new Promise(resolve => setTimeout(resolve, 100))
+
+			expect(received).toHaveLength(1)
+			const msg = received[0]!.messages[0]!
+			// the edit timestamp must win over the upsert send time
+			expect(toNumber(msg.messageTimestamp)).toBe(editTime)
+			expect(receivedUpdates).toHaveLength(0)
 		})
 	})
 })
