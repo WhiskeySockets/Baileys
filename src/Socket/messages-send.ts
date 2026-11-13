@@ -660,17 +660,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const extraAttrs: BinaryNodeAttributes = {}
 
-		if (participant) {
-			if (!isGroup && !isStatus) {
-				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
-			}
-
-			const { user, device } = jidDecode(participant.jid)!
-			devices.push({
-				user,
-				device,
-				jid: participant.jid
-			})
+		// a retry resend is encrypted once, in the dedicated retry block below;
+		// adding the participant to the regular fan-out would encrypt it twice (479)
+		if (participant && !isGroup && !isStatus) {
+			additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
 		}
 
 		await authState.keys.transaction(async () => {
@@ -959,6 +952,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						})
 					: encodeWAMessage(messageToSend)
+
+				await assertSessions([participant!.jid])
 
 				const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
 					data: encodedMessageToSend,
