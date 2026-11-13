@@ -782,7 +782,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						//todo: revamp all this logic
 						// the goal is to follow with what I said above for each group, and instead of a true false map of ids, we can set an array full of those the app has already sent pkmsgs
 						senderKeyRecipients.push(deviceJid)
-						senderKeyMap[deviceJid] = true
 					}
 				}
 
@@ -803,6 +802,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 					participants.push(...result.nodes)
+					// A prepared SKDM is tracked per device; failed encryptions must be retried on the next send.
+					for (const { attrs } of result.nodes) {
+						if (attrs.jid) {
+							senderKeyMap[attrs.jid] = true
+						}
+					}
 				}
 
 				binaryNodeContent.push({
