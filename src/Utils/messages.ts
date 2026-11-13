@@ -27,8 +27,8 @@ import type {
 	WATextMessage
 } from '../Types'
 import { WAMessageStatus, WAProto } from '../Types'
-import { isJidGroup, isJidNewsletter, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
-import { sha256 } from './crypto'
+import { isJidGroup, isJidNewsletter, isJidStatusBroadcast, jidDecode, jidNormalizedUser } from '../WABinary'
+import { aesEncryptGCM, hmacSign, sha256 } from './crypto'
 import { generateMessageIDV2, getKeyAuthor, unixTimestampSeconds } from './generics'
 import type { ILogger } from './logger'
 import {
@@ -40,6 +40,7 @@ import {
 	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
+import type { PollContext } from './process-message'
 import { shouldIncludeReportingToken } from './reporting-utils'
 
 type ExtractByKey<T, K extends PropertyKey> = T extends Record<K, any> ? T : never
@@ -586,6 +587,45 @@ export const generateWAMessageContent = async (
 				m.pollCreationMessage = pollCreationMessage
 			}
 		}
+	} else if (hasNonNullishProperty(message, 'pollVote')) {
+		const { pollCreationMessageKey, pollEncKey, selectedOptions, pollCreatorJid, voterJid } = message.pollVote
+		if (!pollCreationMessageKey.id) {
+			throw new Boom('pollVote.pollCreationMessageKey must have an id', { statusCode: 400 })
+		}
+
+		// the creator derives the key from these exact strings, so a device suffix makes the vote undecryptable
+		for (const [field, value] of [
+			['pollCreatorJid', pollCreatorJid],
+			['voterJid', voterJid]
+		] as const) {
+			if (!value || jidNormalizedUser(value) !== value) {
+				throw new Boom(`pollVote.${field} must be a JID without device, got ${value}`, { statusCode: 400 })
+			}
+
+			const server = jidDecode(value)?.server
+			if (server !== 'lid' && server !== 's.whatsapp.net') {
+				throw new Boom(`pollVote.${field} must be a LID or phone-number JID, got ${value}`, { statusCode: 400 })
+			}
+		}
+
+		// both JIDs come from the chat's addressing mode; a mixed pair encrypts a vote the creator cannot decrypt
+		if (jidDecode(pollCreatorJid)?.server !== jidDecode(voterJid)?.server) {
+			throw new Boom(
+				`pollVote.pollCreatorJid and pollVote.voterJid must use the same addressing mode, got ${pollCreatorJid} and ${voterJid}`,
+				{ statusCode: 400 }
+			)
+		}
+
+		m.pollUpdateMessage = {
+			pollCreationMessageKey,
+			vote: encryptPollVote(
+				{ selectedOptions: selectedOptions.map(option => sha256(Buffer.from(option))) },
+				{ pollCreatorJid, pollMsgId: pollCreationMessageKey.id, pollEncKey, voterJid }
+			),
+			// a phone's votes carry an empty metadata
+			metadata: {},
+			senderTimestampMs: Date.now()
+		}
 	} else if (hasNonNullishProperty(message, 'album')) {
 		m.albumMessage = {
 			expectedImageCount: message.album.expectedImageCount,
@@ -925,6 +965,30 @@ export const updateMessageWithEventResponse = (
 type VoteAggregation = {
 	name: string
 	voters: string[]
+}
+
+/**
+ * Encrypt a poll vote, the inverse of `decryptPollVote`
+ * @param vote the vote, with the SHA256 of each chosen option name
+ * @param ctx the poll and the JIDs to encrypt with; the poll's creator decrypts with the same JIDs
+ */
+export function encryptPollVote(
+	vote: proto.Message.IPollVoteMessage,
+	{ pollCreatorJid, pollMsgId, pollEncKey, voterJid }: PollContext
+): proto.Message.IPollEncValue {
+	const sign = Buffer.concat([
+		Buffer.from(pollMsgId),
+		Buffer.from(pollCreatorJid),
+		Buffer.from(voterJid),
+		Buffer.from('Poll Vote'),
+		new Uint8Array([1])
+	])
+	const key0 = hmacSign(pollEncKey, new Uint8Array(32), 'sha256')
+	const encKey = hmacSign(sign, key0, 'sha256')
+	const aad = Buffer.from(`${pollMsgId}\u0000${voterJid}`)
+	const encIv = randomBytes(12)
+	const encPayload = aesEncryptGCM(proto.Message.PollVoteMessage.encode(vote).finish(), encKey, encIv, aad)
+	return { encPayload, encIv }
 }
 
 /**

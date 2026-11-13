@@ -208,7 +208,7 @@ export const getChatId = ({ remoteJid, participant, fromMe }: WAMessageKey): str
 	return remoteJid
 }
 
-type PollContext = {
+export type PollContext = {
 	/** normalised jid of the person that created the poll */
 	pollCreatorJid: string
 	/** ID of the poll creation message */
