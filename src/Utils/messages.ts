@@ -1042,6 +1042,55 @@ type DownloadMediaMessageContext = {
 const REUPLOAD_REQUIRED_STATUS = [410, 404]
 
 /**
+ * When a media link's signature expires, in ms: its `oe` query parameter, in hex unix seconds.
+ * Undefined unless the query carries exactly one `oe` and it is plain hex.
+ */
+const mediaLinkExpiry = (link: string) => {
+	let values: string[]
+	try {
+		// a directPath has no host; the base only makes it parseable
+		values = new URL(link, 'https://mmg.whatsapp.net').searchParams.getAll('oe')
+	} catch {
+		return undefined
+	}
+
+	const [oe] = values
+	if (values.length !== 1 || !oe || !/^[0-9a-f]+$/i.test(oe)) {
+		return undefined
+	}
+
+	const expiry = parseInt(oe, 16) * 1000
+	return Number.isSafeInteger(expiry) ? expiry : undefined
+}
+
+/**
+ * Whether a 403 is worth a reupload: the link that failed carries an `oe` that has passed.
+ * A conservative heuristic, not a documented contract: in a sample of 84 history-sync
+ * downloads the media CDN answered 403 for all 34 links whose `oe` had passed and for none
+ * of the 50 whose `oe` had not. It reads the local clock, so a clock that is off moves the line.
+ * The link is the url getHttpStream reports on its error, or else the one
+ * downloadContentFromMessage requests: the directPath when there is one, else the url.
+ */
+const isExpiredLinkError = (error: unknown, message: WAMessage) => {
+	let link: unknown = (error as { data?: { url?: unknown } } | undefined)?.data?.url
+	if (typeof link !== 'string' && !(link instanceof URL)) {
+		const content = extractMessageContent(message.message)
+		const contentType = content ? getContentType(content) : undefined
+		const media = (contentType && content?.[contentType]) as
+			| { url?: string | null; directPath?: string | null }
+			| undefined
+		link = media?.directPath || media?.url
+	}
+
+	if (!link) {
+		return false
+	}
+
+	const expiry = mediaLinkExpiry(link.toString())
+	return expiry !== undefined && expiry <= Date.now()
+}
+
+/**
  * Downloads the given message. Throws an error if it's not a media message
  */
 export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
@@ -1051,11 +1100,12 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 	ctx?: DownloadMediaMessageContext
 ) => {
 	const result = await downloadMsg().catch(async error => {
-		if (
-			ctx &&
-			typeof error?.status === 'number' && // treat errors with status as HTTP failures requiring reupload
-			REUPLOAD_REQUIRED_STATUS.includes(error.status as number)
-		) {
+		// the media download throws a Boom, which carries the HTTP status on output.statusCode, not on status
+		const status = error?.output?.statusCode ?? error?.status
+		const expired =
+			typeof status === 'number' &&
+			(REUPLOAD_REQUIRED_STATUS.includes(status) || (status === 403 && isExpiredLinkError(error, message)))
+		if (ctx && expired) {
 			ctx.logger.info({ key: message.key }, 'sending reupload media request...')
 			// request reupload
 			message = await ctx.reuploadRequest(message)

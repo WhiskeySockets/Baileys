@@ -1,12 +1,23 @@
+import { hkdfSync, randomBytes } from 'crypto'
 import * as fs from 'fs'
 import * as http from 'http'
 import { Agent } from 'https'
 import * as os from 'os'
 import * as path from 'path'
 import { Readable } from 'stream'
+import { proto } from '../../../WAProto/index.js'
 import type { MediaConnInfo, SocketConfig } from '../../Types'
+import { aesDecryptGCM, aesEncryptGCM } from '../../Utils/crypto'
 import type { ILogger } from '../../Utils/logger'
-import { encryptedStream, getWAUploadToServer, type UploadParams, uploadWithNodeHttp } from '../../Utils/messages-media'
+import {
+	decryptMediaRetryData,
+	encryptedStream,
+	encryptMediaRetryRequest,
+	getWAUploadToServer,
+	type UploadParams,
+	uploadWithNodeHttp
+} from '../../Utils/messages-media'
+import { type BinaryNode, getBinaryNodeChild } from '../../WABinary'
 
 const createTempFile = async (content: string): Promise<string> => {
 	const filePath = path.join(os.tmpdir(), `test-upload-${Date.now()}.txt`)
@@ -484,5 +495,59 @@ describe('encryptedStream', () => {
 			expect(result.mediaKey).toBeDefined()
 			await cleanupFiles([result.encFilePath, result.originalFilePath])
 		}
+	})
+})
+
+describe('media retry key', () => {
+	const mediaKey = randomBytes(32)
+	const msgId = '3EB0C0FFEE0123456789'
+	// what the phone derives: HKDF-SHA256 over the raw media key bytes
+	const retryKey = Buffer.from(hkdfSync('sha256', mediaKey, Buffer.alloc(0), 'WhatsApp Media Retry Notification', 32))
+	// a message persisted as JSON (protobuf toJSON) carries its bytes fields as base64 strings
+	const storedMediaKey: string = proto.Message.ImageMessage.create({ mediaKey }).toJSON().mediaKey
+
+	const phoneAnswer = () => {
+		const iv = randomBytes(12)
+		const plaintext = proto.MediaRetryNotification.encode({
+			stanzaId: msgId,
+			directPath: '/v/t62.7118-24/fresh-path',
+			result: proto.MediaRetryNotification.ResultType.SUCCESS
+		}).finish()
+		return { ciphertext: aesEncryptGCM(plaintext, retryKey, iv, Buffer.from(msgId)), iv }
+	}
+
+	it('decrypts the phone answer with a binary media key', () => {
+		const result = decryptMediaRetryData(phoneAnswer(), mediaKey, msgId)
+
+		expect(result.directPath).toBe('/v/t62.7118-24/fresh-path')
+		expect(result.result).toBe(proto.MediaRetryNotification.ResultType.SUCCESS)
+	})
+
+	it('decrypts the phone answer when the media key is a base64 string', () => {
+		expect(typeof storedMediaKey).toBe('string')
+
+		const result = decryptMediaRetryData(phoneAnswer(), storedMediaKey, msgId)
+
+		expect(result.directPath).toBe('/v/t62.7118-24/fresh-path')
+	})
+
+	it('accepts the data URI prefixed base64 form that getMediaKeys accepts', () => {
+		const result = decryptMediaRetryData(phoneAnswer(), `data:;base64,${storedMediaKey}`, msgId)
+
+		expect(result.directPath).toBe('/v/t62.7118-24/fresh-path')
+	})
+
+	it('encrypts the retry request with the same key when the media key is a base64 string', () => {
+		const key = { remoteJid: '1234567890@s.whatsapp.net', fromMe: false, id: msgId }
+
+		const node = encryptMediaRetryRequest(key, storedMediaKey, '1111111111:1@s.whatsapp.net')
+
+		const encrypt = getBinaryNodeChild(node, 'encrypt')!
+		const encP = getBinaryNodeChild(encrypt, 'enc_p')! as BinaryNode & { content: Uint8Array }
+		const encIv = getBinaryNodeChild(encrypt, 'enc_iv')! as BinaryNode & { content: Uint8Array }
+		const receipt = proto.ServerErrorReceipt.decode(
+			aesDecryptGCM(encP.content, retryKey, encIv.content, Buffer.from(msgId))
+		)
+		expect(receipt.stanzaId).toBe(msgId)
 	})
 })
