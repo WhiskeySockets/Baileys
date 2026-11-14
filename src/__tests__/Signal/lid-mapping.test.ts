@@ -46,9 +46,11 @@ describe('LIDMappingStore', () => {
 	})
 
 	describe('storeLIDPNMappings', () => {
+		// get() is generic, so the mock takes `never`; `satisfies` still checks each fixture's shape
+		type LidMappingRows = Record<string, SignalDataTypeMap['lid-mapping']>
+
 		it('returns a pair that was not stored before and writes it', async () => {
-			// @ts-ignore
-			mockKeys.get.mockResolvedValue({} as SignalDataTypeMap['lid-mapping'])
+			mockKeys.get.mockResolvedValue({} satisfies LidMappingRows as never)
 
 			const stored = await lidMappingStore.storeLIDPNMappings([{ lid: '111@lid', pn: '222@s.whatsapp.net' }])
 
@@ -57,8 +59,7 @@ describe('LIDMappingStore', () => {
 		})
 
 		it('returns nothing for a pair that is already stored', async () => {
-			// @ts-ignore
-			mockKeys.get.mockResolvedValue({ '222': '111' } as SignalDataTypeMap['lid-mapping'])
+			mockKeys.get.mockResolvedValue({ '222': '111' } satisfies LidMappingRows as never)
 
 			const stored = await lidMappingStore.storeLIDPNMappings([{ lid: '111@lid', pn: '222@s.whatsapp.net' }])
 
@@ -67,8 +68,7 @@ describe('LIDMappingStore', () => {
 		})
 
 		it('returns nothing on a repeat call answered from the cache', async () => {
-			// @ts-ignore
-			mockKeys.get.mockResolvedValue({} as SignalDataTypeMap['lid-mapping'])
+			mockKeys.get.mockResolvedValue({} satisfies LidMappingRows as never)
 			const pair = { lid: '111@lid', pn: '222@s.whatsapp.net' }
 
 			await lidMappingStore.storeLIDPNMappings([pair])
@@ -78,8 +78,7 @@ describe('LIDMappingStore', () => {
 		})
 
 		it('returns a pair whose LID changed', async () => {
-			// @ts-ignore
-			mockKeys.get.mockResolvedValue({ '222': '999' } as SignalDataTypeMap['lid-mapping'])
+			mockKeys.get.mockResolvedValue({ '222': '999' } satisfies LidMappingRows as never)
 
 			const stored = await lidMappingStore.storeLIDPNMappings([{ lid: '111@lid', pn: '222@s.whatsapp.net' }])
 
@@ -87,8 +86,7 @@ describe('LIDMappingStore', () => {
 		})
 
 		it('returns only the new pairs from a mixed batch', async () => {
-			// @ts-ignore
-			mockKeys.get.mockResolvedValue({ '222': '111' } as SignalDataTypeMap['lid-mapping'])
+			mockKeys.get.mockResolvedValue({ '222': '111' } satisfies LidMappingRows as never)
 
 			const stored = await lidMappingStore.storeLIDPNMappings([
 				{ lid: '111@lid', pn: '222@s.whatsapp.net' },
