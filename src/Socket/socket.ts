@@ -862,7 +862,16 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 	ws.on('error', mapWebSocketError(end))
-	ws.on('close', () => void end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
+	ws.on('close', (code?: number, reason?: Buffer | string) => {
+		// Surface the WebSocket close frame in the error itself: a 1000/1001 close
+		// is the server recycling the connection, 1006 is the TCP path dying
+		// without a frame, 1011/1012/1013 are server-side faults. Without this every
+		// close looks identical (428 "Connection Terminated") and operators cannot
+		// tell network drops from server-initiated recycling.
+		const reasonText = reason ? String(reason).trim() : ''
+		const detail = typeof code === 'number' ? ` (ws close ${code}${reasonText ? `: ${reasonText}` : ''})` : ''
+		void end(new Boom(`Connection Terminated${detail}`, { statusCode: DisconnectReason.connectionClosed }))
+	})
 	// the server terminated the connection
 	ws.on(
 		'CB:xmlstreamend',
