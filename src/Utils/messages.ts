@@ -818,6 +818,18 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 }
 
 /**
+ * Whether the outgoing content is view once media (image, video, round video or audio).
+ * WA Web tags these sends with a `<meta view_once="true"/>` stanza node.
+ * Looks through a disappearing message wrapper. View once wrappers around
+ * anything else (e.g. buttons wrapped so they render) don't count.
+ */
+export const isViewOnceMessage = (content: WAMessageContent | null | undefined) => {
+	const inner = content?.ephemeralMessage?.message ?? content
+	const wrapped = (inner?.viewOnceMessage || inner?.viewOnceMessageV2 || inner?.viewOnceMessageV2Extension)?.message
+	return !!(wrapped?.imageMessage || wrapped?.videoMessage || wrapped?.ptvMessage || wrapped?.audioMessage)
+}
+
+/**
  * Extract the true message content from a message
  * Eg. extracts the inner message from a disappearing message/view once message
  */
