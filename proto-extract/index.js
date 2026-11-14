@@ -294,7 +294,11 @@ async function findAppModules() {
                     }
                   }
                 } else if (m.object.property.name === 'FLAGS') {
-                  flags.push(m.property.name.toLowerCase());
+                  // proto3 has no `required`; the field keeps the modifier
+                  // it would get anyway (`optional`, or none inside a oneof).
+                  if (m.property.name !== 'REQUIRED') {
+                    flags.push(m.property.name.toLowerCase());
+                  }
                 }
               }
             });
