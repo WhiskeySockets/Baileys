@@ -337,16 +337,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Force-refresh sessions only for newly mapped LIDs to align identity addressing.
 				// The device cache is short-lived, so this runs on most sends: forcing every LID
 				// replaced the open session with each contact's primary device on every lookup.
-				try {
-					if (newLids.length) {
+				// Separate failure handling, so a failed forced refresh doesn't skip validating known LIDs.
+				if (newLids.length) {
+					try {
 						await assertSessions(newLids, true)
+					} catch (err) {
+						logger.warn({ err, count: newLids.length }, 'failed to assert sessions for newly mapped LIDs')
 					}
+				}
 
-					if (knownLids.length) {
+				if (knownLids.length) {
+					try {
 						await assertSessions(knownLids)
+					} catch (err) {
+						logger.warn({ err, count: knownLids.length }, 'failed to assert sessions for known LIDs')
 					}
-				} catch (e) {
-					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
 				}
 			}
 

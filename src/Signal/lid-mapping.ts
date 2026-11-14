@@ -90,25 +90,31 @@ export class LIDMappingStore {
 
 		if (Object.keys(pairMap).length === 0) return []
 
-		this.logger.trace({ pairMap }, `Storing ${Object.keys(pairMap).length} pn mappings`)
+		// Re-check under the lid-mapping lock: a concurrent call may have stored the same pair
+		// since the read above. Only pairs this call writes are reported as new.
+		const written = await this.keys.transaction(async () => {
+			const current = await this.keys.get('lid-mapping', Object.keys(pairMap))
+			const toWrite = Object.entries(pairMap).filter(([pnUser, lidUser]) => current[pnUser] !== lidUser)
+			if (toWrite.length === 0) return toWrite
 
-		const batchData: { [key: string]: string } = {}
-		for (const [pnUser, lidUser] of Object.entries(pairMap)) {
-			batchData[pnUser] = lidUser
-			batchData[`${lidUser}_reverse`] = pnUser
-		}
+			this.logger.trace({ count: toWrite.length }, 'Storing pn mappings')
+			const batchData: { [key: string]: string } = {}
+			for (const [pnUser, lidUser] of toWrite) {
+				batchData[pnUser] = lidUser
+				batchData[`${lidUser}_reverse`] = pnUser
+			}
 
-		await this.keys.transaction(async () => {
 			await this.keys.set({ 'lid-mapping': batchData })
+			return toWrite
 		}, 'lid-mapping')
 
 		// Update cache after successful DB write
-		for (const [pnUser, lidUser] of Object.entries(pairMap)) {
+		for (const [pnUser, lidUser] of written) {
 			this.mappingCache.set(`pn:${pnUser}`, lidUser)
 			this.mappingCache.set(`lid:${lidUser}`, pnUser)
 		}
 
-		return Object.entries(pairMap).map(([pnUser, lidUser]) => ({ pnUser, lidUser }))
+		return written.map(([pnUser, lidUser]) => ({ pnUser, lidUser }))
 	}
 
 	async getLIDForPN(pn: string): Promise<string | null> {

@@ -100,5 +100,35 @@ describe('LIDMappingStore', () => {
 			expect(await lidMappingStore.storeLIDPNMappings([])).toEqual([])
 			expect(await lidMappingStore.storeLIDPNMappings([{ lid: 'bad', pn: 'also-bad' }])).toEqual([])
 		})
+
+		it('reports a pair as new to only one of two concurrent calls', async () => {
+			// A store whose read can land before a concurrent write, with transactions serialised
+			// per key like the real keyed mutex.
+			const db: Record<string, string> = {}
+			let txChain: Promise<unknown> = Promise.resolve()
+			const keys = {
+				get: async (_type: string, ids: string[]) => {
+					const snapshot = Object.fromEntries(ids.filter(id => id in db).map(id => [id, db[id]]))
+					await new Promise(resolve => setTimeout(resolve, 5))
+					return snapshot
+				},
+				set: jest.fn(async (data: { 'lid-mapping'?: Record<string, string> }) => {
+					Object.assign(db, data['lid-mapping'])
+				}),
+				transaction: async <T>(work: () => Promise<T>) => {
+					const run = txChain.then(work)
+					txChain = run.catch(() => undefined)
+					return run
+				},
+				isInTransaction: () => false
+			}
+			const store = new LIDMappingStore(keys as unknown as SignalKeyStoreWithTransaction, logger)
+			const pair = { lid: '111@lid', pn: '222@s.whatsapp.net' }
+
+			const [first, second] = await Promise.all([store.storeLIDPNMappings([pair]), store.storeLIDPNMappings([pair])])
+
+			expect([...first, ...second]).toEqual([{ pnUser: '222', lidUser: '111' }])
+			expect(keys.set).toHaveBeenCalledTimes(1)
+		})
 	})
 })
