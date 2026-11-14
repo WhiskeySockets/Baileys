@@ -35,6 +35,7 @@ import {
 	parseAndInjectE2ESessions,
 	unixTimestampSeconds
 } from '../Utils'
+import { prepareMessageForBot } from '../Utils/bot-message'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
@@ -184,7 +185,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid))) {
+		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid) || isJidMetaAI(jid))) {
 			node.attrs.recipient = jid
 			node.attrs.to = participant!
 		} else {
@@ -264,6 +265,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						device,
 						jid
 					})
+					return null
+				}
+
+				// A bot has no device list (its usync query is empty); it is addressed directly
+				if (isJidMetaAI(jid) && user) {
+					deviceResults.push({ user, device: 0, jid })
 					return null
 				}
 
@@ -463,7 +470,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
 			const wireJids = [
-				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
+				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid) || !!isJidMetaAI(jid)),
 				...(
 					(await signalRepository.lidMapping.getLIDsForPNs(
 						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
@@ -639,6 +646,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isNewsletter = server === 'newsletter'
 		const isGroupOrStatus = isGroup || isStatus
 		const finalJid = jid
+
+		if (isJidMetaAI(jid)) {
+			prepareMessageForBot(message, jid)
+		}
 
 		msgId = msgId || generateMessageIDV2(meId)
 		useUserDevicesCache = useUserDevicesCache !== false
