@@ -149,6 +149,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		})
+	const getRetryCount = async (key: string, defaultValue: number) => {
+		const retryCount = await msgRetryCache.get<number>(key)
+		if (retryCount === undefined || retryCount === null) {
+			return defaultValue
+		}
+
+		return Number.isFinite(retryCount) ? retryCount : maxMsgRetryCount
+	}
 	const callOfferCache =
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
@@ -577,6 +585,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const msgId = msgKey.id!
 
 		if (messageRetryManager) {
+			const key = `${msgId}:${msgKey?.participant}`
+			const cachedRetryCount = await getRetryCount(key, 0)
+			messageRetryManager.restoreRetryCount(msgId, cachedRetryCount)
+
 			// Check if we've exceeded max retries using the new system
 			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
 				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
@@ -588,15 +600,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const retryCount = messageRetryManager.incrementRetryCount(msgId)
 
 			// Use the new retry count for the rest of the logic
-			const key = `${msgId}:${msgKey?.participant}`
 			await msgRetryCache.set(key, retryCount)
 		} else {
 			// Fallback to old system
 			const key = `${msgId}:${msgKey?.participant}`
-			let retryCount = (await msgRetryCache.get<number>(key)) || 0
+			let retryCount = await getRetryCount(key, 0)
 			if (retryCount >= maxMsgRetryCount) {
 				logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
-				await msgRetryCache.del(key)
 				return
 			}
 
@@ -1301,13 +1311,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const willSendMessageAgain = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const retryCount = (await msgRetryCache.get<number>(key)) || 0
+		const retryCount = await getRetryCount(key, 0)
 		return retryCount < maxMsgRetryCount
 	}
 
 	const updateSendMessageAgainCount = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const newValue = ((await msgRetryCache.get<number>(key)) || 0) + 1
+		const newValue = (await getRetryCount(key, 0)) + 1
 		await msgRetryCache.set(key, newValue)
 	}
 
