@@ -674,7 +674,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		await authState.keys.transaction(async () => {
-			const mediaType = getMediaType(message)
+			const mediaType = getMediaType(normalizeMessageContent(message) || message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
 			}
