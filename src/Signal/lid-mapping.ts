@@ -27,8 +27,12 @@ export class LIDMappingStore {
 		this.logger = logger
 	}
 
-	async storeLIDPNMappings(pairs: LIDMapping[]): Promise<void> {
-		if (pairs.length === 0) return
+	/**
+	 * Stores PN↔LID user mappings and returns the pairs that were new or changed.
+	 * Pairs that were already stored are skipped and not returned.
+	 */
+	async storeLIDPNMappings(pairs: LIDMapping[]): Promise<{ pnUser: string; lidUser: string }[]> {
+		if (pairs.length === 0) return []
 
 		const validatedPairs: Array<{ pnUser: string; lidUser: string }> = []
 		for (const { lid, pn } of pairs) {
@@ -44,7 +48,7 @@ export class LIDMappingStore {
 			validatedPairs.push({ pnUser: pnDecoded.user, lidUser: lidDecoded.user })
 		}
 
-		if (validatedPairs.length === 0) return
+		if (validatedPairs.length === 0) return []
 
 		const cacheMissSet = new Set<string>()
 		const existingMappings = new Map<string, string>()
@@ -84,7 +88,7 @@ export class LIDMappingStore {
 			pairMap[pnUser] = lidUser
 		}
 
-		if (Object.keys(pairMap).length === 0) return
+		if (Object.keys(pairMap).length === 0) return []
 
 		this.logger.trace({ pairMap }, `Storing ${Object.keys(pairMap).length} pn mappings`)
 
@@ -103,6 +107,8 @@ export class LIDMappingStore {
 			this.mappingCache.set(`pn:${pnUser}`, lidUser)
 			this.mappingCache.set(`lid:${lidUser}`, pnUser)
 		}
+
+		return Object.entries(pairMap).map(([pnUser, lidUser]) => ({ pnUser, lidUser }))
 	}
 
 	async getLIDForPN(pn: string): Promise<string | null> {
