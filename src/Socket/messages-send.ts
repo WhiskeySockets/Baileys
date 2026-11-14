@@ -40,6 +40,7 @@ import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	buildMergedTcTokenIndexWrite,
+	computeCsToken,
 	isTcTokenExpired,
 	resolveIssuanceJid,
 	resolveTcTokenJid,
@@ -1086,6 +1087,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {},
 					content: tcTokenBuffer
 				})
+			} else if (
+				is1on1Send &&
+				authState.creds.me?.lid &&
+				authState.creds.nctSalt?.length &&
+				tcTokenJid &&
+				isLidUser(tcTokenJid)
+			) {
+				// no tctoken from the recipient — fall back to a self-computed cstoken (WA Web parity;
+				// only sent from a LID-addressed account, so skip PN-only sessions)
+				;(stanza.content as BinaryNode[]).push({
+					tag: 'cstoken',
+					attrs: {},
+					content: computeCsToken(authState.creds.nctSalt, tcTokenJid)
+				})
+				logger.debug({ jid: destinationJid }, 'attached cstoken fallback')
 			}
 
 			if (additionalNodes && additionalNodes.length > 0) {

@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto'
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import type { BinaryNode } from '../WABinary'
 import {
@@ -215,4 +216,9 @@ export async function storeTcTokensFromIqResult({
 		})
 		onNewJidStored?.(storageJid)
 	}
+}
+
+/** Client-side fallback token when the recipient hasn't issued a tctoken. Mirrors WA Web genCsTokenBody. */
+export function computeCsToken(nctSalt: Uint8Array, recipientLid: string): Uint8Array {
+	return new Uint8Array(createHmac('sha256', nctSalt).update(recipientLid, 'utf8').digest())
 }
