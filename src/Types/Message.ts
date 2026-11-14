@@ -10,6 +10,8 @@ import type { CacheStore } from './Socket'
 export { proto as WAProto }
 export type WAMessage = proto.IWebMessageInfo & {
 	key: WAMessageKey
+	/** A publication audience, never inferred from a quoted status or mention. */
+	statusKind?: 'personal' | 'group' | 'channel'
 	messageStubParameters?: any
 	category?: string
 	retryCount?: number

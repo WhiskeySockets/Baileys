@@ -167,7 +167,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		jid: string,
 		participant: string | undefined,
 		messageIds: string[],
-		type: MessageReceiptType
+		type: MessageReceiptType,
+		receiptClass?: 'status'
 	) => {
 		if (!messageIds || messageIds.length === 0) {
 			throw new Boom('missing ids in receipt')
@@ -179,6 +180,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				id: messageIds[0]!
 			}
 		}
+		if (receiptClass) {
+			node.attrs.class = receiptClass
+		}
+
 		const isReadReceipt = type === 'read' || type === 'read-self'
 		if (isReadReceipt) {
 			node.attrs.t = unixTimestampSeconds().toString()

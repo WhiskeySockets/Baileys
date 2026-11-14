@@ -54,6 +54,7 @@ export function makeLibSignalRepository(
 ): SignalRepositoryWithLIDStore {
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
+	const statusStorage = signalStorage(auth, lidMapping, true)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
@@ -114,16 +115,17 @@ export function makeLibSignalRepository(
 				await builder.process(senderName, senderMsg)
 			}, item.groupId)
 		},
-		async decryptMessage({ jid, type, ciphertext }) {
+		async decryptMessage({ jid, type, ciphertext, sessionScope }) {
+			const decryptStorage = sessionScope === 'status' ? statusStorage : storage
 			const addr = jidToSignalProtocolAddress(jid)
-			const session = new libsignal.SessionCipher(storage, addr)
+			const session = new libsignal.SessionCipher(decryptStorage, addr)
 
 			// Extract and save sender's identity key before decryption for identity change detection
 			if (type === 'pkmsg') {
 				const identityKey = extractIdentityFromPkmsg(ciphertext)
 				if (identityKey) {
 					const addrStr = addr.toString()
-					const identityChanged = await storage.saveIdentity(addrStr, identityKey)
+					const identityChanged = await decryptStorage.saveIdentity(addrStr, identityKey)
 					if (identityChanged) {
 						logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
 					}
@@ -246,6 +248,7 @@ export function makeLibSignalRepository(
 			jids.forEach(jid => {
 				const addr = jidToSignalProtocolAddress(jid)
 				sessionUpdates[addr.toString()] = null
+				sessionUpdates[`${addr.toString()}_status`] = null
 			})
 
 			// Single transaction for all deletions
@@ -294,7 +297,7 @@ export function makeLibSignalRepository(
 			})
 
 			// Bulk check session existence only for uncached devices
-			const deviceSessionKeys = uncachedDevices.map(device => `${user}.${device}`)
+			const deviceSessionKeys = uncachedDevices.flatMap(device => [`${user}.${device}`, `${user}.${device}_status`])
 			const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
 
 			// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist)
@@ -310,7 +313,7 @@ export function makeLibSignalRepository(
 						jid = `${user}:99@hosted`
 					}
 
-					deviceJids.push(jid)
+					if (!deviceJids.includes(jid)) deviceJids.push(jid)
 				}
 			}
 
@@ -358,28 +361,31 @@ export function makeLibSignalRepository(
 					let migratedCount = 0
 
 					// Bulk fetch PN sessions - already exist (verified during device discovery)
-					const pnAddrStrings = Array.from(new Set(migrationOps.map(op => op.fromAddr.toString())))
+					const pnAddrStrings = Array.from(
+						new Set(migrationOps.flatMap(op => [op.fromAddr.toString(), `${op.fromAddr.toString()}_status`]))
+					)
 					const pnSessions = await parsedKeys.get('session', pnAddrStrings)
 
 					// Prepare bulk session updates (PN → LID migration + deletion)
 					const sessionUpdates: { [key: string]: Uint8Array | null } = {}
 
 					for (const op of migrationOps) {
-						const pnAddrStr = op.fromAddr.toString()
-						const lidAddrStr = op.toAddr.toString()
-
-						const pnSession = pnSessions[pnAddrStr]
-						if (pnSession) {
-							// Session exists (guaranteed from device discovery)
-							const fromSession = libsignal.SessionRecord.deserialize(pnSession)
-							if (fromSession.haveOpenSession()) {
-								// Queue for bulk update: copy to LID, delete from PN
-								sessionUpdates[lidAddrStr] = fromSession.serialize()
-								sessionUpdates[pnAddrStr] = null
-
-								migratedCount++
+						let migrated = false
+						for (const suffix of ['', '_status']) {
+							const pnAddrStr = op.fromAddr.toString() + suffix
+							const lidAddrStr = op.toAddr.toString() + suffix
+							const pnSession = pnSessions[pnAddrStr]
+							if (pnSession) {
+								const fromSession = libsignal.SessionRecord.deserialize(pnSession)
+								if (fromSession.haveOpenSession()) {
+									sessionUpdates[lidAddrStr] = fromSession.serialize()
+									sessionUpdates[pnAddrStr] = null
+									migrated = true
+								}
 							}
 						}
+
+						if (migrated) migratedCount++
 					}
 
 					// Single bulk session update for all migrations
@@ -433,7 +439,8 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
-	lidMapping: LIDMappingStore
+	lidMapping: LIDMappingStore,
+	statusSession = false
 ): SenderKeyStore &
 	libsignal.SignalStorage & {
 		loadIdentityKey(id: string): Promise<Uint8Array | undefined>
@@ -463,7 +470,8 @@ function signalStorage(
 	return {
 		loadSession: async (id: string) => {
 			try {
-				const wireJid = await resolveLIDSignalAddress(id)
+				const resolved = await resolveLIDSignalAddress(id)
+				const wireJid = statusSession ? `${resolved}_status` : resolved
 				const { [wireJid]: sess } = await keys.get('session', [wireJid])
 
 				if (sess) {
@@ -476,7 +484,8 @@ function signalStorage(
 			return null
 		},
 		storeSession: async (id: string, session: libsignal.SessionRecord) => {
-			const wireJid = await resolveLIDSignalAddress(id)
+			const resolved = await resolveLIDSignalAddress(id)
+			const wireJid = statusSession ? `${resolved}_status` : resolved
 			await keys.set({ session: { [wireJid]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
@@ -497,7 +506,7 @@ function signalStorage(
 			if (existingKey && !keysMatch) {
 				// Identity changed - clear session and update key
 				await keys.set({
-					session: { [wireJid]: null },
+					session: { [wireJid]: null, [`${wireJid}_status`]: null },
 					'identity-key': { [wireJid]: identityKey }
 				})
 				return true

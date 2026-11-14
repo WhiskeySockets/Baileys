@@ -1184,6 +1184,21 @@ await sock.updateDefaultDisappearingMode(ephemeral)
 
 ## Broadcast Lists & Stories
 
+### Receive statuses
+
+Personal and group statuses can arrive as top-level `<status>` nodes. They are
+processed through the message receive and offline queues, while channel statuses
+keep their plaintext handling. Received `WAMessage.statusKind` identifies
+`personal`, `group` or `channel` publications. A status mention or quoted status
+does not by itself mark the outer message as a publication.
+
+Explicit `meta session_scope="status"` uses a separate pairwise session. Set
+`getStatusSessionMode` to read the served `status_infra_1_1_session_split` state
+(0 disabled, 1 receiver enabled, 2 sender enabled, 3 forced). Without this callback,
+only explicit status metadata selects the separate session. Custom Signal
+repositories must honor `decryptMessage`'s optional `sessionScope`; sender keys
+continue to use the group and author. This does not change status publishing.
+
 ### Send Broadcast & Stories
 - Messages can be sent to broadcasts & stories. You need to add the following message options in sendMessage, like this:
 ```ts

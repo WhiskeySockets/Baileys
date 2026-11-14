@@ -13,6 +13,8 @@ type ProcessSenderKeyDistributionMessageOpts = {
 }
 
 type DecryptSignalProtoOpts = {
+	/** Custom repositories must isolate this pairwise session from chat sessions. */
+	sessionScope?: 'status'
 	jid: string
 	type: 'pkmsg' | 'msg'
 	ciphertext: Uint8Array

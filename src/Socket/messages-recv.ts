@@ -662,7 +662,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				attrs: {
 					id: msgId,
 					type: 'retry',
-					to: node.attrs.from!
+					to: node.attrs.from!,
+					...(node.tag === 'status' ? { class: 'status' } : {})
 				},
 				content: [
 					{
@@ -1599,7 +1600,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				category,
 				author,
 				decrypt
-			} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
+			} = decryptMessageNode(
+				node,
+				authState.creds.me!.id,
+				authState.creds.me!.lid || '',
+				signalRepository,
+				logger,
+				config.getStatusSessionMode?.()
+			)
 
 			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 			// store new mappings we didn't have before
@@ -1695,7 +1703,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// Don't return — fall through to upsertMessage so the stub is emitted
 					} else {
 						// Skip retry for expired status messages (>24h old)
-						if (isJidStatusBroadcast(msg.key.remoteJid!)) {
+						if (msg.statusKind === 'personal' || msg.statusKind === 'group') {
 							const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
 							if (messageAge > STATUS_EXPIRY_SECONDS) {
 								logger.debug(
@@ -1755,7 +1763,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 
 						acked = true
-						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+						await sendReceipt(
+							msg.key.remoteJid!,
+							participant!,
+							[msg.key.id!],
+							type,
+							msg.statusKind ? 'status' : undefined
+						)
 
 						// send ack for history message
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
@@ -1948,9 +1962,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const handleStatus = async (node: BinaryNode) => {
+		const from = node.attrs.from
+		if (!from || (!isJidStatusBroadcast(from) && !isJidGroup(from) && !isJidNewsletter(from))) {
+			await sendMessageAck(node, NACK_REASONS.ParsingError)
+			return
+		}
+
+		await handleMessage(node)
+	}
+
 	const offlineNodeProcessor = makeOfflineNodeProcessor(
 		new Map<MessageType, (node: BinaryNode) => Promise<void>>([
 			['message', handleMessage],
+			['status', handleStatus],
 			['call', handleCall],
 			['receipt', handleReceipt],
 			['notification', handleNotification]
@@ -1998,6 +2023,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// recv a message
 	ws.on('CB:message', async (node: BinaryNode) => {
 		await processNode('message', node, 'processing message', handleMessage)
+	})
+
+	ws.on('CB:status', async (node: BinaryNode) => {
+		await processNode('status', node, 'processing status', handleStatus).catch(error =>
+			onUnexpectedError(error, 'processing status')
+		)
 	})
 
 	ws.on('CB:call', async (node: BinaryNode) => {
