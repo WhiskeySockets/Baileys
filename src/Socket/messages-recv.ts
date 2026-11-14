@@ -1311,6 +1311,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
+	const acceptRetryIds = async (ids: string[], participant: string) => {
+		const accepted: string[] = []
+		for (const id of ids) {
+			if (id && (await willSendMessageAgain(id, participant))) {
+				accepted.push(id)
+				await updateSendMessageAgainCount(id, participant)
+			}
+		}
+
+		return accepted
+	}
+
 	const sendMessagesAgain = async (
 		key: WAMessageKey,
 		ids: string[],
@@ -1438,11 +1450,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		)
 
 		for (const [i, msg] of msgs.entries()) {
-			if (!ids[i]) continue
+			const id = ids[i]
+			if (!id) continue
 
-			if (msg && (await willSendMessageAgain(ids[i], participant))) {
-				await updateSendMessageAgainCount(ids[i], participant)
-				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
+			if (msg) {
+				const msgRelayOpts: MessageRelayOptions = { messageId: id }
 
 				if (sendToAll) {
 					msgRelayOpts.useUserDevicesCache = false
@@ -1455,7 +1467,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				await relayMessage(key.remoteJid!, msg, msgRelayOpts)
 			} else {
-				logger.debug({ jid: key.remoteJid, id: ids[i] }, 'recv retry request, but message not available')
+				logger.debug({ jid: key.remoteJid, id }, 'recv retry request, but message not available')
 			}
 		}
 	}
@@ -1523,23 +1535,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
-						if (ids[0] && key.participant && (await willSendMessageAgain(ids[0], key.participant))) {
-							if (key.fromMe) {
-								try {
-									await updateSendMessageAgainCount(ids[0], key.participant)
-									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!, node)
-								} catch (error: unknown) {
-									logger.error(
-										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
-										'error in sending message again'
-									)
-								}
-							} else {
-								logger.info({ attrs, key }, 'recv retry for not fromMe message')
+						if (!key.fromMe) {
+							logger.info({ attrs, key }, 'recv retry for not fromMe message')
+							return
+						}
+
+						try {
+							const acceptedIds = key.participant ? await acceptRetryIds(ids, key.participant) : []
+							if (acceptedIds.length === 0) {
+								logger.info({ attrs, key }, 'will not send message again, as sent too many times')
+								return
 							}
-						} else {
-							logger.info({ attrs, key }, 'will not send message again, as sent too many times')
+
+							logger.debug({ attrs, key }, 'recv retry request')
+							await sendMessagesAgain(key, acceptedIds, retryNode!, node)
+						} catch (error: unknown) {
+							logger.error(
+								{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
+								'error in sending message again'
+							)
 						}
 					}
 				})
