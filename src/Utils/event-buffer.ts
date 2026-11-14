@@ -543,7 +543,17 @@ function append<E extends BufferableEvent>(
 					}
 				} else {
 					const msgUpdate = data.messageUpdates[keyStr] || { key, update: {} }
+					// Preserve an edit's own messageTimestamp (the edit time) when a later
+					// non-edit update (e.g. a receipt/status) is combined into it: the
+					// receipt carries its own time that must not clobber the buffered edit
+					// time, otherwise a subsequent upsert would keep the receipt time.
+					const bufferedIsEdit = msgUpdate.update.message !== undefined && msgUpdate.update.message !== null
+					const bufferedTimestamp = msgUpdate.update.messageTimestamp
+					const incomingIsEdit = update.message !== undefined && update.message !== null
 					Object.assign(msgUpdate.update, update)
+					if (bufferedIsEdit && !incomingIsEdit && bufferedTimestamp !== undefined && bufferedTimestamp !== null) {
+						msgUpdate.update.messageTimestamp = bufferedTimestamp
+					}
 					data.messageUpdates[keyStr] = msgUpdate
 				}
 			}

@@ -241,5 +241,54 @@ describe('event-buffer', () => {
 			expect(toNumber(msg.messageTimestamp)).toBe(editTime)
 			expect(receivedUpdates).toHaveLength(0)
 		})
+
+		it('keeps the edit timestamp when a receipt is combined before the upsert', async () => {
+			const logger = makeTestLogger()
+			const ev = makeEventBuffer(logger)
+
+			const key = { remoteJid: '1234567890123@s.whatsapp.net', id: 'ABCD1234', fromMe: true }
+			const upsertTime = 1700000100
+			const editTime = 1700000200
+			const receiptTime = 1700000300
+
+			const received: BaileysEventMap['messages.upsert'][] = []
+			ev.on('messages.upsert', data => received.push(data))
+
+			ev.buffer()
+
+			// An edit arrives first (carries its own edit time + edited message)...
+			ev.emit('messages.update', [
+				{
+					key,
+					update: {
+						message: { editedMessage: { message: { conversation: 'edited' } } },
+						messageTimestamp: editTime
+					}
+				}
+			])
+
+			// ...then a later receipt/status update for the same key is combined in.
+			// Its receiptTime must not clobber the buffered edit time.
+			ev.emit('messages.update', [
+				{
+					key,
+					update: { status: proto.WebMessageInfo.Status.DELIVERY_ACK, messageTimestamp: receiptTime }
+				}
+			])
+
+			ev.emit('messages.upsert', {
+				messages: [{ key, messageTimestamp: upsertTime, message: { conversation: 'hi' } }],
+				type: 'notify'
+			})
+
+			ev.flush()
+
+			await new Promise(resolve => setTimeout(resolve, 100))
+
+			expect(received).toHaveLength(1)
+			const msg = received[0]!.messages[0]!
+			// the edit time must survive both the receipt combine and the upsert absorb
+			expect(toNumber(msg.messageTimestamp)).toBe(editTime)
+		})
 	})
 })
