@@ -170,12 +170,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
+		let ts = oldestMsgTimestamp
+		if (typeof ts === 'number' && ts > 1e11) {
+			ts = Math.floor(ts / 1000)
+		} else if (ts !== null && typeof ts === 'object' && 'toNumber' in ts) {
+			const num = (ts as Long).toNumber()
+			if (num > 1e11) {
+				ts = Math.floor(num / 1000)
+			}
+		}
+
 		const pdoMessage: proto.Message.IPeerDataOperationRequestMessage = {
 			historySyncOnDemandRequest: {
 				chatJid: oldestMsgKey.remoteJid,
 				oldestMsgFromMe: oldestMsgKey.fromMe,
 				oldestMsgId: oldestMsgKey.id,
-				oldestMsgTimestampMs: oldestMsgTimestamp,
+				oldestMsgTimestampMs: ts,
 				onDemandMsgCount: count
 			},
 			peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType.HISTORY_SYNC_ON_DEMAND
