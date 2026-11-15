@@ -325,16 +325,33 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const lidResults = result.list.filter(a => !!a.lid)
 			if (lidResults.length > 0) {
 				logger.trace('Storing LID maps from device call')
-				await signalRepository.lidMapping.storeLIDPNMappings(lidResults.map(a => ({ lid: a.lid as string, pn: a.id })))
+				const stored = await signalRepository.lidMapping.storeLIDPNMappings(
+					lidResults.map(a => ({ lid: a.lid as string, pn: a.id }))
+				)
+				const newLidUsers = new Set(stored.map(p => p.lidUser))
+				const isNewlyMapped = (lid: string) => newLidUsers.has(jidDecode(lid)?.user ?? '')
+				const lids = lidResults.map(a => a.lid as string)
+				const newLids = lids.filter(isNewlyMapped)
+				const knownLids = lids.filter(lid => !isNewlyMapped(lid))
 
-				// Force-refresh sessions for newly mapped LIDs to align identity addressing
-				try {
-					const lids = lidResults.map(a => a.lid as string)
-					if (lids.length) {
-						await assertSessions(lids, true)
+				// Force-refresh sessions only for newly mapped LIDs to align identity addressing.
+				// The device cache is short-lived, so this runs on most sends: forcing every LID
+				// replaced the open session with each contact's primary device on every lookup.
+				// Separate failure handling, so a failed forced refresh doesn't skip validating known LIDs.
+				if (newLids.length) {
+					try {
+						await assertSessions(newLids, true)
+					} catch (err) {
+						logger.warn({ err, count: newLids.length }, 'failed to assert sessions for newly mapped LIDs')
 					}
-				} catch (e) {
-					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
+				}
+
+				if (knownLids.length) {
+					try {
+						await assertSessions(knownLids)
+					} catch (err) {
+						logger.warn({ err, count: knownLids.length }, 'failed to assert sessions for known LIDs')
+					}
 				}
 			}
 
