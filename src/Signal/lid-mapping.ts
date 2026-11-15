@@ -54,6 +54,12 @@ export class LIDMappingStore {
 
 		if (validatedPairs.length === 0) return []
 
+		// Without the lock: if every pair is already cached with the same LID there is nothing to write,
+		// so hot paths (decrypt, sends) never queue behind a slow write holding the mutex.
+		if (validatedPairs.every(({ pnUser, lidUser }) => this.mappingCache.get(`pn:${pnUser}`) === lidUser)) {
+			return []
+		}
+
 		return this.storeMutex.mutex(async () => {
 			const cacheMissSet = new Set<string>()
 			const existingMappings = new Map<string, string>()

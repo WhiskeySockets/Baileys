@@ -145,6 +145,24 @@ describe('LIDMappingStore', () => {
 				expect(raw.set).toHaveBeenCalledTimes(1)
 			})
 
+			it('returns at once for a cached pair while a slow write holds the lock', async () => {
+				const { store, raw } = makeStore()
+				await store.storeLIDPNMappings([{ lid: '111@lid', pn: '222@s.whatsapp.net' }])
+
+				let releaseWrite: () => void = () => {}
+
+				raw.set.mockImplementationOnce(() => new Promise<void>(resolve => (releaseWrite = resolve)))
+				const slowWrite = store.storeLIDPNMappings([{ lid: '333@lid', pn: '444@s.whatsapp.net' }])
+				// let the slow call take the store lock and reach its write
+				await new Promise(resolve => setTimeout(resolve, 20))
+
+				const cached = await store.storeLIDPNMappings([{ lid: '111@lid', pn: '222@s.whatsapp.net' }])
+				releaseWrite()
+
+				expect(cached).toEqual([])
+				expect(await slowWrite).toEqual([{ pnUser: '444', lidUser: '333' }])
+			})
+
 			it('leaves the cache matching storage after concurrent calls replace an old mapping', async () => {
 				const { store, db } = makeStore({ '222': '999', '999_reverse': '222' })
 				const pair = { lid: '111@lid', pn: '222@s.whatsapp.net' }
