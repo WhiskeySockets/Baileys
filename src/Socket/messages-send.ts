@@ -664,6 +664,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		const extraAttrs: BinaryNodeAttributes = {}
+		let senderKeyMemoryUpdate: { [jid: string]: boolean } | undefined
 
 		if (participant) {
 			if (!isGroup && !isStatus) {
@@ -729,7 +730,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						// what if sender memory is less accurate than the cached metadata
 						// on participant change in group, we should do sender memory manipulation
 						const result = await authState.keys.get('sender-key-memory', [jid]) // TODO: check out what if the sender key memory doesn't include the LID stuff now?
-						return result[jid] || {}
+						return { ...(result[jid] || {}) }
 					}
 
 					return {}
@@ -817,7 +818,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				content: ciphertext
 			})
 
-			await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+			senderKeyMemoryUpdate = senderKeyMap
 		} else {
 			// ADDRESSING CONSISTENCY: Match own identity to conversation context
 			// TODO: investigate if this is true
@@ -1101,6 +1102,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
 		await sendNode(stanza)
+		if (senderKeyMemoryUpdate) await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMemoryUpdate } })
 
 		// Fire-and-forget: issue our token to the contact AFTER message send.
 		// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)

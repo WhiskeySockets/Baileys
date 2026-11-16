@@ -370,4 +370,38 @@ it('resolves each pairwise address once before admission and keeps lookups outsi
 	const addr = receiveRepo.jidToSignalProtocolAddress(resolvedSender)
 	expect(receiver.rows.has(`session/${addr}_status`)).toBe(true)
 	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(senderJid)}_status`)).toBe(false)
+	expect((await receiveRepo.validateSession(senderJid, 'status')).exists).toBe(true)
+	expect((await receiveRepo.validateSession(senderJid)).exists).toBe(false)
+})
+
+it.each([false, true])('discovers a later status session after chat migration, hosted=%s', async hosted => {
+	const source = authState()
+	const peer = authState()
+	const repo = makeLibSignalRepository(source.auth, P({ level: 'silent' }))
+	const pn = hosted ? '200000000002:99@hosted' : '200000000002:2@s.whatsapp.net'
+	const lid = hosted ? '300000000003:99@hosted.lid' : '300000000003:2@lid'
+	const creds = peer.auth.creds
+	await repo.injectE2ESession({
+		jid: pn,
+		session: {
+			registrationId: creds.registrationId,
+			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+			signedPreKey: {
+				keyId: creds.signedPreKey.keyId,
+				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+				signature: creds.signedPreKey.signature
+			}
+		}
+	})
+	const from = repo.jidToSignalProtocolAddress(pn)
+	const to = repo.jidToSignalProtocolAddress(lid)
+	const retained = source.rows.get(`session/${from}`)
+	source.rows.set('device-list/200000000002', [hosted ? '99' : '2'])
+	expect(await repo.migrateSession(pn, lid)).toEqual({ migrated: 1, skipped: 0, total: 1 })
+	const migrated = source.rows.get(`session/${to}`)
+	source.rows.set(`session/${from}_status`, retained)
+	expect(await repo.migrateSession(pn, lid)).toEqual({ migrated: 1, skipped: 0, total: 1 })
+	expect(source.rows.has(`session/${from}_status`)).toBe(false)
+	expect(source.rows.has(`session/${to}_status`)).toBe(true)
+	expect(source.rows.get(`session/${to}`)).toEqual(migrated)
 })

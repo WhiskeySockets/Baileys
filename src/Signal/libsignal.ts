@@ -2,7 +2,6 @@
 import * as libsignal from 'libsignal'
 // @ts-ignore
 import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
-import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
@@ -56,11 +55,6 @@ export function makeLibSignalRepository(
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
-	const migratedSessionCache = new LRUCache<string, true>({
-		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
-		ttlAutopurge: true,
-		updateAgeOnGet: true
-	})
 
 	const ensureSenderKeyAndCreateSkdm = async (group: string, meId: string) => {
 		const senderName = jidToSignalSenderKeyName(group, meId)
@@ -239,10 +233,11 @@ export function makeLibSignalRepository(
 		// Optimized direct access to LID mapping store
 		lidMapping,
 
-		async validateSession(jid: string) {
+		async validateSession(jid: string, sessionScope?: 'status') {
 			try {
 				const addr = jidToSignalProtocolAddress(jid)
-				const session = await storage.loadSession(addr.toString())
+				const validationStorage = sessionScope === 'status' ? signalStorage(auth, lidMapping, true) : storage
+				const session = await validationStorage.loadSession(addr.toString())
 
 				if (!session) {
 					return { exists: false, reason: 'no session' }
@@ -292,7 +287,6 @@ export function makeLibSignalRepository(
 		},
 
 		close() {
-			migratedSessionCache.clear()
 			lidMapping.close()
 		},
 
@@ -326,32 +320,23 @@ export function makeLibSignalRepository(
 						userDevices.push(fromDeviceStr)
 					}
 
-					// Filter out cached devices before database fetch
-					const uncachedDevices = userDevices.filter(device => {
-						const deviceKey = `${user}.${device}`
-						return !migratedSessionCache.has(deviceKey)
+					// Probe both namespaces; another scope may arrive after an earlier migration.
+					const sourceJids = userDevices.map(device =>
+						device === '99'
+							? `${user}:99@hosted`
+							: device === '0'
+								? `${user}@s.whatsapp.net`
+								: `${user}:${device}@s.whatsapp.net`
+					)
+					const deviceSessionKeys = sourceJids.flatMap(jid => {
+						const address = jidToSignalProtocolAddress(jid).toString()
+						return [address, `${address}_status`]
 					})
-
-					// Bulk check session existence only for uncached devices
-					const deviceSessionKeys = uncachedDevices.flatMap(device => [`${user}.${device}`, `${user}.${device}_status`])
 					const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
-
-					// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist)
-					const deviceJids: string[] = []
-					for (const [sessionKey, sessionData] of Object.entries(existingSessions)) {
-						if (sessionData) {
-							// Session exists in storage
-							const deviceStr = sessionKey.split('.')[1]
-							if (!deviceStr) continue
-							const deviceNum = parseInt(deviceStr)
-							let jid = deviceNum === 0 ? `${user}@s.whatsapp.net` : `${user}:${deviceNum}@s.whatsapp.net`
-							if (deviceNum === 99) {
-								jid = `${user}:99@hosted`
-							}
-
-							if (!deviceJids.includes(jid)) deviceJids.push(jid)
-						}
-					}
+					const deviceJids = sourceJids.filter(jid => {
+						const address = jidToSignalProtocolAddress(jid).toString()
+						return existingSessions[address] || existingSessions[`${address}_status`]
+					})
 
 					logger.debug(
 						{
@@ -433,14 +418,6 @@ export function makeLibSignalRepository(
 							if (Object.keys(sessionUpdates).length > 0) {
 								await parsedKeys.set({ session: sessionUpdates })
 								logger.debug({ migratedSessions: migratedCount }, 'bulk session migration complete')
-
-								// Cache device-level migrations
-								for (const op of migrationOps) {
-									if (sessionUpdates[op.toAddr.toString()]) {
-										const deviceKey = `${op.pnUser}.${op.deviceId}`
-										migratedSessionCache.set(deviceKey, true)
-									}
-								}
 							}
 
 							const skippedCount = totalOps - migratedCount

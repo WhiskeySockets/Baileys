@@ -42,6 +42,7 @@ import {
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
+	getStatusSessionScope,
 	handleIdentityChange,
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
@@ -622,7 +623,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				// Check if we have a session with this JID
-				const hasSession = await signalRepository.validateSession(sessionJid)
+				const hasSession = await signalRepository.validateSession(
+					sessionJid,
+					getStatusSessionScope(node, config.getStatusSessionMode?.())
+				)
 				const result = messageRetryManager.shouldRecreateSession(sessionJid, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
