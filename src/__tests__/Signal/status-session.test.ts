@@ -322,3 +322,52 @@ it('preserves independently established destination sessions during migration in
 	expect(await repo.migrateSession(pn, lid)).toEqual({ migrated: 0, skipped: 1, total: 1 })
 	expect(source.rows).toEqual(before)
 })
+
+it('resolves each pairwise address once before admission and keeps lookups outside crypto transactions', async () => {
+	const receiver = authState()
+	const sender = authState()
+	const logger = P({ level: 'silent' })
+	const receiveRepo = makeLibSignalRepository(receiver.auth, logger)
+	const sendRepo = makeLibSignalRepository(sender.auth, logger)
+	const receiverJid = '100000000001:1@s.whatsapp.net'
+	const senderJid = '200000000002:2@s.whatsapp.net'
+	const resolvedReceiver = '300000000003:1@lid'
+	const resolvedSender = '400000000004:2@lid'
+	let calls = 0
+
+	for (const [repo, state, resolved] of [
+		[sendRepo, sender, resolvedReceiver],
+		[receiveRepo, receiver, resolvedSender]
+	] as const) {
+		repo.lidMapping.getLIDForPN = async () => {
+			expect((state.auth.keys as SignalKeyStoreWithTransaction).isInTransaction()).toBe(false)
+			calls++
+			return resolved
+		}
+	}
+
+	const creds = receiver.auth.creds
+	await sendRepo.injectE2ESession({
+		jid: receiverJid,
+		session: {
+			registrationId: creds.registrationId,
+			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+			signedPreKey: {
+				keyId: creds.signedPreKey.keyId,
+				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+				signature: creds.signedPreKey.signature
+			}
+		}
+	})
+	expect(calls).toBe(1)
+	const plaintext = Buffer.from('authored pinned address')
+	const encrypted = await sendRepo.encryptMessage({ jid: receiverJid, data: plaintext })
+	expect(calls).toBe(2)
+	expect(
+		Buffer.from(await receiveRepo.decryptMessage({ jid: senderJid, ...encrypted, sessionScope: 'status' }))
+	).toEqual(plaintext)
+	expect(calls).toBe(3)
+	const addr = receiveRepo.jidToSignalProtocolAddress(resolvedSender)
+	expect(receiver.rows.has(`session/${addr}_status`)).toBe(true)
+	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(senderJid)}_status`)).toBe(false)
+})

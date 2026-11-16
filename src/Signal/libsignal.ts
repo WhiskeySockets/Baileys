@@ -54,7 +54,6 @@ export function makeLibSignalRepository(
 ): SignalRepositoryWithLIDStore {
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
-	const statusStorage = signalStorage(auth, lidMapping, true)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
@@ -120,8 +119,9 @@ export function makeLibSignalRepository(
 			}, item.groupId)
 		},
 		async decryptMessage({ jid, type, ciphertext, sessionScope }) {
-			const decryptStorage = sessionScope === 'status' ? statusStorage : storage
-			const addr = jidToSignalProtocolAddress(jid)
+			const resolvedJid = await sessionTransactionJid(jid)
+			const addr = jidToSignalProtocolAddress(resolvedJid)
+			const decryptStorage = signalStorage(auth, lidMapping, sessionScope === 'status', addr.toString())
 			const session = new libsignal.SessionCipher(decryptStorage, addr)
 
 			async function doDecrypt() {
@@ -159,24 +159,22 @@ export function makeLibSignalRepository(
 
 					return await doDecrypt()
 				},
-				await sessionTransactionJid(jid),
+				resolvedJid,
 				{ exclusive: type === 'pkmsg' && parsedKeys.supportsExclusiveTransactions === true }
 			)
 		},
 
 		async encryptMessage({ jid, data }) {
-			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new libsignal.SessionCipher(storage, addr)
+			const resolvedJid = await sessionTransactionJid(jid)
+			const addr = jidToSignalProtocolAddress(resolvedJid)
+			const cipher = new libsignal.SessionCipher(signalStorage(auth, lidMapping, false, addr.toString()), addr)
 
 			// Use transaction to ensure atomicity
-			return parsedKeys.transaction(
-				async () => {
-					const { type: sigType, body } = await cipher.encrypt(data)
-					const type = sigType === 3 ? 'pkmsg' : 'msg'
-					return { type, ciphertext: Buffer.from(body, 'binary') }
-				},
-				await sessionTransactionJid(jid)
-			)
+			return parsedKeys.transaction(async () => {
+				const { type: sigType, body } = await cipher.encrypt(data)
+				const type = sigType === 3 ? 'pkmsg' : 'msg'
+				return { type, ciphertext: Buffer.from(body, 'binary') }
+			}, resolvedJid)
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
@@ -221,14 +219,16 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
-			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
+			const resolvedJid = await sessionTransactionJid(jid)
+			const addr = jidToSignalProtocolAddress(resolvedJid)
+			const cipher = new libsignal.SessionBuilder(signalStorage(auth, lidMapping, false, addr.toString()), addr)
 			return parsedKeys.transaction(
 				async () => {
 					// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
 					// but the bundled .d.ts marks it required.
 					await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
 				},
-				await sessionTransactionJid(jid),
+				resolvedJid,
 				{ exclusive: parsedKeys.supportsExclusiveTransactions === true }
 			)
 		},
@@ -485,7 +485,8 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
 	lidMapping: LIDMappingStore,
-	statusSession = false
+	statusSession = false,
+	pinnedAddress?: string
 ): SenderKeyStore &
 	libsignal.SignalStorage & {
 		loadIdentityKey(id: string): Promise<Uint8Array | undefined>
@@ -493,6 +494,7 @@ function signalStorage(
 	} {
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
+		if (pinnedAddress) return pinnedAddress
 		if (id.includes('.')) {
 			const [deviceId, device] = id.split('.')
 			const [user, domainType_] = deviceId!.split('_')
