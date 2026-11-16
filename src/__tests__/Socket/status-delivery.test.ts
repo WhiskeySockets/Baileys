@@ -187,8 +187,10 @@ it('sends a status-class retry receipt for a legacy personal message envelope', 
 	}
 })
 
-it('records sender-key delivery only after transport succeeds', async () => {
+async function groupSendFixture(batches: string[][] = [['200000000002@lid']]) {
 	const rows = new Map<string, unknown>()
+	let rejectMemoryWrites = false
+	let groupRead = 0
 	const auth: AuthenticationState = {
 		creds: {
 			...initAuthCreds(),
@@ -200,12 +202,12 @@ it('records sender-key delivery only after transport succeeds', async () => {
 					[id: string]: SignalDataTypeMap[T]
 				},
 			set: async data => {
+				if (rejectMemoryWrites && data['sender-key-memory']) throw new Error('authored memory store rejection')
 				for (const [type, entries] of Object.entries(data))
 					for (const [id, value] of Object.entries(entries)) rows.set(`${type}/${id}`, value)
 			}
 		}
 	}
-	const device = '200000000002:2@lid'
 	const cacheRows = new Map<string, unknown>()
 	const cache: CacheStore = {
 		get: <T>(key: string) => cacheRows.get(key) as T | undefined,
@@ -215,7 +217,11 @@ it('records sender-key delivery only after transport succeeds', async () => {
 		del: key => cacheRows.delete(key),
 		flushAll: () => cacheRows.clear()
 	}
-	await cache.set('200000000002', [{ user: '200000000002', server: 'lid', device: 2 }])
+	for (const jid of new Set(batches.flat())) {
+		const user = jid.split('@')[0]!
+		await cache.set(user, [{ user, server: 'lid', device: 2 }])
+	}
+
 	const encrypt = jest
 		.fn<() => Promise<{ type: 'msg'; ciphertext: Uint8Array }>>()
 		.mockResolvedValue({ type: 'msg', ciphertext: Buffer.from('authored distribution') })
@@ -224,11 +230,12 @@ it('records sender-key delivery only after transport succeeds', async () => {
 		auth,
 		logger: P({ level: 'silent' }),
 		userDevicesCache: cache,
+		transactionOpts: { maxCommitRetries: 1, delayBetweenTriesMs: 0 },
 		cachedGroupMetadata: async () => ({
 			id: '120363000000001@g.us',
 			subject: 'Authored',
 			owner: undefined,
-			participants: [{ id: '200000000002@lid', admin: null }]
+			participants: batches[Math.min(groupRead++, batches.length - 1)]!.map(id => ({ id, admin: null }))
 		}),
 		makeSignalRepository: (state, logger, lookup) => {
 			const repo = makeLibSignalRepository(state, logger, lookup)
@@ -245,6 +252,21 @@ it('records sender-key delivery only after transport succeeds', async () => {
 	sock.ev.emit('connection.update', { receivedPendingNotifications: true })
 	const transport = sock.ws as unknown as SyntheticSocket
 	const group = '120363000000001@g.us'
+	return {
+		rows,
+		sock,
+		encrypt,
+		transport,
+		group,
+		rejectMemory: (value: boolean) => {
+			rejectMemoryWrites = value
+		}
+	}
+}
+
+it('records sender-key delivery only after transport succeeds', async () => {
+	const { rows, sock, encrypt, transport, group, rejectMemory } = await groupSendFixture()
+	const device = '200000000002:2@lid'
 	try {
 		transport.rejectNext = true
 		await expect(
@@ -262,8 +284,38 @@ it('records sender-key delivery only after transport succeeds', async () => {
 		)
 		expect(encrypt).toHaveBeenCalledTimes(2)
 		expect(rows.get(`sender-key-memory/${group}`)).toEqual({ [device]: true })
+		rows.delete(`sender-key-memory/${group}`)
+		rejectMemory(true)
+		expect(
+			await sock.relayMessage(
+				group,
+				{ conversation: 'authored accepted transport' },
+				{ messageId: 'authored-cache-rejection', useCachedGroupMetadata: true, useUserDevicesCache: true }
+			)
+		).toBe('authored-cache-rejection')
+		expect(rows.has(`sender-key-memory/${group}`)).toBe(false)
+		rejectMemory(false)
 	} finally {
 		sock.messageRetryManager?.clear()
 		await sock.end(new Error('authored send test complete'))
+	}
+})
+
+it('merges delivery markers from concurrent group sends without dropping either device', async () => {
+	const { rows, sock, group } = await groupSendFixture([['200000000002@lid'], ['300000000003@lid']])
+	try {
+		await Promise.all(
+			['first', 'second'].map(messageId =>
+				sock.relayMessage(
+					group,
+					{ conversation: 'authored concurrent send' },
+					{ messageId, useCachedGroupMetadata: true, useUserDevicesCache: true }
+				)
+			)
+		)
+		expect(rows.get(`sender-key-memory/${group}`)).toEqual({ '200000000002:2@lid': true, '300000000003:2@lid': true })
+	} finally {
+		sock.messageRetryManager?.clear()
+		await sock.end(new Error('authored concurrency test complete'))
 	}
 })

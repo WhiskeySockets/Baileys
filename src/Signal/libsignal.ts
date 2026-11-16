@@ -253,8 +253,10 @@ export function makeLibSignalRepository(
 			}
 		},
 
-		async deleteSession(jids: string[]) {
+		async deleteSession(jids: string[], sessionScope?: 'default' | 'status') {
 			if (!jids.length) return
+			if (sessionScope !== undefined && sessionScope !== 'status' && sessionScope !== 'default')
+				throw new Error('Unsupported session deletion scope')
 			if (!parsedKeys.supportsExclusiveTransactions)
 				throw new Error('Key store does not support exclusive session deletion')
 
@@ -274,8 +276,8 @@ export function makeLibSignalRepository(
 					for (const [index, jid] of jids.entries()) {
 						for (const target of [jid, resolvedJids[index]!]) {
 							const addr = jidToSignalProtocolAddress(target).toString()
-							sessionUpdates[addr] = null
-							sessionUpdates[`${addr}_status`] = null
+							if (sessionScope !== 'status') sessionUpdates[addr] = null
+							if (sessionScope !== 'default') sessionUpdates[`${addr}_status`] = null
 						}
 					}
 

@@ -289,7 +289,7 @@ Custom status-session stores must meet these requirements:
 - Signal repositories declare `supportsStatusSessions: true` after implementing scoped decryption and validation plus both-scope deletion, migration and identity replacement.
 - Transactional key stores declare `supportsExclusiveTransactions` and honor `transaction(work, key, {exclusive:true})`. Exclusive admission drains ordinary transactions and remains held through commit. Nested upgrades fail closed.
 - Scoped status decryption and session deletion fail closed without the required capability. Pairwise operations resolve their address before admission and pin it for storage and locking.
-- Deletion uses stored identity associations only. Migration retains an existing destination ratchet and its source. Identity-changing prekey decrypt and session injection are exclusive local operations.
+- Deletion uses stored identity associations only. Retry recovery selects the failed namespace; device removal, registration mismatch and identity replacement can still invalidate both. Migration retains an existing destination ratchet and its source. Identity-changing prekey decrypt and session injection are exclusive local operations.
 - Relay lookups and transport run outside key-store transactions. Each repository crypto operation commits its state before transport; multiple device operations are not one atomic batch. This avoids holding the store-wide barrier across network work.
 
 

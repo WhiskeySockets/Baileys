@@ -405,3 +405,35 @@ it.each([false, true])('discovers a later status session after chat migration, h
 	expect(source.rows.has(`session/${to}_status`)).toBe(true)
 	expect(source.rows.get(`session/${to}`)).toEqual(migrated)
 })
+
+it.each(['default', 'status'] as const)('deletes only the selected %s retry namespace', async scope => {
+	const receiver = authState()
+	const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+	const pn = '200000000002:2@s.whatsapp.net',
+		lid = '300000000003:2@lid'
+	await repo.lidMapping.storeLIDPNMappings([{ pn, lid }])
+	const addresses = [pn, lid].map(jid => repo.jidToSignalProtocolAddress(jid))
+	for (const address of addresses) {
+		receiver.rows.set(`session/${address}`, Buffer.from('authored chat ratchet'))
+		receiver.rows.set(`session/${address}_status`, Buffer.from('authored status ratchet'))
+	}
+
+	// Keep the fixture callable against the previous one-argument runtime too.
+	const deleteScoped = repo.deleteSession as (jids: string[], selected: 'default' | 'status') => Promise<void>
+	await deleteScoped([pn], scope)
+	for (const address of addresses) {
+		expect(receiver.rows.has(`session/${address}`)).toBe(scope === 'status')
+		expect(receiver.rows.has(`session/${address}_status`)).toBe(scope === 'default')
+	}
+})
+
+it('rejects an unknown session deletion scope without changing retained state', async () => {
+	const receiver = authState()
+	const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+	const pn = '200000000002:2@s.whatsapp.net'
+	receiver.rows.set(`session/${repo.jidToSignalProtocolAddress(pn)}`, Buffer.from('authored chat ratchet'))
+	const before = new Map(receiver.rows)
+	const deleteScoped = repo.deleteSession as (jids: string[], selected: 'status') => Promise<void>
+	await expect(deleteScoped([pn], 'future' as 'status')).rejects.toThrow('Unsupported session deletion scope')
+	expect(receiver.rows).toEqual(before)
+})

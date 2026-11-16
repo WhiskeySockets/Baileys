@@ -818,7 +818,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				content: ciphertext
 			})
 
-			senderKeyMemoryUpdate = senderKeyMap
+			senderKeyMemoryUpdate = senderKeyRecipients.length
+				? Object.fromEntries(senderKeyRecipients.map(device => [device, true]))
+				: undefined
 		} else {
 			// ADDRESSING CONSISTENCY: Match own identity to conversation context
 			// TODO: investigate if this is true
@@ -1102,7 +1104,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
 		await sendNode(stanza)
-		if (senderKeyMemoryUpdate) await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMemoryUpdate } })
+		if (senderKeyMemoryUpdate) {
+			try {
+				await authState.keys.transaction(async () => {
+					const current = await authState.keys.get('sender-key-memory', [jid])
+					await authState.keys.set({ 'sender-key-memory': { [jid]: { ...current[jid], ...senderKeyMemoryUpdate } } })
+				}, `sender-key-memory:${jid}`)
+			} catch {
+				logger.warn({ msgId }, 'message sent but sender-key delivery markers could not be saved')
+			}
+		}
 
 		// Fire-and-forget: issue our token to the contact AFTER message send.
 		// WA Web skips protocol messages and PSA/bot contacts (TcTokenChatAction: isRegularUser)

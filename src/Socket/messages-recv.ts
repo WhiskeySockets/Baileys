@@ -615,6 +615,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
+		const sessionScope = getStatusSessionScope(node, config.getStatusSessionMode?.())
+		const retrySessionKey = sessionScope === 'status' ? `${sessionJid}_status` : sessionJid
 
 		// Check if we should recreate the session
 		let shouldRecreateSession = false
@@ -623,18 +625,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				// Check if we have a session with this JID
-				const hasSession = await signalRepository.validateSession(
-					sessionJid,
-					getStatusSessionScope(node, config.getStatusSessionMode?.())
-				)
-				const result = messageRetryManager.shouldRecreateSession(sessionJid, hasSession.exists)
+				const hasSession = await signalRepository.validateSession(sessionJid, sessionScope)
+				const result = messageRetryManager.shouldRecreateSession(retrySessionKey, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
 				if (shouldRecreateSession) {
 					logger.debug({ fromJid, retryCount, reason: recreateReason }, 'recreating session for retry')
 					// Delete existing session to force recreation
-					await signalRepository.deleteSession([sessionJid])
+					await signalRepository.deleteSession([sessionJid], sessionScope ?? 'default')
 					forceIncludeKeys = true
 				}
 			} catch (error) {
@@ -1406,7 +1405,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				} else if (retryCount > BASE_KEY_CHECK_RETRY) {
 					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
 						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
-						await signalRepository.deleteSession([participant])
+						await signalRepository.deleteSession([participant], 'default')
 					}
 
 					messageRetryManager.deleteBaseKey(sessionId, msgId)
@@ -1426,7 +1425,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				if (shouldRecreateSession) {
 					logger.debug({ participant, retryCount, reason: recreateReason }, 'recreating session for outgoing retry')
-					await signalRepository.deleteSession([participant])
+					await signalRepository.deleteSession([participant], 'default')
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
