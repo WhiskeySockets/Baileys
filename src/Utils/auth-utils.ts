@@ -340,6 +340,13 @@ export const addTransactionCapability = (
 			} finally {
 				releaseTxMutexRef(key)
 			}
+		},
+
+		disposeTransactionStorage: () => {
+			// Disabling releases this storage from node's global list of
+			// enabled AsyncLocalStorage instances. A later transaction
+			// would re-enable it, so this is only for end-of-life cleanup
+			txStorage.disable()
 		}
 	}
 }

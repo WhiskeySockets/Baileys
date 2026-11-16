@@ -665,6 +665,11 @@ export const makeSocket = (config: SocketConfig) => {
 		})
 		ev.removeAllListeners('connection.update')
 		ev.destroy()
+
+		// Release the transaction storage: every socket enables one
+		// AsyncLocalStorage, and node keeps enabled storages on a global
+		// list that taxes every async resource created afterwards
+		keys.disposeTransactionStorage?.()
 	}
 
 	const waitForSocketOpen = async () => {
