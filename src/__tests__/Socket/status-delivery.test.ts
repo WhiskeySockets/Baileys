@@ -124,3 +124,58 @@ it.each([
 		await sock.end(new Error('synthetic test complete'))
 	}
 })
+
+it('sends a status-class retry receipt for a legacy personal message envelope', async () => {
+	const auth: AuthenticationState = {
+		creds: {
+			...initAuthCreds(),
+			me: { id: '100000000001:1@s.whatsapp.net', lid: '100000000002:1@lid', name: 'Synthetic' },
+			account: {
+				details: Buffer.from('authored device'),
+				accountSignatureKey: Buffer.alloc(32, 1),
+				accountSignature: Buffer.alloc(64, 2),
+				deviceSignature: Buffer.alloc(64, 3)
+			}
+		},
+		keys: { get: async () => ({}), set: async () => {} }
+	}
+	const sock = makeWASocket({
+		...DEFAULT_CONNECTION_CONFIG,
+		auth,
+		logger: P({ level: 'silent' }),
+		shouldSyncHistoryMessage: () => false
+	})
+	await new Promise<void>(resolve => process.nextTick(resolve))
+	sock.ev.emit('connection.update', { receivedPendingNotifications: true })
+	try {
+		await sock.sendRetryRequest({
+			tag: 'message',
+			attrs: {
+				from: 'status@broadcast',
+				participant: '200000000002:2@lid',
+				id: 'authored-legacy-retry',
+				t: '1794700800'
+			},
+			content: [{ tag: 'enc', attrs: { type: 'msg', v: '2' }, content: Buffer.from('authored ciphertext') }]
+		})
+		const frames = (sock.ws as unknown as SyntheticSocket).sent
+		const outgoing: BinaryNode[] = []
+		for (let i = 0; i < frames.length; i++) outgoing.push(await decodeBinaryNode(frames[i]!.subarray(i === 0 ? 7 : 3)))
+		expect(outgoing).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tag: 'receipt',
+					attrs: expect.objectContaining({
+						id: 'authored-legacy-retry',
+						type: 'retry',
+						class: 'status',
+						to: 'status@broadcast'
+					})
+				})
+			])
+		)
+	} finally {
+		sock.messageRetryManager?.clear()
+		await sock.end(new Error('authored retry test complete'))
+	}
+})
