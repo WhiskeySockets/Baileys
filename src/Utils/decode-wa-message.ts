@@ -271,8 +271,10 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 }
 
+export const UNSUPPORTED_STATUS_SESSION_ERROR_TEXT = 'Signal repository does not support status sessions'
+
 function assertStatusSessionSupport(repository: SignalRepositoryWithLIDStore, scope: 'status' | undefined) {
-	if (scope && !repository.supportsStatusSessions) throw new Error('Signal repository does not support status sessions')
+	if (scope && !repository.supportsStatusSessions) throw new Error(UNSUPPORTED_STATUS_SESSION_ERROR_TEXT)
 }
 
 export const decryptMessageNode = (

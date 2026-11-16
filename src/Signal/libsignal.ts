@@ -257,19 +257,28 @@ export function makeLibSignalRepository(
 		},
 
 		async deleteSession(jids: string[]) {
-			for (const jid of jids) {
-				const resolvedJid = await sessionTransactionJid(jid)
-				await parsedKeys.transaction(async () => {
-					const sessionUpdates: { [key: string]: null } = {}
-					for (const target of [jid, resolvedJid]) {
-						const addr = jidToSignalProtocolAddress(target).toString()
-						sessionUpdates[addr] = null
-						sessionUpdates[`${addr}_status`] = null
-					}
+			if (!jids.length) return
 
-					await auth.keys.set({ session: sessionUpdates })
-				}, resolvedJid)
+			const resolvedJids = await Promise.all(
+				jids.map(async jid =>
+					isPnUser(jid) || isHostedPnUser(jid) ? (await lidMapping.getLIDForPN(jid, { useUSync: false })) || jid : jid
+				)
+			)
+			const sessionUpdates: { [key: string]: null } = {}
+			for (const [index, jid] of jids.entries()) {
+				for (const target of [jid, resolvedJids[index]!]) {
+					const addr = jidToSignalProtocolAddress(target).toString()
+					sessionUpdates[addr] = null
+					sessionUpdates[`${addr}_status`] = null
+				}
 			}
+
+			await parsedKeys.transaction(
+				async () => {
+					await auth.keys.set({ session: sessionUpdates })
+				},
+				resolvedJids.length === 1 ? resolvedJids[0]! : `delete-${[...new Set(resolvedJids)].sort().join(',')}`
+			)
 		},
 
 		close() {

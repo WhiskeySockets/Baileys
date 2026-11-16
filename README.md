@@ -284,6 +284,8 @@ const sock = makeWASocket({
     ```
 ## Saving & Restoring Sessions
 
+Custom Signal repositories must declare `supportsStatusSessions: true` after implementing isolated pairwise status storage and covering both scopes in deletion, migration and identity changes. Scoped status decryption fails closed without this capability; ordinary chat decryption is unchanged.
+
 You obviously don't want to keep scanning the QR code every time you want to connect.
 
 So, you can load the credentials to log back in:
@@ -1325,5 +1327,3 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Thus, the maintainers of the project can't be held liable for any potential misuse of this project.
-
-Custom Signal repositories must declare `supportsStatusSessions: true` after implementing isolated pairwise status storage and covering both scopes in deletion, migration and identity changes. Scoped status decryption fails closed without this capability; ordinary chat decryption is unchanged.

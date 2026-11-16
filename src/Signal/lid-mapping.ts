@@ -105,15 +105,15 @@ export class LIDMappingStore {
 		}
 	}
 
-	async getLIDForPN(pn: string): Promise<string | null> {
-		return (await this.getLIDsForPNs([pn]))?.[0]?.lid || null
+	async getLIDForPN(pn: string, options?: { useUSync?: boolean }): Promise<string | null> {
+		return (await this.getLIDsForPNs([pn], options))?.[0]?.lid || null
 	}
 
-	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
+	async getLIDsForPNs(pns: string[], options?: { useUSync?: boolean }): Promise<LIDMapping[] | null> {
 		if (pns.length === 0) return null
 
 		const sortedPns = [...new Set(pns)].sort()
-		const cacheKey = sortedPns.join(',')
+		const cacheKey = `${options?.useUSync === false ? 'local:' : 'lookup:'}${sortedPns.join(',')}`
 
 		const inflight = this.inflightLIDLookups.get(cacheKey)
 		if (inflight) {
@@ -121,7 +121,7 @@ export class LIDMappingStore {
 			return inflight
 		}
 
-		const promise = this._getLIDsForPNsImpl(pns)
+		const promise = this._getLIDsForPNsImpl(pns, options?.useUSync !== false)
 		this.inflightLIDLookups.set(cacheKey, promise)
 
 		try {
@@ -131,7 +131,7 @@ export class LIDMappingStore {
 		}
 	}
 
-	private async _getLIDsForPNsImpl(pns: string[]): Promise<LIDMapping[] | null> {
+	private async _getLIDsForPNsImpl(pns: string[], useUSync: boolean): Promise<LIDMapping[] | null> {
 		const usyncFetch: { [_: string]: number[] } = {}
 		const successfulPairs: { [_: string]: LIDMapping } = {}
 		const pending: Array<{ pn: string; pnUser: string; decoded: ReturnType<typeof jidDecode> }> = []
@@ -209,7 +209,7 @@ export class LIDMappingStore {
 			}
 		}
 
-		if (Object.keys(usyncFetch).length > 0) {
+		if (useUSync && Object.keys(usyncFetch).length > 0) {
 			const result = await this.pnToLIDFunc?.(Object.keys(usyncFetch)) // this function already adds LIDs to mapping
 			if (result && result.length > 0) {
 				await this.storeLIDPNMappings(result)

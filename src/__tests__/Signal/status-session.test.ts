@@ -8,6 +8,7 @@ import { generateSignalPubKey } from '../../Utils/crypto'
 
 function authState(creds = initAuthCreds()) {
 	const rows = new Map<string, unknown>()
+	let rejectWrites = false
 	const auth: AuthenticationState = {
 		creds,
 		keys: {
@@ -21,6 +22,7 @@ function authState(creds = initAuthCreds()) {
 				return result
 			},
 			set: async data => {
+				if (rejectWrites) throw new Error('authored storage rejection')
 				for (const [type, entries] of Object.entries(data))
 					for (const [id, value] of Object.entries(entries)) {
 						if (value === null || value === undefined) rows.delete(`${type}/${id}`)
@@ -33,7 +35,13 @@ function authState(creds = initAuthCreds()) {
 		maxCommitRetries: 1,
 		delayBetweenTriesMs: 0
 	})
-	return { auth, rows }
+	return {
+		auth,
+		rows,
+		rejectWrites: (value: boolean) => {
+			rejectWrites = value
+		}
+	}
 }
 
 it('decrypts alternating chat and status ratchets from the same identity', async () => {
@@ -156,4 +164,30 @@ it('refuses scoped status decryption before calling an unsupported custom reposi
 	await received.decrypt()
 	expect(called).toBe(false)
 	expect(received.fullMessage.messageStubParameters).toEqual(['Signal repository does not support status sessions'])
+})
+
+it('deletes a device batch atomically without starting a remote identity lookup', async () => {
+	const receiver = authState()
+	let lookups = 0
+	const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }), async () => {
+		lookups++
+		throw new Error('lookup must not run')
+	})
+	const pn = '200000000002:2@s.whatsapp.net'
+	const lid = '300000000003:2@lid'
+	const other = '400000000004:3@s.whatsapp.net'
+	receiver.rows.set('lid-mapping/200000000002', '300000000003')
+	const addresses = [pn, lid, other].flatMap(jid => {
+		const addr = repo.jidToSignalProtocolAddress(jid)
+		return [addr, `${addr}_status`]
+	})
+	for (const address of addresses) receiver.rows.set(`session/${address}`, Buffer.from('authored retained state'))
+	const before = new Map(receiver.rows)
+	receiver.rejectWrites(true)
+	await expect(repo.deleteSession([pn, other])).rejects.toThrow('authored storage rejection')
+	expect(receiver.rows).toEqual(before)
+	receiver.rejectWrites(false)
+	await repo.deleteSession([pn, other])
+	for (const address of addresses) expect(receiver.rows.has(`session/${address}`)).toBe(false)
+	expect(lookups).toBe(0)
 })

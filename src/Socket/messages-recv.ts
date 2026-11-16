@@ -50,6 +50,7 @@ import {
 	SERVER_ERROR_CODES,
 	toNumber,
 	unixTimestampSeconds,
+	UNSUPPORTED_STATUS_SESSION_ERROR_TEXT,
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
@@ -1634,6 +1635,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
+					if (msg.messageStubParameters?.[0] === UNSUPPORTED_STATUS_SESSION_ERROR_TEXT) {
+						logger.warn({ msgId: msg.key.id }, 'status session unsupported by configured repository')
+						acked = true
+						return sendMessageAck(node, NACK_REASONS.UnrecognizedStanza)
+					}
+
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 						acked = true
 						return sendMessageAck(node, NACK_REASONS.ParsingError)

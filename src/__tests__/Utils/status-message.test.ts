@@ -34,7 +34,23 @@ it('keeps ordinary group messages outside publication classification', () => {
 	)
 	expect(fullMessage.statusKind).toBeUndefined()
 })
+// Explicit expected outcomes cover every mode, sender domain and metadata value.
 it.each([
+	[0, 'status@broadcast', '', 'status', undefined],
+	[0, '120363000000001@g.us', '', 'status', undefined],
+	[0, '200000000002@lid', '', 'status', undefined],
+	[0, '200000000002@lid', 'status', 'status', undefined],
+	[1, '120363000000001@g.us', '', 'status', undefined],
+	[1, '200000000002@lid', '', 'status', undefined],
+	[1, '200000000002@lid', 'status', 'status', undefined],
+	[2, 'status@broadcast', '', 'status', undefined],
+	[2, '120363000000001@g.us', '', 'status', undefined],
+	[2, '200000000002@lid', '', 'status', undefined],
+	[2, '200000000002@lid', 'status', 'status', undefined],
+	[3, 'status@broadcast', '', 'status', 'status'],
+	[3, 'status@broadcast', 'status', 'status', 'status'],
+	[3, '120363000000001@g.us', 'status', 'status', 'status'],
+	[3, '200000000002@lid', '', 'status', undefined],
 	[0, 'status@broadcast', 'status', 'status', undefined],
 	[1, 'status@broadcast', 'status', 'status', 'status'],
 	[2, 'status@broadcast', 'status', 'status', 'status'],

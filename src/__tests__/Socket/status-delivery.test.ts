@@ -30,7 +30,11 @@ const { proto } = await import('../../../WAProto/index.js')
 
 // No network or account state: encrypted bytes are an authored fixture and the
 // decryptor records its scope before returning the authored plaintext.
-it.each([false, true])('delivers encrypted status content with offline=%s', async offline => {
+it.each([
+	[false, true],
+	[true, true],
+	[false, false]
+])('handles status content with offline=%s and scope support=%s', async (offline, supported) => {
 	const auth: AuthenticationState = {
 		creds: {
 			...initAuthCreds(),
@@ -47,6 +51,7 @@ it.each([false, true])('delivers encrypted status content with offline=%s', asyn
 		shouldSyncHistoryMessage: () => false,
 		makeSignalRepository: (state, logger, lookup) => {
 			const repo = makeLibSignalRepository(state, logger, lookup)
+			repo.supportsStatusSessions = supported
 			repo.decryptMessage = decrypt
 			return repo
 		}
@@ -72,6 +77,25 @@ it.each([false, true])('delivers encrypted status content with offline=%s', asyn
 	try {
 		sock.ws.emit('CB:status', node)
 		for (let i = 0; i < 50 && delivered.length === 0; i++) await new Promise(resolve => setTimeout(resolve, 10))
+		if (!supported) {
+			expect(decrypt).not.toHaveBeenCalled()
+			expect(delivered).toHaveLength(0)
+			const outgoing: BinaryNode[] = []
+			const frames = (sock.ws as unknown as SyntheticSocket).sent
+			for (let i = 0; i < frames.length; i++)
+				outgoing.push(await decodeBinaryNode(frames[i]!.subarray(i === 0 ? 7 : 3)))
+			expect(outgoing).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						tag: 'ack',
+						attrs: expect.objectContaining({ id: 'synthetic-status', class: 'status', error: '488' })
+					})
+				])
+			)
+			expect(outgoing.some(node => node.tag === 'receipt')).toBe(false)
+			return
+		}
+
 		expect(decrypt).toHaveBeenCalledWith(expect.objectContaining({ jid: '200000000002:2@lid', sessionScope: 'status' }))
 		expect(delivered).toHaveLength(1)
 		expect(delivered[0]).toMatchObject({
