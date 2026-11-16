@@ -58,6 +58,7 @@ import {
 	isJidBot,
 	isJidGroup,
 	isJidMetaAI,
+	isJidStatusBroadcast,
 	isLidUser,
 	isPnUser,
 	jidDecode,
@@ -119,6 +120,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
+	const groupRelayMutex = makeKeyedMutex()
 
 	let mediaConn: Promise<MediaConnInfo> | undefined
 	/** Per-socket media host; updated whenever media_conn is fetched. Defaults to the public WhatsApp host. */
@@ -618,7 +620,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
-	const relayMessage = async (
+	const relayMessageWithOrder = async (
 		jid: string,
 		message: proto.IMessage,
 		{
@@ -1167,6 +1169,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		return msgId
+	}
+
+	const relayMessage = (jid: string, message: proto.IMessage, options: MessageRelayOptions) => {
+		if (isJidGroup(jid) || isJidStatusBroadcast(jid)) {
+			// Preserve sender-chain order through transport without holding lifecycle admission.
+			return groupRelayMutex.mutex(jid, () => relayMessageWithOrder(jid, message, options))
+		}
+
+		return relayMessageWithOrder(jid, message, options)
 	}
 
 	const getMessageType = (message: proto.IMessage) => {

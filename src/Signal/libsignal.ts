@@ -71,6 +71,30 @@ export function makeLibSignalRepository(
 	const sessionTransactionJid = async (jid: string) =>
 		isPnUser(jid) || isHostedPnUser(jid) ? (await lidMapping.getLIDForPN(jid)) || jid : jid
 
+	let migrationGeneration = 0
+	const retryAddress = Symbol('session address changed')
+	const withSessionAddress = async <T>(
+		jid: string,
+		work: (resolved: string) => Promise<T>,
+		exclusive = false
+	): Promise<T> => {
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const generation = migrationGeneration
+			const resolved = await sessionTransactionJid(jid)
+			const result = await parsedKeys.transaction(
+				async () => {
+					if (generation !== migrationGeneration) return retryAddress
+					return work(resolved)
+				},
+				resolved,
+				{ exclusive }
+			)
+			if (result !== retryAddress) return result
+		}
+
+		throw new Error('Session address kept changing before admission')
+	}
+
 	const repository: SignalRepositoryWithLIDStore = {
 		supportsStatusSessions: parsedKeys.supportsExclusiveTransactions === true,
 		decryptGroupMessage({ group, authorJid, msg }) {
@@ -113,62 +137,36 @@ export function makeLibSignalRepository(
 			}, item.groupId)
 		},
 		async decryptMessage({ jid, type, ciphertext, sessionScope }) {
-			const resolvedJid = await sessionTransactionJid(jid)
-			const addr = jidToSignalProtocolAddress(resolvedJid)
-			const decryptStorage = signalStorage(auth, lidMapping, sessionScope === 'status', addr.toString())
-			const session = new libsignal.SessionCipher(decryptStorage, addr)
-
-			async function doDecrypt() {
-				let result: Buffer
-				switch (type) {
-					case 'pkmsg':
-						result = await session.decryptPreKeyWhisperMessage(ciphertext)
-						break
-					case 'msg':
-						result = await session.decryptWhisperMessage(ciphertext)
-						break
-				}
-
-				return result
+			if (sessionScope === 'status' && !parsedKeys.supportsExclusiveTransactions) {
+				throw new Error('Signal repository does not support status sessions')
 			}
 
-			// If it's not a sync message, we need to ensure atomicity
-			// For regular messages, we use a transaction to ensure atomicity
-			return parsedKeys.transaction(
-				async () => {
-					// Extract and save sender's identity key before decryption for identity change detection
+			return withSessionAddress(
+				jid,
+				async resolvedJid => {
+					const addr = jidToSignalProtocolAddress(resolvedJid)
+					const decryptStorage = signalStorage(auth, lidMapping, sessionScope === 'status', addr.toString())
+					const session = new libsignal.SessionCipher(decryptStorage, addr)
 					if (type === 'pkmsg') {
 						const identityKey = extractIdentityFromPkmsg(ciphertext)
-						if (identityKey) {
-							const addrStr = addr.toString()
-							const identityChanged = await decryptStorage.saveIdentity(addrStr, identityKey)
-							if (identityChanged) {
-								logger.info(
-									{ jid, addr: addrStr },
-									'identity key changed or new contact, session will be re-established'
-								)
-							}
-						}
+						if (identityKey) await decryptStorage.saveIdentity(addr.toString(), identityKey)
+						return session.decryptPreKeyWhisperMessage(ciphertext)
 					}
 
-					return await doDecrypt()
+					return session.decryptWhisperMessage(ciphertext)
 				},
-				resolvedJid,
-				{ exclusive: type === 'pkmsg' && parsedKeys.supportsExclusiveTransactions === true }
+				type === 'pkmsg' && parsedKeys.supportsExclusiveTransactions === true
 			)
 		},
 
 		async encryptMessage({ jid, data }) {
-			const resolvedJid = await sessionTransactionJid(jid)
-			const addr = jidToSignalProtocolAddress(resolvedJid)
-			const cipher = new libsignal.SessionCipher(signalStorage(auth, lidMapping, false, addr.toString()), addr)
-
-			// Use transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
+			return withSessionAddress(jid, async resolvedJid => {
+				const addr = jidToSignalProtocolAddress(resolvedJid)
+				const cipher = new libsignal.SessionCipher(signalStorage(auth, lidMapping, false, addr.toString()), addr)
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
 				return { type, ciphertext: Buffer.from(body, 'binary') }
-			}, resolvedJid)
+			})
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
@@ -213,17 +211,15 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
-			const resolvedJid = await sessionTransactionJid(jid)
-			const addr = jidToSignalProtocolAddress(resolvedJid)
-			const cipher = new libsignal.SessionBuilder(signalStorage(auth, lidMapping, false, addr.toString()), addr)
-			return parsedKeys.transaction(
-				async () => {
-					// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
-					// but the bundled .d.ts marks it required.
+			return withSessionAddress(
+				jid,
+				async resolvedJid => {
+					const addr = jidToSignalProtocolAddress(resolvedJid)
+					const cipher = new libsignal.SessionBuilder(signalStorage(auth, lidMapping, false, addr.toString()), addr)
+					// libsignal accepts an absent prekey despite the bundled declaration.
 					await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
 				},
-				resolvedJid,
-				{ exclusive: parsedKeys.supportsExclusiveTransactions === true }
+				parsedKeys.supportsExclusiveTransactions === true
 			)
 		},
 		jidToSignalProtocolAddress(jid) {
@@ -298,6 +294,8 @@ export function makeLibSignalRepository(
 		): Promise<{ migrated: number; skipped: number; total: number }> {
 			return parsedKeys.transaction(
 				async () => {
+					// Invalidate resolutions made before this exclusive migration, including failed attempts.
+					migrationGeneration++
 					// TODO: use usync to handle this entire mess
 					if (!fromJid || (!isLidUser(toJid) && !isHostedLidUser(toJid))) return { migrated: 0, skipped: 0, total: 0 }
 

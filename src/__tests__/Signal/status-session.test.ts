@@ -136,7 +136,7 @@ it('rolls back identity replacement and both session resets when status decrypti
 	expect(receiver.rows).toEqual(before)
 })
 
-it('refuses scoped status decryption before calling an unsupported custom repository', async () => {
+it.each([false, true])('refuses unsupported scoped decryption with compound=%s', async compound => {
 	const { decryptMessageNode } = await import('../../Utils/decode-wa-message')
 	const logger = P({ level: 'silent' })
 	const repo = makeLibSignalRepository(authState().auth, logger)
@@ -153,7 +153,10 @@ it('refuses scoped status decryption before calling an unsupported custom reposi
 			attrs: { from: 'status@broadcast', participant: '200000000002:2@lid', id: 'authored-unsupported' },
 			content: [
 				{ tag: 'meta', attrs: { session_scope: 'status' } },
-				{ tag: 'enc', attrs: { type: 'pkmsg', v: '2' }, content: Buffer.from('authored') }
+				{ tag: 'enc', attrs: { type: 'pkmsg', v: '2' }, content: Buffer.from('authored') },
+				...(compound
+					? [{ tag: 'enc', attrs: { type: 'skmsg', v: '2' }, content: Buffer.from('authored failing group') }]
+					: [])
 			]
 		},
 		'100000000001@s.whatsapp.net',
@@ -436,4 +439,92 @@ it('rejects an unknown session deletion scope without changing retained state', 
 	const deleteScoped = repo.deleteSession as (jids: string[], selected: 'status') => Promise<void>
 	await expect(deleteScoped([pn], 'future' as 'status')).rejects.toThrow('Unsupported session deletion scope')
 	expect(receiver.rows).toEqual(before)
+})
+
+it('refuses direct scoped calls before lookup when exclusive admission is unavailable', async () => {
+	const receiver = authState()
+	;(receiver.auth.keys as SignalKeyStoreWithTransaction).supportsExclusiveTransactions = false
+	const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+	let lookedUp = false
+	repo.lidMapping.getLIDForPN = async () => {
+		lookedUp = true
+		throw new Error('lookup must not run')
+	}
+
+	const before = new Map(receiver.rows)
+	expect(repo.supportsStatusSessions).toBe(false)
+	await expect(
+		repo.decryptMessage({
+			jid: '200000000002:2@s.whatsapp.net',
+			type: 'pkmsg',
+			ciphertext: Buffer.from('authored'),
+			sessionScope: 'status'
+		})
+	).rejects.toThrow('Signal repository does not support status sessions')
+	expect(lookedUp).toBe(false)
+	expect(receiver.rows).toEqual(before)
+})
+
+it('retries address resolution when migration commits before pairwise admission', async () => {
+	const receiver = authState(),
+		sender = authState()
+	const receiveRepo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+	const sendRepo = makeLibSignalRepository(sender.auth, P({ level: 'silent' }))
+	const receiverJid = '100000000001:1@lid',
+		senderJid = '200000000002:2@s.whatsapp.net',
+		lid = '300000000003:2@lid'
+	const creds = receiver.auth.creds
+	await sendRepo.injectE2ESession({
+		jid: receiverJid,
+		session: {
+			registrationId: creds.registrationId,
+			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+			signedPreKey: {
+				keyId: creds.signedPreKey.keyId,
+				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+				signature: creds.signedPreKey.signature
+			}
+		}
+	})
+	const first = await sendRepo.encryptMessage({ jid: receiverJid, data: Buffer.from('authored first') })
+	await receiveRepo.decryptMessage({ jid: senderJid, ...first })
+	const reply = await receiveRepo.encryptMessage({ jid: senderJid, data: Buffer.from('authored reply') })
+	await sendRepo.decryptMessage({ jid: receiverJid, ...reply })
+	const next = await sendRepo.encryptMessage({ jid: receiverJid, data: Buffer.from('authored after migration') })
+	expect(next.type).toBe('msg')
+	const originalLookup = receiveRepo.lidMapping.getLIDForPN.bind(receiveRepo.lidMapping)
+	let enter!: () => void,
+		release!: () => void,
+		reads = 0
+	const entered = new Promise<void>(resolve => {
+		enter = resolve
+	})
+	const gate = new Promise<void>(resolve => {
+		release = resolve
+	})
+	receiveRepo.lidMapping.getLIDForPN = async (...args) => {
+		reads++
+		const result = await originalLookup(...args)
+		if (reads === 1) {
+			enter()
+			await gate
+		}
+
+		return result
+	}
+
+	const pending = receiveRepo.decryptMessage({ jid: senderJid, ...next })
+	try {
+		await entered
+		receiver.rows.set('device-list/200000000002', ['2'])
+		await receiveRepo.lidMapping.storeLIDPNMappings([{ pn: senderJid, lid }])
+		await receiveRepo.migrateSession(senderJid, lid)
+	} finally {
+		release()
+	}
+
+	expect(Buffer.from(await pending).toString()).toBe('authored after migration')
+	expect(reads).toBe(2)
+	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(senderJid)}`)).toBe(false)
+	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(lid)}`)).toBe(true)
 })

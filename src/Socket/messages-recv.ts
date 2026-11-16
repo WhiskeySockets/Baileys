@@ -573,7 +573,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await query(stanza)
 	}
 
-	const sendRetryRequest = async (node: BinaryNode, forceIncludeKeys = false) => {
+	const sendRetryRequest = async (
+		node: BinaryNode,
+		forceIncludeKeys = false,
+		statusSessionMode = config.getStatusSessionMode?.()
+	) => {
 		const { fullMessage, author: sessionJid } = decodeMessageNode(
 			node,
 			authState.creds.me!.id,
@@ -615,7 +619,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
-		const sessionScope = getStatusSessionScope(node, config.getStatusSessionMode?.())
+		const sessionScope = getStatusSessionScope(node, statusSessionMode)
 		const retrySessionKey = sessionScope === 'status' ? `${sessionJid}_status` : sessionJid
 
 		// Check if we should recreate the session
@@ -1602,6 +1606,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let acked = false
 
 		try {
+			const statusSessionMode = config.getStatusSessionMode?.() ?? 1
 			const {
 				fullMessage: msg,
 				category,
@@ -1613,7 +1618,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				authState.creds.me!.lid || '',
 				signalRepository,
 				logger,
-				config.getStatusSessionMode?.()
+				statusSessionMode
 			)
 
 			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
@@ -1739,7 +1744,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								}
 
 								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode)
+								await sendRetryRequest(node, !encNode, statusSessionMode)
 								if (retryRequestDelayMs) {
 									await delay(retryRequestDelayMs)
 								}

@@ -79,6 +79,7 @@ export type SignalRepository = {
 	jidToSignalProtocolAddress(jid: string): string
 	migrateSession(fromJid: string, toJid: string): Promise<{ migrated: number; skipped: number; total: number }>
 	validateSession(jid: string, sessionScope?: 'status'): Promise<{ exists: boolean; reason?: string }>
+	/** Omitted scope clears both stores; an explicit scope clears only that store. Implementations must honor it. */
 	deleteSession(jids: string[], sessionScope?: 'default' | 'status'): Promise<void>
 }
 

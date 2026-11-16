@@ -394,6 +394,7 @@ export const decryptMessageNode = (
 
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
 						fullMessage.messageStubParameters = [err.message.toString()]
+						if (err.message === UNSUPPORTED_STATUS_SESSION_ERROR_TEXT) return
 					}
 				}
 			}
