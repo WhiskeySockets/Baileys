@@ -1051,11 +1051,11 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 	ctx?: DownloadMediaMessageContext
 ) => {
 	const result = await downloadMsg().catch(async error => {
-		if (
-			ctx &&
-			typeof error?.status === 'number' && // treat errors with status as HTTP failures requiring reupload
-			REUPLOAD_REQUIRED_STATUS.includes(error.status as number)
-		) {
+		// getHttpStream throws Boom errors, which carry the HTTP status on
+		// `output.statusCode` rather than `status` — read both so a 410/404
+		// from the media CDN still triggers a reupload request
+		const status = error?.output?.statusCode ?? error?.status
+		if (ctx && typeof status === 'number' && REUPLOAD_REQUIRED_STATUS.includes(status)) {
 			ctx.logger.info({ key: message.key }, 'sending reupload media request...')
 			// request reupload
 			message = await ctx.reuploadRequest(message)
