@@ -33,6 +33,37 @@ export const ALL_WA_PATCH_NAMES = [
 
 export type WAPatchName = (typeof ALL_WA_PATCH_NAMES)[number]
 
+export type AppStatePatchOptions = {
+	/** Local correlation only; never sent to WhatsApp or inferred for synced actions. */
+	requestId?: string
+}
+
+export type AppStateActionContext = { collection: WAPatchName; version: number } & (
+	| { source: 'local-echo'; requestId?: string }
+	| { source: 'sync'; representation: 'patch' | 'snapshot'; initialSync: boolean; macVerified: boolean }
+)
+
+export type ChatAppStateAction = AppStateActionContext & {
+	kind: 'chat-action'
+	jid: string
+	action: { kind: 'mark-read'; read: boolean } | { kind: 'archive'; archived: boolean }
+	/** Timestamp supplied by the action, not the local receipt time. */
+	timestamp?: number
+	messageRange?: {
+		lastMessageTimestamp?: number
+		lastSystemMessageTimestamp?: number
+		messages?: { id?: string; fromMe?: boolean; participant?: string; timestamp?: number }[]
+	}
+}
+
+/** Evidence about an IQ response; never a statement that the phone applied the change. */
+export type AppStatePatchResponse = {
+	kind: 'patch-response'
+	collection: WAPatchName
+	version: number
+	requestId?: string
+} & ({ status: 'version-matched'; serverVersion: number } | { status: 'response-received'; serverVersion?: number })
+
 export interface PresenceData {
 	lastKnownPresence: WAPresence
 	lastSeen?: number

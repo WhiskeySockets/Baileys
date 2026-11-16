@@ -2,7 +2,7 @@ import type { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import type { AuthenticationCreds, LIDMapping } from './Auth'
 import type { WACallEvent } from './Call'
-import type { Chat, ChatUpdate, PresenceData } from './Chat'
+import type { AppStatePatchResponse, Chat, ChatAppStateAction, ChatUpdate, PresenceData } from './Chat'
 import type { Contact } from './Contact'
 import type {
 	GroupMetadata,
@@ -51,6 +51,8 @@ export type BaileysEventMap = {
 	'chats.upsert': Chat[]
 	/** update the given chats */
 	'chats.update': ChatUpdate[]
+	/** Unbuffered app-state evidence. Decoded actions may be historical or locally echoed. */
+	'app-state.update': AppStatePatchResponse | ChatAppStateAction
 	'lid-mapping.update': LIDMapping
 	/** delete chats with given ID */
 	'chats.delete': string[]
