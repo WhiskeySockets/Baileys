@@ -284,7 +284,7 @@ const sock = makeWASocket({
     ```
 ## Saving & Restoring Sessions
 
-Custom Signal repositories must declare `supportsStatusSessions: true` after implementing isolated pairwise status storage and covering both scopes in deletion, migration and identity changes. Scoped status decryption fails closed without this capability; ordinary chat decryption is unchanged.
+Custom Signal repositories must declare `supportsStatusSessions: true` after implementing isolated pairwise status storage and covering both scopes in deletion, migration and identity changes. Scoped status decryption fails closed without this capability; ordinary chat decryption is unchanged. Custom transactional key stores must also declare `supportsExclusiveTransactions` and honor `transaction(work, key, {exclusive:true})`: deletion drains all normal transactions and commits both session stores together. Migration (including discovery), identity-changing prekey decryption, session injection and the outer outbound relay transaction also use exclusive admission through commit. This serializes these operations against other key-store transactions, including while the outbound relay awaits network work. Ordinary transactions on different keys can still run concurrently. Nested read-to-exclusive upgrades fail closed. Migration retains an existing destination ratchet and its source instead of overwriting either scope. Deletion uses only stored identity associations; an unobserved phone-number/linked-identity association is not guessed from the network.
 
 You obviously don't want to keep scanning the QR code every time you want to connect.
 

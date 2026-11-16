@@ -2,7 +2,7 @@
 import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
 import P from 'pino'
 import { makeLibSignalRepository } from '../../Signal/libsignal'
-import type { AuthenticationState, SignalDataTypeMap } from '../../Types'
+import type { AuthenticationState, SignalDataTypeMap, SignalKeyStoreWithTransaction } from '../../Types'
 import { addTransactionCapability, initAuthCreds } from '../../Utils/auth-utils'
 import { generateSignalPubKey } from '../../Utils/crypto'
 
@@ -190,4 +190,135 @@ it('deletes a device batch atomically without starting a remote identity lookup'
 	await repo.deleteSession([pn, other])
 	for (const address of addresses) expect(receiver.rows.has(`session/${address}`)).toBe(false)
 	expect(lookups).toBe(0)
+})
+
+it('batch deletion drains ordinary per-device transactions before committing', async () => {
+	const receiver = authState()
+	const keys = receiver.auth.keys as SignalKeyStoreWithTransaction
+	const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+	const jids = ['200000000002:2@lid', '200000000002:3@lid']
+	const addresses = jids.map(jid => repo.jidToSignalProtocolAddress(jid))
+	for (const addr of addresses) {
+		receiver.rows.set(`session/${addr}`, Buffer.from('authored chat state'))
+		receiver.rows.set(`session/${addr}_status`, Buffer.from('authored status state'))
+	}
+
+	let signalRead!: () => void
+	let releaseRead!: () => void
+	const read = new Promise<void>(resolve => {
+		signalRead = resolve
+	})
+	const released = new Promise<void>(resolve => {
+		releaseRead = resolve
+	})
+	const writer = keys.transaction(async () => {
+		const old = await keys.get('session', [addresses[0]!])
+		signalRead()
+		await released
+		await keys.set({ session: old })
+	}, jids[0]!)
+	await read
+	let deleted = false
+	const deletion = repo.deleteSession(jids).then(() => {
+		deleted = true
+	})
+	await new Promise<void>(resolve => setImmediate(resolve))
+	expect(deleted).toBe(false)
+	releaseRead()
+	await Promise.all([writer, deletion])
+	for (const addr of addresses) {
+		expect(receiver.rows.has(`session/${addr}`)).toBe(false)
+		expect(receiver.rows.has(`session/${addr}_status`)).toBe(false)
+	}
+})
+
+it('rejects exclusive upgrades and unqualified stores without mutating sessions', async () => {
+	const receiver = authState()
+	const keys = receiver.auth.keys as SignalKeyStoreWithTransaction
+	const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+	const jid = '200000000002:2@lid'
+	const addr = repo.jidToSignalProtocolAddress(jid)
+	receiver.rows.set(`session/${addr}`, Buffer.from('authored retained state'))
+	const before = new Map(receiver.rows)
+	await expect(keys.transaction(() => repo.deleteSession([jid]), jid)).rejects.toThrow(
+		'Cannot upgrade an active transaction to exclusive'
+	)
+	expect(receiver.rows).toEqual(before)
+	keys.supportsExclusiveTransactions = false
+	await expect(repo.deleteSession([jid])).rejects.toThrow('Key store does not support exclusive session deletion')
+	expect(receiver.rows).toEqual(before)
+})
+
+it('keeps ordinary transactions concurrent and gives a queued exclusive writer priority', async () => {
+	const receiver = authState()
+	const keys = receiver.auth.keys as SignalKeyStoreWithTransaction
+	const entered: string[] = []
+	let releaseReaders!: () => void
+	const readersReleased = new Promise<void>(resolve => {
+		releaseReaders = resolve
+	})
+	let releaseWriter!: () => void
+	const writerReleased = new Promise<void>(resolve => {
+		releaseWriter = resolve
+	})
+	const readers = ['one', 'two'].map(key =>
+		keys.transaction(async () => {
+			entered.push(key)
+			await readersReleased
+		}, key)
+	)
+	await new Promise<void>(resolve => setImmediate(resolve))
+	expect(entered).toEqual(['one', 'two'])
+	const writer = keys.transaction(
+		async () => {
+			entered.push('exclusive')
+			await writerReleased
+			await keys.set({ session: { authored: Buffer.from('committed') } })
+		},
+		'writer',
+		{ exclusive: true }
+	)
+	const later = keys.transaction(async () => {
+		entered.push('later')
+		expect((await keys.get('session', ['authored'])).authored).toEqual(Buffer.from('committed'))
+	}, 'three')
+	await new Promise<void>(resolve => setImmediate(resolve))
+	expect(entered).toEqual(['one', 'two'])
+	releaseReaders()
+	await Promise.all(readers)
+	await new Promise<void>(resolve => setImmediate(resolve))
+	expect(entered).toEqual(['one', 'two', 'exclusive'])
+	releaseWriter()
+	await Promise.all([writer, later])
+	expect(entered).toEqual(['one', 'two', 'exclusive', 'later'])
+})
+
+it('preserves independently established destination sessions during migration in both scopes', async () => {
+	const source = authState()
+	const peer = authState()
+	const repo = makeLibSignalRepository(source.auth, P({ level: 'silent' }))
+	const pn = '200000000002:2@s.whatsapp.net'
+	const lid = '300000000003:2@lid'
+	const creds = peer.auth.creds
+	await repo.injectE2ESession({
+		jid: pn,
+		session: {
+			registrationId: creds.registrationId,
+			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+			signedPreKey: {
+				keyId: creds.signedPreKey.keyId,
+				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+				signature: creds.signedPreKey.signature
+			}
+		}
+	})
+	const from = repo.jidToSignalProtocolAddress(pn)
+	const to = repo.jidToSignalProtocolAddress(lid)
+	source.rows.set('device-list/200000000002', ['2'])
+	source.rows.set(`session/${from}_status`, source.rows.get(`session/${from}`))
+	for (const suffix of ['', '_status'])
+		source.rows.set(`session/${to}${suffix}`, Buffer.from(`authored destination ${suffix}`))
+	const before = new Map(source.rows)
+	expect(await repo.migrateSession(pn, lid)).toEqual({ migrated: 0, skipped: 1, total: 1 })
+	expect(source.rows).toEqual(before)
 })
