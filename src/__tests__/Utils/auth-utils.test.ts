@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
-import type { AuthenticationCreds, Contact } from '../../Types'
-import { assertMeId, initAuthCreds } from '../../Utils/auth-utils'
+import type { AuthenticationCreds, Contact, SignalKeyStore } from '../../Types'
+import { addTransactionCapability, assertMeId, initAuthCreds } from '../../Utils/auth-utils'
+import logger from '../../Utils/logger'
 
 const credsWithMe = (me?: Partial<Contact>): AuthenticationCreds => ({
 	...initAuthCreds(),
@@ -33,5 +34,25 @@ describe('assertMeId', () => {
 	it('throws Boom 401 when me.id is empty string', () => {
 		const creds = credsWithMe({ id: '' })
 		expect(() => assertMeId(creds)).toThrow(/not authenticated/)
+	})
+})
+
+const createMemoryStore = () =>
+	({
+		get: async () => ({}),
+		set: async () => {}
+	}) as unknown as SignalKeyStore
+
+describe('addTransactionCapability disposeTransactionStorage', () => {
+	it('exposes a dispose method that leaves the store usable', async () => {
+		const keys = addTransactionCapability(createMemoryStore(), logger, {
+			maxCommitRetries: 3,
+			delayBetweenTriesMs: 10
+		})
+		expect(typeof keys.disposeTransactionStorage).toBe('function')
+		await keys.transaction(async () => {}, 'dispose-test')
+		expect(() => keys.disposeTransactionStorage?.()).not.toThrow()
+		// Disposing only releases the storage; a later transaction re-enables it
+		await expect(keys.transaction(async () => 'ok', 'dispose-test-2')).resolves.toBe('ok')
 	})
 })

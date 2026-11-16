@@ -98,6 +98,13 @@ export type SignalKeyStore = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	/**
+	 * Release the per-socket AsyncLocalStorage backing transactions.
+	 * Call once the socket is done, so ended sockets stop taxing every
+	 * async resource created afterwards. Optional so existing custom
+	 * stores keep working without changes.
+	 */
+	disposeTransactionStorage?(): void
 }
 
 export type TransactionCapabilityOptions = {
