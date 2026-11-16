@@ -1,3 +1,5 @@
+// @ts-ignore libsignal does not publish declarations for its protobuf helpers
+import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
 import P from 'pino'
 import { makeLibSignalRepository } from '../../Signal/libsignal'
 import type { AuthenticationState, SignalDataTypeMap } from '../../Types'
@@ -80,11 +82,78 @@ it('decrypts alternating chat and status ratchets from the same identity', async
 	expect(receiver.rows.has(`session/${address}_status`)).toBe(false)
 	expect(receiver.rows.has(`session/${lidAddress}`)).toBe(true)
 	expect(receiver.rows.has(`session/${lidAddress}_status`)).toBe(true)
-	await receiveRepo.deleteSession([lid])
+	await receiveRepo.lidMapping.storeLIDPNMappings([{ pn: senderJid, lid }])
+	await receiveRepo.deleteSession([senderJid])
 	expect(receiver.rows.has(`session/${lidAddress}`)).toBe(false)
 	expect(receiver.rows.has(`session/${lidAddress}_status`)).toBe(false)
 	expect(receiver.rows.has(`session/${address}`)).toBe(false)
 	expect(receiver.rows.has(`session/${address}_status`)).toBe(false)
 	// Assert the identity remains shared; deleting sessions is not an identity reset.
 	expect(receiver.rows.has(`identity-key/${address}`)).toBe(true)
+})
+
+it('rolls back identity replacement and both session resets when status decryption rejects', async () => {
+	const receiver = authState()
+	const sender = authState()
+	const logger = P({ level: 'silent' })
+	const repo = makeLibSignalRepository(receiver.auth, logger)
+	const peer = makeLibSignalRepository(sender.auth, logger)
+	const receiverJid = '100000000001:1@lid'
+	const senderJid = '200000000002:2@lid'
+	const creds = receiver.auth.creds
+	await peer.injectE2ESession({
+		jid: receiverJid,
+		session: {
+			registrationId: creds.registrationId,
+			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+			signedPreKey: {
+				keyId: creds.signedPreKey.keyId,
+				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+				signature: creds.signedPreKey.signature
+			}
+		}
+	})
+	const encrypted = await peer.encryptMessage({ jid: receiverJid, data: Buffer.from('authored rejected status') })
+	const address = repo.jidToSignalProtocolAddress(senderJid)
+	receiver.rows.set(`identity-key/${address}`, Buffer.alloc(33, 9))
+	receiver.rows.set(`session/${address}`, Buffer.from('existing chat state'))
+	receiver.rows.set(`session/${address}_status`, Buffer.from('existing status state'))
+	const before = new Map(receiver.rows)
+	const prekey = PreKeyWhisperMessage.decode(encrypted.ciphertext.subarray(1))
+	prekey.message[prekey.message.length - 1] ^= 1
+	const ciphertext = Buffer.concat([encrypted.ciphertext.subarray(0, 1), PreKeyWhisperMessage.encode(prekey).finish()])
+	await expect(
+		repo.decryptMessage({ jid: senderJid, ...encrypted, ciphertext, sessionScope: 'status' })
+	).rejects.toThrow()
+	expect(receiver.rows).toEqual(before)
+})
+
+it('refuses scoped status decryption before calling an unsupported custom repository', async () => {
+	const { decryptMessageNode } = await import('../../Utils/decode-wa-message')
+	const logger = P({ level: 'silent' })
+	const repo = makeLibSignalRepository(authState().auth, logger)
+	repo.supportsStatusSessions = false
+	let called = false
+	repo.decryptMessage = async () => {
+		called = true
+		throw new Error('must not be called')
+	}
+
+	const received = decryptMessageNode(
+		{
+			tag: 'status',
+			attrs: { from: 'status@broadcast', participant: '200000000002:2@lid', id: 'authored-unsupported' },
+			content: [
+				{ tag: 'meta', attrs: { session_scope: 'status' } },
+				{ tag: 'enc', attrs: { type: 'pkmsg', v: '2' }, content: Buffer.from('authored') }
+			]
+		},
+		'100000000001@s.whatsapp.net',
+		'100000000002@lid',
+		repo,
+		logger
+	)
+	await received.decrypt()
+	expect(called).toBe(false)
+	expect(received.fullMessage.messageStubParameters).toEqual(['Signal repository does not support status sessions'])
 })

@@ -663,7 +663,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					id: msgId,
 					type: 'retry',
 					to: node.attrs.from!,
-					...(node.tag === 'status' ? { class: 'status' } : {})
+					...(fullMessage.statusKind ? { class: 'status' } : {})
 				},
 				content: [
 					{

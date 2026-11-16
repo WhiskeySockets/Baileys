@@ -75,7 +75,11 @@ export function makeLibSignalRepository(
 		return { senderName, skdm }
 	}
 
+	const sessionTransactionJid = async (jid: string) =>
+		isPnUser(jid) || isHostedPnUser(jid) ? (await lidMapping.getLIDForPN(jid)) || jid : jid
+
 	const repository: SignalRepositoryWithLIDStore = {
+		supportsStatusSessions: true,
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
@@ -120,18 +124,6 @@ export function makeLibSignalRepository(
 			const addr = jidToSignalProtocolAddress(jid)
 			const session = new libsignal.SessionCipher(decryptStorage, addr)
 
-			// Extract and save sender's identity key before decryption for identity change detection
-			if (type === 'pkmsg') {
-				const identityKey = extractIdentityFromPkmsg(ciphertext)
-				if (identityKey) {
-					const addrStr = addr.toString()
-					const identityChanged = await decryptStorage.saveIdentity(addrStr, identityKey)
-					if (identityChanged) {
-						logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
-					}
-				}
-			}
-
 			async function doDecrypt() {
 				let result: Buffer
 				switch (type) {
@@ -148,9 +140,27 @@ export function makeLibSignalRepository(
 
 			// If it's not a sync message, we need to ensure atomicity
 			// For regular messages, we use a transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
-				return await doDecrypt()
-			}, jid)
+			return parsedKeys.transaction(
+				async () => {
+					// Extract and save sender's identity key before decryption for identity change detection
+					if (type === 'pkmsg') {
+						const identityKey = extractIdentityFromPkmsg(ciphertext)
+						if (identityKey) {
+							const addrStr = addr.toString()
+							const identityChanged = await decryptStorage.saveIdentity(addrStr, identityKey)
+							if (identityChanged) {
+								logger.info(
+									{ jid, addr: addrStr },
+									'identity key changed or new contact, session will be re-established'
+								)
+							}
+						}
+					}
+
+					return await doDecrypt()
+				},
+				await sessionTransactionJid(jid)
+			)
 		},
 
 		async encryptMessage({ jid, data }) {
@@ -158,11 +168,14 @@ export function makeLibSignalRepository(
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
 			// Use transaction to ensure atomicity
-			return parsedKeys.transaction(async () => {
-				const { type: sigType, body } = await cipher.encrypt(data)
-				const type = sigType === 3 ? 'pkmsg' : 'msg'
-				return { type, ciphertext: Buffer.from(body, 'binary') }
-			}, jid)
+			return parsedKeys.transaction(
+				async () => {
+					const { type: sigType, body } = await cipher.encrypt(data)
+					const type = sigType === 3 ? 'pkmsg' : 'msg'
+					return { type, ciphertext: Buffer.from(body, 'binary') }
+				},
+				await sessionTransactionJid(jid)
+			)
 		},
 
 		async encryptGroupMessage({ group, meId, data }) {
@@ -208,11 +221,14 @@ export function makeLibSignalRepository(
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
-			return parsedKeys.transaction(async () => {
-				// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
-				// but the bundled .d.ts marks it required.
-				await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
-			}, jid)
+			return parsedKeys.transaction(
+				async () => {
+					// libsignal runtime accepts an absent prekey (initOutgoing checks `device.preKey && ...`)
+					// but the bundled .d.ts marks it required.
+					await cipher.initOutgoing(session as unknown as Parameters<typeof cipher.initOutgoing>[0])
+				},
+				await sessionTransactionJid(jid)
+			)
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()
@@ -241,20 +257,19 @@ export function makeLibSignalRepository(
 		},
 
 		async deleteSession(jids: string[]) {
-			if (!jids.length) return
+			for (const jid of jids) {
+				const resolvedJid = await sessionTransactionJid(jid)
+				await parsedKeys.transaction(async () => {
+					const sessionUpdates: { [key: string]: null } = {}
+					for (const target of [jid, resolvedJid]) {
+						const addr = jidToSignalProtocolAddress(target).toString()
+						sessionUpdates[addr] = null
+						sessionUpdates[`${addr}_status`] = null
+					}
 
-			// Convert JIDs to signal addresses and prepare for bulk deletion
-			const sessionUpdates: { [key: string]: null } = {}
-			jids.forEach(jid => {
-				const addr = jidToSignalProtocolAddress(jid)
-				sessionUpdates[addr.toString()] = null
-				sessionUpdates[`${addr.toString()}_status`] = null
-			})
-
-			// Single transaction for all deletions
-			return parsedKeys.transaction(async () => {
-				await auth.keys.set({ session: sessionUpdates })
-			}, `delete-${jids.length}-sessions`)
+					await auth.keys.set({ session: sessionUpdates })
+				}, resolvedJid)
+			}
 		},
 
 		close() {

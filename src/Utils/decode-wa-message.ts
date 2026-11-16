@@ -271,6 +271,10 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 }
 
+function assertStatusSessionSupport(repository: SignalRepositoryWithLIDStore, scope: 'status' | undefined) {
+	if (scope && !repository.supportsStatusSessions) throw new Error('Signal repository does not support status sessions')
+}
+
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
@@ -334,6 +338,7 @@ export const decryptMessageNode = (
 								break
 							case 'pkmsg':
 							case 'msg':
+								assertStatusSessionSupport(repository, getStatusSessionScope(stanza, statusSessionMode))
 								msgBuffer = await repository.decryptMessage({
 									jid: decryptionJid,
 									type: e2eType,

@@ -26,7 +26,7 @@ describe('status publication routing', () => {
 	})
 })
 
-it('keeps ordinary group messages and status mentions outside publication classification', () => {
+it('keeps ordinary group messages outside publication classification', () => {
 	const { fullMessage } = decodeMessageNode(
 		{ tag: 'message', attrs: { from: '120363000000001@g.us', participant: meLid, id: 'ordinary' }, content: [] },
 		me,
@@ -34,19 +34,20 @@ it('keeps ordinary group messages and status mentions outside publication classi
 	)
 	expect(fullMessage.statusKind).toBeUndefined()
 })
-it('selects status sessions only in a status context', () => {
-	for (const mode of [0, 1, 2, 3] as const) {
-		for (const session_scope of ['', 'status']) {
-			for (const from of ['status@broadcast', '120363000000001@g.us', '200000000002@lid']) {
-				const node: BinaryNode = {
-					tag: 'status',
-					attrs: { from },
-					content: [{ tag: 'meta', attrs: { session_scope } }]
-				}
-				const context = from === 'status@broadcast' || (from.endsWith('@g.us') && session_scope === 'status')
-				const want = context && (mode === 3 || (mode !== 0 && session_scope === 'status'))
-				expect(getStatusSessionScope(node, mode)).toBe(want ? 'status' : undefined)
-			}
-		}
-	}
+it.each([
+	[0, 'status@broadcast', 'status', 'status', undefined],
+	[1, 'status@broadcast', 'status', 'status', 'status'],
+	[2, 'status@broadcast', 'status', 'status', 'status'],
+	[3, 'status@broadcast', '', 'message', 'status'],
+	[1, 'status@broadcast', '', 'status', undefined],
+	[0, '120363000000001@g.us', 'status', 'status', undefined],
+	[1, '120363000000001@g.us', 'status', 'status', 'status'],
+	[2, '120363000000001@g.us', 'status', 'status', 'status'],
+	[3, '120363000000001@g.us', '', 'status', undefined],
+	[3, '120363000000001@g.us', 'status', 'message', undefined],
+	[3, '200000000002@lid', 'status', 'status', undefined],
+	[3, '120363000000001@newsletter', 'status', 'status', undefined]
+] as const)('selects mode %s for %s with scope %s on %s as %s', (mode, from, session_scope, tag, expected) => {
+	const node: BinaryNode = { tag, attrs: { from }, content: [{ tag: 'meta', attrs: { session_scope } }] }
+	expect(getStatusSessionScope(node, mode)).toBe(expected)
 })

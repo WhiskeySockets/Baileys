@@ -13,7 +13,7 @@ type ProcessSenderKeyDistributionMessageOpts = {
 }
 
 type DecryptSignalProtoOpts = {
-	/** Custom repositories must isolate this pairwise session from chat sessions. */
+	/** Isolate pairwise status sessions; deletion, migration and identity changes must cover both stores. */
 	sessionScope?: 'status'
 	jid: string
 	type: 'pkmsg' | 'msg'
@@ -58,6 +58,8 @@ type E2ESessionOpts = {
 }
 
 export type SignalRepository = {
+	/** Declare only when scoped decrypt and the full status-session lifecycle are supported. */
+	supportsStatusSessions?: boolean
 	decryptGroupMessage(opts: DecryptGroupSignalOpts): Promise<Uint8Array>
 	processSenderKeyDistributionMessage(opts: ProcessSenderKeyDistributionMessageOpts): Promise<void>
 	decryptMessage(opts: DecryptSignalProtoOpts): Promise<Uint8Array>

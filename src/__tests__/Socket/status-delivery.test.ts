@@ -5,6 +5,7 @@ import type { AuthenticationState, WAMessage } from '../../Types'
 import type { BinaryNode } from '../../WABinary'
 
 class SyntheticSocket extends EventEmitter {
+	sent: Buffer[] = []
 	isOpen = true
 	isClosed = false
 	isClosing = false
@@ -13,7 +14,8 @@ class SyntheticSocket extends EventEmitter {
 	async close() {
 		this.isOpen = false
 	}
-	send(_bytes: unknown, done?: (error?: Error) => void) {
+	send(bytes: Uint8Array, done?: (error?: Error) => void) {
+		this.sent.push(Buffer.from(bytes))
 		done?.()
 		return true
 	}
@@ -23,6 +25,7 @@ const { default: makeWASocket } = await import('../../Socket')
 const { DEFAULT_CONNECTION_CONFIG } = await import('../../Defaults')
 const { initAuthCreds } = await import('../../Utils/auth-utils')
 const { makeLibSignalRepository } = await import('../../Signal/libsignal')
+const { decodeBinaryNode } = await import('../../WABinary')
 const { proto } = await import('../../../WAProto/index.js')
 
 // No network or account state: encrypted bytes are an authored fixture and the
@@ -77,6 +80,22 @@ it.each([false, true])('delivers encrypted status content with offline=%s', asyn
 			message: { conversation: 'synthetic status content' }
 		})
 		expect(node.tag).toBe('status')
+		const frames = (sock.ws as unknown as SyntheticSocket).sent
+		const outgoing: BinaryNode[] = []
+		for (let i = 0; i < frames.length; i++) {
+			const frame = frames[i]!
+			// This synthetic socket never handshakes; the first frame has only the Noise introduction.
+			outgoing.push(await decodeBinaryNode(frame.subarray(i === 0 ? 7 : 3)))
+		}
+
+		expect(outgoing).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tag: 'receipt',
+					attrs: expect.objectContaining({ id: 'synthetic-status', class: 'status' })
+				})
+			])
+		)
 	} finally {
 		await sock.end(new Error('synthetic test complete'))
 	}
