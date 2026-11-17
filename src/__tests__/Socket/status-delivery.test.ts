@@ -23,7 +23,10 @@ class SyntheticSocket extends EventEmitter {
 			return false
 		}
 
+		let finished = false
 		const finish = () => {
+			if (finished) return
+			finished = true
 			this.sent.push(Buffer.from(bytes))
 			done?.()
 		}
@@ -48,6 +51,7 @@ const { proto } = await import('../../../WAProto/index.js')
 it.each([
 	[false, true, false, false],
 	[true, true, false, false],
+	[false, true, false, true],
 	[false, false, false, false],
 	[false, false, true, false],
 	[false, false, true, true]
@@ -141,7 +145,11 @@ it.each([
 				expect.arrayContaining([
 					expect.objectContaining({
 						tag: 'receipt',
-						attrs: expect.objectContaining({ id: 'synthetic-status', class: 'status' })
+						attrs: expect.objectContaining({
+							id: 'synthetic-status',
+							class: 'status',
+							...(peerCategory ? { type: 'peer_msg' } : {})
+						})
 					})
 				])
 			)
@@ -508,7 +516,10 @@ it('shares retry cooldown across phone and linked aliases while keeping scopes s
 	})
 	const pn = '200000000002:2@s.whatsapp.net',
 		lid = '300000000003:2@lid'
-	await repository!.lidMapping.storeLIDPNMappings([{ pn, lid }])
+	validate.mockImplementation(async () => {
+		await repository!.lidMapping.storeLIDPNMappings([{ pn, lid }])
+		return { exists: true }
+	})
 	try {
 		for (const [id, participant, scoped] of [
 			['authored-alias-pn', pn, true],

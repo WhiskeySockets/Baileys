@@ -624,11 +624,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
 		const sessionScope = getStatusSessionScope(node, statusSessionMode)
-		const canonicalSessionJid =
-			isPnUser(sessionJid) || isHostedPnUser(sessionJid)
-				? (await signalRepository.lidMapping.getLIDForPN(sessionJid, { useUSync: false })) || sessionJid
-				: sessionJid
-		const retrySessionKey = `${signalRepository.jidToSignalProtocolAddress(canonicalSessionJid)}${sessionScope === 'status' ? '_status' : ''}`
 
 		// Check if we should recreate the session
 		let shouldRecreateSession = false
@@ -638,6 +633,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			try {
 				// Check if we have a session with this JID
 				const hasSession = await signalRepository.validateSession(sessionJid, sessionScope)
+				const canonicalSessionJid =
+					isPnUser(sessionJid) || isHostedPnUser(sessionJid)
+						? (await signalRepository.lidMapping.getLIDForPN(sessionJid, { useUSync: false })) || sessionJid
+						: sessionJid
+				const retrySessionKey = `${signalRepository.jidToSignalProtocolAddress(canonicalSessionJid)}${sessionScope === 'status' ? '_status' : ''}`
+
 				const result = messageRetryManager.shouldRecreateSession(retrySessionKey, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
