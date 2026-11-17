@@ -758,3 +758,89 @@ it('shares the default retry cooldown across incoming and outgoing retries', asy
 		await sock.end(new Error('authored bidirectional cooldown complete'))
 	}
 })
+
+it.each([
+	['status', 'status@broadcast', 'personal'],
+	['status', '120363000000001@g.us', 'group'],
+	['message', '200000000002@lid', undefined]
+] as const)('preserves placeholder publication context for %s from %s', async (tag, from, statusKind) => {
+	const id = 'authored-placeholder-publication'
+	let retiring = false,
+		finishResend!: () => void
+	const resendFinished = new Promise<void>(resolve => {
+		finishResend = resolve
+	})
+	const rows = new Map<string, unknown>()
+	const cache: CacheStore = {
+		get: <T>(key: string) => {
+			if (retiring && key === id) finishResend()
+			return rows.get(key) as T | undefined
+		},
+		set: (key, value) => {
+			rows.set(key, value)
+		},
+		del: key => rows.delete(key),
+		flushAll: () => rows.clear()
+	}
+	const sock = await retryTestSocket({ placeholderResendCache: cache })
+	const recovered: WAMessage[] = []
+	sock.ev.on('messages.upsert', ({ messages }) => recovered.push(...messages))
+	try {
+		sock.ws.emit(`CB:${tag}`, {
+			tag,
+			attrs: { id, from, participant: '200000000002:2@lid', type: 'text', t: String(Math.floor(Date.now() / 1000)) },
+			content: [{ tag: 'unavailable', attrs: {} }]
+		} satisfies BinaryNode)
+		for (let attempt = 0; attempt < 50 && !rows.has(id); attempt++)
+			await new Promise(resolve => setTimeout(resolve, 10))
+		const cached = rows.get(id) as Partial<WAMessage> | undefined
+		expect(cached).toBeDefined()
+		expect(cached?.statusKind).toBe(statusKind)
+		const { default: processMessage } = await import('../../Utils/process-message')
+		await processMessage(
+			{
+				key: { remoteJid: '100000000001@s.whatsapp.net', fromMe: true, id: 'authored-pdo-response' },
+				message: {
+					protocolMessage: {
+						type: proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE,
+						peerDataOperationRequestResponseMessage: {
+							stanzaId: 'authored-pdo',
+							peerDataOperationResult: [
+								{
+									placeholderMessageResendResponse: {
+										webMessageInfoBytes: proto.WebMessageInfo.encode({
+											key: { remoteJid: from, id, fromMe: false },
+											message: { conversation: 'authored recovered content' }
+										}).finish()
+									}
+								}
+							]
+						}
+					}
+				}
+			},
+			{
+				shouldProcessHistoryMsg: false,
+				placeholderResendCache: cache,
+				ev: sock.ev,
+				creds: sock.authState.creds,
+				keyStore: sock.authState.keys,
+				signalRepository: sock.signalRepository,
+				options: {},
+				getMessage: async () => undefined,
+				logger: P({ level: 'silent' })
+			}
+		)
+		const message = recovered.find(
+			message => message.key.id === id && message.message?.conversation === 'authored recovered content'
+		)
+		expect(message?.message?.conversation).toBe('authored recovered content')
+		expect(message?.statusKind).toBe(statusKind)
+		expect(rows.has(id)).toBe(false)
+	} finally {
+		retiring = true
+		rows.clear()
+		await resendFinished
+		await sock.end(new Error('authored placeholder test complete'))
+	}
+})

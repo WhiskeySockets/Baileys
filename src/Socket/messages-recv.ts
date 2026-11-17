@@ -1716,7 +1716,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							messageTimestamp: msg.messageTimestamp,
 							pushName: msg.pushName,
 							participant: msg.participant,
-							verifiedBizName: msg.verifiedBizName
+							verifiedBizName: msg.verifiedBizName,
+							statusKind: msg.statusKind
 						}
 						requestPlaceholderResend(cleanKey, msgData)
 							.then(requestId => {
