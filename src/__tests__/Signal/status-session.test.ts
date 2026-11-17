@@ -466,17 +466,19 @@ it('refuses direct scoped calls before lookup when exclusive admission is unavai
 })
 
 it.each([
-	[false, false, 'default'],
-	[false, true, 'default'],
-	[true, false, 'default'],
-	[true, true, 'default'],
-	[false, false, 'status'],
-	[false, true, 'status'],
-	[true, false, 'status'],
-	[true, true, 'status']
+	[false, false, 'default', false],
+	[false, true, 'default', false],
+	[true, false, 'default', false],
+	[true, true, 'default', false],
+	[false, false, 'status', false],
+	[false, true, 'status', false],
+	[true, false, 'status', false],
+	[true, true, 'status', false],
+	[true, true, 'default', true],
+	[false, false, 'status', true]
 ] as const)(
-	'retries address resolution across migration entry hosted=%s, decrypt hosted=%s, scope=%s',
-	async (hostedEntry, hostedDecrypt, scope) => {
+	'retries address resolution across migration entry hosted=%s, decrypt hosted=%s, scope=%s, prune=%s',
+	async (hostedEntry, hostedDecrypt, scope, prune) => {
 		const receiver = authState(),
 			sender = authState()
 		const receiveRepo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
@@ -538,6 +540,13 @@ it.each([
 				hostedEntry ? '200000000002:99@hosted' : '200000000002:2@s.whatsapp.net',
 				hostedEntry ? '300000000003:99@hosted.lid' : '300000000003:2@lid'
 			)
+			if (prune) {
+				// Evict the target's generation while its old address lookup is
+				// suspended. A zero-on-miss cache would admit that stale address.
+				for (let user = 0; user < 300; user++) {
+					await receiveRepo.migrateSession(`${500000000000 + user}:2@s.whatsapp.net`, `${600000000000 + user}:2@lid`)
+				}
+			}
 		} finally {
 			release()
 		}

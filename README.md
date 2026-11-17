@@ -1209,6 +1209,14 @@ only explicit status metadata selects the separate session. Custom Signal
 repositories must honor `decryptMessage`'s optional `sessionScope`; sender keys
 continue to use the group and author. This does not change status publishing.
 
+Retry-triggered placeholder recovery preserves the original message metadata,
+including publication kind, in both the scheduled phone-request and fallback
+paths. Pairwise migration admission retains at most 1,024 generation entries.
+Pruning advances an eviction floor instead of returning an old initial generation;
+older pending address lookups may conservatively resolve again, including for an
+unrelated user. The existing three-attempt admission limit remains in place.
+This is process-local coordination, not a cross-process or custom-store guarantee.
+
 ### Send Broadcast & Stories
 - Messages can be sent to broadcasts & stories. You need to add the following message options in sendMessage, like this:
 ```ts

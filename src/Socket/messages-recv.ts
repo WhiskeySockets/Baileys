@@ -660,7 +660,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Schedule phone request with delay (like whatsmeow)
 				messageRetryManager.schedulePhoneRequest(msgId, async () => {
 					try {
-						const requestId = await requestPlaceholderResend(msgKey)
+						const requestId = await requestPlaceholderResend(msgKey, fullMessage)
 						logger.debug(
 							`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`
 						)
@@ -670,7 +670,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			} else {
 				// Fallback to immediate request
-				const msgId = await requestPlaceholderResend(msgKey)
+				const msgId = await requestPlaceholderResend(msgKey, fullMessage)
 				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
 			}
 		}

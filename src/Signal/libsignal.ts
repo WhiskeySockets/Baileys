@@ -21,6 +21,7 @@ import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
+import { MigrationGenerations } from './migration-generations'
 
 /** Extract identity key from PreKeyWhisperMessage for identity change detection */
 function extractIdentityFromPkmsg(ciphertext: Uint8Array): Uint8Array | undefined {
@@ -72,8 +73,8 @@ export function makeLibSignalRepository(
 	const sessionTransactionJid = async (jid: string) =>
 		isPnUser(jid) || isHostedPnUser(jid) ? (await lidMapping.getLIDForPN(jid)) || jid : jid
 
-	const migrationGenerations = new Map<string, number>()
-	const migrationGeneration = (jid: string) => migrationGenerations.get(jidNormalizedUser(jid)) ?? 0
+	const migrationGenerations = new MigrationGenerations()
+	const migrationGeneration = (jid: string) => migrationGenerations.get(jidNormalizedUser(jid))
 	const retryAddress = Symbol('session address changed')
 	const withSessionAddress = async <T>(
 		jid: string,
@@ -315,10 +316,11 @@ export function makeLibSignalRepository(
 					const { user } = jidDecode(fromJid)!
 					const { user: lidUser } = jidDecode(toJid)!
 					// A batch can move ordinary and hosted devices regardless of its entry domain.
-					for (const jid of [`${user}@s.whatsapp.net`, `${user}@hosted`, `${lidUser}@lid`, `${lidUser}@hosted.lid`]) {
-						const key = jidNormalizedUser(jid)
-						migrationGenerations.set(key, migrationGeneration(jid) + 1)
-					}
+					migrationGenerations.advance(
+						[`${user}@s.whatsapp.net`, `${user}@hosted`, `${lidUser}@lid`, `${lidUser}@hosted.lid`].map(
+							jidNormalizedUser
+						)
+					)
 
 					logger.debug({ fromJid }, 'bulk device migration - loading all user devices')
 
