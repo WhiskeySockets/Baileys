@@ -812,6 +812,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 				participants.push(...result.nodes)
+				senderKeyMemoryUpdate = result.nodes.length
+					? Object.fromEntries(result.nodes.map(node => [node.attrs.jid!, true]))
+					: undefined
 			}
 
 			binaryNodeContent.push({
@@ -819,10 +822,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				attrs: { v: '2', type: 'skmsg', ...extraAttrs },
 				content: ciphertext
 			})
-
-			senderKeyMemoryUpdate = senderKeyRecipients.length
-				? Object.fromEntries(senderKeyRecipients.map(device => [device, true]))
-				: undefined
 		} else {
 			// ADDRESSING CONSISTENCY: Match own identity to conversation context
 			// TODO: investigate if this is true

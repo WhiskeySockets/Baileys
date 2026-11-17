@@ -676,3 +676,85 @@ it('orders a retry marker reset after an in-flight group relay finishes its mark
 		await sock.end(new Error('authored marker reset complete'))
 	}
 })
+
+it('records only successfully transported distribution recipients', async () => {
+	const { sock, rows, group, encrypt } = await groupSendFixture([['200000000002@lid', '300000000003@lid']])
+	encrypt.mockRejectedValueOnce(new Error('authored one-device encryption failure'))
+	try {
+		await sock.relayMessage(
+			group,
+			{ conversation: 'authored partial distribution' },
+			{ messageId: 'authored-partial', useCachedGroupMetadata: true, useUserDevicesCache: true }
+		)
+		expect(rows.get(`sender-key-memory/${group}`)).toEqual({ '300000000003:2@lid': true })
+		await sock.relayMessage(
+			group,
+			{ conversation: 'authored retry distribution' },
+			{ messageId: 'authored-next', useCachedGroupMetadata: true, useUserDevicesCache: true }
+		)
+		expect(encrypt).toHaveBeenCalledTimes(3)
+		expect(rows.get(`sender-key-memory/${group}`)).toEqual({ '200000000002:2@lid': true, '300000000003:2@lid': true })
+	} finally {
+		sock.messageRetryManager?.clear()
+		await sock.end(new Error('authored partial distribution complete'))
+	}
+})
+
+it('shares the default retry cooldown across incoming and outgoing retries', async () => {
+	let repository!: ReturnType<typeof makeLibSignalRepository>
+	const remove = jest.fn<(jids: string[], scope?: 'default' | 'status') => Promise<void>>().mockResolvedValue(undefined)
+	const sock = await retryTestSocket({
+		makeSignalRepository: (state, logger, lookup) => {
+			const repo = makeLibSignalRepository(state, logger, lookup)
+			repo.validateSession = async () => ({ exists: true })
+			repo.deleteSession = remove
+			repository = repo
+			return repo
+		}
+	})
+	const pn = '200000000002:2@s.whatsapp.net',
+		lid = '300000000003:2@lid'
+	await repository.lidMapping.storeLIDPNMappings([{ pn, lid }])
+	try {
+		sock.messageRetryManager!.incrementRetryCount('authored-incoming-chat')
+		await sock.sendRetryRequest({
+			tag: 'message',
+			attrs: { id: 'authored-incoming-chat', from: pn, t: String(Math.floor(Date.now() / 1000)) },
+			content: [{ tag: 'enc', attrs: { type: 'msg', v: '2' }, content: Buffer.from('authored') }]
+		})
+		expect(remove).toHaveBeenCalledTimes(1)
+		sock.ws.emit('CB:receipt', {
+			tag: 'receipt',
+			attrs: { id: 'authored-outgoing-chat', from: lid, type: 'retry', t: String(Math.floor(Date.now() / 1000)) },
+			content: [{ tag: 'retry', attrs: { count: '2' } }]
+		})
+		const transport = sock.ws as unknown as SyntheticSocket
+		const answered = new Set<string>()
+		for (let i = 0; i < 50; i++) {
+			// This path fetches a fresh bundle even when the cooldown prevents deletion.
+			// Finish its synthetic transport request; no account or remote service is used.
+			for (const node of await sentNodes(transport)) {
+				if (node.tag === 'iq' && node.attrs.xmlns === 'encrypt' && !answered.has(node.attrs.id!)) {
+					answered.add(node.attrs.id!)
+					sock.ws.emit(`TAG:${node.attrs.id}`, {
+						tag: 'iq',
+						attrs: { id: node.attrs.id!, type: 'result' },
+						content: [{ tag: 'list', attrs: {}, content: [] }]
+					})
+				}
+			}
+
+			if ((await sentNodes(transport)).some(node => node.tag === 'ack' && node.attrs.id === 'authored-outgoing-chat'))
+				break
+			await new Promise(resolve => setTimeout(resolve, 10))
+		}
+
+		expect(
+			(await sentNodes(transport)).some(node => node.tag === 'ack' && node.attrs.id === 'authored-outgoing-chat')
+		).toBe(true)
+		expect(remove).toHaveBeenCalledTimes(1)
+	} finally {
+		sock.messageRetryManager?.clear()
+		await sock.end(new Error('authored bidirectional cooldown complete'))
+	}
+})

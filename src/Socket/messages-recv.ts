@@ -1432,7 +1432,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1 && !injectedFromBundle) {
 			try {
 				const hasSession = await signalRepository.validateSession(participant)
-				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
+				const canonicalParticipant =
+					isPnUser(participant) || isHostedPnUser(participant)
+						? (await signalRepository.lidMapping.getLIDForPN(participant, { useUSync: false })) || participant
+						: participant
+				const retrySessionKey = signalRepository.jidToSignalProtocolAddress(canonicalParticipant)
+				const result = messageRetryManager.shouldRecreateSession(retrySessionKey, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 

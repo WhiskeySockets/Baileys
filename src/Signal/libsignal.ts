@@ -375,7 +375,9 @@ export function makeLibSignalRepository(
 							}
 
 							const migrationOps: MigrationOp[] = deviceJids.map(jid => {
-								const lidWithDevice = transferDevice(jid, toJid)
+								const lidWithDevice = isHostedPnUser(jid)
+									? `${jidDecode(toJid)!.user}:99@hosted.lid`
+									: transferDevice(jid, `${jidDecode(toJid)!.user}@lid`)
 								const fromDecoded = jidDecode(jid)!
 								const toDecoded = jidDecode(lidWithDevice)!
 
@@ -403,6 +405,10 @@ export function makeLibSignalRepository(
 								migrationOps.flatMap(op => [op.toAddr.toString(), `${op.toAddr.toString()}_status`])
 							)
 
+							const identityAddresses = migrationOps.flatMap(op => [op.fromAddr.toString(), op.toAddr.toString()])
+							const identities = await parsedKeys.get('identity-key', identityAddresses)
+							const identityUpdates: { [key: string]: Uint8Array } = {}
+
 							// Prepare bulk session updates (PN → LID migration + deletion)
 							const sessionUpdates: { [key: string]: Uint8Array | null } = {}
 
@@ -423,12 +429,19 @@ export function makeLibSignalRepository(
 									}
 								}
 
-								if (migrated) migratedCount++
+								if (migrated) {
+									migratedCount++
+									const fromAddress = op.fromAddr.toString(),
+										toAddress = op.toAddr.toString()
+									if (!identities[toAddress] && identities[fromAddress]) {
+										identityUpdates[toAddress] = identities[fromAddress]!
+									}
+								}
 							}
 
 							// Single bulk session update for all migrations
 							if (Object.keys(sessionUpdates).length > 0) {
-								await parsedKeys.set({ session: sessionUpdates })
+								await parsedKeys.set({ session: sessionUpdates, 'identity-key': identityUpdates })
 								logger.debug({ migratedSessions: migratedCount }, 'bulk session migration complete')
 							}
 

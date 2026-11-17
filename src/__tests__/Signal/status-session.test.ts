@@ -587,3 +587,97 @@ it('migrates a received status without requiring a saved device list', async () 
 	expect(receiver.rows.has(`session/${repo.jidToSignalProtocolAddress(lid)}_status`)).toBe(true)
 	expect(receiver.rows.has('device-list/200000000002')).toBe(false)
 })
+
+it.each([false, true])('migrates normal and hosted devices in the same batch, hosted entry=%s', async hostedEntry => {
+	const source = authState(),
+		remote = authState()
+	const repo = makeLibSignalRepository(source.auth, P({ level: 'silent' }))
+	const creds = remote.auth.creds
+	for (const jid of ['200000000002:2@s.whatsapp.net', '200000000002:99@hosted']) {
+		await repo.injectE2ESession({
+			jid,
+			session: {
+				registrationId: creds.registrationId,
+				identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+				signedPreKey: {
+					keyId: creds.signedPreKey.keyId,
+					publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+					signature: creds.signedPreKey.signature
+				}
+			}
+		})
+		const address = repo.jidToSignalProtocolAddress(jid)
+		source.rows.set(`session/${address}_status`, source.rows.get(`session/${address}`))
+	}
+
+	source.rows.set('device-list/200000000002', ['2', '99'])
+	expect(
+		await repo.migrateSession(
+			hostedEntry ? '200000000002:99@hosted' : '200000000002:2@s.whatsapp.net',
+			hostedEntry ? '300000000003:99@hosted.lid' : '300000000003:2@lid'
+		)
+	).toEqual({
+		migrated: 2,
+		skipped: 0,
+		total: 2
+	})
+	for (const jid of ['300000000003:2@lid', '300000000003:99@hosted.lid']) {
+		const address = repo.jidToSignalProtocolAddress(jid)
+		expect(source.rows.has(`session/${address}`)).toBe(true)
+		expect(source.rows.has(`session/${address}_status`)).toBe(true)
+	}
+})
+
+it.each([false, true])(
+	'carries a migrated identity without replacing a destination identity, existing=%s',
+	async existing => {
+		const receiver = authState(),
+			oldSender = authState(),
+			replacement = authState()
+		const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+		const own = '100000000001:1@lid',
+			pn = '200000000002:2@s.whatsapp.net',
+			lid = '300000000003:2@lid'
+		const receiveCreds = receiver.auth.creds
+		const senders = [oldSender, authState(oldSender.auth.creds), replacement].map(state =>
+			makeLibSignalRepository(state.auth, P({ level: 'silent' }))
+		)
+		for (const sender of senders)
+			await sender.injectE2ESession({
+				jid: own,
+				session: {
+					registrationId: receiveCreds.registrationId,
+					identityKey: generateSignalPubKey(receiveCreds.signedIdentityKey.public),
+					signedPreKey: {
+						keyId: receiveCreds.signedPreKey.keyId,
+						publicKey: generateSignalPubKey(receiveCreds.signedPreKey.keyPair.public),
+						signature: receiveCreds.signedPreKey.signature
+					}
+				}
+			})
+		for (const [index, sessionScope] of [undefined, 'status' as const].entries()) {
+			const encrypted = await senders[index]!.encryptMessage({ jid: own, data: Buffer.from('authored old identity') })
+			expect(Buffer.from(await repo.decryptMessage({ jid: pn, ...encrypted, sessionScope })).toString()).toBe(
+				'authored old identity'
+			)
+		}
+
+		const from = repo.jidToSignalProtocolAddress(pn),
+			to = repo.jidToSignalProtocolAddress(lid)
+		const oldIdentity = receiver.rows.get(`identity-key/${from}`)
+		const independentIdentity = Buffer.alloc(33, 9)
+		if (existing) receiver.rows.set(`identity-key/${to}`, independentIdentity)
+		await repo.migrateSession(pn, lid)
+		expect(receiver.rows.get(`identity-key/${to}`)).toEqual(existing ? independentIdentity : oldIdentity)
+		await repo.lidMapping.storeLIDPNMappings([{ pn, lid }])
+		const encrypted = await senders[2]!.encryptMessage({ jid: own, data: Buffer.from('authored replacement status') })
+		expect(Buffer.from(await repo.decryptMessage({ jid: lid, ...encrypted, sessionScope: 'status' })).toString()).toBe(
+			'authored replacement status'
+		)
+		expect(receiver.rows.has(`session/${to}`)).toBe(false)
+		expect(receiver.rows.has(`session/${to}_status`)).toBe(true)
+		expect(receiver.rows.get(`identity-key/${to}`)).toEqual(
+			generateSignalPubKey(replacement.auth.creds.signedIdentityKey.public)
+		)
+	}
+)
