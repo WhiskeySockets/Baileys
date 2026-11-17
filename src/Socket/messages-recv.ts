@@ -2071,7 +2071,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (ignoreJid && ignoreJid !== S_WHATSAPP_NET && shouldIgnoreJid(ignoreJid)) {
-			await sendMessageAck(node, type === 'message' ? NACK_REASONS.UnhandledError : undefined)
+			// A NACK on a status broadcast makes the server answer with a stream:error (ack) and
+			// reset the connection, and it redelivers the same status later (see handleMessage, which
+			// also acks statuses positively). Statuses are ephemeral, so just ack and drop them.
+			const nack = type === 'message' && !isJidStatusBroadcast(ignoreJid)
+			await sendMessageAck(node, nack ? NACK_REASONS.UnhandledError : undefined)
 			return
 		}
 
