@@ -77,6 +77,7 @@ import {
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
 	getBinaryNodeChildUInt,
+	isHostedPnUser,
 	isJidGroup,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -130,6 +131,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		assertSessions,
 		sendNode,
 		relayMessage,
+		resetGroupSenderKeyMemory,
 		sendReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
@@ -576,13 +578,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const sendRetryRequest = async (
 		node: BinaryNode,
 		forceIncludeKeys = false,
-		statusSessionMode = config.getStatusSessionMode?.()
+		statusSessionMode = config.getStatusSessionMode?.(),
+		decodedStatusKind?: WAMessage['statusKind']
 	) => {
 		const { fullMessage, author: sessionJid } = decodeMessageNode(
 			node,
 			authState.creds.me!.id,
 			authState.creds.me!.lid || ''
 		)
+		fullMessage.statusKind = decodedStatusKind ?? fullMessage.statusKind
 		const { key: msgKey } = fullMessage
 		const msgId = msgKey.id!
 
@@ -620,7 +624,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
 		const sessionScope = getStatusSessionScope(node, statusSessionMode)
-		const retrySessionKey = sessionScope === 'status' ? `${sessionJid}_status` : sessionJid
+		const canonicalSessionJid =
+			isPnUser(sessionJid) || isHostedPnUser(sessionJid)
+				? (await signalRepository.lidMapping.getLIDForPN(sessionJid, { useUSync: false })) || sessionJid
+				: sessionJid
+		const retrySessionKey = `${signalRepository.jidToSignalProtocolAddress(canonicalSessionJid)}${sessionScope === 'status' ? '_status' : ''}`
 
 		// Check if we should recreate the session
 		let shouldRecreateSession = false
@@ -1441,7 +1449,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (isJidGroup(remoteJid)) {
-			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
+			await resetGroupSenderKeyMemory(remoteJid)
 		}
 
 		logger.debug(
@@ -1640,18 +1648,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			await messageMutex.mutex(async () => {
 				await decrypt()
 
+				if (
+					msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT &&
+					msg.messageStubParameters?.[0] === UNSUPPORTED_STATUS_SESSION_ERROR_TEXT
+				) {
+					logger.warn({ msgId: msg.key.id }, 'status session unsupported by configured repository')
+					acked = true
+					return sendMessageAck(node, NACK_REASONS.UnrecognizedStanza)
+				}
+
 				if (msg.key?.remoteJid && msg.key?.id && msg.message && messageRetryManager) {
 					messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message)
 				}
 
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (msg.messageStubParameters?.[0] === UNSUPPORTED_STATUS_SESSION_ERROR_TEXT) {
-						logger.warn({ msgId: msg.key.id }, 'status session unsupported by configured repository')
-						acked = true
-						return sendMessageAck(node, NACK_REASONS.UnrecognizedStanza)
-					}
-
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 						acked = true
 						return sendMessageAck(node, NACK_REASONS.ParsingError)
@@ -1744,7 +1755,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								}
 
 								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode, statusSessionMode)
+								await sendRetryRequest(node, !encNode, statusSessionMode, msg.statusKind)
 								if (retryRequestDelayMs) {
 									await delay(retryRequestDelayMs)
 								}

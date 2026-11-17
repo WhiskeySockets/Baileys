@@ -1180,6 +1180,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return relayMessageWithOrder(jid, message, options)
 	}
 
+	const resetGroupSenderKeyMemory = (jid: string) =>
+		groupRelayMutex.mutex(jid, () =>
+			authState.keys.transaction(
+				async () => authState.keys.set({ 'sender-key-memory': { [jid]: null } }),
+				`sender-key-memory:${jid}`
+			)
+		)
+
 	const getMessageType = (message: proto.IMessage) => {
 		const normalizedMessage = normalizeMessageContent(message)
 		if (!normalizedMessage) return 'text'
@@ -1294,6 +1302,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		issuePrivacyTokens,
 		assertSessions,
 		relayMessage,
+		resetGroupSenderKeyMemory,
 		sendReceipt,
 		sendReceipts,
 		readMessages,

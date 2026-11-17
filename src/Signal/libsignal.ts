@@ -12,6 +12,7 @@ import {
 	isLidUser,
 	isPnUser,
 	jidDecode,
+	jidNormalizedUser,
 	transferDevice,
 	WAJIDDomains
 } from '../WABinary'
@@ -71,7 +72,8 @@ export function makeLibSignalRepository(
 	const sessionTransactionJid = async (jid: string) =>
 		isPnUser(jid) || isHostedPnUser(jid) ? (await lidMapping.getLIDForPN(jid)) || jid : jid
 
-	let migrationGeneration = 0
+	const migrationGenerations = new Map<string, number>()
+	const migrationGeneration = (jid: string) => migrationGenerations.get(jidNormalizedUser(jid)) ?? 0
 	const retryAddress = Symbol('session address changed')
 	const withSessionAddress = async <T>(
 		jid: string,
@@ -79,11 +81,11 @@ export function makeLibSignalRepository(
 		exclusive = false
 	): Promise<T> => {
 		for (let attempt = 0; attempt < 3; attempt++) {
-			const generation = migrationGeneration
+			const generation = migrationGeneration(jid)
 			const resolved = await sessionTransactionJid(jid)
 			const result = await parsedKeys.transaction(
 				async () => {
-					if (generation !== migrationGeneration) return retryAddress
+					if (generation !== migrationGeneration(jid)) return retryAddress
 					return work(resolved)
 				},
 				resolved,
@@ -149,7 +151,15 @@ export function makeLibSignalRepository(
 					const session = new libsignal.SessionCipher(decryptStorage, addr)
 					if (type === 'pkmsg') {
 						const identityKey = extractIdentityFromPkmsg(ciphertext)
-						if (identityKey) await decryptStorage.saveIdentity(addr.toString(), identityKey)
+						if (identityKey) {
+							const identityChanged = await decryptStorage.saveIdentity(addr.toString(), identityKey)
+							if (identityChanged)
+								logger.info(
+									{ jid, addr: addr.toString() },
+									'identity key changed or new contact, session will be re-established'
+								)
+						}
+
 						return session.decryptPreKeyWhisperMessage(ciphertext)
 					}
 
@@ -294,8 +304,6 @@ export function makeLibSignalRepository(
 		): Promise<{ migrated: number; skipped: number; total: number }> {
 			return parsedKeys.transaction(
 				async () => {
-					// Invalidate resolutions made before this exclusive migration, including failed attempts.
-					migrationGeneration++
 					// TODO: use usync to handle this entire mess
 					if (!fromJid || (!isLidUser(toJid) && !isHostedLidUser(toJid))) return { migrated: 0, skipped: 0, total: 0 }
 
@@ -304,15 +312,19 @@ export function makeLibSignalRepository(
 						return { migrated: 0, skipped: 0, total: 1 }
 					}
 
+					// Only resolutions for this migrating user and its linked identity become stale.
+					for (const jid of [fromJid, toJid]) {
+						const key = jidNormalizedUser(jid)
+						migrationGenerations.set(key, migrationGeneration(jid) + 1)
+					}
+
 					const { user } = jidDecode(fromJid)!
 
 					logger.debug({ fromJid }, 'bulk device migration - loading all user devices')
 
 					// Get user's device list from storage
-					const { [user]: userDevices } = await parsedKeys.get('device-list', [user])
-					if (!userDevices) {
-						return { migrated: 0, skipped: 0, total: 0 }
-					}
+					const devices = await parsedKeys.get('device-list', [user])
+					const userDevices = [...(devices[user] ?? [])]
 
 					const { device: fromDevice } = jidDecode(fromJid)!
 					const fromDeviceStr = fromDevice?.toString() || '0'

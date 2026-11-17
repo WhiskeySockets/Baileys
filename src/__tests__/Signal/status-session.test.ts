@@ -528,3 +528,61 @@ it('retries address resolution when migration commits before pairwise admission'
 	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(senderJid)}`)).toBe(false)
 	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(lid)}`)).toBe(true)
 })
+
+it('does not retry a pairwise operation because another user migrated', async () => {
+	const sender = authState(),
+		receiver = authState()
+	const repo = makeLibSignalRepository(sender.auth, P({ level: 'silent' }))
+	let lookups = 0
+	repo.lidMapping.getLIDForPN = async () => {
+		lookups++
+		await repo.migrateSession('300000000003:2@s.whatsapp.net', '400000000004:2@lid')
+		return null
+	}
+
+	const creds = receiver.auth.creds
+	await repo.injectE2ESession({
+		jid: '200000000002:2@s.whatsapp.net',
+		session: {
+			registrationId: creds.registrationId,
+			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+			signedPreKey: {
+				keyId: creds.signedPreKey.keyId,
+				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+				signature: creds.signedPreKey.signature
+			}
+		}
+	})
+	expect(lookups).toBe(1)
+})
+
+it('migrates a received status without requiring a saved device list', async () => {
+	const receiver = authState(),
+		sender = authState()
+	const repo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+	const peer = makeLibSignalRepository(sender.auth, P({ level: 'silent' }))
+	const pn = '200000000002:2@s.whatsapp.net',
+		lid = '300000000003:2@lid',
+		own = '100000000001:1@lid'
+	const creds = receiver.auth.creds
+	await peer.injectE2ESession({
+		jid: own,
+		session: {
+			registrationId: creds.registrationId,
+			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+			signedPreKey: {
+				keyId: creds.signedPreKey.keyId,
+				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+				signature: creds.signedPreKey.signature
+			}
+		}
+	})
+	const encrypted = await peer.encryptMessage({ jid: own, data: Buffer.from('authored received status') })
+	await repo.decryptMessage({ jid: pn, ...encrypted, sessionScope: 'status' })
+	expect(receiver.rows.has('device-list/200000000002')).toBe(false)
+	await repo.lidMapping.storeLIDPNMappings([{ pn, lid }])
+	expect(await repo.migrateSession(pn, lid)).toEqual({ migrated: 1, skipped: 0, total: 1 })
+	expect(receiver.rows.has(`session/${repo.jidToSignalProtocolAddress(pn)}_status`)).toBe(false)
+	expect(receiver.rows.has(`session/${repo.jidToSignalProtocolAddress(lid)}_status`)).toBe(true)
+	expect(receiver.rows.has('device-list/200000000002')).toBe(false)
+})
