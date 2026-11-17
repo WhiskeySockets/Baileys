@@ -284,6 +284,16 @@ const sock = makeWASocket({
     ```
 ## Saving & Restoring Sessions
 
+Custom status-session stores must meet these requirements:
+
+- Signal repositories declare `supportsStatusSessions: true` after implementing scoped decryption and validation, selected-scope retry deletion, both-scope lifecycle deletion, migration and identity replacement. `deleteSession(jids)` clears both stores; an explicit second argument selects only that store.
+- Transactional key stores declare `supportsExclusiveTransactions` and honor `transaction(work, key, {exclusive:true})`. Exclusive admission drains ordinary transactions and remains held through commit. Nested upgrades fail closed.
+- Scoped status decryption and session deletion fail closed without the required capability. Pairwise operations resolve their address before admission and pin it for storage and locking. If migration for that user crosses resolution, they retry outside the transaction before touching keys. Other users migrating do not invalidate the operation. The explicit source device can migrate even without a saved device list.
+- Deletion uses stored identity associations only. Retry recovery selects the failed namespace; device removal, registration mismatch and identity replacement can still invalidate both. Migration retains an existing destination ratchet and its source. Identity-changing prekey decrypt and session injection are exclusive local operations.
+- Use `sock.resetGroupSenderKeyMemory(jid)` when forcing group redistribution. It shares the group relay lane, so an older in-flight send finishes its marker write before the reset.
+- Relay lookups and transport run outside key-store transactions. Each repository crypto operation commits its state before transport; multiple device operations are not one atomic batch. Group relays retain per-group order through transport without holding the store-wide lifecycle barrier across network work.
+
+
 You obviously don't want to keep scanning the QR code every time you want to connect.
 
 So, you can load the credentials to log back in:
@@ -1183,6 +1193,31 @@ await sock.updateDefaultDisappearingMode(ephemeral)
 ```
 
 ## Broadcast Lists & Stories
+
+### Receive statuses
+
+Personal and group statuses can arrive as top-level `<status>` nodes. They are
+processed through the message receive and offline queues, while channel statuses
+keep their plaintext handling. Received `WAMessage.statusKind` identifies
+`personal`, `group` or `channel` publications. A status mention or quoted status
+does not by itself mark the outer message as a publication.
+
+Explicit `meta session_scope="status"` uses a separate pairwise session. Set
+`getStatusSessionMode` to read the served `status_infra_1_1_session_split` state
+(0 disabled, 1 receiver enabled, 2 sender enabled, 3 forced). Without this callback,
+only explicit status metadata selects the separate session. Custom Signal
+repositories must honor `decryptMessage`'s optional `sessionScope`; sender keys
+continue to use the group and author. This does not change status publishing.
+
+Retry-triggered placeholder recovery preserves the original message metadata,
+including publication kind, in both the scheduled phone-request and fallback
+paths. Recovered messages use the same normalized keys as ordinary delivery;
+phone requests keep their original device addresses. Pairwise migration admission
+retains at most 1,024 generation entries.
+Pruning advances an eviction floor instead of returning an old initial generation;
+older pending address lookups may conservatively resolve again, including for an
+unrelated user. The existing three-attempt admission limit remains in place.
+This is process-local coordination, not a cross-process or custom-store guarantee.
 
 ### Send Broadcast & Stories
 - Messages can be sent to broadcasts & stories. You need to add the following message options in sendMessage, like this:

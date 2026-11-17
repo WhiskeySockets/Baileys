@@ -42,6 +42,7 @@ import {
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
+	getStatusSessionScope,
 	handleIdentityChange,
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
@@ -50,6 +51,7 @@ import {
 	SERVER_ERROR_CODES,
 	toNumber,
 	unixTimestampSeconds,
+	UNSUPPORTED_STATUS_SESSION_ERROR_TEXT,
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
@@ -75,6 +77,7 @@ import {
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
 	getBinaryNodeChildUInt,
+	isHostedPnUser,
 	isJidGroup,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -128,6 +131,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		assertSessions,
 		sendNode,
 		relayMessage,
+		resetGroupSenderKeyMemory,
 		sendReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
@@ -198,7 +202,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} else {
 			// Store original message data so PDO response handler can preserve
 			// metadata (LID details, timestamps, etc.) that the phone may omit
-			await placeholderResendCache.set(messageKey?.id!, msgData || true)
+			const cachedMetadata = msgData?.key ? { ...msgData, key: { ...msgData.key } } : msgData
+			if (cachedMetadata?.key) {
+				// Match normal delivery without changing the device-qualified
+				// key sent to the phone or mutating the caller's metadata.
+				cleanMessage({ key: cachedMetadata.key }, authState.creds.me.id, authState.creds.me.lid || '')
+			}
+
+			await placeholderResendCache.set(messageKey?.id!, cachedMetadata || true)
 		}
 
 		await delay(2000)
@@ -571,8 +582,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await query(stanza)
 	}
 
-	const sendRetryRequest = async (node: BinaryNode, forceIncludeKeys = false) => {
-		const { fullMessage } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '')
+	const sendRetryRequest = async (
+		node: BinaryNode,
+		forceIncludeKeys = false,
+		statusSessionMode = config.getStatusSessionMode?.(),
+		decodedStatusKind?: WAMessage['statusKind']
+	) => {
+		const { fullMessage, author: sessionJid } = decodeMessageNode(
+			node,
+			authState.creds.me!.id,
+			authState.creds.me!.lid || ''
+		)
+		fullMessage.statusKind = decodedStatusKind ?? fullMessage.statusKind
 		const { key: msgKey } = fullMessage
 		const msgId = msgKey.id!
 
@@ -609,6 +630,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
+		const sessionScope = getStatusSessionScope(node, statusSessionMode)
 
 		// Check if we should recreate the session
 		let shouldRecreateSession = false
@@ -617,16 +639,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				// Check if we have a session with this JID
-				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
-				const hasSession = await signalRepository.validateSession(fromJid)
-				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists)
+				const hasSession = await signalRepository.validateSession(sessionJid, sessionScope)
+				const canonicalSessionJid =
+					isPnUser(sessionJid) || isHostedPnUser(sessionJid)
+						? (await signalRepository.lidMapping.getLIDForPN(sessionJid, { useUSync: false })) || sessionJid
+						: sessionJid
+				const retrySessionKey = `${signalRepository.jidToSignalProtocolAddress(canonicalSessionJid)}${sessionScope === 'status' ? '_status' : ''}`
+
+				const result = messageRetryManager.shouldRecreateSession(retrySessionKey, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
 				if (shouldRecreateSession) {
 					logger.debug({ fromJid, retryCount, reason: recreateReason }, 'recreating session for retry')
 					// Delete existing session to force recreation
-					await authState.keys.set({ session: { [sessionId]: null } })
+					await signalRepository.deleteSession([sessionJid], sessionScope ?? 'default')
 					forceIncludeKeys = true
 				}
 			} catch (error) {
@@ -640,7 +667,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Schedule phone request with delay (like whatsmeow)
 				messageRetryManager.schedulePhoneRequest(msgId, async () => {
 					try {
-						const requestId = await requestPlaceholderResend(msgKey)
+						const requestId = await requestPlaceholderResend(msgKey, fullMessage)
 						logger.debug(
 							`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`
 						)
@@ -650,7 +677,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			} else {
 				// Fallback to immediate request
-				const msgId = await requestPlaceholderResend(msgKey)
+				const msgId = await requestPlaceholderResend(msgKey, fullMessage)
 				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
 			}
 		}
@@ -662,7 +689,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				attrs: {
 					id: msgId,
 					type: 'retry',
-					to: node.attrs.from!
+					to: node.attrs.from!,
+					...(fullMessage.statusKind ? { class: 'status' } : {})
 				},
 				content: [
 					{
@@ -1383,7 +1411,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{ participant, stored: info.registrationId, received: receivedRegId },
 						'reg id mismatch on retry without bundle, deleting session'
 					)
-					await authState.keys.set({ session: { [sessionId]: null } })
+					await signalRepository.deleteSession([participant])
 				}
 			}
 		}
@@ -1397,7 +1425,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				} else if (retryCount > BASE_KEY_CHECK_RETRY) {
 					if (messageRetryManager.hasSameBaseKey(sessionId, msgId, info.baseKey)) {
 						logger.warn({ participant, retryCount }, 'base key collision on retry, forcing fresh session')
-						await authState.keys.set({ session: { [sessionId]: null } })
+						await signalRepository.deleteSession([participant], 'default')
 					}
 
 					messageRetryManager.deleteBaseKey(sessionId, msgId)
@@ -1411,13 +1439,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1 && !injectedFromBundle) {
 			try {
 				const hasSession = await signalRepository.validateSession(participant)
-				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
+				const canonicalParticipant =
+					isPnUser(participant) || isHostedPnUser(participant)
+						? (await signalRepository.lidMapping.getLIDForPN(participant, { useUSync: false })) || participant
+						: participant
+				const retrySessionKey = signalRepository.jidToSignalProtocolAddress(canonicalParticipant)
+				const result = messageRetryManager.shouldRecreateSession(retrySessionKey, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
 				if (shouldRecreateSession) {
 					logger.debug({ participant, retryCount, reason: recreateReason }, 'recreating session for outgoing retry')
-					await authState.keys.set({ session: { [sessionId]: null } })
+					await signalRepository.deleteSession([participant], 'default')
 				}
 			} catch (error) {
 				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
@@ -1429,7 +1462,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (isJidGroup(remoteJid)) {
-			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
+			await resetGroupSenderKeyMemory(remoteJid)
 		}
 
 		logger.debug(
@@ -1594,12 +1627,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let acked = false
 
 		try {
+			const statusSessionMode = config.getStatusSessionMode?.() ?? 1
 			const {
 				fullMessage: msg,
 				category,
 				author,
 				decrypt
-			} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
+			} = decryptMessageNode(
+				node,
+				authState.creds.me!.id,
+				authState.creds.me!.lid || '',
+				signalRepository,
+				logger,
+				statusSessionMode
+			)
 
 			const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 			// store new mappings we didn't have before
@@ -1619,6 +1660,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			await messageMutex.mutex(async () => {
 				await decrypt()
+
+				if (
+					msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT &&
+					msg.messageStubParameters?.[0] === UNSUPPORTED_STATUS_SESSION_ERROR_TEXT
+				) {
+					logger.warn({ msgId: msg.key.id }, 'status session unsupported by configured repository')
+					acked = true
+					return sendMessageAck(node, NACK_REASONS.UnrecognizedStanza)
+				}
 
 				if (msg.key?.remoteJid && msg.key?.id && msg.message && messageRetryManager) {
 					messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message)
@@ -1673,7 +1723,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							messageTimestamp: msg.messageTimestamp,
 							pushName: msg.pushName,
 							participant: msg.participant,
-							verifiedBizName: msg.verifiedBizName
+							verifiedBizName: msg.verifiedBizName,
+							statusKind: msg.statusKind
 						}
 						requestPlaceholderResend(cleanKey, msgData)
 							.then(requestId => {
@@ -1695,7 +1746,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// Don't return — fall through to upsertMessage so the stub is emitted
 					} else {
 						// Skip retry for expired status messages (>24h old)
-						if (isJidStatusBroadcast(msg.key.remoteJid!)) {
+						if (msg.statusKind === 'personal' || msg.statusKind === 'group') {
 							const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
 							if (messageAge > STATUS_EXPIRY_SECONDS) {
 								logger.debug(
@@ -1718,7 +1769,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								}
 
 								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode)
+								await sendRetryRequest(node, !encNode, statusSessionMode, msg.statusKind)
 								if (retryRequestDelayMs) {
 									await delay(retryRequestDelayMs)
 								}
@@ -1755,7 +1806,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 
 						acked = true
-						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+						await sendReceipt(
+							msg.key.remoteJid!,
+							participant!,
+							[msg.key.id!],
+							type,
+							msg.statusKind ? 'status' : undefined
+						)
 
 						// send ack for history message
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
@@ -1948,9 +2005,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const handleStatus = async (node: BinaryNode) => {
+		const from = node.attrs.from
+		if (!from || (!isJidStatusBroadcast(from) && !isJidGroup(from) && !isJidNewsletter(from))) {
+			await sendMessageAck(node, NACK_REASONS.ParsingError)
+			return
+		}
+
+		await handleMessage(node)
+	}
+
 	const offlineNodeProcessor = makeOfflineNodeProcessor(
 		new Map<MessageType, (node: BinaryNode) => Promise<void>>([
 			['message', handleMessage],
+			['status', handleStatus],
 			['call', handleCall],
 			['receipt', handleReceipt],
 			['notification', handleNotification]
@@ -1998,6 +2066,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// recv a message
 	ws.on('CB:message', async (node: BinaryNode) => {
 		await processNode('message', node, 'processing message', handleMessage)
+	})
+
+	ws.on('CB:status', async (node: BinaryNode) => {
+		await processNode('status', node, 'processing status', handleStatus).catch(error =>
+			onUnexpectedError(error, 'processing status')
+		)
 	})
 
 	ws.on('CB:call', async (node: BinaryNode) => {

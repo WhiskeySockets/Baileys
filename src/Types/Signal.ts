@@ -13,6 +13,8 @@ type ProcessSenderKeyDistributionMessageOpts = {
 }
 
 type DecryptSignalProtoOpts = {
+	/** Isolate pairwise status sessions; deletion, migration and identity changes must cover both stores. */
+	sessionScope?: 'status'
 	jid: string
 	type: 'pkmsg' | 'msg'
 	ciphertext: Uint8Array
@@ -56,6 +58,8 @@ type E2ESessionOpts = {
 }
 
 export type SignalRepository = {
+	/** Declare only when scoped decrypt and the full status-session lifecycle are supported. */
+	supportsStatusSessions?: boolean
 	decryptGroupMessage(opts: DecryptGroupSignalOpts): Promise<Uint8Array>
 	processSenderKeyDistributionMessage(opts: ProcessSenderKeyDistributionMessageOpts): Promise<void>
 	decryptMessage(opts: DecryptSignalProtoOpts): Promise<Uint8Array>
@@ -71,11 +75,12 @@ export type SignalRepository = {
 	hasSenderKey(opts: GetSenderKeyDistributionMessageOpts): Promise<boolean>
 	getSessionInfo(jid: string): Promise<{ baseKey: Uint8Array; registrationId: number } | null>
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>
-	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
+	validateSession(jid: string, sessionScope?: 'status'): Promise<{ exists: boolean; reason?: string }>
 	jidToSignalProtocolAddress(jid: string): string
 	migrateSession(fromJid: string, toJid: string): Promise<{ migrated: number; skipped: number; total: number }>
-	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
-	deleteSession(jids: string[]): Promise<void>
+	validateSession(jid: string, sessionScope?: 'status'): Promise<{ exists: boolean; reason?: string }>
+	/** Omitted scope clears both stores; an explicit scope clears only that store. Implementations must honor it. */
+	deleteSession(jids: string[], sessionScope?: 'default' | 'status'): Promise<void>
 }
 
 // Optimized repository with pre-loaded LID mapping store

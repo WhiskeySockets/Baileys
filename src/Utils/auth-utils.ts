@@ -23,6 +23,7 @@ import { PreKeyManager } from './pre-key-manager'
  * Transaction context stored in AsyncLocalStorage
  */
 interface TransactionContext {
+	exclusive: boolean
 	cache: SignalDataSet
 	mutations: SignalDataSet
 	dbQueries: number
@@ -119,6 +120,40 @@ export const addTransactionCapability = (
 	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
+	// Normal transactions retain per-key concurrency. A queued exclusive
+	// transaction drains prior readers and blocks later readers until commit.
+	let activeTransactions = 0
+	let exclusiveTransaction = false
+	const admissions: { exclusive: boolean; resolve: (release: () => void) => void }[] = []
+	function drainAdmissions() {
+		while (!exclusiveTransaction && admissions.length) {
+			const next = admissions[0]!
+			if (next.exclusive && activeTransactions) return
+			admissions.shift()
+			if (next.exclusive) exclusiveTransaction = true
+			else activeTransactions++
+			let released = false
+			next.resolve(() => {
+				if (released) return
+				released = true
+				if (next.exclusive) exclusiveTransaction = false
+				else activeTransactions--
+				drainAdmissions()
+			})
+		}
+	}
+
+	async function withTransactionBarrier<T>(work: () => Promise<T>, exclusive: boolean): Promise<T> {
+		const release = await new Promise<() => void>(resolve => {
+			admissions.push({ exclusive, resolve })
+			drainAdmissions()
+		})
+		try {
+			return await work()
+		} finally {
+			release()
+		}
+	}
 
 	// Queues for concurrency control (keyed by signal data type - bounded set)
 	const keyQueues = new Map<string, PQueue>()
@@ -215,6 +250,7 @@ export const addTransactionCapability = (
 	}
 
 	return {
+		supportsExclusiveTransactions: true,
 		get: async (type, ids) => {
 			const ctx = txStorage.getStore()
 
@@ -300,46 +336,51 @@ export const addTransactionCapability = (
 
 		isInTransaction,
 
-		transaction: async (work, key) => {
+		transaction: async (work, key, options) => {
 			const existing = txStorage.getStore()
 
 			// Nested transaction - reuse existing context
 			if (existing) {
+				if (options?.exclusive && !existing.exclusive)
+					throw new Error('Cannot upgrade an active transaction to exclusive')
 				logger.trace('reusing existing transaction context')
 				return work()
 			}
 
-			// New transaction - acquire mutex and create context
-			const mutex = getTxMutex(key)
-			acquireTxMutexRef(key)
+			return withTransactionBarrier(async () => {
+				// New transaction - acquire mutex and create context
+				const mutex = getTxMutex(key)
+				acquireTxMutexRef(key)
 
-			try {
-				return await mutex.runExclusive(async () => {
-					const ctx: TransactionContext = {
-						cache: {},
-						mutations: {},
-						dbQueries: 0
-					}
+				try {
+					return await mutex.runExclusive(async () => {
+						const ctx: TransactionContext = {
+							cache: {},
+							mutations: {},
+							dbQueries: 0,
+							exclusive: options?.exclusive === true
+						}
 
-					logger.trace('entering transaction')
+						logger.trace('entering transaction')
 
-					try {
-						const result = await txStorage.run(ctx, work)
+						try {
+							const result = await txStorage.run(ctx, work)
 
-						// Commit mutations
-						await commitWithRetry(ctx.mutations)
+							// Commit mutations
+							await commitWithRetry(ctx.mutations)
 
-						logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
+							logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
 
-						return result
-					} catch (error) {
-						logger.error({ error }, 'transaction failed, rolling back')
-						throw error
-					}
-				})
-			} finally {
-				releaseTxMutexRef(key)
-			}
+							return result
+						} catch (error) {
+							logger.error({ error }, 'transaction failed, rolling back')
+							throw error
+						}
+					})
+				} finally {
+					releaseTxMutexRef(key)
+				}
+			}, options?.exclusive === true)
 		}
 	}
 }

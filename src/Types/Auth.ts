@@ -97,7 +97,9 @@ export type SignalKeyStore = {
 
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
-	transaction<T>(exec: () => Promise<T>, key: string): Promise<T>
+	/** Declares support for a store-wide exclusive transaction that drains ordinary transactions. */
+	supportsExclusiveTransactions?: boolean
+	transaction<T>(exec: () => Promise<T>, key: string, options?: { exclusive?: boolean }): Promise<T>
 }
 
 export type TransactionCapabilityOptions = {

@@ -31,6 +31,9 @@ export type PossiblyExtendedCacheStore = CacheStore & {
 export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
 
 export type SocketConfig = {
+	/** Served status_infra_1_1_session_split: disabled, receiver, sender, forced.
+	 * Without a callback, only explicit status session metadata is honored. */
+	getStatusSessionMode?: () => 0 | 1 | 2 | 3
 	/** the WS url to connect to WA */
 	waWebSocketUrl: string | URL
 	/** Fails the connection if the socket times out in this interval */

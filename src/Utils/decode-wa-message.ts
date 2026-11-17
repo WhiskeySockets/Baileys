@@ -5,6 +5,7 @@ import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import {
 	areJidsSameUser,
 	type BinaryNode,
+	getBinaryNodeChild,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidBroadcast,
@@ -203,7 +204,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 			throw new Boom('No participant in group message')
 		}
 
-		const isParticipantMe = isMe(participant)
+		const isParticipantMe = isMe(participant) || isMeLid(participant)
 		if (isJidStatusBroadcast(from)) {
 			msgType = isParticipantMe ? 'direct_peer_status' : 'other_status'
 		} else {
@@ -229,14 +230,14 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 
 	const key: WAMessageKey = {
 		remoteJid: chatId,
-		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		remoteJidAlt: !isJidGroup(chatId) && !isJidBroadcast(chatId) ? addressingContext.senderAlt : undefined,
 		remoteJidUsername: !isJidGroup(chatId)
 			? stanza.attrs.peer_recipient_username || stanza.attrs.recipient_username
 			: undefined,
 		fromMe,
 		id: msgId,
 		participant,
-		participantAlt: isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		participantAlt: isJidGroup(chatId) || isJidBroadcast(chatId) ? addressingContext.senderAlt : undefined,
 		participantUsername: stanza.attrs.participant ? stanza.attrs.participant_username : undefined,
 		addressingMode: addressingContext.addressingMode,
 		...(msgType === 'newsletter' && stanza.attrs.server_id ? { server_id: stanza.attrs.server_id } : {})
@@ -247,6 +248,15 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		category: stanza.attrs.category,
 		messageTimestamp: +stanza.attrs.t!,
 		pushName: pushname,
+		statusKind: isJidStatusBroadcast(from)
+			? 'personal'
+			: stanza.tag === 'status'
+				? isJidGroup(from)
+					? 'group'
+					: isJidNewsletter(from)
+						? 'channel'
+						: undefined
+				: undefined,
 		broadcast: isJidBroadcast(from)
 	}
 
@@ -261,12 +271,19 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 }
 
+export const UNSUPPORTED_STATUS_SESSION_ERROR_TEXT = 'Signal repository does not support status sessions'
+
+function assertStatusSessionSupport(repository: SignalRepositoryWithLIDStore, scope: 'status' | undefined) {
+	if (scope && !repository.supportsStatusSessions) throw new Error(UNSUPPORTED_STATUS_SESSION_ERROR_TEXT)
+}
+
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
 	meLid: string,
 	repository: SignalRepositoryWithLIDStore,
-	logger: ILogger
+	logger: ILogger,
+	statusSessionMode: 0 | 1 | 2 | 3 = 1
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
 	return {
@@ -323,10 +340,12 @@ export const decryptMessageNode = (
 								break
 							case 'pkmsg':
 							case 'msg':
+								assertStatusSessionSupport(repository, getStatusSessionScope(stanza, statusSessionMode))
 								msgBuffer = await repository.decryptMessage({
 									jid: decryptionJid,
 									type: e2eType,
-									ciphertext: content
+									ciphertext: content,
+									sessionScope: getStatusSessionScope(stanza, statusSessionMode)
 								})
 								break
 							case 'plaintext':
@@ -340,6 +359,10 @@ export const decryptMessageNode = (
 							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						)
 						msg = msg.deviceSentMessage?.message || msg
+						if (msg.groupStatusMessageV2?.message && isJidGroup(fullMessage.key.remoteJid ?? undefined)) {
+							fullMessage.statusKind = 'group'
+						}
+
 						if (msg.senderKeyDistributionMessage) {
 							//eslint-disable-next-line max-depth
 							try {
@@ -371,6 +394,7 @@ export const decryptMessageNode = (
 
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
 						fullMessage.messageStubParameters = [err.message.toString()]
+						if (err.message === UNSUPPORTED_STATUS_SESSION_ERROR_TEXT) return
 					}
 				}
 			}
@@ -390,4 +414,14 @@ export const decryptMessageNode = (
 function isSessionRecordError(error: any): boolean {
 	const errorMessage = error?.message || error?.toString() || ''
 	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => errorMessage.includes(errorPattern))
+}
+
+/** A group status requires explicit scope metadata even in forced mode. */
+export function getStatusSessionScope(stanza: BinaryNode, mode: 0 | 1 | 2 | 3 = 1): 'status' | undefined {
+	const from = stanza.attrs.from
+	if (!from) return undefined
+	const scope = getBinaryNodeChild(stanza, 'meta')?.attrs.session_scope
+	const statusContext =
+		isJidStatusBroadcast(from) || (stanza.tag === 'status' && isJidGroup(from) && scope === 'status')
+	return statusContext && (mode === 3 || (mode !== 0 && scope === 'status')) ? 'status' : undefined
 }
