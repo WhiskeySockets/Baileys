@@ -312,13 +312,13 @@ export function makeLibSignalRepository(
 						return { migrated: 0, skipped: 0, total: 1 }
 					}
 
-					// Only resolutions for this migrating user and its linked identity become stale.
-					for (const jid of [fromJid, toJid]) {
+					const { user } = jidDecode(fromJid)!
+					const { user: lidUser } = jidDecode(toJid)!
+					// A batch can move ordinary and hosted devices regardless of its entry domain.
+					for (const jid of [`${user}@s.whatsapp.net`, `${user}@hosted`, `${lidUser}@lid`, `${lidUser}@hosted.lid`]) {
 						const key = jidNormalizedUser(jid)
 						migrationGenerations.set(key, migrationGeneration(jid) + 1)
 					}
-
-					const { user } = jidDecode(fromJid)!
 
 					logger.debug({ fromJid }, 'bulk device migration - loading all user devices')
 

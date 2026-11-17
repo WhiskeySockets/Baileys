@@ -465,69 +465,90 @@ it('refuses direct scoped calls before lookup when exclusive admission is unavai
 	expect(receiver.rows).toEqual(before)
 })
 
-it('retries address resolution when migration commits before pairwise admission', async () => {
-	const receiver = authState(),
-		sender = authState()
-	const receiveRepo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
-	const sendRepo = makeLibSignalRepository(sender.auth, P({ level: 'silent' }))
-	const receiverJid = '100000000001:1@lid',
-		senderJid = '200000000002:2@s.whatsapp.net',
-		lid = '300000000003:2@lid'
-	const creds = receiver.auth.creds
-	await sendRepo.injectE2ESession({
-		jid: receiverJid,
-		session: {
-			registrationId: creds.registrationId,
-			identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
-			signedPreKey: {
-				keyId: creds.signedPreKey.keyId,
-				publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
-				signature: creds.signedPreKey.signature
+it.each([
+	[false, false, 'default'],
+	[false, true, 'default'],
+	[true, false, 'default'],
+	[true, true, 'default'],
+	[false, false, 'status'],
+	[false, true, 'status'],
+	[true, false, 'status'],
+	[true, true, 'status']
+] as const)(
+	'retries address resolution across migration entry hosted=%s, decrypt hosted=%s, scope=%s',
+	async (hostedEntry, hostedDecrypt, scope) => {
+		const receiver = authState(),
+			sender = authState()
+		const receiveRepo = makeLibSignalRepository(receiver.auth, P({ level: 'silent' }))
+		const sendRepo = makeLibSignalRepository(sender.auth, P({ level: 'silent' }))
+		const receiverJid = '100000000001:1@lid',
+			senderJid = hostedDecrypt ? '200000000002:99@hosted' : '200000000002:2@s.whatsapp.net',
+			lid = hostedDecrypt ? '300000000003:99@hosted.lid' : '300000000003:2@lid'
+		const scopeOptions = scope === 'status' ? { sessionScope: 'status' as const } : {}
+		const creds = receiver.auth.creds
+		await sendRepo.injectE2ESession({
+			jid: receiverJid,
+			session: {
+				registrationId: creds.registrationId,
+				identityKey: generateSignalPubKey(creds.signedIdentityKey.public),
+				signedPreKey: {
+					keyId: creds.signedPreKey.keyId,
+					publicKey: generateSignalPubKey(creds.signedPreKey.keyPair.public),
+					signature: creds.signedPreKey.signature
+				}
 			}
-		}
-	})
-	const first = await sendRepo.encryptMessage({ jid: receiverJid, data: Buffer.from('authored first') })
-	await receiveRepo.decryptMessage({ jid: senderJid, ...first })
-	const reply = await receiveRepo.encryptMessage({ jid: senderJid, data: Buffer.from('authored reply') })
-	await sendRepo.decryptMessage({ jid: receiverJid, ...reply })
-	const next = await sendRepo.encryptMessage({ jid: receiverJid, data: Buffer.from('authored after migration') })
-	expect(next.type).toBe('msg')
-	const originalLookup = receiveRepo.lidMapping.getLIDForPN.bind(receiveRepo.lidMapping)
-	let enter!: () => void,
-		release!: () => void,
-		reads = 0
-	const entered = new Promise<void>(resolve => {
-		enter = resolve
-	})
-	const gate = new Promise<void>(resolve => {
-		release = resolve
-	})
-	receiveRepo.lidMapping.getLIDForPN = async (...args) => {
-		reads++
-		const result = await originalLookup(...args)
-		if (reads === 1) {
-			enter()
-			await gate
+		})
+		const first = await sendRepo.encryptMessage({ jid: receiverJid, data: Buffer.from('authored first') })
+		await receiveRepo.decryptMessage({ jid: senderJid, ...first, ...scopeOptions })
+
+		if (scope === 'default') {
+			const reply = await receiveRepo.encryptMessage({ jid: senderJid, data: Buffer.from('authored reply') })
+			await sendRepo.decryptMessage({ jid: receiverJid, ...reply })
 		}
 
-		return result
-	}
+		const next = await sendRepo.encryptMessage({ jid: receiverJid, data: Buffer.from('authored after migration') })
+		expect(next.type).toBe(scope === 'status' ? 'pkmsg' : 'msg')
+		const originalLookup = receiveRepo.lidMapping.getLIDForPN.bind(receiveRepo.lidMapping)
+		let enter!: () => void,
+			release!: () => void,
+			reads = 0
+		const entered = new Promise<void>(resolve => {
+			enter = resolve
+		})
+		const gate = new Promise<void>(resolve => {
+			release = resolve
+		})
+		receiveRepo.lidMapping.getLIDForPN = async (...args) => {
+			reads++
+			const result = await originalLookup(...args)
+			if (reads === 1) {
+				enter()
+				await gate
+			}
 
-	const pending = receiveRepo.decryptMessage({ jid: senderJid, ...next })
-	try {
-		await entered
-		receiver.rows.set('device-list/200000000002', ['2'])
-		await receiveRepo.lidMapping.storeLIDPNMappings([{ pn: senderJid, lid }])
-		await receiveRepo.migrateSession(senderJid, lid)
-	} finally {
-		release()
-	}
+			return result
+		}
 
-	expect(Buffer.from(await pending).toString()).toBe('authored after migration')
-	expect(reads).toBe(2)
-	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(senderJid)}`)).toBe(false)
-	expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(lid)}`)).toBe(true)
-})
+		const pending = receiveRepo.decryptMessage({ jid: senderJid, ...next, ...scopeOptions })
+		try {
+			await entered
+			receiver.rows.set('device-list/200000000002', ['2', '99'])
+			await receiveRepo.lidMapping.storeLIDPNMappings([{ pn: '200000000002@s.whatsapp.net', lid: '300000000003@lid' }])
+			await receiveRepo.migrateSession(
+				hostedEntry ? '200000000002:99@hosted' : '200000000002:2@s.whatsapp.net',
+				hostedEntry ? '300000000003:99@hosted.lid' : '300000000003:2@lid'
+			)
+		} finally {
+			release()
+		}
+
+		expect(Buffer.from(await pending).toString()).toBe('authored after migration')
+		expect(reads).toBe(2)
+		const suffix = scope === 'status' ? '_status' : ''
+		expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(senderJid)}${suffix}`)).toBe(false)
+		expect(receiver.rows.has(`session/${receiveRepo.jidToSignalProtocolAddress(lid)}${suffix}`)).toBe(true)
+	}
+)
 
 it('does not retry a pairwise operation because another user migrated', async () => {
 	const sender = authState(),
