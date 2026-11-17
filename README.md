@@ -1211,7 +1211,9 @@ continue to use the group and author. This does not change status publishing.
 
 Retry-triggered placeholder recovery preserves the original message metadata,
 including publication kind, in both the scheduled phone-request and fallback
-paths. Pairwise migration admission retains at most 1,024 generation entries.
+paths. Recovered messages use the same normalized keys as ordinary delivery;
+phone requests keep their original device addresses. Pairwise migration admission
+retains at most 1,024 generation entries.
 Pruning advances an eviction floor instead of returning an old initial generation;
 older pending address lookups may conservatively resolve again, including for an
 unrelated user. The existing three-attempt admission limit remains in place.

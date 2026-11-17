@@ -760,18 +760,22 @@ it('shares the default retry cooldown across incoming and outgoing retries', asy
 })
 
 it.each([
-	['unavailable', 'status', 'status@broadcast', 'personal', true],
-	['unavailable', 'status', '120363000000001@g.us', 'group', true],
-	['unavailable', 'message', '200000000002@lid', undefined, true],
-	['retry', 'status', 'status@broadcast', 'personal', true],
-	['retry', 'status', '120363000000001@g.us', 'group', true],
-	['retry', 'message', '200000000002@lid', undefined, true],
-	['retry', 'status', 'status@broadcast', 'personal', false],
-	['retry', 'status', '120363000000001@g.us', 'group', false],
-	['retry', 'message', '200000000002@lid', undefined, false]
+	['unavailable', 'status', 'status@broadcast', 'personal', true, '200000000002:2@lid'],
+	['unavailable', 'status', '120363000000001@g.us', 'group', true, '200000000002:2@lid'],
+	['unavailable', 'message', '200000000002:2@lid', undefined, true, '200000000002:2@lid'],
+	['retry', 'status', 'status@broadcast', 'personal', true, '200000000002:2@lid'],
+	['retry', 'status', '120363000000001@g.us', 'group', true, '200000000002:2@lid'],
+	['retry', 'message', '200000000002:2@lid', undefined, true, '200000000002:2@lid'],
+	['retry', 'status', 'status@broadcast', 'personal', false, '200000000002:2@lid'],
+	['retry', 'status', '120363000000001@g.us', 'group', false, '200000000002:2@lid'],
+	['retry', 'message', '200000000002:2@lid', undefined, false, '200000000002:2@lid'],
+	['retry', 'message', '200000000002:99@hosted', undefined, true, '200000000002:99@hosted'],
+	['retry', 'message', '200000000002:99@hosted.lid', undefined, false, '200000000002:99@hosted.lid'],
+	['direct', 'status', 'status@broadcast', 'personal', true, '200000000002:99@hosted.lid'],
+	['direct', 'message', '200000000002:2@lid', undefined, true, '200000000002:2@lid']
 ] as const)(
-	'preserves %s placeholder context for %s from %s kind=%s with manager=%s',
-	async (path, tag, from, statusKind, managed) => {
+	'preserves %s placeholder context for %s from %s kind=%s with manager=%s participant=%s',
+	async (path, tag, from, statusKind, managed, participant) => {
 		const id = 'authored-placeholder-publication'
 		const rows = new Map<string, unknown>()
 		const cache: CacheStore = {
@@ -786,17 +790,28 @@ it.each([
 		}
 		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
 		let sock: Awaited<ReturnType<typeof retryTestSocket>> | undefined
-		let retry: Promise<void> | undefined
+		let retry: Promise<unknown> | undefined
 		try {
 			sock = await retryTestSocket({ placeholderResendCache: cache, enableRecentMessageCache: managed })
 			const recovered: WAMessage[] = []
 			sock.ev.on('messages.upsert', ({ messages }) => recovered.push(...messages))
 			const node = {
 				tag,
-				attrs: { id, from, participant: '200000000002:2@lid', type: 'text', t: String(Math.floor(Date.now() / 1000)) },
+				attrs: { id, from, participant, type: 'text', t: String(Math.floor(Date.now() / 1000)) },
 				content: [{ tag: 'unavailable', attrs: {} }]
 			} satisfies BinaryNode
+			const { decodeMessageNode } = await import('../../Utils/decode-wa-message')
+			const { fullMessage: requestMetadata } = decodeMessageNode(
+				node,
+				sock.authState.creds.me!.id,
+				sock.authState.creds.me!.lid!
+			)
+			const originalMetadata = structuredClone(requestMetadata)
+			const expected = { key: { ...requestMetadata.key } }
+			const { cleanMessage } = await import('../../Utils/process-message')
+			cleanMessage(expected, sock.authState.creds.me!.id, sock.authState.creds.me!.lid!)
 			if (path === 'unavailable') sock.ws.emit(`CB:${tag}`, node)
+			else if (path === 'direct') retry = sock.requestPlaceholderResend(requestMetadata.key, requestMetadata)
 			else {
 				retry = sock.sendRetryRequest(node, false, undefined, statusKind)
 				if (managed) {
@@ -810,6 +825,8 @@ it.each([
 			const cached = rows.get(id) as Partial<WAMessage> | undefined
 			expect(cached).toBeDefined()
 			expect(cached?.statusKind).toBe(statusKind)
+			expect(cached?.key).toEqual(expected.key)
+			expect(requestMetadata).toEqual(originalMetadata)
 			const { default: processMessage } = await import('../../Utils/process-message')
 			await processMessage(
 				{
@@ -851,6 +868,8 @@ it.each([
 			)
 			expect(message?.message?.conversation).toBe('authored recovered content')
 			expect(message?.statusKind).toBe(statusKind)
+			expect(message?.key).toEqual(expected.key)
+			expect(requestMetadata).toEqual(originalMetadata)
 			expect(rows.has(id)).toBe(false)
 		} finally {
 			rows.clear()

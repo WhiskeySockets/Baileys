@@ -202,7 +202,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} else {
 			// Store original message data so PDO response handler can preserve
 			// metadata (LID details, timestamps, etc.) that the phone may omit
-			await placeholderResendCache.set(messageKey?.id!, msgData || true)
+			const cachedMetadata = msgData?.key ? { ...msgData, key: { ...msgData.key } } : msgData
+			if (cachedMetadata?.key) {
+				// Match normal delivery without changing the device-qualified
+				// key sent to the phone or mutating the caller's metadata.
+				cleanMessage({ key: cachedMetadata.key }, authState.creds.me.id, authState.creds.me.lid || '')
+			}
+
+			await placeholderResendCache.set(messageKey?.id!, cachedMetadata || true)
 		}
 
 		await delay(2000)
