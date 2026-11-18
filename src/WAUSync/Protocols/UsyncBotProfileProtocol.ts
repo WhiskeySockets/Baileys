@@ -39,9 +39,13 @@ export class USyncBotProfileProtocol implements USyncQueryProtocol {
 		}
 	}
 
-	parser(node: BinaryNode): BotProfileInfo {
-		const botNode = getBinaryNodeChild(node, 'bot')
-		const profile = getBinaryNodeChild(botNode, 'profile')
+	parser(node: BinaryNode): BotProfileInfo | null {
+		// USyncQuery passes this protocol's own <bot> node, so <profile> is a direct child.
+		// The server returns an empty <bot/> for bots without a public profile.
+		const profile = getBinaryNodeChild(node, 'profile')
+		if (!profile) {
+			return null
+		}
 
 		const commandsNode = getBinaryNodeChild(profile, 'commands')
 		const promptsNode = getBinaryNodeChild(profile, 'prompts')
@@ -67,7 +71,7 @@ export class USyncBotProfileProtocol implements USyncQueryProtocol {
 			attributes: getBinaryNodeChildString(profile, 'attributes')!,
 			description: getBinaryNodeChildString(profile, 'description')!,
 			category: getBinaryNodeChildString(profile, 'category')!,
-			personaId: profile!.attrs['persona_id']!,
+			personaId: profile.attrs['persona_id']!,
 			commandsDescription: getBinaryNodeChildString(commandsNode, 'description')!,
 			commands,
 			prompts
