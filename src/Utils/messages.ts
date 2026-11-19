@@ -612,7 +612,9 @@ export const generateWAMessageContent = async (
 	}
 
 	if (hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) {
-		m = { viewOnceMessage: { message: m } }
+		const type = getContentType(m) as keyof proto.IMessage;
+    const inner = type ? (m[type] as any) : undefined;
+    if (inner && typeof inner === 'object') inner.viewOnce = true;
 	}
 
 	if (
