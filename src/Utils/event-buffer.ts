@@ -285,6 +285,17 @@ const makeBufferData = (): BufferedEventData => {
 	}
 }
 
+/**
+ * Merges an incoming socket event into the shared buffered-event accumulator
+ * (`data`), deduplicating and combining fields per event type (history sets,
+ * message upserts/updates/receipts, chat/contact changes, etc.) so the
+ * eventual flush emits one consolidated update instead of many partial ones.
+ *
+ * For message updates specifically, an already-decoded `messageTimestamp` on
+ * the buffered message is preserved across the merge — a receipt-only update
+ * must not overwrite a timestamp that was already correctly decoded from an
+ * earlier upsert, regardless of which order the two events arrive in.
+ */
 function append<E extends BufferableEvent>(
 	data: BufferedEventData,
 	historyCache: Set<string>,
@@ -503,7 +514,12 @@ function append<E extends BufferableEvent>(
 
 				if (data.messageUpdates[key]) {
 					logger.debug('absorbed prior message update in message upsert')
+					const messageTimestamp = message.messageTimestamp
 					Object.assign(message, data.messageUpdates[key].update)
+					if (messageTimestamp !== undefined) {
+						message.messageTimestamp = messageTimestamp
+					}
+
 					delete data.messageUpdates[key]
 				}
 
@@ -524,7 +540,12 @@ function append<E extends BufferableEvent>(
 				const keyStr = stringifyMessageKey(key)
 				const existing = data.historySets.messages[keyStr] || data.messageUpserts[keyStr]?.message
 				if (existing) {
+					const messageTimestamp = existing.messageTimestamp
 					Object.assign(existing, update)
+					if (messageTimestamp !== undefined) {
+						existing.messageTimestamp = messageTimestamp
+					}
+
 					// if the message was received & read by us
 					// the chat counter must have been incremented
 					// so we need to decrement it
