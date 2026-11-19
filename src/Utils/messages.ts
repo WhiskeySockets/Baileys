@@ -611,8 +611,10 @@ export const generateWAMessageContent = async (
 		m = await prepareWAMessageMedia(message, options)
 	}
 
+
 	if (hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) {
-		m = { viewOnceMessage: { message: m } }
+		const messageType = Object.keys(m)[0]! as Extract<keyof proto.IMessage, MessageWithContextInfo>
+		m[messageType].viewOnce = true;
 	}
 
 	if (
@@ -620,7 +622,7 @@ export const generateWAMessageContent = async (
 		(hasOptionalProperty(message, 'mentionAll') && message.mentionAll)
 	) {
 		const messageType = Object.keys(m)[0]! as Extract<keyof proto.IMessage, MessageWithContextInfo>
-		const key = m[messageType]
+  	const key = m[messageType]
 		if (key && 'contextInfo' in key) {
 			key.contextInfo = key.contextInfo || {}
 			if (message.mentions?.length) {
