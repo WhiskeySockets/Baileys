@@ -33,7 +33,10 @@ export class WebSocketClient extends AbstractSocketClient {
 
 		this.socket.setMaxListeners(0)
 
-		const events = ['close', 'error', 'upgrade', 'message', 'open', 'ping', 'pong', 'unexpected-response']
+		// 'unexpected-response' is deliberately not forwarded: ws only aborts the handshake
+		// (and emits 'error' + 'close') when nothing listens to it, so re-emitting it would
+		// leave a non-101 upgrade stuck in CONNECTING forever
+		const events = ['close', 'error', 'upgrade', 'message', 'open', 'ping', 'pong']
 
 		for (const event of events) {
 			this.socket?.on(event, (...args: any[]) => this.emit(event, ...args))
