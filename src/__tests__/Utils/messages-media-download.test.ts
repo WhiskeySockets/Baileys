@@ -92,4 +92,19 @@ describe('downloadEncryptedContent', () => {
 
 		await expect(toBuffer(stream)).rejects.toThrow('terminated')
 	})
+
+	it('closes the connection when the returned stream is destroyed early', async () => {
+		const encrypted = encrypt(randomBytes(256 * 1024))
+		let closed!: Promise<void>
+		const url = await serve((req, res) => {
+			closed = new Promise(resolve => req.socket.once('close', () => resolve()))
+			res.writeHead(200, { 'Content-Length': encrypted.length })
+			res.write(encrypted.subarray(0, 64 * 1024))
+		})
+
+		const stream = await downloadEncryptedContent(url, { cipherKey, iv })
+		stream.destroy()
+
+		await expect(closed).resolves.toBeUndefined()
+	})
 })
