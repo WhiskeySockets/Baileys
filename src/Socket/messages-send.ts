@@ -974,6 +974,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {
 						v: '2',
 						type,
+						...extraAttrs,
 						count: participant!.count.toString()
 					},
 					content: encryptedContent
