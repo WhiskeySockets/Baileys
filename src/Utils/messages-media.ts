@@ -654,8 +654,8 @@ export const downloadEncryptedContent = async (
 			}
 		}
 	})
-	// pipe() does not forward source errors, so a connection dropped mid-body would leave
-	// the returned stream pending forever; pipeline destroys it with the error instead
+	// pipe() does not forward source errors, so a connection dropped mid-body was an unhandled
+	// error and the returned stream never ended; pipeline forwards it to the returned stream
 	pipeline(fetched, output, () => {})
 	return output
 }
