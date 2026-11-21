@@ -390,6 +390,7 @@ export const makeSocket = (config: SocketConfig) => {
 	let epoch = 1
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
+	let offlineTimer: NodeJS.Timeout | undefined
 	let closed = false
 
 	const socketEndHandlers: Array<(error: Error | undefined) => void | Promise<void>> = []
@@ -635,6 +636,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
+		clearInterval(offlineTimer)
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
@@ -1009,7 +1011,6 @@ export const makeSocket = (config: SocketConfig) => {
 	// 10 s while the end has not come (so a miscount costs seconds, not the time until the next reconnect).
 	let offlineStanzas = 0
 	let offlineDone = false
-	let offlineTimer: NodeJS.Timeout | undefined
 
 	const requestOfflineBatch = async (reason: string) => {
 		if (closed || offlineDone) {
@@ -1043,6 +1044,11 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.on('CB:ib,,offline_preview', async (node: BinaryNode) => {
 		logger.info('offline preview received', JSON.stringify(node))
 		await requestOfflineBatch('offline preview')
+		// the socket may have closed, or the catch-up ended, while the request was being sent
+		if (closed || offlineDone) {
+			return
+		}
+
 		clearInterval(offlineTimer)
 		offlineTimer = setInterval(() => {
 			if (closed || offlineDone) {
