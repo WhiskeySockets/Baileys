@@ -87,7 +87,12 @@ export type SocketConfig = {
 	msgRetryCounterCache?: CacheStore
 	/** provide a cache to store a user's device list */
 	userDevicesCache?: PossiblyExtendedCacheStore
-	/** cache to store call offers */
+	/**
+	 * Cache for in-flight call offers (callerPn, isVideo, …).
+	 * Baileys keeps timed-out offers briefly so a following terminate can enrich,
+	 * then deletes them after ~5 minutes even if this store has no TTL.
+	 * Reject/accept/terminate clear the entry immediately.
+	 */
 	callOfferCache?: CacheStore
 	/** cache to track placeholder resends */
 	placeholderResendCache?: CacheStore

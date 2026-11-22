@@ -155,6 +155,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
 			useClones: false
 		})
+	/** Delayed cleanup for timed-out offers when callOfferCache has no TTL of its own. */
+	const callOfferExpiryTimers = new Map<string, NodeJS.Timeout>()
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
@@ -1865,10 +1867,33 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await callOfferCache.set(call.id, call)
 			}
 
-			// Do not drop the offer cache on timeout — WhatsApp often follows with
-			// terminate, which would otherwise lose callerPn / isVideo (#2142, #2154).
-			// TTL still expires stale offers; clear on a true end state.
+			// Do not drop the offer cache immediately on timeout — WhatsApp often
+			// follows with terminate, which would otherwise lose callerPn / isVideo
+			// (#2142, #2154). Schedule an expiry so custom caches without TTL still
+			// release the entry if no terminal event arrives.
+			if (status === 'timeout') {
+				const offerId = call.id
+				const previous = callOfferExpiryTimers.get(offerId)
+				if (previous) {
+					clearTimeout(previous)
+				}
+
+				callOfferExpiryTimers.set(
+					offerId,
+					setTimeout(() => {
+						callOfferExpiryTimers.delete(offerId)
+						void Promise.resolve(callOfferCache.del(offerId)).catch(() => undefined)
+					}, DEFAULT_CACHE_TTLS.CALL_OFFER * 1000)
+				)
+			}
+
 			if (status === 'reject' || status === 'accept' || status === 'terminate') {
+				const pending = callOfferExpiryTimers.get(call.id)
+				if (pending) {
+					clearTimeout(pending)
+					callOfferExpiryTimers.delete(call.id)
+				}
+
 				await callOfferCache.del(call.id)
 			}
 
