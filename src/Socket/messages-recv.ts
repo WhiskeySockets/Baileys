@@ -155,6 +155,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
 			useClones: false
 		})
+	/** Delayed cleanup for timed-out offers when callOfferCache has no TTL of its own. */
+	const callOfferExpiryTimers = new Map<string, NodeJS.Timeout>()
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
@@ -1796,6 +1798,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const status = getCallStatusFromNode(infoChild)
 
 			const callId = infoChild.attrs['call-id']!
+			// Keep protocol `from` (often @lid) — rejectCall must address the call-creator JID.
 			const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
 
 			const call: WACallEvent = {
@@ -1820,7 +1823,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
 				call.groupJid = infoChild.attrs['group-jid']
-				await callOfferCache.set(call.id, call)
 			}
 
 			const existingCall = await callOfferCache.get<WACallEvent>(call.id)
@@ -1829,11 +1831,69 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (existingCall) {
 				call.isVideo = existingCall.isVideo
 				call.isGroup = existingCall.isGroup
+				call.groupJid = call.groupJid || existingCall.groupJid
 				call.callerPn = call.callerPn || existingCall.callerPn
 			}
 
-			// delete data once call has ended
-			if (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
+			// Publish offer metadata before LID mapping I/O so a concurrent timeout/terminate
+			// can still read isVideo / caller_pn from the stanza.
+			if (status === 'offer') {
+				await callOfferCache.set(call.id, call)
+			}
+
+			// Offer often carries caller_pn while later timeout/terminate only have LIDs.
+			// Persist the mapping and prefer PN for 1:1 chatId so consumers can message back.
+			if (call.callerPn && isPnUser(call.callerPn) && isLidUser(from)) {
+				await signalRepository.lidMapping
+					.storeLIDPNMappings([{ lid: jidNormalizedUser(from), pn: jidNormalizedUser(call.callerPn) }])
+					.catch(err => logger.debug({ err }, 'failed to store call LID↔PN mapping'))
+			} else if (!call.callerPn && isLidUser(from)) {
+				const mapped = await signalRepository.lidMapping
+					.getPNForLID(jidNormalizedUser(from))
+					.catch(err => {
+						logger.debug({ err }, 'failed to resolve call caller PN from LID')
+						return null
+					})
+				if (mapped) {
+					call.callerPn = jidNormalizedUser(mapped)
+				}
+			}
+
+			if (!call.isGroup && !call.groupJid && call.callerPn && isPnUser(call.callerPn)) {
+				call.chatId = jidNormalizedUser(call.callerPn)
+			}
+
+			if (status === 'offer') {
+				await callOfferCache.set(call.id, call)
+			}
+
+			// Do not drop the offer cache immediately on timeout — WhatsApp often
+			// follows with terminate, which would otherwise lose callerPn / isVideo
+			// (#2142, #2154). Schedule an expiry so custom caches without TTL still
+			// release the entry if no terminal event arrives.
+			if (status === 'timeout') {
+				const offerId = call.id
+				const previous = callOfferExpiryTimers.get(offerId)
+				if (previous) {
+					clearTimeout(previous)
+				}
+
+				callOfferExpiryTimers.set(
+					offerId,
+					setTimeout(() => {
+						callOfferExpiryTimers.delete(offerId)
+						void Promise.resolve(callOfferCache.del(offerId)).catch(() => undefined)
+					}, DEFAULT_CACHE_TTLS.CALL_OFFER * 1000)
+				)
+			}
+
+			if (status === 'reject' || status === 'accept' || status === 'terminate') {
+				const pending = callOfferExpiryTimers.get(call.id)
+				if (pending) {
+					clearTimeout(pending)
+					callOfferExpiryTimers.delete(call.id)
+				}
+
 				await callOfferCache.del(call.id)
 			}
 
