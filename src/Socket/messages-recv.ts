@@ -1796,6 +1796,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const status = getCallStatusFromNode(infoChild)
 
 			const callId = infoChild.attrs['call-id']!
+			// Keep protocol `from` (often @lid) — rejectCall must address the call-creator JID.
 			const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
 
 			const call: WACallEvent = {
@@ -1820,7 +1821,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 				call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
 				call.groupJid = infoChild.attrs['group-jid']
-				await callOfferCache.set(call.id, call)
 			}
 
 			const existingCall = await callOfferCache.get<WACallEvent>(call.id)
@@ -1829,11 +1829,46 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (existingCall) {
 				call.isVideo = existingCall.isVideo
 				call.isGroup = existingCall.isGroup
+				call.groupJid = call.groupJid || existingCall.groupJid
 				call.callerPn = call.callerPn || existingCall.callerPn
 			}
 
-			// delete data once call has ended
-			if (status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
+			// Publish offer metadata before LID mapping I/O so a concurrent timeout/terminate
+			// can still read isVideo / caller_pn from the stanza.
+			if (status === 'offer') {
+				await callOfferCache.set(call.id, call)
+			}
+
+			// Offer often carries caller_pn while later timeout/terminate only have LIDs.
+			// Persist the mapping and prefer PN for 1:1 chatId so consumers can message back.
+			if (call.callerPn && isPnUser(call.callerPn) && isLidUser(from)) {
+				await signalRepository.lidMapping
+					.storeLIDPNMappings([{ lid: jidNormalizedUser(from), pn: jidNormalizedUser(call.callerPn) }])
+					.catch(err => logger.debug({ err }, 'failed to store call LID↔PN mapping'))
+			} else if (!call.callerPn && isLidUser(from)) {
+				const mapped = await signalRepository.lidMapping
+					.getPNForLID(jidNormalizedUser(from))
+					.catch(err => {
+						logger.debug({ err }, 'failed to resolve call caller PN from LID')
+						return null
+					})
+				if (mapped) {
+					call.callerPn = jidNormalizedUser(mapped)
+				}
+			}
+
+			if (!call.isGroup && !call.groupJid && call.callerPn && isPnUser(call.callerPn)) {
+				call.chatId = jidNormalizedUser(call.callerPn)
+			}
+
+			if (status === 'offer') {
+				await callOfferCache.set(call.id, call)
+			}
+
+			// Do not drop the offer cache on timeout — WhatsApp often follows with
+			// terminate, which would otherwise lose callerPn / isVideo (#2142, #2154).
+			// TTL still expires stale offers; clear on a true end state.
+			if (status === 'reject' || status === 'accept' || status === 'terminate') {
 				await callOfferCache.del(call.id)
 			}
 
