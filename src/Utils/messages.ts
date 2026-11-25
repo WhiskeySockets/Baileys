@@ -397,7 +397,64 @@ export const generateWAMessageContent = async (
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
-	if (hasNonNullishProperty(message, 'text')) {
+	if (hasNonNullishProperty(message, 'buttons')) {
+		const buttons = message.buttons
+		if (!Array.isArray(buttons) || buttons.length === 0) {
+			throw new Boom('require at least 1 button', { statusCode: 400 })
+		}
+
+		if (buttons.length > 3) {
+			throw new Boom('WhatsApp allows at most 3 quick-reply buttons', { statusCode: 400 })
+		}
+
+		m.interactiveMessage = WAProto.Message.InteractiveMessage.create({
+			body: { text: message.text },
+			footer: message.footer ? { text: message.footer } : undefined,
+			nativeFlowMessage: {
+				messageVersion: 1,
+				buttons: buttons.map(button => ({
+					name: 'quick_reply',
+					buttonParamsJson: JSON.stringify({ display_text: button.displayText, id: button.id })
+				}))
+			}
+		})
+	} else if (hasNonNullishProperty(message, 'list')) {
+		const list = message.list
+		if (!list || !Array.isArray(list.sections) || list.sections.length === 0) {
+			throw new Boom('require at least 1 list section', { statusCode: 400 })
+		}
+
+		for (const section of list.sections) {
+			if (!Array.isArray(section.rows) || section.rows.length === 0) {
+				throw new Boom('require at least 1 row per list section', { statusCode: 400 })
+			}
+		}
+
+		m.interactiveMessage = WAProto.Message.InteractiveMessage.create({
+			body: { text: message.text },
+			footer: message.footer ? { text: message.footer } : undefined,
+			nativeFlowMessage: {
+				messageVersion: 1,
+				buttons: [
+					{
+						name: 'single_select',
+						buttonParamsJson: JSON.stringify({
+							title: list.title,
+							button_text: list.buttonText,
+							sections: list.sections.map(section => ({
+								title: section.title,
+								rows: section.rows.map(row => ({
+									title: row.title,
+									description: row.description ?? '',
+									id: row.id
+								}))
+							}))
+						})
+					}
+				]
+			}
+		})
+	} else if (hasNonNullishProperty(message, 'text')) {
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview
