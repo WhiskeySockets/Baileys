@@ -217,6 +217,40 @@ export type ButtonReplyInfo = {
 	index: number
 }
 
+/** a quick-reply button sent with a native-flow interactive message */
+export type ButtonInfo = {
+	/** id returned to the bot when the user taps this button */
+	id: string
+	/** label shown on the button */
+	displayText: string
+}
+
+/** a row in a single-select list section */
+export type ListSectionRow = {
+	/** row title shown in the list */
+	title: string
+	/** optional row description */
+	description?: string
+	/** id returned to the bot when the user taps this row */
+	id: string
+}
+
+/** a section in a single-select list */
+export type ListSection = {
+	/** section title shown in the list */
+	title: string
+	rows: ListSectionRow[]
+}
+
+/** a single-select list sent with a native-flow interactive message */
+export type ListInfo = {
+	/** title shown in the list header */
+	title: string
+	/** label of the button that opens the list */
+	buttonText: string
+	sections: ListSection[]
+}
+
 export type GroupInviteInfo = {
 	inviteCode: string
 	inviteExpiration: number
@@ -261,6 +295,24 @@ export type AnyRegularMessageContent = (
 			buttonReply: ButtonReplyInfo
 			type: 'template' | 'plain'
 	  }
+	| ({
+			/** text shown above the buttons */
+			text: string
+			/** optional footer text shown below the buttons */
+			footer?: string
+			/** quick-reply buttons, at most 3 */
+			buttons: ButtonInfo[]
+	  } & Mentionable &
+			Contextable)
+	| ({
+			/** text shown above the list button */
+			text: string
+			/** optional footer text shown below the list button */
+			footer?: string
+			/** single-select list opened by the button */
+			list: ListInfo
+	  } & Mentionable &
+			Contextable)
 	| {
 			groupInvite: GroupInviteInfo
 	  }
