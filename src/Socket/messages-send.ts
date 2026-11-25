@@ -992,6 +992,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
+			const nativeFlowBizNode = getNativeFlowBizNode(message)
+			if (nativeFlowBizNode) {
+				binaryNodeContent.push(nativeFlowBizNode)
+			}
+
 			const stanza: BinaryNode = {
 				tag: 'message',
 				attrs: {
@@ -1213,6 +1218,35 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		return ''
+	}
+
+	// WhatsApp clients only render a native-flow interactive message when the
+	// stanza carries a <biz> addon node next to the encrypted payload; without
+	// it the server still accepts the message, but Web shows "cannot be loaded"
+	// and the phone hides it entirely. The addon shape is the one other
+	// WhatsApp libraries attach for quick_reply / single_select flows.
+	const getNativeFlowBizNode = (message: proto.IMessage): BinaryNode | undefined => {
+		const normalized = normalizeMessageContent(message)
+		if (!normalized?.interactiveMessage?.nativeFlowMessage) {
+			return undefined
+		}
+
+		return {
+			tag: 'biz',
+			attrs: {},
+			content: [
+				{
+					tag: 'interactive',
+					attrs: { type: 'native_flow', v: '1' },
+					content: [
+						{
+							tag: 'native_flow',
+							attrs: { v: '9', name: 'mixed' }
+						}
+					]
+				}
+			]
+		}
 	}
 
 	const issuePrivacyTokens = async (jids: string[], timestamp?: number) => {
