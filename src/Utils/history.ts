@@ -18,15 +18,30 @@ import {
 	getHttpStream,
 	getMediaKeys,
 	getUrlFromDirectPath,
-	type MediaDownloadOptions,
-	toBuffer
+	type MediaDownloadOptions
 } from './messages-media'
 
 const inflatePromise = promisify(inflate)
 
 const AES_BLOCK_SIZE = 16
 const MEDIA_MAC_LENGTH = 10
+const GROUP_HISTORY_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
 const GROUP_HISTORY_MAX_INFLATE_BYTES = 20 * 1024 * 1024
+const GROUP_HISTORY_MESSAGE_FIELDS = new Set([1, 3, 4, 5])
+
+const decodeAssociatedMessageList = (bytes: Uint8Array, messages: proto.WebMessageInfo[]) => {
+	const reader = $protobuf.Reader.create(bytes)
+	while (reader.pos < reader.len) {
+		const tag = reader.uint32()
+		const fieldNumber = tag >>> 3
+		const wireType = tag & 7
+		if (fieldNumber === 1 && wireType === 2) {
+			messages.push(proto.WebMessageInfo.decode(reader.bytes()))
+		} else {
+			reader.skipType(wireType)
+		}
+	}
+}
 
 const extractPnFromMessages = (messages: proto.IHistorySyncMsg[]): string | undefined => {
 	for (const msgItem of messages) {
@@ -62,8 +77,10 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 
 /**
  * Downloads and decrypts a `messageHistoryBundle` (shared when a device is added to a group
- * with recent-history sharing enabled) and returns the decoded `WebMessageInfo` list.
- * Verifies `fileEncSha256` (when present) and the media MAC before decrypting.
+ * with recent-history sharing enabled) and returns a flat `WebMessageInfo` list in wire order
+ * across `messages` (1), `uncountedAssociatedMessageLists[].messages` (2), `commentMessages` (3),
+ * `outOfWindowPinnedMessages` (4), and `themeMessage` (5).
+ * Caps the encrypted download at 20 MiB and verifies `fileEncSha256` (when present) and the media MAC before decrypting.
  */
 export const downloadGroupHistoryBundle = async (
 	bundle: proto.Message.IMessageHistoryBundle,
@@ -92,7 +109,19 @@ export const downloadGroupHistoryBundle = async (
 		...(opts?.options || {}),
 		headers
 	})
-	const file = await toBuffer(stream)
+	const chunks: Buffer[] = []
+	let size = 0
+	for await (const chunk of stream) {
+		size += chunk.length
+		if (size > GROUP_HISTORY_MAX_DOWNLOAD_BYTES) {
+			stream.destroy()
+			throw new Boom('Group history bundle exceeds maximum size', { statusCode: 413 })
+		}
+
+		chunks.push(chunk)
+	}
+
+	const file = Buffer.concat(chunks)
 
 	if (file.length < AES_BLOCK_SIZE + MEDIA_MAC_LENGTH || (file.length - MEDIA_MAC_LENGTH) % AES_BLOCK_SIZE !== 0) {
 		throw new Boom('Invalid encrypted group history bundle length', { statusCode: 400 })
@@ -126,8 +155,10 @@ export const downloadGroupHistoryBundle = async (
 		const tag = reader.uint32()
 		const fieldNumber = tag >>> 3
 		const wireType = tag & 7
-		if (fieldNumber === 1 && wireType === 2) {
+		if (wireType === 2 && GROUP_HISTORY_MESSAGE_FIELDS.has(fieldNumber)) {
 			messages.push(proto.WebMessageInfo.decode(reader.bytes()))
+		} else if (wireType === 2 && fieldNumber === 2) {
+			decodeAssociatedMessageList(reader.bytes(), messages)
 		} else {
 			reader.skipType(wireType)
 		}

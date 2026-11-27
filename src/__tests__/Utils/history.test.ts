@@ -527,11 +527,11 @@ describe('downloadGroupHistoryBundle', () => {
 			message: { conversation: 'kept' }
 		}).finish()
 		const payload = $protobuf.Writer.create()
-			.uint32((2 << 3) | 0)
+			.uint32((7 << 3) | 0)
 			.uint32(42)
 			.uint32((1 << 3) | 2)
 			.bytes(msg)
-			.uint32((3 << 3) | 2)
+			.uint32((6 << 3) | 2)
 			.bytes(Buffer.from('ignored'))
 			.finish()
 		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
@@ -624,5 +624,64 @@ describe('downloadGroupHistoryBundle', () => {
 		expect(messages).toHaveLength(1)
 		expect(messages[0]?.key?.id).toBe('MSG_HASH_OK')
 		expect(messages[0]?.message?.conversation).toBe('hash verified')
+	})
+
+	it('decodes all GroupHistory message fields in wire order', async () => {
+		const mediaKey = randomBytes(32)
+		const encodeMsg = (id: string) =>
+			proto.WebMessageInfo.encode({
+				key: { remoteJid: '1234567890@g.us', id, fromMe: false },
+				message: { conversation: id }
+			}).finish()
+
+		const parentKey = proto.MessageKey.encode({
+			remoteJid: '1234567890@g.us',
+			id: 'PARENT_1',
+			fromMe: false
+		}).finish()
+
+		const associatedList = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('B1'))
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('B2'))
+			.uint32((2 << 3) | 2)
+			.bytes(parentKey)
+			.uint32((3 << 3) | 0)
+			.uint32(1)
+			.finish()
+
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('A'))
+			.uint32((2 << 3) | 2)
+			.bytes(associatedList)
+			.uint32((3 << 3) | 2)
+			.bytes(encodeMsg('C'))
+			.uint32((4 << 3) | 2)
+			.bytes(encodeMsg('D'))
+			.uint32((5 << 3) | 2)
+			.bytes(encodeMsg('E'))
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('F'))
+			.finish()
+
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath })
+
+		expect(messages.map(m => m.key?.id)).toEqual(['A', 'B1', 'B2', 'C', 'D', 'E', 'F'])
+	})
+
+	it('rejects encrypted downloads exceeding 20 MiB with Boom 413', async () => {
+		const mediaKey = randomBytes(32)
+		const oversized = new Uint8Array(20 * 1024 * 1024 + 16)
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(oversized))
+
+		await expect(downloadGroupHistoryBundle({ mediaKey, directPath })).rejects.toMatchObject({
+			message: 'Group history bundle exceeds maximum size',
+			output: { statusCode: 413 }
+		})
 	})
 })
