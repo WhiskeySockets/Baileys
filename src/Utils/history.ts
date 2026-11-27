@@ -1,18 +1,32 @@
 import { Boom } from '@hapi/boom'
+import { timingSafeEqual } from 'crypto'
 import $protobuf from 'protobufjs/minimal.js'
 import { pipeline } from 'stream/promises'
 import { promisify } from 'util'
 import { createInflate, inflate } from 'zlib'
 import { proto } from '../../WAProto/index.js'
+import { DEFAULT_ORIGIN } from '../Defaults'
 import type { Chat, Contact, LIDMapping, WAMessage } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser } from '../WABinary'
+import { aesDecryptWithIV, hmacSign, sha256 } from './crypto'
 import { toNumber } from './generics'
 import type { ILogger } from './logger.js'
 import { normalizeMessageContent } from './messages'
-import { downloadContentFromMessage, type MediaDownloadOptions } from './messages-media'
+import {
+	downloadContentFromMessage,
+	getHttpStream,
+	getMediaKeys,
+	getUrlFromDirectPath,
+	type MediaDownloadOptions,
+	toBuffer
+} from './messages-media'
 
 const inflatePromise = promisify(inflate)
+
+const AES_BLOCK_SIZE = 16
+const MEDIA_MAC_LENGTH = 10
+const GROUP_HISTORY_MAX_INFLATE_BYTES = 20 * 1024 * 1024
 
 const extractPnFromMessages = (messages: proto.IHistorySyncMsg[]): string | undefined => {
 	for (const msgItem of messages) {
@@ -49,6 +63,7 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 /**
  * Downloads and decrypts a `messageHistoryBundle` (shared when a device is added to a group
  * with recent-history sharing enabled) and returns the decoded `WebMessageInfo` list.
+ * Verifies `fileEncSha256` (when present) and the media MAC before decrypting.
  */
 export const downloadGroupHistoryBundle = async (
 	bundle: proto.Message.IMessageHistoryBundle,
@@ -58,13 +73,52 @@ export const downloadGroupHistoryBundle = async (
 		throw new Boom('Missing mediaKey in messageHistoryBundle', { statusCode: 400 })
 	}
 
-	const stream = await downloadContentFromMessage(bundle, 'group-history', opts)
-	const inflater = createInflate()
-	const chunks: Buffer[] = []
-	inflater.on('data', (chunk: Buffer) => chunks.push(chunk))
-	await pipeline(stream, inflater)
+	if (!bundle.directPath) {
+		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
+	}
 
-	const buffer = Buffer.concat(chunks)
+	const downloadUrl = getUrlFromDirectPath(bundle.directPath, opts?.host)
+	const headersInit = opts?.options?.headers
+	const headers: Record<string, string> = {
+		...(headersInit
+			? Array.isArray(headersInit)
+				? Object.fromEntries(headersInit)
+				: (headersInit as Record<string, string>)
+			: {}),
+		Origin: DEFAULT_ORIGIN
+	}
+
+	const stream = await getHttpStream(downloadUrl, {
+		...(opts?.options || {}),
+		headers
+	})
+	const file = await toBuffer(stream)
+
+	if (file.length < AES_BLOCK_SIZE + MEDIA_MAC_LENGTH || (file.length - MEDIA_MAC_LENGTH) % AES_BLOCK_SIZE !== 0) {
+		throw new Boom('Invalid encrypted group history bundle length', { statusCode: 400 })
+	}
+
+	if (bundle.fileEncSha256?.length) {
+		const actualEncHash = sha256(file)
+		if (actualEncHash.length !== bundle.fileEncSha256.length || !timingSafeEqual(actualEncHash, bundle.fileEncSha256)) {
+			throw new Boom('fileEncSha256 mismatch', { statusCode: 412 })
+		}
+	}
+
+	const { iv, cipherKey, macKey } = await getMediaKeys(bundle.mediaKey, 'group-history')
+	if (!macKey) {
+		throw new Boom('Failed to derive macKey', { statusCode: 500 })
+	}
+
+	const ciphertext = file.subarray(0, file.length - MEDIA_MAC_LENGTH)
+	const mac = file.subarray(file.length - MEDIA_MAC_LENGTH)
+	const expectedMac = hmacSign(Buffer.concat([iv, ciphertext]), macKey).subarray(0, MEDIA_MAC_LENGTH)
+	if (!timingSafeEqual(mac, expectedMac)) {
+		throw new Boom('MAC mismatch', { statusCode: 412 })
+	}
+
+	const compressed = aesDecryptWithIV(ciphertext, cipherKey, iv)
+	const buffer = await inflatePromise(compressed, { maxOutputLength: GROUP_HISTORY_MAX_INFLATE_BYTES })
 	const reader = $protobuf.Reader.create(buffer)
 	const messages: proto.WebMessageInfo[] = []
 
