@@ -3,6 +3,7 @@ import { createCipheriv, createHmac, randomBytes } from 'crypto'
 import $protobuf from 'protobufjs/minimal.js'
 import { deflateSync } from 'zlib'
 import { proto } from '../../../WAProto/index.js'
+import { DEFAULT_ORIGIN } from '../../Defaults'
 import { hkdf, sha256 } from '../../Utils/crypto'
 import { downloadGroupHistoryBundle, processHistoryMessage } from '../../Utils/history'
 import { hkdfInfoKey } from '../../Utils/messages-media'
@@ -683,5 +684,53 @@ describe('downloadGroupHistoryBundle', () => {
 			message: 'Group history bundle exceeds maximum size',
 			output: { statusCode: 413 }
 		})
+	})
+
+	it.each<{ name: string; headers: HeadersInit }>([
+		{
+			name: 'Headers instance',
+			headers: new Headers({ 'x-test': '1', origin: 'https://evil.example' })
+		},
+		{
+			name: 'tuple array',
+			headers: [
+				['x-test', '1'],
+				['origin', 'https://evil.example']
+			]
+		},
+		{
+			name: 'plain object',
+			headers: { 'x-test': '1', origin: 'https://evil.example' }
+		}
+	])('merges caller headers ($name) and overrides Origin with DEFAULT_ORIGIN', async ({ headers }) => {
+		const mediaKey = randomBytes(32)
+		const msg = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_HDR', fromMe: false },
+			message: { conversation: 'headers ok' }
+		}).finish()
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(msg)
+			.finish()
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
+		const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath }, { options: { headers } })
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1)
+		const sentHeaders = new Headers(fetchSpy.mock.calls[0]?.[1]?.headers)
+		const originValues: string[] = []
+		sentHeaders.forEach((value, key) => {
+			if (key === 'origin') {
+				originValues.push(value)
+			}
+		})
+
+		expect(sentHeaders.get('x-test')).toBe('1')
+		expect(sentHeaders.get('origin')).toBe(DEFAULT_ORIGIN)
+		expect(originValues).toEqual([DEFAULT_ORIGIN])
+		expect(messages).toHaveLength(1)
+		expect(messages[0]?.key?.id).toBe('MSG_HDR')
+		expect(messages[0]?.message?.conversation).toBe('headers ok')
 	})
 })

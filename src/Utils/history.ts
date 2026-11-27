@@ -95,15 +95,8 @@ export const downloadGroupHistoryBundle = async (
 	}
 
 	const downloadUrl = getUrlFromDirectPath(bundle.directPath, opts?.host)
-	const headersInit = opts?.options?.headers
-	const headers: Record<string, string> = {
-		...(headersInit
-			? Array.isArray(headersInit)
-				? Object.fromEntries(headersInit)
-				: (headersInit as Record<string, string>)
-			: {}),
-		Origin: DEFAULT_ORIGIN
-	}
+	const headers = new Headers(opts?.options?.headers)
+	headers.set('Origin', DEFAULT_ORIGIN)
 
 	const stream = await getHttpStream(downloadUrl, {
 		...(opts?.options || {}),
