@@ -1,3 +1,5 @@
+import { Boom } from '@hapi/boom'
+import $protobuf from 'protobufjs/minimal.js'
 import { pipeline } from 'stream/promises'
 import { promisify } from 'util'
 import { createInflate, inflate } from 'zlib'
@@ -8,7 +10,7 @@ import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser } from '../WABinar
 import { toNumber } from './generics'
 import type { ILogger } from './logger.js'
 import { normalizeMessageContent } from './messages'
-import { downloadContentFromMessage } from './messages-media'
+import { downloadContentFromMessage, type MediaDownloadOptions } from './messages-media'
 
 const inflatePromise = promisify(inflate)
 
@@ -42,6 +44,42 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	const buffer = Buffer.concat(chunks)
 	const syncData = proto.HistorySync.decode(buffer)
 	return syncData
+}
+
+/**
+ * Downloads and decrypts a `messageHistoryBundle` (shared when a device is added to a group
+ * with recent-history sharing enabled) and returns the decoded `WebMessageInfo` list.
+ */
+export const downloadGroupHistoryBundle = async (
+	bundle: proto.Message.IMessageHistoryBundle,
+	opts?: Pick<MediaDownloadOptions, 'options' | 'host'>
+): Promise<proto.WebMessageInfo[]> => {
+	if (!bundle?.mediaKey?.length) {
+		throw new Boom('Missing mediaKey in messageHistoryBundle', { statusCode: 400 })
+	}
+
+	const stream = await downloadContentFromMessage(bundle, 'group-history', opts)
+	const inflater = createInflate()
+	const chunks: Buffer[] = []
+	inflater.on('data', (chunk: Buffer) => chunks.push(chunk))
+	await pipeline(stream, inflater)
+
+	const buffer = Buffer.concat(chunks)
+	const reader = $protobuf.Reader.create(buffer)
+	const messages: proto.WebMessageInfo[] = []
+
+	while (reader.pos < reader.len) {
+		const tag = reader.uint32()
+		const fieldNumber = tag >>> 3
+		const wireType = tag & 7
+		if (fieldNumber === 1 && wireType === 2) {
+			messages.push(proto.WebMessageInfo.decode(reader.bytes()))
+		} else {
+			reader.skipType(wireType)
+		}
+	}
+
+	return messages
 }
 
 export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger) => {

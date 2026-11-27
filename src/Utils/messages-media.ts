@@ -48,6 +48,11 @@ const getImageProcessingLibrary = async () => {
 
 export const hkdfInfoKey = (type: MediaType) => {
 	const hkdfInfo = MEDIA_HKDF_KEY_MAPPING[type]
+	if (type === 'group-history') {
+		// Group history bundles use the raw HKDF info string without the "WhatsApp ... Keys" wrapper
+		return hkdfInfo
+	}
+
 	return `WhatsApp ${hkdfInfo} Keys`
 }
 
