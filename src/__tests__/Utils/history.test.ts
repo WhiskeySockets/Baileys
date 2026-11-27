@@ -1,5 +1,12 @@
+import { jest } from '@jest/globals'
+import { createCipheriv, createHmac, randomBytes } from 'crypto'
+import $protobuf from 'protobufjs/minimal.js'
+import { deflateSync } from 'zlib'
 import { proto } from '../../../WAProto/index.js'
-import { processHistoryMessage } from '../../Utils/history'
+import { DEFAULT_ORIGIN } from '../../Defaults'
+import { hkdf, sha256 } from '../../Utils/crypto'
+import { downloadGroupHistoryBundle, processHistoryMessage } from '../../Utils/history'
+import { hkdfInfoKey } from '../../Utils/messages-media'
 
 describe('processHistoryMessage', () => {
 	describe('phoneNumberToLidMappings extraction', () => {
@@ -428,5 +435,302 @@ describe('processHistoryMessage', () => {
 
 			expect(result.pastParticipants).toEqual(pastParticipants)
 		})
+	})
+})
+
+const buildEncryptedGroupHistory = (payload: Uint8Array, mediaKey: Uint8Array, info = 'Group History'): Buffer => {
+	const expanded = hkdf(mediaKey, 112, { info })
+	const iv = expanded.slice(0, 16)
+	const cipherKey = expanded.slice(16, 48)
+	const macKey = expanded.slice(48, 80)
+
+	const compressed = deflateSync(payload)
+	const cipher = createCipheriv('aes-256-cbc', cipherKey, iv)
+	const ciphertext = Buffer.concat([cipher.update(compressed), cipher.final()])
+	const mac = createHmac('sha256', macKey).update(iv).update(ciphertext).digest().subarray(0, 10)
+
+	return Buffer.concat([ciphertext, mac])
+}
+
+describe('downloadGroupHistoryBundle', () => {
+	const directPath = '/v/t62.15575-24/synthetic-group-history.enc'
+
+	afterEach(() => {
+		jest.restoreAllMocks()
+	})
+
+	it('uses raw Group History HKDF info without wrapping other media types', () => {
+		expect(hkdfInfoKey('group-history')).toBe('Group History')
+		expect(hkdfInfoKey('image')).toBe('WhatsApp Image Keys')
+	})
+
+	it('downloads, decrypts, inflates, and decodes WebMessageInfo entries from mmg.whatsapp.net', async () => {
+		const mediaKey = randomBytes(32)
+		const msg1 = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_1', fromMe: false },
+			message: { conversation: 'first message' }
+		}).finish()
+		const msg2 = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_2', fromMe: true },
+			message: { conversation: 'second message' }
+		}).finish()
+
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(msg1)
+			.uint32((1 << 3) | 2)
+			.bytes(msg2)
+			.finish()
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
+		const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath })
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1)
+		expect(String(fetchSpy.mock.calls[0]?.[0])).toBe(`https://mmg.whatsapp.net${directPath}`)
+		expect(messages).toHaveLength(2)
+		expect(messages[0]?.key?.id).toBe('MSG_1')
+		expect(messages[0]?.message?.conversation).toBe('first message')
+		expect(messages[1]?.key?.id).toBe('MSG_2')
+		expect(messages[1]?.message?.conversation).toBe('second message')
+	})
+
+	it('rejects a bundle encrypted with WhatsApp History Keys (md-msg-hist) semantics', async () => {
+		const mediaKey = randomBytes(32)
+		const msg = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_HIST', fromMe: false },
+			message: { conversation: 'wrong info key' }
+		}).finish()
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(msg)
+			.finish()
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey, 'WhatsApp History Keys')
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		await expect(downloadGroupHistoryBundle({ mediaKey, directPath })).rejects.toThrow()
+	})
+
+	it('returns an empty array for an empty GroupHistory payload', async () => {
+		const mediaKey = randomBytes(32)
+		const encrypted = buildEncryptedGroupHistory(new Uint8Array(0), mediaKey)
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath })
+
+		expect(messages).toEqual([])
+	})
+
+	it('skips unknown fields while decoding field-1 WebMessageInfo entries', async () => {
+		const mediaKey = randomBytes(32)
+		const msg = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_UNKNOWN', fromMe: false },
+			message: { conversation: 'kept' }
+		}).finish()
+		const payload = $protobuf.Writer.create()
+			.uint32((7 << 3) | 0)
+			.uint32(42)
+			.uint32((1 << 3) | 2)
+			.bytes(msg)
+			.uint32((6 << 3) | 2)
+			.bytes(Buffer.from('ignored'))
+			.finish()
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath })
+
+		expect(messages).toHaveLength(1)
+		expect(messages[0]?.key?.id).toBe('MSG_UNKNOWN')
+		expect(messages[0]?.message?.conversation).toBe('kept')
+	})
+
+	it('throws Boom 400 when mediaKey or directPath/url is missing', async () => {
+		await expect(downloadGroupHistoryBundle({ directPath })).rejects.toMatchObject({
+			output: { statusCode: 400 }
+		})
+		await expect(downloadGroupHistoryBundle({ mediaKey: randomBytes(32) })).rejects.toMatchObject({
+			output: { statusCode: 400 }
+		})
+	})
+
+	it.each([
+		{
+			name: 'tampered ciphertext byte',
+			mutateFile: (file: Buffer) => {
+				file[0] = (file[0] ?? 0) ^ 0xff
+			},
+			corruptHash: false,
+			expectedMessage: 'MAC mismatch'
+		},
+		{
+			name: 'tampered MAC byte',
+			mutateFile: (file: Buffer) => {
+				const last = file.length - 1
+				file[last] = (file[last] ?? 0) ^ 0xff
+			},
+			corruptHash: false,
+			expectedMessage: 'MAC mismatch'
+		},
+		{
+			name: 'wrong fileEncSha256',
+			mutateFile: () => {},
+			corruptHash: true,
+			expectedMessage: 'fileEncSha256 mismatch'
+		}
+	])('rejects with Boom 412 on $name', async ({ mutateFile, corruptHash, expectedMessage }) => {
+		const mediaKey = randomBytes(32)
+		const msg = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_VERIFY', fromMe: false },
+			message: { conversation: 'verify integrity' }
+		}).finish()
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(msg)
+			.finish()
+		const encrypted = Buffer.from(buildEncryptedGroupHistory(payload, mediaKey))
+		mutateFile(encrypted)
+
+		let fileEncSha256: Buffer | undefined
+		if (corruptHash) {
+			fileEncSha256 = Buffer.from(sha256(encrypted))
+			fileEncSha256[0] = (fileEncSha256[0] ?? 0) ^ 0xff
+		}
+
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		await expect(downloadGroupHistoryBundle({ mediaKey, directPath, fileEncSha256 })).rejects.toMatchObject({
+			message: expectedMessage,
+			output: { statusCode: 412 }
+		})
+	})
+
+	it('decodes when fileEncSha256 matches the encrypted file', async () => {
+		const mediaKey = randomBytes(32)
+		const msg = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_HASH_OK', fromMe: true },
+			message: { conversation: 'hash verified' }
+		}).finish()
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(msg)
+			.finish()
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
+		const fileEncSha256 = sha256(encrypted)
+
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath, fileEncSha256 })
+
+		expect(messages).toHaveLength(1)
+		expect(messages[0]?.key?.id).toBe('MSG_HASH_OK')
+		expect(messages[0]?.message?.conversation).toBe('hash verified')
+	})
+
+	it('decodes all GroupHistory message fields in wire order', async () => {
+		const mediaKey = randomBytes(32)
+		const encodeMsg = (id: string) =>
+			proto.WebMessageInfo.encode({
+				key: { remoteJid: '1234567890@g.us', id, fromMe: false },
+				message: { conversation: id }
+			}).finish()
+
+		const parentKey = proto.MessageKey.encode({
+			remoteJid: '1234567890@g.us',
+			id: 'PARENT_1',
+			fromMe: false
+		}).finish()
+
+		const associatedList = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('B1'))
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('B2'))
+			.uint32((2 << 3) | 2)
+			.bytes(parentKey)
+			.uint32((3 << 3) | 0)
+			.uint32(1)
+			.finish()
+
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('A'))
+			.uint32((2 << 3) | 2)
+			.bytes(associatedList)
+			.uint32((3 << 3) | 2)
+			.bytes(encodeMsg('C'))
+			.uint32((4 << 3) | 2)
+			.bytes(encodeMsg('D'))
+			.uint32((5 << 3) | 2)
+			.bytes(encodeMsg('E'))
+			.uint32((1 << 3) | 2)
+			.bytes(encodeMsg('F'))
+			.finish()
+
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath })
+
+		expect(messages.map(m => m.key?.id)).toEqual(['A', 'B1', 'B2', 'C', 'D', 'E', 'F'])
+	})
+
+	it('rejects encrypted downloads exceeding 20 MiB with Boom 413', async () => {
+		const mediaKey = randomBytes(32)
+		const oversized = new Uint8Array(20 * 1024 * 1024 + 16)
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(oversized))
+
+		await expect(downloadGroupHistoryBundle({ mediaKey, directPath })).rejects.toMatchObject({
+			message: 'Group history bundle exceeds maximum size',
+			output: { statusCode: 413 }
+		})
+	})
+
+	it.each<{ name: string; headers: HeadersInit }>([
+		{
+			name: 'Headers instance',
+			headers: new Headers({ 'x-test': '1', origin: 'https://evil.example' })
+		},
+		{
+			name: 'tuple array',
+			headers: [
+				['x-test', '1'],
+				['origin', 'https://evil.example']
+			]
+		},
+		{
+			name: 'plain object',
+			headers: { 'x-test': '1', origin: 'https://evil.example' }
+		}
+	])('merges caller headers ($name) and overrides Origin with DEFAULT_ORIGIN', async ({ headers }) => {
+		const mediaKey = randomBytes(32)
+		const msg = proto.WebMessageInfo.encode({
+			key: { remoteJid: '1234567890@g.us', id: 'MSG_HDR', fromMe: false },
+			message: { conversation: 'headers ok' }
+		}).finish()
+		const payload = $protobuf.Writer.create()
+			.uint32((1 << 3) | 2)
+			.bytes(msg)
+			.finish()
+		const encrypted = buildEncryptedGroupHistory(payload, mediaKey)
+		const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(encrypted)))
+
+		const messages = await downloadGroupHistoryBundle({ mediaKey, directPath }, { options: { headers } })
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1)
+		const sentHeaders = new Headers(fetchSpy.mock.calls[0]?.[1]?.headers)
+		const originValues: string[] = []
+		sentHeaders.forEach((value, key) => {
+			if (key === 'origin') {
+				originValues.push(value)
+			}
+		})
+
+		expect(sentHeaders.get('x-test')).toBe('1')
+		expect(sentHeaders.get('origin')).toBe(DEFAULT_ORIGIN)
+		expect(originValues).toEqual([DEFAULT_ORIGIN])
+		expect(messages).toHaveLength(1)
+		expect(messages[0]?.key?.id).toBe('MSG_HDR')
+		expect(messages[0]?.message?.conversation).toBe('headers ok')
 	})
 })

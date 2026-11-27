@@ -1,16 +1,47 @@
+import { Boom } from '@hapi/boom'
+import { timingSafeEqual } from 'crypto'
+import $protobuf from 'protobufjs/minimal.js'
 import { pipeline } from 'stream/promises'
 import { promisify } from 'util'
 import { createInflate, inflate } from 'zlib'
 import { proto } from '../../WAProto/index.js'
+import { DEFAULT_ORIGIN } from '../Defaults'
 import type { Chat, Contact, LIDMapping, WAMessage } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser } from '../WABinary'
+import { aesDecryptWithIV, hmacSign, sha256 } from './crypto'
 import { toNumber } from './generics'
 import type { ILogger } from './logger.js'
 import { normalizeMessageContent } from './messages'
-import { downloadContentFromMessage } from './messages-media'
+import {
+	downloadContentFromMessage,
+	getHttpStream,
+	getMediaKeys,
+	getUrlFromDirectPath,
+	type MediaDownloadOptions
+} from './messages-media'
 
 const inflatePromise = promisify(inflate)
+
+const AES_BLOCK_SIZE = 16
+const MEDIA_MAC_LENGTH = 10
+const GROUP_HISTORY_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
+const GROUP_HISTORY_MAX_INFLATE_BYTES = 20 * 1024 * 1024
+const GROUP_HISTORY_MESSAGE_FIELDS = new Set([1, 3, 4, 5])
+
+const decodeAssociatedMessageList = (bytes: Uint8Array, messages: proto.WebMessageInfo[]) => {
+	const reader = $protobuf.Reader.create(bytes)
+	while (reader.pos < reader.len) {
+		const tag = reader.uint32()
+		const fieldNumber = tag >>> 3
+		const wireType = tag & 7
+		if (fieldNumber === 1 && wireType === 2) {
+			messages.push(proto.WebMessageInfo.decode(reader.bytes()))
+		} else {
+			reader.skipType(wireType)
+		}
+	}
+}
 
 const extractPnFromMessages = (messages: proto.IHistorySyncMsg[]): string | undefined => {
 	for (const msgItem of messages) {
@@ -42,6 +73,91 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	const buffer = Buffer.concat(chunks)
 	const syncData = proto.HistorySync.decode(buffer)
 	return syncData
+}
+
+/**
+ * Downloads and decrypts a `messageHistoryBundle` (shared when a device is added to a group
+ * with recent-history sharing enabled) and returns a flat `WebMessageInfo` list in wire order
+ * across `messages` (1), `uncountedAssociatedMessageLists[].messages` (2), `commentMessages` (3),
+ * `outOfWindowPinnedMessages` (4), and `themeMessage` (5).
+ * Caps the encrypted download at 20 MiB and verifies `fileEncSha256` (when present) and the media MAC before decrypting.
+ */
+export const downloadGroupHistoryBundle = async (
+	bundle: proto.Message.IMessageHistoryBundle,
+	opts?: Pick<MediaDownloadOptions, 'options' | 'host'>
+): Promise<proto.WebMessageInfo[]> => {
+	if (!bundle?.mediaKey?.length) {
+		throw new Boom('Missing mediaKey in messageHistoryBundle', { statusCode: 400 })
+	}
+
+	if (!bundle.directPath) {
+		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
+	}
+
+	const downloadUrl = getUrlFromDirectPath(bundle.directPath, opts?.host)
+	const headers = new Headers(opts?.options?.headers)
+	headers.set('Origin', DEFAULT_ORIGIN)
+
+	const stream = await getHttpStream(downloadUrl, {
+		...(opts?.options || {}),
+		headers
+	})
+	const chunks: Buffer[] = []
+	let size = 0
+	for await (const chunk of stream) {
+		size += chunk.length
+		if (size > GROUP_HISTORY_MAX_DOWNLOAD_BYTES) {
+			stream.destroy()
+			throw new Boom('Group history bundle exceeds maximum size', { statusCode: 413 })
+		}
+
+		chunks.push(chunk)
+	}
+
+	const file = Buffer.concat(chunks)
+
+	if (file.length < AES_BLOCK_SIZE + MEDIA_MAC_LENGTH || (file.length - MEDIA_MAC_LENGTH) % AES_BLOCK_SIZE !== 0) {
+		throw new Boom('Invalid encrypted group history bundle length', { statusCode: 400 })
+	}
+
+	if (bundle.fileEncSha256?.length) {
+		const actualEncHash = sha256(file)
+		if (actualEncHash.length !== bundle.fileEncSha256.length || !timingSafeEqual(actualEncHash, bundle.fileEncSha256)) {
+			throw new Boom('fileEncSha256 mismatch', { statusCode: 412 })
+		}
+	}
+
+	const { iv, cipherKey, macKey } = await getMediaKeys(bundle.mediaKey, 'group-history')
+	if (!macKey) {
+		throw new Boom('Failed to derive macKey', { statusCode: 500 })
+	}
+
+	const ciphertext = file.subarray(0, file.length - MEDIA_MAC_LENGTH)
+	const mac = file.subarray(file.length - MEDIA_MAC_LENGTH)
+	const expectedMac = hmacSign(Buffer.concat([iv, ciphertext]), macKey).subarray(0, MEDIA_MAC_LENGTH)
+	if (!timingSafeEqual(mac, expectedMac)) {
+		throw new Boom('MAC mismatch', { statusCode: 412 })
+	}
+
+	const compressed = aesDecryptWithIV(ciphertext, cipherKey, iv)
+	const buffer = await inflatePromise(compressed, { maxOutputLength: GROUP_HISTORY_MAX_INFLATE_BYTES })
+	const reader = $protobuf.Reader.create(buffer)
+	const messages: proto.WebMessageInfo[] = []
+
+	while (reader.pos < reader.len) {
+		const tag = reader.uint32()
+		const fieldNumber = tag >>> 3
+		const wireType = tag & 7
+		if (wireType === 2 && GROUP_HISTORY_MESSAGE_FIELDS.has(fieldNumber)) {
+			messages.push(proto.WebMessageInfo.decode(reader.bytes()))
+		} else if (wireType === 2 && fieldNumber === 2) {
+			decodeAssociatedMessageList(reader.bytes(), messages)
+		} else {
+			reader.skipType(wireType)
+		}
+	}
+
+	return messages
 }
 
 export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger) => {
