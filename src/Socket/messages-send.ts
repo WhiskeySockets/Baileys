@@ -72,6 +72,7 @@ import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
 
 const ALL_ENCRYPTIONS_FAILED = 'All encryptions failed'
+const MAX_TRACKED_DEVICE_LIST_EVICTIONS = 500
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -116,6 +117,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		})
 	/** Serializes writes to userDevicesCache across USync refresh and device-notification handling. */
 	const devicesMutex = makeMutex()
+	/**
+	 * Device lists dropped because WhatsApp refused prekeys for one of their devices,
+	 * keyed by user, with the sequence number of the drop. A USync refresh that
+	 * started before a user's drop must not write that user's (stale) list back.
+	 */
+	const refusedDeviceListEvictions = new Map<string, number>()
+	let deviceListEvictionSeq = 0
+	/** Highest sequence number among pruned markers: an untracked user may have been dropped up to here. */
+	let prunedDeviceListEvictionSeq = 0
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
@@ -321,6 +331,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			query.withUser(new USyncUser().withId(jid)) // todo: investigate - the idea here is that <user> should have an inline lid field with the lid being the pn equivalent
 		}
 
+		const evictionSeqAtFetch = deviceListEvictionSeq
 		const result = await sock.executeUSyncQuery(query)
 
 		if (result) {
@@ -382,12 +393,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			await devicesMutex.mutex(async () => {
+				// skip users whose list was dropped after this query started
+				const entries = Object.entries(deviceMap).filter(
+					([key]) => (refusedDeviceListEvictions.get(key) ?? prunedDeviceListEvictionSeq) <= evictionSeqAtFetch
+				)
 				if (userDevicesCache.mset) {
 					// if the cache supports mset, we can set all devices in one go
-					await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+					await userDevicesCache.mset(entries.map(([key, value]) => ({ key, value })))
 				} else {
-					for (const key in deviceMap) {
-						if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+					for (const [key, value] of entries) {
+						if (value) await userDevicesCache.set(key, value)
 					}
 				}
 			})
@@ -520,7 +535,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (users.size) {
 			await devicesMutex.mutex(async () => {
 				for (const user of users) {
+					// one sequence number per drop, recorded before the await, so a refresh
+					// that starts between two drops of this batch is judged per user;
+					// re-inserted so the oldest drops are first in line for pruning
+					deviceListEvictionSeq++
+					refusedDeviceListEvictions.delete(user)
+					refusedDeviceListEvictions.set(user, deviceListEvictionSeq)
 					await userDevicesCache.del(user)
+				}
+
+				// bounded; a pruned marker still counts through the watermark
+				for (const [user, seq] of refusedDeviceListEvictions) {
+					if (refusedDeviceListEvictions.size <= MAX_TRACKED_DEVICE_LIST_EVICTIONS) break
+					prunedDeviceListEvictionSeq = Math.max(prunedDeviceListEvictionSeq, seq)
+					refusedDeviceListEvictions.delete(user)
 				}
 			})
 		}
