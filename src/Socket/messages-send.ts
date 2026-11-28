@@ -35,6 +35,7 @@ import {
 	parseAndInjectE2ESessions,
 	unixTimestampSeconds
 } from '../Utils'
+import { assertSessionsSkippingRefused } from '../Utils/assert-sessions-for-send'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
@@ -69,6 +70,9 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
+
+const ALL_ENCRYPTIONS_FAILED = 'All encryptions failed'
+const MAX_TRACKED_DEVICE_LIST_EVICTIONS = 500
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -113,6 +117,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		})
 	/** Serializes writes to userDevicesCache across USync refresh and device-notification handling. */
 	const devicesMutex = makeMutex()
+	/**
+	 * Device lists dropped because WhatsApp refused prekeys for one of their devices,
+	 * keyed by user, with the sequence number of the drop. A USync refresh that
+	 * started before a user's drop must not write that user's (stale) list back.
+	 */
+	const refusedDeviceListEvictions = new Map<string, number>()
+	let deviceListEvictionSeq = 0
+	/** Highest sequence number among pruned markers: an untracked user may have been dropped up to here. */
+	let prunedDeviceListEvictionSeq = 0
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
@@ -318,6 +331,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			query.withUser(new USyncUser().withId(jid)) // todo: investigate - the idea here is that <user> should have an inline lid field with the lid being the pn equivalent
 		}
 
+		const evictionSeqAtFetch = deviceListEvictionSeq
 		const result = await sock.executeUSyncQuery(query)
 
 		if (result) {
@@ -379,12 +393,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			await devicesMutex.mutex(async () => {
+				// skip users whose list was dropped after this query started
+				const entries = Object.entries(deviceMap).filter(
+					([key]) => (refusedDeviceListEvictions.get(key) ?? prunedDeviceListEvictionSeq) <= evictionSeqAtFetch
+				)
 				if (userDevicesCache.mset) {
 					// if the cache supports mset, we can set all devices in one go
-					await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+					await userDevicesCache.mset(entries.map(([key, value]) => ({ key, value })))
 				} else {
-					for (const key in deviceMap) {
-						if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+					for (const [key, value] of entries) {
+						if (value) await userDevicesCache.set(key, value)
 					}
 				}
 			})
@@ -498,6 +516,46 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return didFetchNewSession
 	}
 
+	/**
+	 * assertSessions for the devices a message is about to be encrypted for,
+	 * returning the devices WhatsApp refused prekeys for instead of failing the
+	 * send. Their users' cached device lists are dropped, so the next send
+	 * re-enumerates devices rather than asking for the refused one again.
+	 */
+	const assertSessionsForSend = async (jids: string[]): Promise<Set<string>> => {
+		const refused = new Set(await assertSessionsSkippingRefused(assertSessions, jids, logger))
+		const users = new Set<string>()
+		for (const deviceJid of refused) {
+			const user = jidDecode(deviceJid)?.user
+			if (user) {
+				users.add(user)
+			}
+		}
+
+		if (users.size) {
+			await devicesMutex.mutex(async () => {
+				for (const user of users) {
+					// one sequence number per drop, recorded before the await, so a refresh
+					// that starts between two drops of this batch is judged per user;
+					// re-inserted so the oldest drops are first in line for pruning
+					deviceListEvictionSeq++
+					refusedDeviceListEvictions.delete(user)
+					refusedDeviceListEvictions.set(user, deviceListEvictionSeq)
+					await userDevicesCache.del(user)
+				}
+
+				// bounded; a pruned marker still counts through the watermark
+				for (const [user, seq] of refusedDeviceListEvictions) {
+					if (refusedDeviceListEvictions.size <= MAX_TRACKED_DEVICE_LIST_EVICTIONS) break
+					prunedDeviceListEvictionSeq = Math.max(prunedDeviceListEvictionSeq, seq)
+					refusedDeviceListEvictions.delete(user)
+				}
+			})
+		}
+
+		return refused
+	}
+
 	const sendPeerDataOperationMessage = async (
 		pdoMessage: proto.Message.IPeerDataOperationRequestMessage
 	): Promise<string> => {
@@ -607,10 +665,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 
 		if (recipientJids.length > 0 && nodes.length === 0) {
-			throw new Boom('All encryptions failed', { statusCode: 500 })
+			throw new Boom(ALL_ENCRYPTIONS_FAILED, { statusCode: 500 })
 		}
 
 		return { nodes, shouldIncludeDeviceIdentity }
+	}
+
+	/**
+	 * createParticipantNodes for sender-key distribution, where no new device
+	 * being reachable is not fatal by itself: devices that already hold the key
+	 * can still read the message, which relayMessage decides afterwards.
+	 */
+	const createSenderKeyNodes = async (
+		recipientJids: string[],
+		senderKeyMsg: proto.IMessage,
+		extraAttrs: BinaryNode['attrs']
+	) => {
+		try {
+			return await createParticipantNodes(recipientJids, senderKeyMsg, extraAttrs)
+		} catch (err) {
+			if (!(err instanceof Boom && err.message === ALL_ENCRYPTIONS_FAILED)) {
+				throw err
+			}
+
+			logger.warn({ err, count: recipientJids.length }, 'sender key reached no new device')
+			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
+		}
 	}
 
 	const relayMessage = async (
@@ -796,13 +876,36 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					const senderKeySessionTargets = senderKeyRecipients
-					await assertSessions(senderKeySessionTargets)
+					const refused = await assertSessionsForSend(senderKeyRecipients)
+					const reachableRecipients = senderKeyRecipients.filter(deviceJid => !refused.has(deviceJid))
+					const keyed = new Set<string>()
+					if (reachableRecipients.length) {
+						const result = await createSenderKeyNodes(reachableRecipients, senderKeyMsg, extraAttrs)
+						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
+						participants.push(...result.nodes)
+						for (const node of result.nodes) {
+							keyed.add(node.attrs.jid!)
+						}
+					}
 
-					const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
-					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
+					// A device that got no sender key now (refused, or its encryption failed)
+					// must not be remembered as having one, or it is never sent the key
+					for (const deviceJid of senderKeyRecipients) {
+						if (!keyed.has(deviceJid)) {
+							delete senderKeyMap[deviceJid]
+						}
+					}
 
-					participants.push(...result.nodes)
+					// Devices that already held the key can still read the message; fail only
+					// when no device at all is left able to decrypt it
+					const newRecipients = new Set(senderKeyRecipients)
+					const holders = devices.filter(device => !newRecipients.has(device.jid) && senderKeyMap[device.jid])
+					if (!keyed.size && !holders.length) {
+						throw new Boom('WhatsApp refused prekeys for every device of the group', {
+							statusCode: 406,
+							data: { refused: [...refused] }
+						})
+					}
 				}
 
 				binaryNodeContent.push({
@@ -899,15 +1002,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(jid)
 				}
 
-				await assertSessions(allRecipients)
+				const refused = await assertSessionsForSend(allRecipients)
+				const isReachable = (deviceJid: string) => !refused.has(deviceJid)
+				// The send only fails when none of the addressed user's devices could be reached
+				const targetRecipients = otherRecipients.length ? otherRecipients : meRecipients
+				if (targetRecipients.length && !targetRecipients.some(isReachable)) {
+					throw new Boom('WhatsApp refused prekeys for every device of the recipient', {
+						statusCode: 406,
+						data: { refused: [...refused] }
+					})
+				}
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM if available (1:1 chats only)
-					createParticipantNodes(meRecipients, meMsg || message, extraAttrs),
-					createParticipantNodes(otherRecipients, message, extraAttrs, meMsg)
+					createParticipantNodes(meRecipients.filter(isReachable), meMsg || message, extraAttrs),
+					createParticipantNodes(otherRecipients.filter(isReachable), message, extraAttrs, meMsg)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
